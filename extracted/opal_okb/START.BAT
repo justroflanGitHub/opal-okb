@@ -1,2 +1,0 @@
-keyrus.com
-opal.com

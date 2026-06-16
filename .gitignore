@@ -8,3 +8,15 @@ dist/
 build/
 *.egg-info/
 .pytest_cache/
+
+# Large binary files - not needed in repo
+extracted/
+docs/itmo_labs/images/
+docs/itmo_labs/images_png/
+screenshots/
+*.EXE
+*.exe
+*.DAT
+*.FIL
+*.PCX
+*.PRN

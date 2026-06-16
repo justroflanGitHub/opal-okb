@@ -277,7 +277,7 @@ class ResultsPanel(QWidget):
         layout.addWidget(parax_group)
         layout.addWidget(seidel_group)
         layout.addWidget(QLabel("Лог:"))
-        layout.addWidget(self.log_text)
+        layout.addWidget(self.log_text, 1)  # stretch factor 1 — log takes extra space
         layout.addStretch()
 
     def _copy_parax_table(self):
@@ -356,7 +356,8 @@ class ResultsPanel(QWidget):
                 val_item.setBackground(QColor(240, 240, 245))
             self.parax_table.setItem(i, 0, name_item)
             self.parax_table.setItem(i, 1, val_item)
-        self.parax_table.setFixedHeight(30 + len(rows) * 22)
+        self.parax_table.setFixedHeight(26 + len(rows) * 20)
+        self.parax_table.setRowCount(len(rows))  # ensure consistent
 
     def _update_seidel_display(self, seidel):
         """Заполнить таблицу сумм Зейделя."""
@@ -641,7 +642,7 @@ class MainWindow(QMainWindow):
         right_splitter = QSplitter(Qt.Vertical)
 
         # Visualization with controls
-        viz_group = QGroupBox("Ход лучей (Л1.4.8)")
+        viz_group = QGroupBox("Ход лучей")
         viz_layout = QVBoxLayout()
         viz_layout.setContentsMargins(2, 2, 2, 2)
 

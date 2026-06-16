@@ -1,0 +1,491 @@
+"""
+OPAL-OKB - Реальная трассировка лучей
+Реальный луч через сферические и асферические поверхности с законом Снеллиуса
+"""
+import math
+from typing import List, Tuple, Optional
+from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, SurfaceType
+from glass_catalog import compute_refractive_index
+
+
+class Ray:
+    """Луч в 3D пространстве."""
+    def __init__(self, x=0.0, y=0.0, z=0.0, k=0.0, l=0.0, m=1.0):
+        # Точка: (x, y, z), направление: (k, l, m) - единичный вектор
+        self.x = x; self.y = y; self.z = z
+        self.k = k; self.l = l; self.m = m
+
+    def __repr__(self):
+        return f"Ray(o=({self.x:.4f},{self.y:.4f},{self.z:.4f}), d=({self.k:.4f},{self.l:.4f},{self.m:.4f}))"
+
+
+class TraceResult:
+    """Результат трассировки луча через систему."""
+    def __init__(self):
+        self.path = []         # [(x, y, z)] - точки пересечения
+        self.success = True
+        self.error = None      # Ошибка ('TIR', 'MISS', 'EDGE')
+        self.surfaces_hit = 0
+        self.opl = 0.0         # оптическая длина пути (OPL)
+
+    def add_point(self, x, y, z):
+        self.path.append((x, y, z))
+
+
+def intersect_aspheric(ray: Ray, R: float, z_surf: float,
+                        conic_k: float = 0.0,
+                        aspheric_coeffs: list = None,
+                        max_iter: int = 20, tol: float = 1e-10) -> Optional[Tuple[float, float, float, float]]:
+    """
+    Пересечение луча с асферической поверхностью (итерационный метод Ньютона).
+
+    Уравнение поверхности:
+      z(r) = (c·r²)/(1 + √(1-(1+k)·c²·r²)) + A4·r⁴ + A6·r⁶ + A8·r⁸ + A10·r¹⁰
+    где c = 1/R, r² = x² + y²
+
+    Если k=0 и нет коэфф., сводится к сфере.
+    """
+    if aspheric_coeffs is None:
+        aspheric_coeffs = []
+
+    # Если это чистая сфера — используем быстрый аналитический метод
+    if abs(conic_k) < 1e-15 and len(aspheric_coeffs) == 0:
+        return intersect_sphere(ray, R, z_surf)
+
+    # c = 1/R; для плоскости c=0
+    c = 1.0 / R if abs(R) > 1e-10 else 0.0
+
+    # Начальное приближение: пересечение с базовой сферой (или плоскостью)
+    init = intersect_sphere(ray, R, z_surf)
+    if init is None:
+        return None
+    x0, y0, z0, _ = init
+
+    # Итерации Ньютона: находим точку на асферике ближе к лучу
+    x, y, z = x0, y0, z0
+
+    for _ in range(max_iter):
+        r_sq = x * x + y * y
+        r = math.sqrt(r_sq) if r_sq > 0 else 0.0
+
+        # Асферический sag
+        z_asph = z_surf  # вершина
+        if abs(c) > 1e-15 and r_sq > 0:
+            k1c_sq = (1.0 + conic_k) * c * c
+            disc = 1.0 - k1c_sq * r_sq
+            if disc < 0:
+                disc = 0.0
+            z_asph += c * r_sq / (1.0 + math.sqrt(disc))
+        # Полиномиальные добавки
+        r2 = r_sq
+        for j, coeff in enumerate(aspheric_coeffs):
+            power = 2 * (j + 2)  # A4->r⁴, A6->r⁶, ...
+            z_asph += coeff * (r2 ** (power // 2))
+
+        # Вектор от текущей точки до асферической поверхности
+        dz = z_asph - z
+
+        # Нормаль к асферике в точке (x, y, z_asph)
+        # dz/dr = d/dr [c·r²/(1+√(1-(1+k)·c²·r²)) + Σ Ai·r^(2i+2)]
+        dz_dr = 0.0
+        if abs(c) > 1e-15 and r > 1e-15:
+            k1c_sq = (1.0 + conic_k) * c * c
+            disc = 1.0 - k1c_sq * r_sq
+            if disc < 1e-15:
+                disc = 1e-15
+            sqrt_disc = math.sqrt(disc)
+            dz_dr = c * r / (sqrt_disc * (1.0 + sqrt_disc) / (c * r if abs(c * r) > 1e-15 else 1e-15)) if abs(c * r) > 1e-15 else 0.0
+            # Более аккуратно:
+            # dz/dr = c*r / sqrt(1-(1+k)*c²*r²)
+            dz_dr = c * r / sqrt_disc
+
+        # Добавка от полинома
+        for j, coeff in enumerate(aspheric_coeffs):
+            power = 2 * (j + 2) - 1  # 4->3, 6->5, ...
+            dz_dr += coeff * power * (r ** (power - 1)) if r > 1e-15 else 0.0
+
+        # Нормаль: (-dz/dr * x/r, -dz/dr * y/r, 1), нормализованная
+        if r > 1e-15:
+            nx = -dz_dr * x / r
+            ny = -dz_dr * y / r
+        else:
+            nx, ny = 0.0, 0.0
+        nz = 1.0
+        n_len = math.sqrt(nx * nx + ny * ny + nz * nz)
+        if n_len > 1e-15:
+            nx /= n_len; ny /= n_len; nz /= n_len
+
+        # Коррекция: проецируем луч на асферику
+        # ray direction: (k, l, m)
+        # dot(normal, direction)
+        dot_nd = nx * ray.k + ny * ray.l + nz * ray.m
+        if abs(dot_nd) < 1e-15:
+            break
+
+        # Корректирующее смещение вдоль луча
+        dt = (nx * (x - ray.x) + ny * (y - ray.y) + nz * (z - ray.z)) / dot_nd
+
+        # Двигаем точку вдоль луча
+        x = x + dt * ray.k
+        y = y + dt * ray.l
+        z = z + dt * ray.m
+
+        # Пересчитываем z_asph для новых x,y
+        r_sq = x * x + y * y
+        r = math.sqrt(r_sq) if r_sq > 0 else 0.0
+        z_asph_new = z_surf
+        if abs(c) > 1e-15 and r_sq > 0:
+            k1c_sq = (1.0 + conic_k) * c * c
+            disc = 1.0 - k1c_sq * r_sq
+            if disc < 0:
+                disc = 0.0
+            z_asph_new += c * r_sq / (1.0 + math.sqrt(disc))
+        r2 = r_sq
+        for j, coeff in enumerate(aspheric_coeffs):
+            power = 2 * (j + 2)
+            z_asph_new += coeff * (r2 ** (power // 2))
+        
+        # Snap z to surface
+        z = z_asph_new
+
+        if abs(dt) < tol:
+            break
+
+    t = math.sqrt((x - ray.x) ** 2 + (y - ray.y) ** 2 + (z - ray.z) ** 2)
+    if t < 1e-10:
+        return None
+
+    return (x, y, z, t)
+
+
+def surface_normal_aspheric(x: float, y: float, z: float,
+                            R: float, z_surf: float,
+                            conic_k: float = 0.0,
+                            aspheric_coeffs: list = None) -> Tuple[float, float, float]:
+    """
+    Единичная нормаль к асферической поверхности в точке (x, y, z).
+    """
+    if aspheric_coeffs is None:
+        aspheric_coeffs = []
+
+    if abs(conic_k) < 1e-15 and len(aspheric_coeffs) == 0:
+        return surface_normal(x, y, z, R, z_surf)
+
+    c = 1.0 / R if abs(R) > 1e-10 else 0.0
+    r_sq = x * x + y * y
+    r = math.sqrt(r_sq) if r_sq > 0 else 0.0
+
+    # dz/dr для конической части
+    dz_dr = 0.0
+    if abs(c) > 1e-15 and r > 1e-15:
+        k1c_sq = (1.0 + conic_k) * c * c
+        disc = 1.0 - k1c_sq * r_sq
+        if disc < 1e-15:
+            disc = 1e-15
+        dz_dr = c * r / math.sqrt(disc)
+
+    # dz/dr для полиномиальных членов
+    for j, coeff in enumerate(aspheric_coeffs):
+        power = 2 * (j + 2) - 1  # r³, r⁵, ...
+        if r > 1e-15:
+            dz_dr += coeff * power * (r ** (power - 1))
+
+    if r > 1e-15:
+        nx = -dz_dr * x / r
+        ny = -dz_dr * y / r
+    else:
+        nx, ny = 0.0, 0.0
+    nz = 1.0
+    n_len = math.sqrt(nx * nx + ny * ny + nz * nz)
+    if n_len > 1e-15:
+        return (nx / n_len, ny / n_len, nz / n_len)
+    return (0.0, 0.0, 1.0)
+
+
+def intersect_sphere(ray: Ray, R: float, z_surf: float) -> Optional[Tuple[float, float, float, float]]:
+    """
+    Пересечение луча со сферической поверхностью.
+    R > 0: центр справа от вершины
+    R < 0: центр слева от вершины
+    Возвращает (x, y, z, t) или None
+    """
+    if abs(R) < 1e-10:
+        # Плоская поверхность
+        if abs(ray.m) < 1e-15:
+            return None
+        t = (z_surf - ray.z) / ray.m
+        x = ray.x + t * ray.k
+        y = ray.y + t * ray.l
+        return (x, y, z_surf, t)
+
+    # Сфера с центром в (0, 0, z_surf + R)
+    cx, cy, cz = 0.0, 0.0, z_surf + R
+
+    dx = ray.x - cx
+    dy = ray.y - cy
+    dz = ray.z - cz
+
+    a = ray.k**2 + ray.l**2 + ray.m**2  # = 1 для единичного вектора
+    b = 2 * (dx * ray.k + dy * ray.l + dz * ray.m)
+    c = dx**2 + dy**2 + dz**2 - R**2
+
+    disc = b**2 - 4*a*c
+    if disc < 0:
+        return None
+
+    sqrt_disc = math.sqrt(disc)
+    t1 = (-b - sqrt_disc) / (2 * a)
+    t2 = (-b + sqrt_disc) / (2 * a)
+
+    # Выбираем пересечение:
+    # - Если луч внутри сферы (c < 0): берём t2 (выход из сферы, ближе к вершине)
+    # - Если луч снаружи: берём ближайшее положительное t
+    if c < 0:
+        # Внутри сферы - берём t2 (выход)
+        t = t2
+    else:
+        # Снаружи - берём ближайшее t>0
+        t = t1 if t1 > 1e-10 else t2
+
+    if t < 1e-10:
+        return None
+
+    x = ray.x + t * ray.k
+    y = ray.y + t * ray.l
+    z = ray.z + t * ray.m
+
+    return (x, y, z, t)
+
+
+def refract(k, l, m, nx, ny, nz, n1, n2):
+    """
+    Преломление по закону Снеллиуса в векторной форме.
+    (k,l,m) - единичный вектор направления луча
+    (nx,ny,nz) - единичная нормаль к поверхности (в сторону падающего луча)
+    n1, n2 - показатели преломления
+    Возвращает (k', l', m') или None (TIR)
+    """
+    cos_i = -(k * nx + l * ny + m * nz)
+    if cos_i < 0:
+        # Нормаль направлена неправильно
+        nx, ny, nz = -nx, -ny, -nz
+        cos_i = -cos_i
+
+    eta = n1 / n2
+    sin2_t = eta**2 * (1 - cos_i**2)
+
+    if sin2_t > 1.0:
+        return None  # TIR
+
+    cos_t = math.sqrt(1 - sin2_t)
+
+    k_new = eta * k + (eta * cos_i - cos_t) * nx
+    l_new = eta * l + (eta * cos_i - cos_t) * ny
+    m_new = eta * m + (eta * cos_i - cos_t) * nz
+
+    # Нормализация
+    norm = math.sqrt(k_new**2 + l_new**2 + m_new**2)
+    return (k_new/norm, l_new/norm, m_new/norm)
+
+
+def surface_normal(x, y, z, R, z_surf):
+    """
+    Единичная нормаль к сферической поверхности в точке (x, y, z).
+    Направлена от центра кривизны к точке.
+    """
+    if abs(R) < 1e-10:
+        # Плоская: нормаль вдоль оси
+        return (0.0, 0.0, 1.0)
+
+    cx, cy, cz = 0.0, 0.0, z_surf + R
+    nx = x - cx
+    ny = y - cy
+    nz = z - cz
+    norm = math.sqrt(nx**2 + ny**2 + nz**2)
+    if norm < 1e-15:
+        return (0.0, 0.0, 1.0)
+    return (nx/norm, ny/norm, nz/norm)
+
+
+def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) -> TraceResult:
+    """
+    Трассировка реального луча через оптическую систему.
+    Возвращает TraceResult с путём луча.
+    """
+    result = TraceResult()
+    result.add_point(ray.x, ray.y, ray.z)
+
+    current_ray = Ray(ray.x, ray.y, ray.z, ray.k, ray.l, ray.m)
+    
+    # Z-координаты вершин поверхностей
+    z_positions = [0.0]
+    for i, s in enumerate(sys.surfaces):
+        z_positions.append(z_positions[-1] + s.thickness)
+    
+    # Определяем показатель преломления среды, в которой луч начинает
+    # (до первой поверхности — воздух/вакуум)
+    current_n = compute_refractive_index("", wl)  # n среды перед системой
+    
+    for i, s in enumerate(sys.surfaces):
+        z_surf = z_positions[i]
+        R = s.radius if abs(s.radius) > 1e-10 else 0.0
+        
+        # Пересечение с поверхностью
+        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > 1e-15 or len(s.aspheric_coeffs) > 0:
+            hit = intersect_aspheric(current_ray, R, z_surf,
+                                     conic_k=s.conic_constant,
+                                     aspheric_coeffs=s.aspheric_coeffs)
+        else:
+            hit = intersect_sphere(current_ray, R, z_surf)
+        if hit is None:
+            result.success = False
+            result.error = 'MISS'
+            return result
+        
+        hx, hy, hz, t = hit
+        
+        # Проверка полудиаметра
+        semi_d = abs(s.semi_diameter) if s.semi_diameter > 0 else 1e6
+        r_hit = math.sqrt(hx**2 + hy**2)
+        if r_hit > semi_d:
+            result.success = False
+            result.error = 'EDGE'
+            result.add_point(hx, hy, hz)
+            # Накапливаем OPL до этой точки
+            result.opl += current_n * t
+            return result
+        
+        # Накапливаем OPL: n * геометрическое расстояние
+        result.opl += current_n * t
+        
+        result.add_point(hx, hy, hz)
+        result.surfaces_hit += 1
+        
+        # Обновляем позицию луча на точку попадания
+        current_ray.x = hx
+        current_ray.y = hy
+        current_ray.z = hz
+        
+        # Нормаль
+        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > 1e-15 or len(s.aspheric_coeffs) > 0:
+            nx, ny, nz = surface_normal_aspheric(hx, hy, hz, R, z_surf,
+                                                  conic_k=s.conic_constant,
+                                                  aspheric_coeffs=s.aspheric_coeffs)
+        else:
+            nx, ny, nz = surface_normal(hx, hy, hz, R, z_surf)
+        
+        # Показатели преломления
+        if i == 0:
+            n1 = compute_refractive_index("", wl)
+        else:
+            n1 = compute_refractive_index(sys.surfaces[i-1].glass, wl)
+        n2 = compute_refractive_index(s.glass, wl)
+        
+        # После преломления/отражения луч находится в среде с n2
+        current_n = n2
+        
+        if s.is_reflective:
+            # Отражение: среда не меняется, n остаётся прежним
+            current_n = n1
+            dot = current_ray.k * nx + current_ray.l * ny + current_ray.m * nz
+            current_ray.k = current_ray.k - 2 * dot * nx
+            current_ray.l = current_ray.l - 2 * dot * ny
+            current_ray.m = current_ray.m - 2 * dot * nz
+        else:
+            # Преломление
+            ref = refract(current_ray.k, current_ray.l, current_ray.m,
+                         nx, ny, nz, n1, n2)
+            if ref is None:
+                result.success = False
+                result.error = 'TIR'
+                return result
+            current_ray.k, current_ray.l, current_ray.m = ref
+    
+    # После последней поверхности — propagate до плоскости изображения
+    if sys.surfaces:
+        last = sys.surfaces[-1]
+        if last.thickness != 0 and abs(current_ray.m) > 1e-15:
+            img_z = z_positions[-1]
+            dt = (img_z - current_ray.z) / current_ray.m
+            ix = current_ray.x + dt * current_ray.k
+            iy = current_ray.y + dt * current_ray.l
+            # OPL от последней поверхности до плоскости изображения
+            result.opl += current_n * dt
+            result.add_point(ix, iy, img_z)
+    
+    return result
+
+
+def trace_fan(sys: OpticalSystem, num_rays: int = 7,
+              pupil_range: float = 1.0, wl: float = 0.58756,
+              field_y: float = 0.0) -> List[TraceResult]:
+    """
+    Трассировка веера лучей (fan) в меридиональной плоскости.
+    num_rays: количество лучей
+    pupil_range: диапазон зрачка (0..1)
+    field_y: смещение по полю (мм или градусы)
+    Лучи с |ρ| < obscuration_ratio отсекаются (центральное экранирование).
+    """
+    results = []
+    obscuration = getattr(sys, 'obscuration_ratio', 0.0)
+
+    for i in range(num_rays):
+        py = -pupil_range + 2 * pupil_range * i / (num_rays - 1) if num_rays > 1 else 0.0
+
+        # Проверка экранирования: |ρ| < obscuration_ratio → луч блокируется
+        if obscuration > 0 and abs(py) < obscuration:
+            blocked = TraceResult()
+            blocked.success = False
+            blocked.error = 'OBSCURED'
+            results.append(blocked)
+            continue
+
+        # Начальная точка: зрачок
+        aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
+        y_start = py * aperture / 2
+
+        if sys.object_type == ObjectType.INFINITE:
+            # Параллельный пучок под углом
+            angle = math.radians(field_y) if field_y != 0 else 0.0
+            ray = Ray(x=0, y=y_start, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        else:
+            # Конечный предмет: точечный источник в переднем фокусе (sF)
+            from optics_engine import paraxial_trace
+            parax = paraxial_trace(sys)
+            sF = parax.get('sF', 0)  # передний фокальный отрезок
+            obj_dist = abs(sF) if sF and abs(sF) > 1e-6 else 100.0
+            obj_y = field_y  # высота точки предмета (мм)
+            ray = Ray(x=0, y=obj_y, z=-obj_dist,
+                     k=0, l=y_start - obj_y, m=obj_dist)
+            # Нормализация
+            norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+            ray.k /= norm; ray.l /= norm; ray.m /= norm
+
+        results.append(trace_ray_through_system(sys, ray, wl))
+
+    return results
+
+
+def get_focal_spot(sys: OpticalSystem, wl: float = 0.58756, num_rays: int = 20) -> List[Tuple[float, float]]:
+    """
+    Точечная диаграмма в фокальной плоскости (Л1.6.1 Точечная диаграмма).
+    Возвращает список (dx, dy) - отклонения от главного луча.
+    """
+    # Найдём фокальную плоскость через параксиальный расчёт
+    from optics_engine import paraxial_trace
+    parax = paraxial_trace(sys)
+    bfd = parax.get('back_focal_distance', 0)
+
+    if bfd == 0:
+        return []
+
+    # Трассировка веера лучей
+    rays_y = trace_fan(sys, num_rays=num_rays, pupil_range=1.0, wl=wl, field_y=0.0)
+
+    spots = []
+    for r in rays_y:
+        if r.success and len(r.path) > 1:
+            last = r.path[-1]
+            spots.append((last[0], last[1]))
+
+    return spots

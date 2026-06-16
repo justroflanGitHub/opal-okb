@@ -1,0 +1,218 @@
+<html>
+<head>
+<title>Основы оптики</title>
+<meta content="text/html; charset=windows-1251" http-equiv=Content-Type>
+<script language=JavaScript>
+</script>
+<meta content="MSHTML 5.00.2919.6307" name=GENERATOR>
+
+<script src='http://aco.ifmo.ru/el_books/basics_optics/jquery.min.js'></script>
+<script src='http://aco.ifmo.ru/el_books/basics_optics/array.js' charset="windows-1251"></script>
+<script src='http://aco.ifmo.ru/el_books/basics_optics/main.js' charset="windows-1251"></script>
+<script language="JavaScript">
+<!--
+function MM_jumpMenu(targ,selObj,restore)
+{
+  if(targ != 'parent')
+  {
+  	document.location.href = basefolder+glavs[targ][0][0];
+  }
+  else
+  {
+  	document.location.href = basefolder+selObj.options[selObj.selectedIndex].value;
+  	curr_level = selObj.selectedIndex;
+  }
+  curr_glav = '0';
+  currpage = '0';
+  cod = currglav+'_'+currpage;
+  if (restore) selObj.selectedIndex=0;
+}
+//document.location.href = glavs[curr_level][0][0];
+//-->
+</script>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<link href="/css/custom.css" rel="stylesheet" type="text/css">
+	</head>
+	<body>
+    
+
+<!-- Yandex.Metrika counter --> <script type="text/javascript"> (function (d, w, c) { (w[c] = w[c] || []).push(function() { try { w.yaCounter43153509 = new Ya.Metrika({ id:43153509, clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true }); } catch(e) { } }); var n = d.getElementsByTagName("script")[0], s = d.createElement("script"), f = function () { n.parentNode.insertBefore(s, n); }; s.type = "text/javascript"; s.async = true; s.src = "https://mc.yandex.ru/metrika/watch.js"; if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); } })(document, window, "yandex_metrika_callbacks"); </script> <noscript><div><img src="https://mc.yandex.ru/watch/43153509" style="position:absolute; left:-9999px;" alt="" /></div></noscript> <!-- /Yandex.Metrika counter -->    
+
+<!----------Плавающая надпись---------->
+<a class="fixedbut" href="/el_books/basics_optics/#top">Вернуться наверх</a>
+<style>
+.fixedbut { position: fixed; bottom: 20px; right: 20px;}
+</style>
+<a name="top" id="top"></a>
+
+<table heigth="100%" width="1030" align="center" border="0" cellspacing="0" cellpadding="0">
+<!----------Шапка ИТМО---------->
+<tr bgcolor="#1946BA">
+	<td colspan="6" align="center" >
+		<a href="http://www.ifmo.ru"><img src="/images/logo_itmo.png" width="1024" height="39" /></a>		
+	</td>
+</tr>
+<tr> 
+	<td height="3" bgcolor="#FFFFFF"></td>
+</tr>
+<!----------Шапка ПО---------->
+<tr bgcolor="#666699" border="0">
+	<td colspan=6 align="left" height="120" border="0">
+    	<a href="http://aco.ifmo.ru" target="_top"><img src="/images/top_po.png" align="left" alt="aco.ifmo.ru" width="904" height="120" border="0"></a>
+		<a href="https://photonic.itmo.ru/"><img src="/images/top_photonic.png" align="left" alt="photonic" width="120" height="120" border="0"></a>    
+	</td>
+</tr>
+<!----------меню---------->
+<tr  bgcolor="#A3AFD0">
+<td width="150" align="center" bordercolor="#FFFFFF" border="1"><a href="/el_books/basics_optics/" onClick = "MM_jumpMenu(curr_level,curr_level,0)"><img src="/el_books/basics_optics/../btn_content.gif" alt="вернуться в оглавление" width="107" height="31" border="0"></a></td>
+<td width="150" align="center"><a href="/el_books/basics_optics/" id="bckgl"><img src="/el_books/basics_optics/../btn1.gif" alt="предыдущая глава" width="107" height="31" border="0"></a></td>
+<td width="150" align="center"><a href="/el_books/basics_optics/" id="bckpg"><img src="/el_books/basics_optics/../btn2.gif" alt="предыдущий параграф" width="107" height="31" border="0"></a></td>
+<td width="150" align="center"><a href="/el_books/basics_optics/" id="fwdpg"><img src="/el_books/basics_optics/../btn3.gif" alt="следующий параграф" width="107" height="31" border="0"></a></td>
+<td width="150" align="center"><a href="/el_books/basics_optics/" id="fwdgl"><img src="/el_books/basics_optics/../btn4.gif" alt="следующая глава" width="107" height="31" border="0"></a></td>
+
+<td align="right"  valign="bottom">      
+<form name="form">
+        <script language="JavaScript">
+				document.write('<select name=\"menu\" onChange=\"MM_jumpMenu(\'parent\',this,0)\" id=\"navsel\">');
+        		for(var i=0;i<level.length;++i)
+        		{
+       				document.write('<option value=' + glavs[i][0][0] +'>' + level[i] + '</option>');
+					
+       			}
+        		document.write('</select>');
+      </script>
+      </form>    </td>
+<tr>
+<tr>
+<td colspan="6"> <p class="aco_el_book_title">
+        <script language="JavaScript">
+				document.write(book_theme);
+		</script>
+</p>
+<hr class="aco_hr_blue2" /></tr>
+</table>
+
+
+		 
+	<script>
+	document.forms[0].reset();
+	</script>
+	
+<table width=1024 align="CENTER">
+  <tr> 
+    <td > 
+<!-- #BeginEditable "data" --> 
+      <h1 align="center" >Приложение Л1. <br>
+        Описание работы с программой OPAL-PC<br>
+      </h1>
+      <p align="left">В приложении приводится краткое описание работы с пактом 
+        программ OPAL, необходимое для успешного выполнения лабораторных работ 
+        по дисциплине «Основы оптики».</p>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_1.html">Л1.1.</a> Запуск программы 
+      </h3>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html">Л1.2.</a> Блок «Формирование»</h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_1">Л1.2.1.</a> Меню 
+          «Файл»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_2">Л1.2.2.</a> Меню «Система»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_3">Л1.2.3.</a> Меню «Поверхность»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_4">Л1.2.4.</a> Меню «Блок»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_5">Л1.2.5.</a> Меню «Перестройка»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_6">Л1.2.6.</a> Меню «Настроить»<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_2.html#p_2_7">Л1.2.7.</a> Меню «Выполнить»</h4>
+      </blockquote>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_3.html">Л1.3.</a> Общие принципы 
+        функционирования блоков анализа </h3>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html">Л1.4.</a> Анализ габаритов 
+        и аберраций </h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_1">Л1.4.1.</a> Задание 
+          режимов расчета габаритов <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_2">Л1.4.2.</a> Параксиальные характеристики 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_3">Л1.4.3.</a> Суммы и аберрации Зейделя 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_4">Л1.4.4.</a> Габариты пучков <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_5">Л1.4.5.</a> Характеристики главных 
+          лучей пучков <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_6">Л1.4.6.</a> Аберрации осевого пучка 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_7">Л1.4.7.</a> Аберрации внеосевых 
+          пучков <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_8">Л1.4.8.</a> Ход лучей в оптической 
+          системе<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_4.html#p_4_9">Л1.4.9.</a> Заместить габариты на 
+          вычисленные</h4>
+      </blockquote>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html">Л1.5.</a> Анализ волнового 
+        фронта</h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html#p_5_1">Л1.5.1.</a> Коэффициенты 
+          зонального разложения <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html#p_5_2">Л1.5.2.</a> Коэффициенты глобального 
+          разложения <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html#p_5_3">Л1.5.3.</a> СКВ волновой аберрации 
+          по полю <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html#p_5_4">Л1.5.4.</a> Плоскость наилучшей 
+          установки <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_5.html#p_5_5">Л1.5.5.</a> Отображение волнового 
+          фронта </h4>
+      </blockquote>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html">Л1.6.</a> Анализ геометрического 
+        изображения</h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_1">Л1.6.1.</a> Точечная 
+          диаграмма <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_2">Л1.6.2.</a> Фокусировочные диаграммы 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_3">Л1.6.3.</a> Сканирование пятна рассеяния 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_4">Л1.6.4.</a> Функция концентрации 
+          энергии <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_5">Л1.6.5.</a> СКВ пятна рассеяния 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_6">Л1.6.6.</a> Функция рассеяния линии 
+          (ФРЛ)<br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_7">Л1.6.7.</a> Геометрическая ЧКХ <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_6.html#p_6_8">Л1.6.8.</a> Спектральные характеристики 
+        </h4>
+      </blockquote>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html">Л1.7.</a> Анализ дифракционного 
+        ЧКХ </h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html#p_7_1">Л1.7.1.</a> Частотно-контрастная 
+          характеристика <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html#p_7_2">Л1.7.2.</a> Частотно-фазовая характеристика 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html#p_7_3">Л1.7.3.</a> Безаберрационные ЧКХ 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html#p_7_4">Л1.7.4.</a> Фокусировочные кривые 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_7.html#p_7_5">Л1.7.5.</a> Спектральные характеристики 
+        </h4>
+      </blockquote>
+      <h3 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html">Л1.8.</a> Анализ функции 
+        рассеяния точки </h3>
+      <blockquote> 
+        <h4 align="left"><a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_1">Л1.8.1.</a> Функция 
+          рассеяния точки <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_2">Л1.8.2.</a> Функция концентрации 
+          энергии <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_3">Л1.8.3.</a> Функция рассеяния линии 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_4">Л1.8.4.</a> Пограничная кривая <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_5">Л1.8.5.</a> Шпальные миры <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_6">Л1.8.6.</a> Частотно-контрастная 
+          характеристика <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_7">Л1.8.7.</a> Изображение тест-объектов 
+          <br>
+          <a href="/el_books/basics_optics/lab_app_opal/lab_app_opal_8.html#p_8_8">Л1.8.8.</a> Спектральные характеристики </h4>
+      </blockquote>
+      <!-- #EndEditable -->
+    </td>
+  </tr> 
+</table>
+</BODY>
+<!-- #EndTemplate --></HTML>
+
+</html>

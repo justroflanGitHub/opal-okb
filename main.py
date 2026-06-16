@@ -697,12 +697,11 @@ class MainWindow(QMainWindow):
         viz_layout.addWidget(self.viz)
         viz_group.setLayout(viz_layout)
 
-        self.results = ResultsPanel()
+        self.results = ResultsPanel()  # Kept for compat (tests access w.results.parax_table)
         self.analysis = AnalysisPanel()
         right_splitter.addWidget(viz_group)
         right_splitter.addWidget(self.analysis)
-        right_splitter.addWidget(self.results)
-        right_splitter.setSizes([300, 250, 200])
+        right_splitter.setSizes([300, 400])
 
         # Splitter
         splitter = QSplitter(Qt.Horizontal)
@@ -1040,7 +1039,7 @@ class MainWindow(QMainWindow):
         """Heavy computation — runs in background thread with parallel sub-tasks."""
         import math, numpy as np
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        from optics_engine import paraxial_trace
+        from optics_engine import paraxial_trace, seidel_aberrations
         from aberrations import (
             compute_spot_diagram, compute_rms_spot, compute_spot_diagram_polychromatic,
             compute_polychromatic_rms, trace_aberration_fan, compute_field_aberrations,
@@ -1060,6 +1059,7 @@ class MainWindow(QMainWindow):
 
         # Phase 1: Fast sequential (needed as dependencies)
         results['parax'] = paraxial_trace(sys)
+        results['seidel'] = seidel_aberrations(sys)
         results['spots_mono'] = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         results['rms'] = compute_rms_spot(results['spots_mono'])
 
@@ -1237,7 +1237,7 @@ class MainWindow(QMainWindow):
         self.current_system = sys
         self.btn_calc.setEnabled(True)
         self.btn_calc.setText("⚙ Рассчитать")
-        self.results.update_results(sys)
+        self._update_parax_and_seidel(sys, data)
         self.surface_table.load_system(sys)
         self.viz.set_system(sys, trace_rays=True)
         if data:
@@ -1246,6 +1246,24 @@ class MainWindow(QMainWindow):
             self.analysis.analyze(sys)
         f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
         self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
+
+    def _update_parax_and_seidel(self, sys, data=None):
+        """Update paraxial + seidel in ResultsPanel (compat) and AnalysisPanel."""
+        # ResultsPanel — backward compat (tests access w.results.parax_table)
+        self.results.update_results(sys)
+
+        # AnalysisPanel — new parax/seidel tabs
+        parax = self.results._parax_result
+        fno = self.results._fno
+        epd = self.results._epd
+
+        if data and 'seidel' in data:
+            seidel = data['seidel']
+        else:
+            seidel = seidel_aberrations(sys)
+
+        self.analysis.update_parax(parax, fno, epd, sys=sys)
+        self.analysis.update_seidel(seidel)
 
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(

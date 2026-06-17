@@ -370,13 +370,12 @@ class InteractivePlot:
     def pixel_to_data(self, px, py):
         """Convert pixel coords to data coords, accounting for zoom/pan."""
         r = self._plot_rect
-        # Forward transform: data_pixel → screen_pixel = (dp - cx) * z + cx
-        # where cx = r.center.x - pan.x, cy = r.center.y - pan.y  (note: pan is negated)
-        cx = r.center().x() - self._pan_offset.x()
-        cy = r.center().y() - self._pan_offset.y()
-        # Inverse: data_pixel = (screen_pixel - cx) / z + cx
-        unzoomed_x = (px - cx) / self._zoom_factor + cx
-        unzoomed_y = (py - cy) / self._zoom_factor + cy
+        # Forward transform: screen = (dp - rcx) * z + rcx + pan
+        # Inverse: dp = (screen - pan - rcx) / z + rcx
+        rcx = r.center().x()
+        rcy = r.center().y()
+        unzoomed_x = (px - self._pan_offset.x() - rcx) / self._zoom_factor + rcx
+        unzoomed_y = (py - self._pan_offset.y() - rcy) / self._zoom_factor + rcy
         # Now convert from unzoomed plot rect to data coords
         x = self._x_range[0] + (unzoomed_x - r.left()) / r.width() * (self._x_range[1] - self._x_range[0])
         y = self._y_range[1] - (unzoomed_y - r.top()) / r.height() * (self._y_range[1] - self._y_range[0])
@@ -460,14 +459,27 @@ class InteractivePlot:
     def paint_finalize(self, painter, rect):
         """Restore painter from zoom, then draw crosshair in screen coords."""
         painter.restore()  # Undo zoom/pan so crosshair/text are not scaled
+        if getattr(self, '_pending', False):
+            painter.fillRect(self.rect(), QColor(10, 10, 25))
+            painter.setPen(QColor(200, 180, 80))
+            painter.setFont(QFont("Consolas", 12))
+            painter.drawText(self.rect(), Qt.AlignCenter, "⏳ Расчёт анализа...")
+            return
         self.draw_crosshair(painter, rect)
 
     def apply_zoom_pan(self, painter, rect):
-        """Apply zoom/pan to painter. Saves state so paint_finalize can restore."""
+        """Apply zoom/pan to painter. Saves state so paint_finalize can restore.
+
+        Pan is applied in screen space (before zoom in call order), so dragging
+        always moves content 1:1 with the cursor regardless of zoom level.
+        """
         painter.save()  # Save un-zoomed state
         if self._zoom_factor != 1.0 or self._pan_offset.x() != 0 or self._pan_offset.y() != 0:
-            cx = rect.center().x() + self._pan_offset.x()
-            cy = rect.center().y() + self._pan_offset.y()
+            # Screen-space pan (applied last to coordinates = called first)
+            painter.translate(self._pan_offset.x(), self._pan_offset.y())
+            # Zoom around rect center (independent of pan)
+            cx = rect.center().x()
+            cy = rect.center().y()
             painter.translate(cx, cy)
             painter.scale(self._zoom_factor, self._zoom_factor)
             painter.translate(-cx, -cy)
@@ -484,6 +496,7 @@ class AberrationPlotWidget(QWidget, InteractivePlot):
         super().__init__(parent)
         self.setMinimumSize(250, 200)
         self.data = None
+        self._pending = False
         self._init_interactive()
 
     def mouseMoveEvent(self, event):
@@ -2512,6 +2525,7 @@ class FocusDiagramWidget(QWidget, InteractivePlot):
         self.setMinimumSize(500, 300)
         self.spots_by_defocus = {}  # label -> (spots, rms_info)
         self.max_range = 0.001
+        self._pending = False
         self._init_interactive()
 
     def mouseMoveEvent(self, event):
@@ -2914,6 +2928,7 @@ class AnalysisPanel(QTabWidget):
         self._seidel_data = {}
         self._fno = 0
         self._epd = 0
+        self._calculation_done = False
 
         # Placeholder widgets for table-only tabs (no plot)
         parax_placeholder = QWidget()
@@ -3666,13 +3681,27 @@ class AnalysisPanel(QTabWidget):
         else:
             self._set_table('bar_target', None)
 
-    def apply_results(self, sys, data):
-        """Apply pre-computed results from background thread. GUI thread only."""
-        if not data:
-            self.analyze(sys)
-            return
+    _PHASE2_WIDGETS = (
+        'spot_diagram', 'transverse', 'longitudinal', 'wavefront',
+        'mtf', 'distortion', 'astigmatism', 'coma',
+        'focus_curve', 'psf_w', 'lsf_w', 'esf_w',
+        'enc_w', 'ptf_w', 'heatmap_w', 'beam_geom',
+        'chief_ray', 'zernike_w', 'wavefront_map_w',
+        'wf_rms_field_w', 'focus_diagrams', 'psf_3d_w',
+        'bar_target_w',
+    )
+    _PHASE2_TABLES = (
+        'spot', 'transverse', 'longitudinal', 'wavefront', 'mtf',
+        'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
+        'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
+        'beam', 'chief', 'zernike', 'wfmap', 'wf_rms_field', 'bar_target',
+    )
 
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+    def apply_phase1(self, sys, data):
+        """Phase 1: update parax + seidel tabs, mark others as pending."""
+        self._calculation_done = False
+        if not data:
+            data = {}
 
         # Parax/Seidel
         if 'parax' in data:
@@ -3686,6 +3715,32 @@ class AnalysisPanel(QTabWidget):
             self.update_parax(parax, fno, epd, sys=sys)
         if 'seidel' in data:
             self.update_seidel(data['seidel'])
+
+        # Mark all phase2 widgets as pending
+        for name in self._PHASE2_WIDGETS:
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget._pending = True
+                widget.update()
+
+        # Show pending message in phase2 table tabs
+        for key in self._PHASE2_TABLES:
+            self._set_table(key, _make_table(
+                ["Статус"], [["⏳ Расчёт анализа..."]], [200]))
+
+    def apply_phase2(self, sys, data):
+        """Phase 2: update all remaining widgets with full analysis data."""
+        # Clear pending flag on all widgets
+        for name in self._PHASE2_WIDGETS:
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget._pending = False
+
+        if not data:
+            self.analyze(sys)
+            return
+
+        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
 
         # Spot
         if 'spots_mono' in data:
@@ -3833,6 +3888,14 @@ class AnalysisPanel(QTabWidget):
         self._update_focus_diag_table(sys)
         self._update_psf3d_table(sys)
         self._update_bar_target_table(sys)
+
+        self._calculation_done = True
+
+    def apply_results(self, sys, data):
+        """Apply pre-computed results from background thread (sync mode).
+        Calls both phases for backward compatibility."""
+        self.apply_phase1(sys, data)
+        self.apply_phase2(sys, data)
 
     def analyze(self, sys: OpticalSystem):
         defocus = self.get_defocus_offset()

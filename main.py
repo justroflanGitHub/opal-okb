@@ -934,6 +934,11 @@ class MainWindow(QMainWindow):
         """Собрать данные из таблицы и рассчитать."""
         sys = self.current_system
 
+        # Защита от пустой системы
+        if not sys.surfaces:
+            self.statusBar().showMessage("Нет поверхностей")
+            return
+
         # Обновить поверхности из таблицы
         for i in range(min(self.surface_table.rowCount(), len(sys.surfaces))):
             r_item = self.surface_table.item(i, 1)
@@ -992,14 +997,30 @@ class MainWindow(QMainWindow):
         self._run_calc(sys)
 
     def _run_calc(self, sys, sync=False):
-        """Запустить расчёт - async по умолчанию, sync для тестов."""
+        """Запустить расчёт — Phase 1 sync (быстро), Phase 2 async (тяжёлый)."""
+        # Phase 1: быстрые вычисления (синхронно, < 0.5 сек)
+        phase1_data = self._do_calc_phase1(sys)
+
+        # Немедленное обновление GUI: ход лучей + parax + seidel
+        self._update_parax_and_seidel(sys, phase1_data)
+        self.surface_table.load_system(sys)
+        self.viz.set_system(sys, trace_rays=True)
+
         if sync:
-            self._update_after_calc(sys)
+            # Sync mode: выполнить Фазу 2 сразу
+            defocus = self.analysis.get_defocus_offset() if hasattr(self.analysis, 'defocus_spin') else 0.0
+            azimuth = self.analysis.get_azimuth() if hasattr(self.analysis, 'azimuth_spin') else 0.0
+            phase2_data = self._do_calc_phase2(sys, defocus, azimuth)
+            self._update_after_calc(sys, phase1_data, phase2_data)
             return
 
+        # Показать промежуточный результат
+        f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
+        self.statusBar().showMessage(f"Расчёт анализа... f'={f_text}")
+
+        # Phase 2: тяжёлые вычисления (в Worker потоке)
         self.btn_calc.setEnabled(False)
-        self.btn_calc.setText("⏳ Считаю...")
-        self.statusBar().showMessage("Расчёт...")
+        self.btn_calc.setText("⏳ Анализ...")
 
         from PyQt5.QtCore import QThread
         from worker import Worker
@@ -1014,19 +1035,32 @@ class MainWindow(QMainWindow):
         azimuth = self.analysis.get_azimuth() if hasattr(self.analysis, 'azimuth_spin') else 0.0
 
         self._calc_thread = QThread()
-        self._calc_worker = Worker(self._do_calc, sys, defocus, azimuth)
+        self._calc_worker = Worker(self._do_calc_phase2, sys, defocus, azimuth)
         self._calc_worker.moveToThread(self._calc_thread)
         self._calc_thread.started.connect(self._calc_worker.run)
-        self._calc_worker.finished.connect(lambda r: self._update_after_calc(r))
+        self._calc_worker.finished.connect(lambda r: self._update_after_calc(sys, phase1_data, r))
         self._calc_worker.error.connect(lambda e: self._on_calc_error(e))
         self._calc_worker.finished.connect(self._calc_thread.quit)
         self._calc_thread.start()
 
-    def _do_calc(self, sys, defocus=0.0, azimuth=0.0):
-        """Heavy computation — runs in background thread with parallel sub-tasks."""
+    def _do_calc_phase1(self, sys):
+        """Фаза 1: Быстрые вычисления — paraxial, Seidel, spot diagram. < 0.5 сек."""
+        from optics_engine import paraxial_trace, seidel_aberrations
+        from aberrations import compute_spot_diagram
+
+        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        return {
+            'parax': paraxial_trace(sys),
+            'seidel': seidel_aberrations(sys),
+            'spots': compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0),
+        }
+
+    def _do_calc_phase2(self, sys, defocus, azimuth):
+        """Фаза 2: Тяжёлые вычисления — fans, MTF, PSF, Zernike и т.д.
+        Работает в Worker потоке."""
         import math, numpy as np
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        from optics_engine import paraxial_trace, seidel_aberrations
+        from optics_engine import paraxial_trace, compute_beam_geometry
         from aberrations import (
             compute_spot_diagram, compute_rms_spot, compute_spot_diagram_polychromatic,
             compute_polychromatic_rms, trace_aberration_fan, compute_field_aberrations,
@@ -1036,7 +1070,6 @@ class MainWindow(QMainWindow):
         from diffraction_mtf import compute_diffraction_mtf, compute_diffraction_limited_mtf
         from advanced_analysis import compute_psf, compute_lsf, compute_esf, compute_enc, compute_ptf, compute_bar_target_mtf_table, compute_bar_target_image
         from zernike import compute_zernike_coefficients, compute_zernike_chromatic, compute_wavefront_map_2d
-        from optics_engine import compute_beam_geometry
 
         wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
         wl_list = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.58756]
@@ -1044,30 +1077,31 @@ class MainWindow(QMainWindow):
 
         results = {}
 
-        # Phase 1: Fast sequential (needed as dependencies)
-        results['parax'] = paraxial_trace(sys)
-        results['seidel'] = seidel_aberrations(sys)
-        results['spots_mono'] = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
-        results['rms'] = compute_rms_spot(results['spots_mono'])
+        # parax нужен для focus diagrams
+        parax = paraxial_trace(sys)
 
-        # Polychromatic (depends on spots_mono)
+        # spots_mono нужен как вход для нескольких вычислений
+        spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
+        results['spots_mono'] = spots_mono
+        results['rms'] = compute_rms_spot(spots_mono)
+
+        # Polychromatic
         if len(sys.wavelengths) > 1:
             results['spots_poly'] = compute_spot_diagram_polychromatic(sys, num_rays=40, field_y=0.0)
             results['poly_rms'] = compute_polychromatic_rms(sys, num_rays=40, field_y=0.0)
             results['poly_rms_xy'] = compute_rms_spot_xy([(dx, dy) for dx, dy, _ in results['spots_poly']])
             results['poly_max'] = max((math.sqrt(dx**2+dy**2) for dx, dy, _ in results['spots_poly']), default=0)
         else:
-            results['spots_poly'] = [(dx, dy, 0) for dx, dy in results['spots_mono']]
+            results['spots_poly'] = [(dx, dy, 0) for dx, dy in spots_mono]
             results['poly_rms'] = results['rms']
             results['poly_rms_xy'] = {}
             results['poly_max'] = 0
 
-        # Phase 2: Parallel independent heavy computations
+        # Parallel independent heavy computations
         parallel_tasks = {}
 
         def _task_fan():
             fans = {w: trace_aberration_fan(sys, w, num_rays=30) for w in wl_list}
-            # Also compute isoplanatism for each wavelength
             iso = {}
             try:
                 for w in wl_list:
@@ -1080,7 +1114,7 @@ class MainWindow(QMainWindow):
             return compute_field_aberrations(sys, wl=wl)
 
         def _task_geo_mtf():
-            return compute_geometric_mtf(results['spots_mono'])
+            return compute_geometric_mtf(spots_mono)
 
         def _task_diff_mtf():
             return compute_diffraction_mtf(sys, wl=wl)
@@ -1170,7 +1204,6 @@ class MainWindow(QMainWindow):
                 key = futures[future]
                 try:
                     result = future.result()
-                    # Unpack composite results
                     if key == 'lsf' and result:
                         results['lsf_t'], results['lsf_ax1'], results['lsf_s'], results['lsf_ax2'] = result
                     elif key == 'zernike':
@@ -1191,7 +1224,7 @@ class MainWindow(QMainWindow):
                     results[key] = None
 
         # Focus diagrams (depends on parax results)
-        ds = abs(results['parax'].get('longitudinal_spherical', 0)) if results['parax'].get('longitudinal_spherical') else 0.1
+        ds = abs(parax.get('longitudinal_spherical', 0)) if parax.get('longitudinal_spherical') else 0.1
         results['focus_diagrams'] = {}
         all_spots = []
         for label, df in [("номинал", 0), ("+DS'", ds), ("-DS'", -ds), ("+2DS'", 2*ds), ("-2DS'", -2*ds)]:
@@ -1204,26 +1237,45 @@ class MainWindow(QMainWindow):
                 pass
         results['focus_diag_max'] = max((math.sqrt(dx**2+dy**2) for dx, dy in all_spots), default=1e-6) if all_spots else 1e-6
 
-        return (sys, results)
+        return results
 
     def _on_calc_error(self, err):
         self.btn_calc.setEnabled(True)
         self.btn_calc.setText("⚙ Рассчитать")
         self.statusBar().showMessage(f"Ошибка расчёта: {err[:80]}")
 
-    def _update_after_calc(self, result):
-        """Обновить GUI после расчёта."""
-        if result is None:
+    def _update_after_calc(self, sys, phase1_data=None, phase2_data=None):
+        """Обновить GUI после расчёта.
+
+        Совместимость с тестами: если вызван с одним аргументом (sys),
+        пересчитывает всё на месте.
+        Полный режим: (sys, phase1_data, phase2_data).
+        """
+        if sys is None:
             return
-        # Support both sync (sys object) and async (tuple) modes
-        if isinstance(result, tuple):
-            sys, data = result
-        else:
-            sys = result
-            data = None
         self.current_system = sys
         self.btn_calc.setEnabled(True)
         self.btn_calc.setText("⚙ Рассчитать")
+
+        if phase1_data is None and phase2_data is None:
+            # Backward compat path (tests): compute everything fresh
+            self._update_parax_and_seidel(sys, None)
+            self.surface_table.load_system(sys)
+            self.viz.set_system(sys, trace_rays=True)
+            self.analysis.analyze(sys)
+            f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
+            self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
+            return
+
+        # Объединить данные обеих фаз
+        data = {}
+        if phase1_data:
+            data['parax'] = phase1_data['parax']
+            data['seidel'] = phase1_data['seidel']
+            data['spots_mono'] = phase1_data['spots']
+        if phase2_data:
+            data.update(phase2_data)
+
         self._update_parax_and_seidel(sys, data)
         self.surface_table.load_system(sys)
         self.viz.set_system(sys, trace_rays=True)
@@ -1269,11 +1321,15 @@ class MainWindow(QMainWindow):
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Открыть оптическую систему", "",
-            "OPAL files (*.opal.json);;JSON (*.json);;Все файлы (*)")
+            "OPJ files (*.opj);;JSON (*.opal.json);;Все файлы (*)")
         if not path:
             return
         try:
-            self.current_system = load_json(path)
+            if path.lower().endswith('.opj'):
+                from opj_reader import load_opj
+                self.current_system, _info = load_opj(path)
+            else:
+                self.current_system = load_json(path)
             self._current_file = path
             self._refresh_ui()
             self.statusBar().showMessage(f"Загружено: {path}")
@@ -1378,8 +1434,7 @@ class MainWindow(QMainWindow):
             return
         self.current_system = reverse_system(self.current_system)
         self._refresh_ui()
-        self._calculate()
-        self.statusBar().showMessage("Система обращена и пересчитана")
+        self.statusBar().showMessage("Система обращена. Нажмите «Рассчитать»")
 
     def _scale_system(self):
         """Масштабировать оптическую систему."""
@@ -1486,7 +1541,7 @@ class MainWindow(QMainWindow):
         def _add_std():
             from PyQt5.QtWidgets import QDialog as _D, QDialogButtonBox as _B, QListWidget as _L
             d = _D(dlg)
-            d.setWindowTitle("Стандартные линии")
+            d.setWindowTitle("Стандартные длины волн")
             d.setMinimumWidth(250)
             dl = QVBoxLayout(d)
             lst = _L()
@@ -1586,7 +1641,6 @@ class MainWindow(QMainWindow):
 
         self.current_system = system
         self._refresh_ui()
-        self._calculate()
         self.statusBar().showMessage(
             f"Ахромат: {system.name},  f'={self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else '-'}"
         )
@@ -1644,7 +1698,6 @@ class MainWindow(QMainWindow):
         try:
             self.current_system = create_system_from_entry(entry)
             self._refresh_ui()
-            self._calculate()
             self.statusBar().showMessage(f"Загружено из библиотеки: {entry['name']}")
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить систему:\n{e}")
@@ -1653,32 +1706,62 @@ class MainWindow(QMainWindow):
         """Присоединить оптическую систему из файла."""
         path, _ = QFileDialog.getOpenFileName(
             self, "Присоединить оптическую систему", "",
-            "OPAL files (*.opal.json);;JSON (*.json);;Все файлы (*)")
+            "OPJ files (*.opj);;JSON (*.opal.json);;Все файлы (*)")
         if not path:
             return
         try:
             self._collect_system_from_ui()
-            self.current_system = append_system(self.current_system, path)
+            if path.lower().endswith('.opj'):
+                from opj_reader import load_opj
+                appended_sys, _info = load_opj(path)
+                from system_utils import reverse_system as _rev
+                # Use io_utils.append_system logic inline for OPJ
+                from optics_engine import OpticalSystem as _OS
+                if not appended_sys.surfaces:
+                    pass
+                else:
+                    result = _OS(
+                        name=self.current_system.name + " + " + appended_sys.name,
+                        object_type=self.current_system.object_type,
+                        object_height=self.current_system.object_height,
+                        aperture_type=self.current_system.aperture_type,
+                        aperture_value=self.current_system.aperture_value,
+                        wavelengths=list(self.current_system.wavelengths),
+                        field_points=list(self.current_system.field_points),
+                        stop_surface=self.current_system.stop_surface,
+                        obscuration_ratio=self.current_system.obscuration_ratio,
+                        comment=self.current_system.comment,
+                    )
+                    result.surfaces = list(self.current_system.surfaces) + list(appended_sys.surfaces)
+                    self.current_system = result
+            else:
+                self.current_system = append_system(self.current_system, path)
             self._refresh_ui()
-            self._calculate()
             self.statusBar().showMessage(f"Система присоединена из: {path}")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось присоединить систему:\n{e}")
 
     def _export_protocol(self):
-        """Экспорт протокола расчёта в текстовый файл."""
-        path, _ = QFileDialog.getSaveFileName(
+        """Экспорт протокола расчёта в текстовый файл или .OPJ."""
+        path, selected_filter = QFileDialog.getSaveFileName(
             self, "Экспорт протокола", "",
-            "Текстовые файлы (*.txt);;Все файлы (*)")
+            "OPJ files (*.opj);;Текстовые файлы (*.txt);;Все файлы (*)")
         if not path:
             return
-        if not path.endswith(".txt"):
-            path += ".txt"
         try:
-            self._collect_system_from_ui()
-            parax = paraxial_trace(self.current_system)
-            seidel = seidel_aberrations(self.current_system)
-            export_protocol(self.current_system, parax, seidel, path)
+            if path.lower().endswith('.opj') or 'OPJ' in selected_filter:
+                if not path.lower().endswith('.opj'):
+                    path += '.opj'
+                from opj_writer import save_opj
+                self._collect_system_from_ui()
+                save_opj(self.current_system, path)
+            else:
+                if not path.endswith(".txt"):
+                    path += ".txt"
+                self._collect_system_from_ui()
+                parax = paraxial_trace(self.current_system)
+                seidel = seidel_aberrations(self.current_system)
+                export_protocol(self.current_system, parax, seidel, path)
             self.statusBar().showMessage(f"Протокол экспортирован: {path}")
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось экспортировать протокол:\n{e}")
@@ -1693,6 +1776,7 @@ class MainWindow(QMainWindow):
                 if s.glass and s.glass not in ('', 'ВОЗДУХ', 'AIR', 'воздух', 'air')
             ))
             dlg = GlassDiagramWindow(parent=self, highlight_glasses=highlight)
+            dlg.show()
         except ImportError:
             QMessageBox.warning(self, "Ошибка",
                 "matplotlib не установлен.\nУстановите: pip install matplotlib")
@@ -1756,7 +1840,6 @@ class MainWindow(QMainWindow):
 
             self.current_system = result_sys
             self._refresh_ui()
-            self._calculate()
 
             parax = paraxial_trace(self.current_system)
             if target_combo.currentIndex() == 0:

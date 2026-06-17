@@ -66,5 +66,6 @@ def _create_from_generator(gen_name):
 
 def _create_from_opj(filepath):
     """Загрузить систему из OPJ файла."""
-    from opj_reader import read_opj
-    return read_opj(filepath)
+    from opj_reader import load_opj
+    sys, _info = load_opj(filepath)
+    return sys

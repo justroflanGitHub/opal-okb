@@ -5,7 +5,7 @@ OPAL-OKB — Анализ аберраций (Л1.4.6-Л1.4.7)
 """
 import math
 from typing import List, Tuple, Dict
-from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, paraxial_trace
+from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
 

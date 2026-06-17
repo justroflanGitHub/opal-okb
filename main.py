@@ -487,37 +487,13 @@ class SystemParamsWidget(QWidget):
         self.sharp_edge_check.setChecked(True)
         layout.addRow(self.sharp_edge_check)
 
-        # Точки поля
+        # Точки поля и спектральные линии — в меню Характеристики
         self.field_points_widget = FieldPointsWidget()
-        layout.addRow(self.field_points_widget)
-
-        # Длины волн
-        wl_group = QGroupBox("Спектральные линии")
-        wl_layout = QVBoxLayout()
+        self.field_points_widget.setVisible(False)  # скрытый, для загрузки/сохранения
         self.wl_table = QTableWidget(0, 3)
         self.wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
         self.wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.wl_table.setMaximumHeight(120)
-        wl_layout.addWidget(self.wl_table)
-
-        wl_btn_layout = QHBoxLayout()
-        btn_add_wl = QPushButton("+")
-        btn_add_wl.setMaximumWidth(30)
-        btn_add_wl.clicked.connect(self._add_wavelength)
-        btn_del_wl = QPushButton("-")
-        btn_del_wl.setMaximumWidth(30)
-        btn_del_wl.clicked.connect(self._del_wavelength)
-        btn_std_wl = QPushButton("Стандартные...")
-        btn_std_wl.setMaximumWidth(100)
-        btn_std_wl.clicked.connect(self._standard_wavelengths)
-        wl_btn_layout.addWidget(btn_add_wl)
-        wl_btn_layout.addWidget(btn_del_wl)
-        wl_btn_layout.addWidget(btn_std_wl)
-        wl_btn_layout.addStretch()
-        wl_layout.addLayout(wl_btn_layout)
-        wl_group.setLayout(wl_layout)
-
-        layout.addRow(wl_group)
+        self.wl_table.setVisible(False)  # скрытый
 
     def _add_wavelength(self):
         row = self.wl_table.rowCount()
@@ -819,6 +795,17 @@ class MainWindow(QMainWindow):
         fit_action = QAction("&Подгонка...", self)
         fit_action.triggered.connect(self._fit_dialog)
         sys_menu.addAction(fit_action)
+
+        # Характеристики
+        char_menu = menubar.addMenu("&Характеристики")
+
+        field_action = QAction("&Точки поля...", self)
+        field_action.triggered.connect(lambda: self._show_field_points_dialog())
+        char_menu.addAction(field_action)
+
+        spectral_action = QAction("&Спектральные линии...", self)
+        spectral_action.triggered.connect(lambda: self._show_spectral_dialog())
+        char_menu.addAction(spectral_action)
 
         # Вид
         view_menu = menubar.addMenu("&Вид")
@@ -1450,6 +1437,105 @@ class MainWindow(QMainWindow):
             "оптических систем\n\n"
             "Портирование с MS-DOS на Windows 10\n"
             "Python + PyQt5")
+
+    def _show_field_points_dialog(self):
+        """Диалог точек поля."""
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Точки поля")
+        dlg.setMinimumWidth(350)
+        layout = QVBoxLayout(dlg)
+        fp_widget = FieldPointsWidget()
+        fp_widget.load_system(self.current_system)
+        layout.addWidget(fp_widget)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        layout.addWidget(btns)
+        if dlg.exec_():
+            self.current_system.field_points = fp_widget.get_field_points()
+            self.sys_params.field_points_widget.load_system(self.current_system)
+            self._calculate()
+
+    def _show_spectral_dialog(self):
+        """Диалог спектральных линий."""
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QTableWidget, QTableWidgetItem, QHeaderView
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Спектральные линии")
+        dlg.setMinimumWidth(350)
+        layout = QVBoxLayout(dlg)
+        wl_table = QTableWidget(0, 3)
+        wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
+        wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for wl in self.current_system.wavelengths:
+            r = wl_table.rowCount()
+            wl_table.insertRow(r)
+            wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.4f}"))
+            wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
+            wl_table.setItem(r, 2, QTableWidgetItem(wl.name or ""))
+        layout.addWidget(wl_table)
+        # Add/remove buttons
+        btn_layout = QHBoxLayout()
+        add_btn = QPushButton("+ Добавить")
+        del_btn = QPushButton("- Удалить")
+        std_btn = QPushButton("Стандартные...")
+        add_btn.clicked.connect(lambda: wl_table.insertRow(wl_table.rowCount()))
+        del_btn.clicked.connect(lambda: wl_table.removeRow(wl_table.currentRow()) if wl_table.currentRow() >= 0 else None)
+        # Standard wavelengths dialog
+        from io_utils import STANDARD_WAVELENGTHS
+        def _add_std():
+            from PyQt5.QtWidgets import QDialog as _D, QDialogButtonBox as _B, QListWidget as _L
+            d = _D(dlg)
+            d.setWindowTitle("Стандартные линии")
+            d.setMinimumWidth(250)
+            dl = QVBoxLayout(d)
+            lst = _L()
+            for name, val in sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1]):
+                lst.addItem(f"{name} \u2014 {val:.5f} \u043c\u043a\u043c")
+            dl.addWidget(lst)
+            b = _B(_B.Ok | _B.Cancel)
+            b.accepted.connect(d.accept)
+            b.rejected.connect(d.reject)
+            dl.addWidget(b)
+            if d.exec_():
+                idx = lst.currentRow()
+                if idx >= 0:
+                    items = sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1])
+                    name, val = items[idx]
+                    r = wl_table.rowCount()
+                    wl_table.insertRow(r)
+                    wl_table.setItem(r, 0, QTableWidgetItem(f"{val:.4f}"))
+                    wl_table.setItem(r, 1, QTableWidgetItem("1.0"))
+                    wl_table.setItem(r, 2, QTableWidgetItem(name))
+        std_btn.clicked.connect(_add_std)
+        btn_layout.addWidget(add_btn)
+        btn_layout.addWidget(del_btn)
+        btn_layout.addWidget(std_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        layout.addWidget(btns)
+        if dlg.exec_():
+            from optics_engine import Wavelength
+            new_wls = []
+            for r in range(wl_table.rowCount()):
+                val_item = wl_table.item(r, 0)
+                w_item = wl_table.item(r, 1)
+                n_item = wl_table.item(r, 2)
+                if val_item:
+                    try:
+                        val = float(val_item.text())
+                        w = float(w_item.text()) if w_item and w_item.text() else 1.0
+                        name = n_item.text() if n_item else ""
+                        new_wls.append(Wavelength(val, w, name))
+                    except ValueError:
+                        pass
+            if new_wls:
+                self.current_system.wavelengths = new_wls
+                self.sys_params.load_system(self.current_system)
+                self._calculate()
 
     def _design_achromat(self):
         """Диалог расчёта ахроматического дублета."""

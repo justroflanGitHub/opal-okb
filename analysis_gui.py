@@ -2909,7 +2909,18 @@ class AnalysisPanel(QTabWidget):
         # Create splitters: plot | table
         self._table_containers = {}  # key -> QWidget with VBoxLayout for table
 
+        # Parax/Seidel data storage
+        self._parax_data = {}
+        self._seidel_data = {}
+        self._fno = 0
+        self._epd = 0
+
+        # Placeholder widgets for table-only tabs (no plot)
+        parax_placeholder = QWidget()
+        seidel_placeholder = QWidget()
+
         tabs = [
+            ("Параксиальные", parax_placeholder, 'parax'),
             ("Точечная диагр.", self.spot_diagram, 'spot'),
             ("Поперечные Δy'", self.transverse, 'transverse'),
             ("Продольные Δs'", self.longitudinal, 'longitudinal'),
@@ -2933,12 +2944,22 @@ class AnalysisPanel(QTabWidget):
             ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
             ("СКВ по полю", self.wf_rms_field_w, 'wf_rms_field'),
             ("Мира", self.bar_target_w, 'bar_target'),
+            ("Зейдель", seidel_placeholder, 'seidel'),
         ]
 
         self._table_mode = False  # Global: False=graph, True=table
         self._toggle_btns = []  # All toggle buttons
 
         for title, plot_widget, key in tabs:
+            # Table-only tabs (parax, seidel) — no toggle, just table
+            if key in ('parax', 'seidel'):
+                container = QWidget()
+                container.setLayout(QVBoxLayout(container))
+                container.layout().setContentsMargins(0, 0, 0, 0)
+                self._table_containers[key] = container
+                self.addTab(container, title)
+                continue
+
             # Toggle button: graph/table mode
             toggle_btn = QPushButton("📊 График")
             toggle_btn.setCheckable(True)
@@ -3020,6 +3041,111 @@ class AnalysisPanel(QTabWidget):
         if table:
             layout.addWidget(table)
     
+    def update_parax(self, parax_dict, fno, epd, sys=None):
+        """Update paraxial table. sys needed for multi-wavelength computation."""
+        self._parax_data = parax_dict or {}
+        self._fno = fno
+        self._epd = epd
+        self._parax_sys = sys
+        self._update_parax_table()
+
+    def update_seidel(self, seidel_dict):
+        """Update Seidel sums table."""
+        self._seidel_data = seidel_dict or {}
+        self._update_seidel_table()
+
+    def _update_parax_table(self):
+        """Build paraxial table — multi-wavelength columns for s, s', s'G, V, sP, sP'."""
+        import copy
+        from optics_engine import paraxial_trace
+        parax = self._parax_data
+        if not parax:
+            self._set_table('parax', _make_table(
+                ["Параметр", "Значение"], [["—", "Нет данных"]], [120, 120]))
+            return
+
+        sys = getattr(self, '_parax_sys', None)
+        # Compute paraxial for each wavelength
+        wl_labels = []
+        parax_by_wl = {}
+        if sys and sys.wavelengths:
+            for wl in sys.wavelengths:
+                label = wl.name if wl.name else f"{wl.value:.4f}"
+                try:
+                    sys_wl = copy.deepcopy(sys)
+                    sys_wl.wavelengths = [type(wl)(wl.value, 1.0, wl.name)]
+                    parax_by_wl[label] = paraxial_trace(sys_wl)
+                    wl_labels.append(label)
+                except Exception:
+                    pass
+        if not wl_labels:
+            wl_labels = ['d']
+            parax_by_wl['d'] = parax
+        n_wl = len(wl_labels)
+
+        # Table 1: Cardinal params (same for all λ) — 2 columns
+        common_rows = [
+            ["f'", f"{parax.get('focal_length', 0):.4f}"],
+            ["FFD", f"{parax.get('front_focal_distance', 0):.4f}"],
+            ["sF", f"{parax.get('sF', 0):.4f}"],
+            ["sF'", f"{parax.get('sF_prime', 0):.4f}"],
+            ["sH", f"{parax.get('sH', 0):.4f}"],
+            ["sH'", f"{parax.get('sH_prime', 0):.4f}"],
+            ["L", f"{parax.get('L', 0):.4f}"],
+            ["f/#", f"{self._fno:.2f}"],
+            ["D вх.зрачка", f"{self._epd:.4f}"],
+        ]
+        table1 = _make_table(["Кардинальные", "Значение"], common_rows, [90, 80])
+        table1.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # Table 2: Per-wavelength params — columns = wavelengths
+        per_wl_keys = [
+            ("s' (мм)", 'back_focal_distance'),
+            ("s' (дптр)", 'back_focal_distance'),  # will convert to diopters
+            ("s'G (мм)", 'back_focal_distance'),
+            ("V", 'V'),
+            ("sP (мм)", 'sP'),
+            ("sP' (мм)", 'sP_prime'),
+        ]
+        wl_headers = ["Параметр"] + wl_labels
+        wl_rows = []
+        for name, key in per_wl_keys:
+            vals = []
+            for wl in wl_labels:
+                p = parax_by_wl.get(wl, {})
+                v = p.get(key, 0)
+                if 'дптр' in name and v:
+                    v = 1000.0 / v if abs(v) > 1e-10 else 0
+                vals.append(f"{v:.4f}" if v is not None else "—")
+            wl_rows.append([name] + vals)
+        table2 = _make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
+        table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # Combine in horizontal splitter
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(table1)
+        splitter.addWidget(table2)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
+        self._set_table('parax', splitter)
+
+    def _update_seidel_table(self):
+        """Build Seidel sums table from cached data."""
+        seidel = self._seidel_data
+        if not seidel:
+            self._set_table('seidel', _make_table(
+                ["Сумма", "Значение"], [["—", "Нет данных"]], [120, 120]))
+            return
+        rows = [
+            ("SI — сферическая", f"{seidel.get('SI', 0):.6e}"),
+            ("SII — кома", f"{seidel.get('SII', 0):.6e}"),
+            ("SIII — астигматизм", f"{seidel.get('SIII', 0):.6e}"),
+            ("SIV — кривизна", f"{seidel.get('SIV', 0):.6e}"),
+            ("SV — дисторсия", f"{seidel.get('SV', 0):.6e}"),
+        ]
+        table = _make_table(["Сумма", "Значение"], rows, [130, 100])
+        self._set_table('seidel', table)
+
     def get_defocus_offset(self) -> float:
         """Get current defocus offset from settings widget."""
         return self.defocus_spin.value() if hasattr(self, 'defocus_spin') else 0.0
@@ -3548,6 +3674,19 @@ class AnalysisPanel(QTabWidget):
 
         wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
 
+        # Parax/Seidel
+        if 'parax' in data:
+            parax = data['parax']
+            fno = parax.get('f_number', 0)
+            epd = parax.get('entrance_pupil_diameter', 0)
+            if fno == 0:
+                efl = parax.get('focal_length', 0)
+                epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+                fno = efl / epd if epd > 0 else 0
+            self.update_parax(parax, fno, epd, sys=sys)
+        if 'seidel' in data:
+            self.update_seidel(data['seidel'])
+
         # Spot
         if 'spots_mono' in data:
             self.spot_diagram.spots_mono = data['spots_mono']
@@ -3699,6 +3838,15 @@ class AnalysisPanel(QTabWidget):
         defocus = self.get_defocus_offset()
         azimuth = self.get_azimuth()
 
+        # Update parax/seidel from sys
+        from optics_engine import paraxial_trace, seidel_aberrations
+        parax = paraxial_trace(sys)
+        efl = parax.get('focal_length', 0)
+        epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+        fno = efl / epd if epd > 0 else 0
+        self.update_parax(parax, fno, epd, sys=sys)
+        self.update_seidel(seidel_aberrations(sys))
+
         self.spot_diagram.set_data(sys)
         self.transverse.set_data(sys, azimuth_deg=azimuth)
         self.longitudinal.set_data(sys, azimuth_deg=azimuth)
@@ -3747,6 +3895,10 @@ class AnalysisPanel(QTabWidget):
         self._update_focus_diag_table(sys)
         self._update_psf3d_table(sys)
         self._update_bar_target_table(sys)
+
+        # Parax/Seidel tables (data must be set externally via update_parax/update_seidel)
+        self._update_parax_table()
+        self._update_seidel_table()
     
     # ===== Table builders =====
     

@@ -277,7 +277,7 @@ class ResultsPanel(QWidget):
         layout.addWidget(parax_group)
         layout.addWidget(seidel_group)
         layout.addWidget(QLabel("Лог:"))
-        layout.addWidget(self.log_text)
+        layout.addWidget(self.log_text, 1)  # stretch factor 1 — log takes extra space
         layout.addStretch()
 
     def _copy_parax_table(self):
@@ -356,7 +356,8 @@ class ResultsPanel(QWidget):
                 val_item.setBackground(QColor(240, 240, 245))
             self.parax_table.setItem(i, 0, name_item)
             self.parax_table.setItem(i, 1, val_item)
-        self.parax_table.setFixedHeight(30 + len(rows) * 22)
+        self.parax_table.setFixedHeight(26 + len(rows) * 20)
+        self.parax_table.setRowCount(len(rows))  # ensure consistent
 
     def _update_seidel_display(self, seidel):
         """Заполнить таблицу сумм Зейделя."""
@@ -486,37 +487,13 @@ class SystemParamsWidget(QWidget):
         self.sharp_edge_check.setChecked(True)
         layout.addRow(self.sharp_edge_check)
 
-        # Точки поля
+        # Точки поля и спектральные линии — в меню Характеристики
         self.field_points_widget = FieldPointsWidget()
-        layout.addRow(self.field_points_widget)
-
-        # Длины волн
-        wl_group = QGroupBox("Спектральные линии")
-        wl_layout = QVBoxLayout()
+        self.field_points_widget.setVisible(False)  # скрытый, для загрузки/сохранения
         self.wl_table = QTableWidget(0, 3)
         self.wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
         self.wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.wl_table.setMaximumHeight(120)
-        wl_layout.addWidget(self.wl_table)
-
-        wl_btn_layout = QHBoxLayout()
-        btn_add_wl = QPushButton("+")
-        btn_add_wl.setMaximumWidth(30)
-        btn_add_wl.clicked.connect(self._add_wavelength)
-        btn_del_wl = QPushButton("-")
-        btn_del_wl.setMaximumWidth(30)
-        btn_del_wl.clicked.connect(self._del_wavelength)
-        btn_std_wl = QPushButton("Стандартные...")
-        btn_std_wl.setMaximumWidth(100)
-        btn_std_wl.clicked.connect(self._standard_wavelengths)
-        wl_btn_layout.addWidget(btn_add_wl)
-        wl_btn_layout.addWidget(btn_del_wl)
-        wl_btn_layout.addWidget(btn_std_wl)
-        wl_btn_layout.addStretch()
-        wl_layout.addLayout(wl_btn_layout)
-        wl_group.setLayout(wl_layout)
-
-        layout.addRow(wl_group)
+        self.wl_table.setVisible(False)  # скрытый
 
     def _add_wavelength(self):
         row = self.wl_table.rowCount()
@@ -641,7 +618,7 @@ class MainWindow(QMainWindow):
         right_splitter = QSplitter(Qt.Vertical)
 
         # Visualization with controls
-        viz_group = QGroupBox("Ход лучей (Л1.4.8)")
+        viz_group = QGroupBox("Ход лучей")
         viz_layout = QVBoxLayout()
         viz_layout.setContentsMargins(2, 2, 2, 2)
 
@@ -652,7 +629,7 @@ class MainWindow(QMainWindow):
         # Create viz widget FIRST (before connecting signals)
         self.viz = OpticalSystemView()
 
-        self.btn_viz_fit = QPushButton("Sbros")
+        self.btn_viz_fit = QPushButton("Сброс")
         self.btn_viz_fit.setMaximumWidth(70)
         self.btn_viz_fit.clicked.connect(lambda: self.viz.reset_view())
         self.btn_viz_zoomin = QPushButton("Z+")
@@ -696,12 +673,11 @@ class MainWindow(QMainWindow):
         viz_layout.addWidget(self.viz)
         viz_group.setLayout(viz_layout)
 
-        self.results = ResultsPanel()
+        self.results = ResultsPanel()  # Kept for compat (tests access w.results.parax_table)
         self.analysis = AnalysisPanel()
         right_splitter.addWidget(viz_group)
         right_splitter.addWidget(self.analysis)
-        right_splitter.addWidget(self.results)
-        right_splitter.setSizes([300, 250, 200])
+        right_splitter.setSizes([300, 400])
 
         # Splitter
         splitter = QSplitter(Qt.Horizontal)
@@ -819,6 +795,17 @@ class MainWindow(QMainWindow):
         fit_action = QAction("&Подгонка...", self)
         fit_action.triggered.connect(self._fit_dialog)
         sys_menu.addAction(fit_action)
+
+        # Характеристики
+        char_menu = menubar.addMenu("&Характеристики")
+
+        field_action = QAction("&Точки поля...", self)
+        field_action.triggered.connect(lambda: self._show_field_points_dialog())
+        char_menu.addAction(field_action)
+
+        spectral_action = QAction("&Спектральные линии...", self)
+        spectral_action.triggered.connect(lambda: self._show_spectral_dialog())
+        char_menu.addAction(spectral_action)
 
         # Вид
         view_menu = menubar.addMenu("&Вид")
@@ -1039,7 +1026,7 @@ class MainWindow(QMainWindow):
         """Heavy computation — runs in background thread with parallel sub-tasks."""
         import math, numpy as np
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        from optics_engine import paraxial_trace
+        from optics_engine import paraxial_trace, seidel_aberrations
         from aberrations import (
             compute_spot_diagram, compute_rms_spot, compute_spot_diagram_polychromatic,
             compute_polychromatic_rms, trace_aberration_fan, compute_field_aberrations,
@@ -1059,6 +1046,7 @@ class MainWindow(QMainWindow):
 
         # Phase 1: Fast sequential (needed as dependencies)
         results['parax'] = paraxial_trace(sys)
+        results['seidel'] = seidel_aberrations(sys)
         results['spots_mono'] = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         results['rms'] = compute_rms_spot(results['spots_mono'])
 
@@ -1236,7 +1224,7 @@ class MainWindow(QMainWindow):
         self.current_system = sys
         self.btn_calc.setEnabled(True)
         self.btn_calc.setText("⚙ Рассчитать")
-        self.results.update_results(sys)
+        self._update_parax_and_seidel(sys, data)
         self.surface_table.load_system(sys)
         self.viz.set_system(sys, trace_rays=True)
         if data:
@@ -1245,6 +1233,38 @@ class MainWindow(QMainWindow):
             self.analysis.analyze(sys)
         f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
         self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
+
+    def _update_parax_and_seidel(self, sys, data=None):
+        """Update paraxial + seidel in ResultsPanel (compat) and AnalysisPanel."""
+        # Get parax from data or compute
+        if data and 'parax' in data:
+            parax = data['parax']
+        else:
+            parax = paraxial_trace(sys)
+
+        # ResultsPanel — backward compat (tests access w.results.parax_table)
+        self.results._parax_result = parax
+        self.results._current_system_ref = sys
+
+        # f/# and entrance pupil
+        fno = parax.get('f_number', 0)
+        epd = parax.get('entrance_pupil_diameter', 0)
+        if fno == 0:
+            efl = parax.get('focal_length', 0)
+            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            fno = efl / epd if epd > 0 else 0
+        self.results._fno = fno
+        self.results._epd = epd
+        self.results._update_parax_display()
+
+        # Seidel
+        if data and 'seidel' in data:
+            seidel = data['seidel']
+        else:
+            seidel = seidel_aberrations(sys)
+
+        self.analysis.update_parax(parax, fno, epd, sys=sys)
+        self.analysis.update_seidel(seidel)
 
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1417,6 +1437,105 @@ class MainWindow(QMainWindow):
             "оптических систем\n\n"
             "Портирование с MS-DOS на Windows 10\n"
             "Python + PyQt5")
+
+    def _show_field_points_dialog(self):
+        """Диалог точек поля."""
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Точки поля")
+        dlg.setMinimumWidth(350)
+        layout = QVBoxLayout(dlg)
+        fp_widget = FieldPointsWidget()
+        fp_widget.load_system(self.current_system)
+        layout.addWidget(fp_widget)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        layout.addWidget(btns)
+        if dlg.exec_():
+            self.current_system.field_points = fp_widget.get_field_points()
+            self.sys_params.field_points_widget.load_system(self.current_system)
+            self._calculate()
+
+    def _show_spectral_dialog(self):
+        """Диалог спектральных линий."""
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QTableWidget, QTableWidgetItem, QHeaderView
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Спектральные линии")
+        dlg.setMinimumWidth(350)
+        layout = QVBoxLayout(dlg)
+        wl_table = QTableWidget(0, 3)
+        wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
+        wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        for wl in self.current_system.wavelengths:
+            r = wl_table.rowCount()
+            wl_table.insertRow(r)
+            wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.4f}"))
+            wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
+            wl_table.setItem(r, 2, QTableWidgetItem(wl.name or ""))
+        layout.addWidget(wl_table)
+        # Add/remove buttons
+        btn_layout = QHBoxLayout()
+        add_btn = QPushButton("+ Добавить")
+        del_btn = QPushButton("- Удалить")
+        std_btn = QPushButton("Стандартные...")
+        add_btn.clicked.connect(lambda: wl_table.insertRow(wl_table.rowCount()))
+        del_btn.clicked.connect(lambda: wl_table.removeRow(wl_table.currentRow()) if wl_table.currentRow() >= 0 else None)
+        # Standard wavelengths dialog
+        from io_utils import STANDARD_WAVELENGTHS
+        def _add_std():
+            from PyQt5.QtWidgets import QDialog as _D, QDialogButtonBox as _B, QListWidget as _L
+            d = _D(dlg)
+            d.setWindowTitle("Стандартные линии")
+            d.setMinimumWidth(250)
+            dl = QVBoxLayout(d)
+            lst = _L()
+            for name, val in sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1]):
+                lst.addItem(f"{name} \u2014 {val:.5f} \u043c\u043a\u043c")
+            dl.addWidget(lst)
+            b = _B(_B.Ok | _B.Cancel)
+            b.accepted.connect(d.accept)
+            b.rejected.connect(d.reject)
+            dl.addWidget(b)
+            if d.exec_():
+                idx = lst.currentRow()
+                if idx >= 0:
+                    items = sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1])
+                    name, val = items[idx]
+                    r = wl_table.rowCount()
+                    wl_table.insertRow(r)
+                    wl_table.setItem(r, 0, QTableWidgetItem(f"{val:.4f}"))
+                    wl_table.setItem(r, 1, QTableWidgetItem("1.0"))
+                    wl_table.setItem(r, 2, QTableWidgetItem(name))
+        std_btn.clicked.connect(_add_std)
+        btn_layout.addWidget(add_btn)
+        btn_layout.addWidget(del_btn)
+        btn_layout.addWidget(std_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        layout.addWidget(btns)
+        if dlg.exec_():
+            from optics_engine import Wavelength
+            new_wls = []
+            for r in range(wl_table.rowCount()):
+                val_item = wl_table.item(r, 0)
+                w_item = wl_table.item(r, 1)
+                n_item = wl_table.item(r, 2)
+                if val_item:
+                    try:
+                        val = float(val_item.text())
+                        w = float(w_item.text()) if w_item and w_item.text() else 1.0
+                        name = n_item.text() if n_item else ""
+                        new_wls.append(Wavelength(val, w, name))
+                    except ValueError:
+                        pass
+            if new_wls:
+                self.current_system.wavelengths = new_wls
+                self.sys_params.load_system(self.current_system)
+                self._calculate()
 
     def _design_achromat(self):
         """Диалог расчёта ахроматического дублета."""

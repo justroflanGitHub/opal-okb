@@ -2,9 +2,12 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
-## [Unreleased]
+## [Unreleased] — branch: feature/ui-restructure
 
 ### Added
+- Paraxial characteristics & Seidel sums moved to AnalysisPanel as tabs
+- Multi-wavelength paraxial table: s, s', s'G, V, sP, sP' computed per λ
+- Table-only tabs (parax/seidel) — no graph toggle
 - 7 demo systems: achromat, Cook doublet, telephoto, Petzval, mirror, meniscus, plano-convex
 - Afocal system support (0,0 / 1,0): parallel ray output without focal point
 - Finite object support: object placed at front focal point (sF)

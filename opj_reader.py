@@ -168,6 +168,17 @@ def load_opj(filepath):
             r = struct.unpack_from('<d', data, off)[0]
             d = struct.unpack_from('<d', data, off + 8)[0]
             
+            # Validate: skip garbage values
+            import math
+            if math.isnan(r) or math.isnan(d):
+                break
+            if math.isinf(r) or math.isinf(d):
+                break
+            if abs(d) > 1e6:  # thickness > 1000m = garbage
+                break
+            if abs(r) > 0 and abs(r) < 1e-10:  # denormalized double
+                break
+            
             # Skip marker/end doubles
             if abs(r) > _MAX_VALID_RADIUS:
                 break

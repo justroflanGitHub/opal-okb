@@ -653,7 +653,7 @@ class MainWindow(QMainWindow):
         # Create viz widget FIRST (before connecting signals)
         self.viz = OpticalSystemView()
 
-        self.btn_viz_fit = QPushButton("Sbros")
+        self.btn_viz_fit = QPushButton("Сброс")
         self.btn_viz_fit.setMaximumWidth(70)
         self.btn_viz_fit.clicked.connect(lambda: self.viz.reset_view())
         self.btn_viz_zoomin = QPushButton("Z+")
@@ -1249,14 +1249,28 @@ class MainWindow(QMainWindow):
 
     def _update_parax_and_seidel(self, sys, data=None):
         """Update paraxial + seidel in ResultsPanel (compat) and AnalysisPanel."""
+        # Get parax from data or compute
+        if data and 'parax' in data:
+            parax = data['parax']
+        else:
+            parax = paraxial_trace(sys)
+
         # ResultsPanel — backward compat (tests access w.results.parax_table)
-        self.results.update_results(sys)
+        self.results._parax_result = parax
+        self.results._current_system_ref = sys
 
-        # AnalysisPanel — new parax/seidel tabs
-        parax = self.results._parax_result
-        fno = self.results._fno
-        epd = self.results._epd
+        # f/# and entrance pupil
+        fno = parax.get('f_number', 0)
+        epd = parax.get('entrance_pupil_diameter', 0)
+        if fno == 0:
+            efl = parax.get('focal_length', 0)
+            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            fno = efl / epd if epd > 0 else 0
+        self.results._fno = fno
+        self.results._epd = epd
+        self.results._update_parax_display()
 
+        # Seidel
         if data and 'seidel' in data:
             seidel = data['seidel']
         else:

@@ -3083,44 +3083,51 @@ class AnalysisPanel(QTabWidget):
             parax_by_wl['d'] = parax
         n_wl = len(wl_labels)
 
-        # Common params (same for all λ)
-        common = [
-            ("f'", [f"{parax.get('focal_length', 0):.4f}"] * n_wl),
-            ("FFD", [f"{parax.get('front_focal_distance', 0):.4f}"] * n_wl),
-            ("sF", [f"{parax.get('sF', 0):.4f}"] * n_wl),
-            ("sF'", [f"{parax.get('sF_prime', 0):.4f}"] * n_wl),
-            ("sH", [f"{parax.get('sH', 0):.4f}"] * n_wl),
-            ("sH'", [f"{parax.get('sH_prime', 0):.4f}"] * n_wl),
-            ("L", [f"{parax.get('L', 0):.4f}"] * n_wl),
-            ("f/#", [f"{self._fno:.2f}"] * n_wl),
-            ("D вх.зрачка", [f"{self._epd:.4f}"] * n_wl),
+        # Table 1: Cardinal params (same for all λ) — 2 columns
+        common_rows = [
+            ["f'", f"{parax.get('focal_length', 0):.4f}"],
+            ["FFD", f"{parax.get('front_focal_distance', 0):.4f}"],
+            ["sF", f"{parax.get('sF', 0):.4f}"],
+            ["sF'", f"{parax.get('sF_prime', 0):.4f}"],
+            ["sH", f"{parax.get('sH', 0):.4f}"],
+            ["sH'", f"{parax.get('sH_prime', 0):.4f}"],
+            ["L", f"{parax.get('L', 0):.4f}"],
+            ["f/#", f"{self._fno:.2f}"],
+            ["D вх.зрачка", f"{self._epd:.4f}"],
         ]
+        table1 = _make_table(["Кардинальные", "Значение"], common_rows, [90, 80])
+        table1.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        # Per-wavelength params
-        per_wl = [
-            ("s", 's_prime'),  # s' = image distance
-            ("s'", 's_prime'),
-            ("s'G", 's_prime_G'),
+        # Table 2: Per-wavelength params — columns = wavelengths
+        per_wl_keys = [
+            ("s' (мм)", 'back_focal_distance'),
+            ("s' (дптр)", 'back_focal_distance'),  # will convert to diopters
+            ("s'G (мм)", 'back_focal_distance'),
             ("V", 'V'),
-            ("sP", 'sP'),
-            ("sP'", 'sP_prime'),
+            ("sP (мм)", 'sP'),
+            ("sP' (мм)", 'sP_prime'),
         ]
-
-        rows = []
-        for name, vals in common:
-            rows.append([name] + vals)
-        for name, key in per_wl:
+        wl_headers = ["Параметр"] + wl_labels
+        wl_rows = []
+        for name, key in per_wl_keys:
             vals = []
             for wl in wl_labels:
                 p = parax_by_wl.get(wl, {})
                 v = p.get(key, 0)
+                if 'дптр' in name and v:
+                    v = 1000.0 / v if abs(v) > 1e-10 else 0
                 vals.append(f"{v:.4f}" if v is not None else "—")
-            rows.append([name] + vals)
+            wl_rows.append([name] + vals)
+        table2 = _make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
+        table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        headers = ["Параметр"] + [f"λ={wl}" for wl in wl_labels]
-        col_widths = [80] + [70] * n_wl
-        table = _make_table(headers, rows, col_widths)
-        self._set_table('parax', table)
+        # Combine in horizontal splitter
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(table1)
+        splitter.addWidget(table2)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 2)
+        self._set_table('parax', splitter)
 
     def _update_seidel_table(self):
         """Build Seidel sums table from cached data."""
@@ -3676,7 +3683,7 @@ class AnalysisPanel(QTabWidget):
                 efl = parax.get('focal_length', 0)
                 epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
                 fno = efl / epd if epd > 0 else 0
-            self.update_parax(parax, fno, epd)
+            self.update_parax(parax, fno, epd, sys=sys)
         if 'seidel' in data:
             self.update_seidel(data['seidel'])
 
@@ -3830,6 +3837,15 @@ class AnalysisPanel(QTabWidget):
     def analyze(self, sys: OpticalSystem):
         defocus = self.get_defocus_offset()
         azimuth = self.get_azimuth()
+
+        # Update parax/seidel from sys
+        from optics_engine import paraxial_trace, seidel_aberrations
+        parax = paraxial_trace(sys)
+        efl = parax.get('focal_length', 0)
+        epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+        fno = efl / epd if epd > 0 else 0
+        self.update_parax(parax, fno, epd, sys=sys)
+        self.update_seidel(seidel_aberrations(sys))
 
         self.spot_diagram.set_data(sys)
         self.transverse.set_data(sys, azimuth_deg=azimuth)

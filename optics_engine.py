@@ -319,9 +319,10 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
             y2[ns] = y2[i] + nu2[i] * d / n_cur
 
     # ===== ABCD матрица =====
-    # A = y1[ns], B = y2[ns], C = nu1[ns-1], D = nu2[ns-1]
-    A_mat = y1[ns]
-    B_mat = y2[ns]
+    # A = height of paraxial ray at last surface vertex (NOT after last thickness)
+    # C = nu1[ns-1], D = nu2[ns-1]
+    A_mat = y1[ns - 1] if ns > 0 else 0.0
+    B_mat = y2[ns - 1] if ns > 0 else 0.0
     C_mat = nu1[ns - 1] if ns > 0 else 0.0
     D_mat = nu2[ns - 1] if ns > 0 else 0.0
 

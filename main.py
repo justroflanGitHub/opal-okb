@@ -1660,6 +1660,7 @@ class MainWindow(QMainWindow):
 
         lib = build_library()
         entries = {}  # QTreeWidgetItem -> entry dict
+        lbo_categories = {}  # QTreeWidgetItem -> lbo_path
         for category, items in lib.items():
             cat_item = QTreeWidgetItem(tree, [category])
             cat_item.setExpanded(True)
@@ -1668,7 +1669,11 @@ class MainWindow(QMainWindow):
             cat_item.setFont(0, font)
             for entry in items:
                 item = QTreeWidgetItem(cat_item, [entry["name"]])
-                entries[id(item)] = entry
+                if entry.get("lbo_path") and not entry.get("opj_data"):
+                    # LBO category — store for expansion
+                    lbo_categories[id(item)] = entry
+                else:
+                    entries[id(item)] = entry
 
         layout.addWidget(tree)
 
@@ -1677,9 +1682,19 @@ class MainWindow(QMainWindow):
         buttons.rejected.connect(dlg.reject)
         layout.addWidget(buttons)
 
-        # Double-click opens
+        # Double-click: expand LBO or open system
         def on_double_click(item, col):
-            if id(item) in entries:
+            if id(item) in lbo_categories:
+                # Expand LBO: load systems and replace children
+                entry = lbo_categories[id(item)]
+                item.takeChildren()  # clear
+                from library import expand_lbo
+                systems = expand_lbo(entry["lbo_path"])
+                for s in systems:
+                    child = QTreeWidgetItem(item, [s["name"]])
+                    entries[id(child)] = s
+                item.setExpanded(True)
+            elif id(item) in entries:
                 dlg.accept()
         tree.itemDoubleClicked.connect(on_double_click)
 
@@ -1815,6 +1830,17 @@ class MainWindow(QMainWindow):
         param_combo.addItems(["Радиус R", "Толщина d"])
         layout.addRow("Параметр:", param_combo)
 
+        # При выборе цели автоматически менять доступные параметры
+        def on_target_changed(idx):
+            if idx == 0:  # f' — только радиус
+                param_combo.setCurrentIndex(0)
+                param_combo.setEnabled(False)
+            else:  # BFD — толщина
+                param_combo.setCurrentIndex(1)
+                param_combo.setEnabled(False)
+        target_combo.currentIndexChanged.connect(on_target_changed)
+        on_target_changed(0)  # initial
+
         # Кнопки
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(dlg.accept)
@@ -1904,7 +1930,12 @@ class MainWindow(QMainWindow):
         dlg.exec_()
 
     def _toggle_wavefront_3d(self):
-        """Переключить 2D/3D вид волнового фронта (#10)."""
+        """Переключить 2D/3D вид волнового фронта."""
+        # Switch to Волн. фронт tab
+        for i in range(self.analysis.count()):
+            if 'Волн' in self.analysis.tabText(i):
+                self.analysis.setCurrentIndex(i)
+                break
         wf = self.analysis.wavefront_map_w
         wf._mode_3d = not wf._mode_3d
         wf.update()
@@ -1912,12 +1943,17 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Волновой фронт: {mode}")
 
     def _toggle_zernike_chromatic(self):
-        """Переключить хроматический Цернике (#8)."""
+        """Переключить хроматический Цернике."""
+        # Switch to Цернике tab
+        for i in range(self.analysis.count()):
+            if 'Церник' in self.analysis.tabText(i):
+                self.analysis.setCurrentIndex(i)
+                break
         zw = self.analysis.zernike_w
         zw._show_chromatic = not zw._show_chromatic
         zw.update()
-        # Обновить таблицу
-        self.analysis._update_zernike_table(self.current_system)
+        if self.current_system and self.current_system.surfaces:
+            self.analysis._update_zernike_table(self.current_system)
         mode = "хроматический" if zw._show_chromatic else "монохроматический"
         self.statusBar().showMessage(f"Цернике: {mode}")
 

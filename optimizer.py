@@ -456,20 +456,13 @@ def fit_focal_length(system: OpticalSystem, target_f: float,
                      surface_idx: int, param_type: str = 'radius',
                      tol: float = 1e-6, max_iter: int = 100) -> OpticalSystem:
     """
-    Подогнать радиус/толщину поверхности для заданного фокусного расстояния.
-    Использует метод бисекции (binary search).
-
-    Args:
-        system: оптическая система
-        target_f: целевое фокусное расстояние (мм)
-        surface_idx: индекс поверхности (0-based)
-        param_type: 'radius' или 'thickness'
-        tol: допуск на f' (мм)
-        max_iter: макс. число итераций
-
-    Returns:
-        Копия системы с подогнанным параметром
+    Подогнать радиус поверхности для заданного фокусного расстояния.
+    Внимание: толщина поверхности практически не влияет на f'.
     """
+    if param_type == 'thickness':
+        # Толщина почти не меняет f' — подгон невозможен
+        return _deepcopy_system(system)
+
     sys = _deepcopy_system(system)
 
     current_val = _get_variable(sys, surface_idx, param_type)
@@ -519,6 +512,15 @@ def fit_focal_length(system: OpticalSystem, target_f: float,
             hi *= 2.0
         f_lo = eval_f(lo)
         f_hi = eval_f(hi)
+
+    # Если не удалось найти границы — цель недостижима
+    if (f_lo - target_f) * (f_hi - target_f) > 0:
+        f_min = min(f_lo, f_hi, f_current)
+        f_max = max(f_lo, f_hi, f_current)
+        raise ValueError(
+            f"Невозможно достичь f'={target_f:.4f} мм изменением параметра. "
+            f"Достижимый диапазон: [{f_min:.4f}, {f_max:.4f}] мм."
+        )
 
     # Бисекция
     for _ in range(max_iter):
@@ -582,7 +584,20 @@ def fit_bfd(system: OpticalSystem, target_bfd: float,
         r = paraxial_trace(sys)
         return r.get('back_focal_distance', 0)
 
+    # Проверка: меняется ли BFD при изменении параметра?
+    # (толщина последней поверхности — это воздушный зазор до плоскости
+    # изображения, он не влияет на положение фокуса относительно последней
+    # поверхности)
     bfd_current = eval_bfd(current_val)
+    probe_val = current_val * 1.01 + 0.1
+    bfd_probe = eval_bfd(probe_val)
+    _set_variable(sys, surface_idx, param_type, current_val)  # restore
+
+    if abs(bfd_current - bfd_probe) < 1e-10:
+        raise ValueError(
+            f"Изменение {param_type} поверхности {surface_idx + 1} "
+            f"не влияет на BFD. Выберите радиус или другую поверхность."
+        )
 
     if abs(bfd_current - target_bfd) < tol:
         return sys
@@ -606,6 +621,15 @@ def fit_bfd(system: OpticalSystem, target_bfd: float,
                 lo, hi = -abs(hi), -abs(lo)
         bfd_lo = eval_bfd(lo)
         bfd_hi = eval_bfd(hi)
+
+    # Если не удалось найти границы — цель недостижима
+    if (bfd_lo - target_bfd) * (bfd_hi - target_bfd) > 0:
+        bfd_min = min(bfd_lo, bfd_hi, bfd_current)
+        bfd_max = max(bfd_lo, bfd_hi, bfd_current)
+        raise ValueError(
+            f"Невозможно достичь BFD={target_bfd:.4f} мм изменением параметра. "
+            f"Достижимый диапазон: [{bfd_min:.4f}, {bfd_max:.4f}] мм."
+        )
 
     # Бисекция
     for _ in range(max_iter):

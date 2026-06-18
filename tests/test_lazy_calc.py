@@ -150,6 +150,75 @@ class TestLazyCalc:
         # Just reaching here = pass
         print("  ✅ test_calculate_empty_system_no_crash")
 
+    def test_bfd_positive_for_demo(self):
+        """BFD должен быть положительным для демо-системы (регрессия).
+        Раньше BFD вычислялся как -A/C где A включал последний отрезок,
+        что давало BFD = true_BFD - d_last (отрицательный при d_last > BFD).
+        """
+        from optics_engine import create_demo_system, paraxial_trace
+        s = create_demo_system()
+        p = paraxial_trace(s)
+        bfd = p['back_focal_distance']
+        d_last = s.surfaces[-1].thickness
+        assert bfd > 0, f"BFD={bfd:.4f} должен быть > 0 для собирающей системы"
+        assert bfd < d_last, f"BFD={bfd:.4f} должен быть < d_last={d_last:.4f}"
+        print(f"  ✅ test_bfd_positive_for_demo (BFD={bfd:.4f}, d_last={d_last:.4f})")
+
+    def test_fit_focal_length(self):
+        """Подгонка фокусного расстояния работает."""
+        from optics_engine import create_demo_system, paraxial_trace
+        from optimizer import fit_focal_length
+        s = create_demo_system()
+        target = 100.0
+        result = fit_focal_length(s, target, surface_idx=0, param_type='radius')
+        f_achieved = paraxial_trace(result)['focal_length']
+        assert abs(f_achieved - target) < 0.01, \
+            f"f'={f_achieved:.4f}, target={target}"
+        # Original system unchanged
+        f_orig = paraxial_trace(s)['focal_length']
+        assert abs(f_orig - target) > 1.0, "Original system should differ from target"
+        print(f"  ✅ test_fit_focal_length (f'={f_achieved:.4f}, target={target})")
+
+    def test_fit_bfd_radius(self):
+        """Подгонка BFD через радиус работает."""
+        from optics_engine import create_demo_system, paraxial_trace
+        from optimizer import fit_bfd
+        s = create_demo_system()
+        p = paraxial_trace(s)
+        target = p['back_focal_distance'] + 10.0  # shift by 10mm
+        result = fit_bfd(s, target, surface_idx=0, param_type='radius')
+        bfd_achieved = paraxial_trace(result)['back_focal_distance']
+        assert abs(bfd_achieved - target) < 0.01, \
+            f"BFD={bfd_achieved:.4f}, target={target}"
+        print(f"  ✅ test_fit_bfd_radius (BFD={bfd_achieved:.4f}, target={target})")
+
+    def test_fit_bfd_last_thickness_raises(self):
+        """Подгонка BFD через толщину последней поверхности — ошибка (не влияет на BFD)."""
+        from optics_engine import create_demo_system
+        from optimizer import fit_bfd
+        s = create_demo_system()
+        last_idx = len(s.surfaces) - 1
+        try:
+            fit_bfd(s, 80.0, surface_idx=last_idx, param_type='thickness')
+            assert False, "Должна быть ValueError для изменения d_last"
+        except ValueError:
+            pass  # Expected
+        print("  ✅ test_fit_bfd_last_thickness_raises")
+
+    def test_fit_focal_length_unreachable_raises(self):
+        """Подгонка недостижимого f' — ошибка с сообщением о диапазоне."""
+        from optics_engine import create_demo_system
+        from optimizer import fit_focal_length
+        s = create_demo_system()
+        # Demo: f≈77mm with R[1]=-200. Making f=200 via R[1] is unreachable
+        # (with negative R[1], max f ≈ 96mm as R→-∞)
+        try:
+            fit_focal_length(s, 200.0, surface_idx=1, param_type='radius')
+            assert False, "Должна быть ValueError для недостижимой цели"
+        except ValueError:
+            pass  # Expected
+        print("  ✅ test_fit_focal_length_unreachable_raises")
+
 
 if __name__ == '__main__':
     test = TestLazyCalc()

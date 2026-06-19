@@ -139,8 +139,8 @@ def _create_from_opj_bytes(opj_data):
         os.close(tmpfd)
         try:
             sys_obj, _info = load_opj(tmppath)
-            # Validate: check if surfaces have real R values
-            if sys_obj.surfaces and any(abs(s.radius) > 0.5 for s in sys_obj.surfaces):
+            # Validate: R values should be > 2.0 (not refractive indices 1.0-1.7)
+            if sys_obj.surfaces and any(abs(s.radius) > 2.0 for s in sys_obj.surfaces):
                 return sys_obj
         except Exception:
             pass

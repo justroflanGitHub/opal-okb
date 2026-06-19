@@ -67,7 +67,9 @@ def plot_glass_diagram(highlight_glasses=None):
     fig, ax = plt.subplots(1, 1, figsize=(10, 7))
     fig.canvas.manager.set_window_title('Диаграмма стёкол — OPAL-OKB')
 
-    # Собираем данные
+    # Собираем данные с annotator для tooltip
+    all_points = []  # [(vd, nd, name, color, entry)]
+
     plotted_types = {}
     for name, entry in GLASS_CATALOG.items():
         if name in ('ВОЗДУХ', 'AIR'):
@@ -78,6 +80,7 @@ def plot_glass_diagram(highlight_glasses=None):
 
         color = get_glass_color(name)
         gtype = get_glass_type_label(name)
+        all_points.append((vd, nd, name, color, entry))
 
         is_highlighted = name in highlight_glasses
 
@@ -97,10 +100,12 @@ def plot_glass_diagram(highlight_glasses=None):
                        bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.8))
 
     # Рисуем точки по типам
+    scatters = {}
     for gtype, data in plotted_types.items():
         label = gtype if gtype else 'Другие'
-        ax.scatter(data['x'], data['y'], c=data['color'], s=50, alpha=0.7,
-                  label=label, edgecolors='gray', linewidths=0.5)
+        sc = ax.scatter(data['x'], data['y'], c=data['color'], s=50, alpha=0.7,
+                  label=label, edgecolors='gray', linewidths=0.5, picker=5)
+        scatters[gtype] = sc
 
     ax.set_xlabel('Коэффициент дисперсии $v_d$ (Аббе)', fontsize=12)
     ax.set_ylabel('Показатель преломления $n_d$', fontsize=12)
@@ -112,6 +117,46 @@ def plot_glass_diagram(highlight_glasses=None):
     ax.set_xlim(20, 80)
     ax.set_ylim(1.45, 1.85)
     ax.invert_xaxis()  # Обычное соглашение: vd убывает вправо
+
+    # === Tooltip при наведении ===
+    from glass_catalog import compute_refractive_index
+    tooltip_annot = ax.annotate('', xy=(0, 0), xytext=(10, 10),
+                                 textcoords='offset points',
+                                 bbox=dict(boxstyle='round,pad=0.4', facecolor='#1a1a2e',
+                                          edgecolor='#e94560', alpha=0.9),
+                                 fontsize=8, color='white', zorder=100,
+                                 visible=False)
+
+    def on_motion(event):
+        if event.inaxes != ax:
+            tooltip_annot.set_visible(False)
+            fig.canvas.draw_idle()
+            return
+        # Find nearest point
+        nearest = None
+        min_dist = float('inf')
+        for vd, nd, name, color, entry in all_points:
+            d = (event.xdata - vd)**2 + (event.ydata - nd)**2
+            if d < min_dist:
+                min_dist = d
+                nearest = (vd, nd, name, entry)
+        # Threshold: show tooltip if close enough
+        if nearest and min_dist < 2.0:
+            vd, nd, name, entry = nearest
+            # Compute nF, nC for more info
+            nF = compute_refractive_index(name, 0.48613)
+            nC = compute_refractive_index(name, 0.65627)
+            info = f'{name}\nnd={nd:.4f}  vd={vd:.1f}\nnF={nF:.4f}  nC={nC:.4f}'
+            tooltip_annot.set_text(info)
+            tooltip_annot.xy = (vd, nd)
+            tooltip_annot.set_visible(True)
+            fig.canvas.draw_idle()
+        else:
+            if tooltip_annot.get_visible():
+                tooltip_annot.set_visible(False)
+                fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect('motion_notify_event', on_motion)
 
     fig.tight_layout()
     return fig

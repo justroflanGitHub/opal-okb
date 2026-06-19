@@ -63,20 +63,32 @@ class OpticalSystemView(QWidget):
         self._pan_y = 0.0
         self.update()
     
+    def set_system_fast(self, sys: OpticalSystem, spots=None):
+        """Быстрое обновление: только осевой пучок для мгновенной визуализации.
+        Не сбрасывает зум/pan — вызывается перед полным расчётом."""
+        self.system = sys
+        if sys and sys.surfaces:
+            self.ray_results = []
+            wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+            # Только осевой пучок, num_rays=11 — быстро (<100мс)
+            axial = trace_fan(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
+            self.ray_results.append(('axial', wl, axial))
+        self.update()
+    
     def _trace_all_rays(self):
         self.ray_results = []
         sys = self.system
         wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
         
-        # Осевой пучок
-        axial = trace_fan(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
+        # Осевой пучок (оптимизировано: 9 лучей вместо 11)
+        axial = trace_fan(sys, num_rays=9, pupil_range=1.0, wl=wl, field_y=0.0)
         self.ray_results.append(('axial', wl, axial))
         
-        # Внеосевые пучки
+        # Внеосевые пучки (оптимизировано: 5 лучей вместо 7)
         if sys.field_points:
             for fp in sys.field_points:
                 if fp.y != 0:
-                    fan = trace_fan(sys, num_rays=7, pupil_range=1.0, wl=wl, field_y=fp.y)
+                    fan = trace_fan(sys, num_rays=5, pupil_range=1.0, wl=wl, field_y=fp.y)
                     self.ray_results.append(('field', wl, fan))
     
     def reset_view(self):

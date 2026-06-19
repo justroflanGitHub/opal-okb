@@ -132,17 +132,27 @@ def _create_from_opj_bytes(opj_data):
     import tempfile
     from opj_reader import load_opj
     
+    # First try standalone OPJ parser
     tmpfd, tmppath = tempfile.mkstemp(suffix='.OPJ')
     try:
         os.write(tmpfd, opj_data)
         os.close(tmpfd)
-        sys, _info = load_opj(tmppath)
-        return sys
+        try:
+            sys_obj, _info = load_opj(tmppath)
+            # Validate: check if surfaces have real R values
+            if sys_obj.surfaces and any(abs(s.radius) > 0.5 for s in sys_obj.surfaces):
+                return sys_obj
+        except Exception:
+            pass
     finally:
         try:
             os.unlink(tmppath)
         except Exception:
             pass
+    
+    # Fallback: use LBO decoder (handles compact OPJ format)
+    from decode_lbo_opj import decode_lbo_opj
+    return decode_lbo_opj(opj_data)
 
 
 def _create_from_lbo(lbo_path, filename):

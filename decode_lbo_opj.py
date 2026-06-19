@@ -96,21 +96,53 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
     field_deg = math.degrees(abs(field_val)) if 0 < abs(field_val) < 0.1 else abs(field_val)
 
-    # Wavelengths
+    # Wavelengths: stored as int16 indices in standard table
+    # OPAL-PC standard wavelengths (by index):
+    OPAL_WL = {
+        1: 0.58930,  # d-line (Na)
+        2: 0.48613,  # F-line (H)
+        3: 0.65627,  # C-line (H)
+        4: 0.43584,  # g-line (Hg)
+        5: 0.58756,  # d-line (He)
+        6: 0.70652,  # r-line (He)
+        7: 0.66782,  # B-line (He)
+        8: 0.50858,  # e-line (Hg)
+    }
+    
     marker_off = thick_off
     while marker_off < len(data) - 8:
         v = struct.unpack_from('<d', data, marker_off)[0]
         if abs(v) > 1e15: break
         marker_off += 8
+    
+    # After marker: int16 wavelength indices
+    idx_off = marker_off + 8
     wavelengths = []
-    wl_scan = marker_off + 8
-    while wl_scan + 8 <= len(data) and len(wavelengths) < num_wl:
-        v = struct.unpack_from('<d', data, wl_scan)[0]
-        if 0.3 < v < 3.0:
-            wavelengths.append(v)
-        wl_scan += 8
+    for i in range(num_wl):
+        off = idx_off + i * 2
+        if off + 2 > len(data): break
+        wl_idx = struct.unpack_from('<H', data, off)[0]
+        if wl_idx in OPAL_WL:
+            wavelengths.append(OPAL_WL[wl_idx])
+        else:
+            wavelengths.append(0.58930)
     if not wavelengths:
         wavelengths = [0.58930]
+    
+    # RI block: after wavelength indices, float64 values
+    ri_off = idx_off + num_wl * 2
+    # Align to 8 bytes
+    ri_off = (ri_off + 7) & ~7
+    ri_values = []
+    off = ri_off
+    while off + 8 <= len(data) and len(ri_values) < num_surf * num_wl:
+        v = struct.unpack_from('<d', data, off)[0]
+        if math.isnan(v) or math.isinf(v): break
+        if 0.9 < v < 2.5:
+            ri_values.append(v)
+        elif ri_values:
+            break
+        off += 8
 
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
@@ -127,13 +159,37 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         r = 1.0 / c if abs(c) > 1e-10 else 0.0
         d = thicknesses[i]
         sd = semi_diameters[i] if i < len(semi_diameters) else 10.0
-        sys_obj.surfaces.append(Surface(radius=r, thickness=d, glass=glass_for_surface[i], semi_diameter=sd))
+        surf = Surface(radius=r, thickness=d, glass=glass_for_surface[i], semi_diameter=sd)
+        # Set n_override from RI block
+        n_ov = {}
+        ri_idx = i * len(wavelengths)
+        for wi, wl_val in enumerate(wavelengths):
+            idx = ri_idx + wi
+            if idx < len(ri_values):
+                n_ov[wl_val] = ri_values[idx]
+        if n_ov:
+            surf.n_override = n_ov
+        sys_obj.surfaces.append(surf)
 
     sys_obj.stop_surface = 1
-    f_match = re.search(r"f'=?(\d+)", name)
+    # Compute BFD: iterate to find last thickness that matches target f'
+    f_match = re.search(r"f'=?([\d.]+)", name)
     f_target = float(f_match.group(1)) if f_match else 100.0
     if sys_obj.surfaces:
-        sys_obj.surfaces[-1].thickness = f_target * 0.15
+        # BFD ≈ f' - sum of previous thicknesses + correction
+        # Use paraxial to find correct BFD
+        best_d = f_target * 0.15
+        best_err = 1e10
+        for trial_d in [f_target * k for k in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]]:
+            sys_obj.surfaces[-1].thickness = trial_d
+            from optics_engine import paraxial_trace as _pt
+            _p = _pt(sys_obj)
+            _f = abs(_p.get('focal_length', 0))
+            _err = abs(_f - f_target)
+            if _err < best_err:
+                best_err = _err
+                best_d = trial_d
+        sys_obj.surfaces[-1].thickness = best_d
 
     return sys_obj
 

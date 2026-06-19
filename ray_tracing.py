@@ -378,8 +378,22 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         if i == 0:
             n1 = compute_refractive_index("", wl)
         else:
-            n1 = compute_refractive_index(sys.surfaces[i-1].glass, wl)
+            prev_s = sys.surfaces[i-1]
+            n1 = compute_refractive_index(prev_s.glass, wl)
+            # Check n_override on previous surface
+            n_ov = getattr(prev_s, 'n_override', None)
+            if n_ov:
+                for wl_key, n_val in n_ov.items():
+                    if abs(wl_key - wl) < 0.002:
+                        n1 = n_val
+                        break
         n2 = compute_refractive_index(s.glass, wl)
+        n_ov2 = getattr(s, 'n_override', None)
+        if n_ov2:
+            for wl_key, n_val in n_ov2.items():
+                if abs(wl_key - wl) < 0.002:
+                    n2 = n_val
+                    break
         
         # После преломления/отражения луч находится в среде с n2
         current_n = n2

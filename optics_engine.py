@@ -51,6 +51,8 @@ class Surface:
     hologram_order: float = 1.0
     hologram_wavelength: float = 0.6328  # мкм
     hologram_coeffs: List[float] = field(default_factory=list)
+    # Override refractive index (if set, used instead of glass_catalog)
+    n_override: dict = field(default_factory=dict)  # {wl_value: n}
 
 
 @dataclass
@@ -217,10 +219,15 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
     return False
 
 
-def refractive_index(glass_name: str, wavelength_um: float, catalog: dict = None) -> float:
+def refractive_index(glass_name: str, wavelength_um: float, catalog: dict = None, n_override: dict = None) -> float:
     """
     Вычислить показатель преломления для заданной длины волны.
+    Если n_override содержит значение для wavelength_um — использовать его.
     """
+    if n_override:
+        for wl_key, n_val in n_override.items():
+            if abs(wl_key - wavelength_um) < 0.002:
+                return n_val
     return compute_refractive_index(glass_name, wavelength_um)
 
 
@@ -262,7 +269,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     n_medium = [1.0]  # воздух перед системой
     for i in range(ns):
         s = sys.surfaces[i]
-        n_medium.append(refractive_index(s.glass, wl_primary, catalog))
+        n_medium.append(refractive_index(s.glass, wl_primary, catalog, getattr(s, 'n_override', None)))
 
     # ===== Длина системы =====
     L = sum(s.thickness for s in sys.surfaces)
@@ -550,8 +557,8 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
 
                 # Преломление
                 if R != 0:
-                    n_before = 1.0 if i == 0 else refractive_index(system.surfaces[i-1].glass, wl)
-                    n_after = refractive_index(s.glass, wl)
+                    n_before = 1.0 if i == 0 else refractive_index(system.surfaces[i-1].glass, wl, None, getattr(system.surfaces[i-1], 'n_override', None))
+                    n_after = refractive_index(s.glass, wl, None, getattr(s, 'n_override', None))
                     phi = (n_after - n_before) / R
                     l_new = (l * n_before - y_new * phi) / n_after
                     k_new = (k * n_before - x_new * phi) / n_after
@@ -648,7 +655,7 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
     # Показатели преломления
     n_vals = [1.0]  # перед первой поверхностью — воздух
     for i, s in enumerate(sys.surfaces):
-        n_vals.append(refractive_index(s.glass, wl, catalog))
+        n_vals.append(refractive_index(s.glass, wl, catalog, getattr(s, 'n_override', None)))
 
     # ===== Параксиальный краевой луч (marginal ray) =====
     # y[0]=1, nu[0]=0 — параллельный оси на единичной высоте

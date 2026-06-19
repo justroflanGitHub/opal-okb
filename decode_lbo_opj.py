@@ -129,10 +129,10 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     if not wavelengths:
         wavelengths = [0.58930]
     
-    # RI block: after wavelength indices, float64 values
+    # RI block: stored compactly [air_count × 1.0] + [glass_count × ri_per_wl]
+    # ri_per_wl = num_wl if all wl have RI, but typically 3 (d, F, C lines)
     ri_off = idx_off + num_wl * 2
-    # Align to 8 bytes
-    ri_off = (ri_off + 7) & ~7
+    ri_off = (ri_off + 7) & ~7  # align to 8
     ri_values = []
     off = ri_off
     while off + 8 <= len(data) and len(ri_values) < num_surf * num_wl:
@@ -143,6 +143,12 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         elif ri_values:
             break
         off += 8
+    
+    # RI layout: [air_count × 1.0] + [glasses × ri_per_wl]
+    # Determine ri_per_wl from data
+    ng = len(real_glasses)
+    nair_entries = len(ri_values) - ng * 3 if ng > 0 else 0  # assume 3 wl per glass
+    ri_per_wl = 3  # default: d, F, C lines
 
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
@@ -160,15 +166,21 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         d = thicknesses[i]
         sd = semi_diameters[i] if i < len(semi_diameters) else 10.0
         surf = Surface(radius=r, thickness=d, glass=glass_for_surface[i], semi_diameter=sd)
-        # Set n_override from RI block
-        n_ov = {}
-        ri_idx = i * len(wavelengths)
-        for wi, wl_val in enumerate(wavelengths):
-            idx = ri_idx + wi
-            if idx < len(ri_values):
-                n_ov[wl_val] = ri_values[idx]
-        if n_ov:
-            surf.n_override = n_ov
+        # Set n_override: find which glass this surface is, get its RI values
+        if glass_for_surface[i]:
+            # Find glass index in real_glasses
+            gi = real_glasses.index(glass_for_surface[i]) if glass_for_surface[i] in real_glasses else -1
+            if gi >= 0:
+                # RI for this glass: skip air entries (3×1.0) + glass_index × ri_per_wl
+                ri_start_idx = nair_entries + gi * ri_per_wl
+                n_ov = {}
+                for wi in range(min(ri_per_wl, len(wavelengths))):
+                    ri_idx = ri_start_idx + wi
+                    if ri_idx < len(ri_values):
+                        wl_val = wavelengths[wi] if wi < len(wavelengths) else 0.589
+                        n_ov[wl_val] = ri_values[ri_idx]
+                if n_ov:
+                    surf.n_override = n_ov
         sys_obj.surfaces.append(surf)
 
     sys_obj.stop_surface = 1

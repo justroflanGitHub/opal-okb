@@ -88,9 +88,18 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
             off = glass_off + i * 8
             if off + 8 > len(data): break
             raw = data[off:off + 8]
-            is_text = all(b >= 0x20 or b == 0 for b in raw)
-            if not is_text and i > 0: break
-            if not is_text and i == 0: continue
+            # Strict validation: glass names contain only cp866 letters,
+            # digits, spaces, and null padding
+            def _is_glass_byte(b):
+                if b == 0 or b == 0x20: return True  # null/space
+                if 0x30 <= b <= 0x39: return True     # 0-9
+                if 0x41 <= b <= 0x5A: return True     # A-Z
+                if 0x61 <= b <= 0x7A: return True     # a-z
+                if 0x80 <= b <= 0xAF: return True     # cp866 А-п
+                if 0xE0 <= b <= 0xEF: return True     # cp866 р-я
+                return False
+            is_text = all(_is_glass_byte(b) for b in raw)
+            if not is_text: break
             gname = raw.decode('cp866', errors='replace').rstrip('\x00').strip()
             glass_names.append(gname)
             nglass_text = i + 1

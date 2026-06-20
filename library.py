@@ -99,7 +99,8 @@ def create_system_from_entry(entry):
     if entry.get("generator"):
         return _create_from_generator(entry["generator"])
     elif entry.get("opj_data"):
-        return _create_from_opj_bytes(entry["opj_data"])
+        is_lbo = bool(entry.get("lbo_path"))
+        return _create_from_opj_bytes(entry["opj_data"], is_lbo=is_lbo)
     elif entry.get("lbo_path") and entry.get("lbo_filename"):
         return _create_from_lbo(entry["lbo_path"], entry["lbo_filename"])
     elif entry.get("file"):
@@ -127,32 +128,31 @@ def _create_from_opj(filepath):
     return sys
 
 
-def _create_from_opj_bytes(opj_data):
+def _create_from_opj_bytes(opj_data, is_lbo=False):
     """Загрузить систему из OPJ данных в памяти."""
+    # LBO data uses compact format — always use LBO decoder
+    if is_lbo:
+        from decode_lbo_opj import decode_lbo_opj
+        return decode_lbo_opj(opj_data)
+    
     import tempfile
     from opj_reader import load_opj
     
-    # First try standalone OPJ parser
+    # Standalone OPJ file
     tmpfd, tmppath = tempfile.mkstemp(suffix='.OPJ')
     try:
         os.write(tmpfd, opj_data)
         os.close(tmpfd)
-        try:
-            sys_obj, _info = load_opj(tmppath)
-            # Validate: R values should be > 2.0 (not refractive indices 1.0-1.7)
-            if sys_obj.surfaces and any(abs(s.radius) > 2.0 for s in sys_obj.surfaces):
-                return sys_obj
-        except Exception:
-            pass
+        sys_obj, _info = load_opj(tmppath)
+        return sys_obj
+    except Exception:
+        from decode_lbo_opj import decode_lbo_opj
+        return decode_lbo_opj(opj_data)
     finally:
         try:
             os.unlink(tmppath)
         except Exception:
             pass
-    
-    # Fallback: use LBO decoder (handles compact OPJ format)
-    from decode_lbo_opj import decode_lbo_opj
-    return decode_lbo_opj(opj_data)
 
 
 def _create_from_lbo(lbo_path, filename):
@@ -162,7 +162,7 @@ def _create_from_lbo(lbo_path, filename):
     systems = load_lbo_fast(lbo_path)
     for s in systems:
         if s['filename'].upper() == filename.upper():
-            return _create_from_opj_bytes(s['opj_data'])
+            return _create_from_opj_bytes(s['opj_data'], is_lbo=True)
     
     raise ValueError(f"Система {filename} не найдена в {lbo_path}")
 

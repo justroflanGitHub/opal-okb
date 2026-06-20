@@ -34,10 +34,30 @@ class OpticalSystemView(QWidget):
     COLOR_STOP = QColor(200, 60, 60)                # Стоп (красный)
     COLOR_GRID = QColor(30, 30, 50)                 # Сетка
     
+    # Цвета лучей по длине волны (нм)
+    WL_COLORS = {
+        # Красный (C, r)
+        (0.62, float('inf')): QColor(220, 60, 60, 200),
+        # Жёлто-зелёный (d, e)
+        (0.55, 0.62): QColor(60, 220, 80, 200),
+        # Синий (F, g)
+        (0.48, 0.55): QColor(60, 120, 220, 200),
+        # Фиолетовый (< 480nm)
+        (0.0, 0.48): QColor(180, 60, 220, 200),
+    }
+    
+    def _wl_color(self, wl):
+        """Цвет луча по длине волны."""
+        for (lo, hi), color in self.WL_COLORS.items():
+            if lo <= wl < hi:
+                return color
+        return self.COLOR_RAY
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         self.system = None
         self.ray_results = []
+        self.chromatic_rays = False  # показывать лучи для всех длин волн
         
         # Pan & Zoom
         self._zoom = 1.0          # масштаб (1.0 = автоподгонка)
@@ -78,18 +98,22 @@ class OpticalSystemView(QWidget):
     def _trace_all_rays(self):
         self.ray_results = []
         sys = self.system
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
         
-        # Осевой пучок (оптимизировано: 9 лучей вместо 11)
-        axial = trace_fan(sys, num_rays=9, pupil_range=1.0, wl=wl, field_y=0.0)
-        self.ray_results.append(('axial', wl, axial))
+        wavelengths_to_trace = [sys.wavelengths[0].value] if sys.wavelengths else [0.58756]
+        if getattr(self, 'chromatic_rays', False) and len(sys.wavelengths) > 1:
+            wavelengths_to_trace = [wl.value for wl in sys.wavelengths]
         
-        # Внеосевые пучки (оптимизировано: 5 лучей вместо 7)
-        if sys.field_points:
-            for fp in sys.field_points:
-                if fp.y != 0:
-                    fan = trace_fan(sys, num_rays=5, pupil_range=1.0, wl=wl, field_y=fp.y)
-                    self.ray_results.append(('field', wl, fan))
+        for wl in wavelengths_to_trace:
+            # Осевой пучок
+            axial = trace_fan(sys, num_rays=9, pupil_range=1.0, wl=wl, field_y=0.0)
+            self.ray_results.append(('axial', wl, axial))
+            
+            # Внеосевые пучки
+            if sys.field_points:
+                for fp in sys.field_points:
+                    if fp.y != 0:
+                        fan = trace_fan(sys, num_rays=5, pupil_range=1.0, wl=wl, field_y=fp.y)
+                        self.ray_results.append(('field', wl, fan))
     
     def reset_view(self):
         self._zoom = 1.0
@@ -300,7 +324,7 @@ class OpticalSystemView(QWidget):
         for rtype, wl, results in self.ray_results:
             for rr in results:
                 if rr.success and len(rr.path) >= 2:
-                    self._draw_ray(painter, rr, to_screen, rtype)
+                    self._draw_ray(painter, rr, to_screen, rtype, wl)
         
         # ===== Фокальная точка =====
         parax = paraxial_trace(self.system)
@@ -467,8 +491,9 @@ class OpticalSystemView(QWidget):
         if abs(y) > abs(R): return 0.0
         return R - math.copysign(math.sqrt(R**2 - y**2), R)
     
-    def _draw_ray(self, painter, result, to_screen, rtype):
-        color = self.COLOR_RAY if rtype == 'axial' else self.COLOR_RAY_FIELD
+    def _draw_ray(self, painter, result, to_screen, rtype, wl=0.589):
+        color = self._wl_color(wl) if self.chromatic_rays else \
+                (self.COLOR_RAY if rtype == 'axial' else self.COLOR_RAY_FIELD)
         painter.setPen(QPen(color, 1.2))
         painter.setBrush(Qt.NoBrush)
         

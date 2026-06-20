@@ -654,11 +654,12 @@ class MainWindow(QMainWindow):
         self.btn_wf_3d.setToolTip("Переключить 2D/3D вид волнового фронта")
         self.btn_wf_3d.clicked.connect(self._toggle_wavefront_3d)
 
-        # Переключатель хроматического Цернике (#8)
+        # Переключатель хроматических лучей (#8)
         self.btn_zernike_chrom = QPushButton("Хром.Ц")
         self.btn_zernike_chrom.setMaximumWidth(60)
-        self.btn_zernike_chrom.setToolTip("Переключить хроматический Цернике")
-        self.btn_zernike_chrom.clicked.connect(self._toggle_zernike_chromatic)
+        self.btn_zernike_chrom.setCheckable(True)
+        self.btn_zernike_chrom.setToolTip("Показывать лучи для всех длин волн")
+        self.btn_zernike_chrom.clicked.connect(self._toggle_chromatic_rays)
 
         viz_ctrl.addWidget(self.btn_viz_fit)
         viz_ctrl.addWidget(self.btn_viz_zoomin)
@@ -1943,20 +1944,14 @@ class MainWindow(QMainWindow):
         mode = "3D" if wf._mode_3d else "2D"
         self.statusBar().showMessage(f"Волновой фронт: {mode}")
 
-    def _toggle_zernike_chromatic(self):
-        """Переключить хроматический Цернике."""
-        # Switch to Цернике tab
-        for i in range(self.analysis.count()):
-            if 'Церник' in self.analysis.tabText(i):
-                self.analysis.setCurrentIndex(i)
-                break
-        zw = self.analysis.zernike_w
-        zw._show_chromatic = not zw._show_chromatic
-        zw.update()
+    def _toggle_chromatic_rays(self):
+        """Переключить хроматические лучи (все длины волн) на графике хода лучей."""
+        self.viz.chromatic_rays = self.btn_zernike_chrom.isChecked()
         if self.current_system and self.current_system.surfaces:
-            self.analysis._update_zernike_table(self.current_system)
-        mode = "хроматический" if zw._show_chromatic else "монохроматический"
-        self.statusBar().showMessage(f"Цернике: {mode}")
+            self.viz._trace_all_rays()
+            self.viz.update()
+        mode = "все длины волн" if self.viz.chromatic_rays else "одна длина волны"
+        self.statusBar().showMessage(f"Ход лучей: {mode}")
 
 
 def main():

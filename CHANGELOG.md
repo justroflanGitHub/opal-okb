@@ -2,40 +2,59 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
-## [Unreleased] — branch: feature/ui-restructure
+## [1.1.0] — 2026-06-20
 
 ### Added
-- Paraxial characteristics & Seidel sums moved to AnalysisPanel as tabs
-- Multi-wavelength paraxial table: s, s', s'G, V, sP, sP' computed per λ
-- Table-only tabs (parax/seidel) — no graph toggle
-- 7 demo systems: achromat, Cook doublet, telephoto, Petzval, mirror, meniscus, plano-convex
-- Afocal system support (0,0 / 1,0): parallel ray output without focal point
-- Finite object support: object placed at front focal point (sF)
-- Object visualization (yellow arrow) for finite object type
-- Glass catalog expanded: К2, К5, К9, К13, ТФ2, БФ7, БФ12, ЛФ5, ТК9
-- ThreadPoolExecutor parallel computation (up to 8 workers) for all analysis tasks
-- Global table/graph toggle mode (applies to all tabs)
-- "Демо примеры" submenu with 8 systems
+- **LBO-декодер**: полная расшифровка бинарного формата .LBO
+  - 612 оптических систем в 13 библиотеках (LENS, OCULAR, RUSSAR, и др.)
+  - 20/20 систем LENS.LBO загружаются с точностью <1%
+  - Glass index array (int16): 1=ВОЗДУХ, 2+=стекло — решает cemented doublets
+  - RI override: точные показатели преломления из LBO вместо каталога
+  - Документация формата: `docs/LBO_FORMAT.md`
+- **Библиотека систем**: дерево с категориями (LBO наверху), раскрытие в один клик
+- **Хроматические лучи**: кнопка «Хром.Ц» — все длины волн на графике хода лучей
+  - Цвета по λ: красный (C), зелёный (d), синий (F), фиолетовый (g)
+- **Двухфазный расчёт**: Фаза 1 (параксиальный + ход лучей, мгновенно), Фаза 2 (23 вкладки, фон)
+- **Многопоточный расчёт**: ThreadPoolExecutor (до 8 потоков)
+- **Zernike**: хроматические коэффициенты по длинам волн
+- **Карта волнового фронта**: 2D/3D переключение
+- **23 вкладки анализа**: параксиальные, Зейдель, chief rays, Y-Ybar, оптимизация
+- **Меню «Характеристики»**: точки поля, спектральные линии, стандартные длины волн
+- **Многоволновые таблицы**: s', s'G, V, sP, sP' по длинам волн
+- **8 демо-систем**: ахромат, Cook, telephoto, Petzval, mirror, meniscus, plano-convex
+- **Подгонка**: f', BFD — binary search по радиусу/толщине
+- **Ахроматизация**: автоматический расчёт R для пар стёкол
+- **OPJ writer**: экспорт в формат .OPJ
+- **DOSBox launcher**: OPAL-PC.bat для верификации
 
 ### Fixed
-- Ray extension to focal point: uses real ray crossing, not paraxial BFD
-- Afocal viewport: z_max adapts for parallel output rays
-- `reverse_system()`: glass + thickness now correctly paired (К8 d=5 → К8 d=5)
-- `reverse_system()`: adds air surface at start (former image plane)
-- TФ2 missing from glass catalog (was returning n=1.5 instead of 1.686)
-- `apply_results()`: attribute name mismatches (LSF, ESF, ENC, Wavefront, Bar target)
-- Crosshair coordinates match cursor at any zoom level (QPainter save/restore)
-- Pan direction: drag right = content moves right
-- Font size no longer scales with zoom
-- NaN/inf filtering in wavefront map (PV, RMS, min, max)
-- `paint_finalize` moved to InteractivePlot (crash on FocusDiagramWidget)
-- `_reverse_system()` now calls `_calculate()` automatically
-- Multithreading: Worker does heavy computation, GUI thread only updates
-- Object distance auto-determined from sF (not manual field)
+- LBO системы теперь всегда используют `decode_lbo_opj` (не standalone OPJ parser)
+- Glass name validation: строгая проверка cp866 (фикс D/2 для 10+ glass систем)
+- Диаграмма стёкол: tooltip с nd, vd, nF, nC
+- Ход лучей: extension to focal point uses real ray crossing
+- `reverse_system()`: glass + thickness paired correctly
+- Pan 1:1 с курсором при любом зуме (QPainter save/restore)
+- NaN/inf filtering в wavefront map
+- `_init_new_system()` replaces `_new_system()` (dialog blocking)
+- Очистка мусорных поверхностей из .OPJ (NaN, inf, d>1km)
+- Оборачивание, масштаб, ГОСТ радиусы — корректная работа
 
 ### Changed
-- Terminology: "Поверхности оптической системы" → "Конструктивные параметры"
-- Column headers: "Радиус" → "Радиусы", "Толщина" → "Осевые расст.", "Стекло" → "Марка стекла", "Полудиам." → "Высоты"
-- "Параксиальные параметры" → "Параксиальные характеристики"
-- "Длины волн" → "Спектральные линии"
-- Number formatting unified per OPAL-PC: 5 decimals (aberrations), 6 (chief rays, Zernike), 4 (general)
+- Параксиальные/Зейдель перенесены в AnalysisPanel как вкладки
+- ResultsPanel убран с главного экрана
+- «Характеристики» в отдельном меню
+- Терминология: «Радиус» → «Радиусы», «Толщина» → «Осевые расст.», «Полудиам.» → «Высоты»
+- Формат чисел: 5 decimal (аберрации), 6 (chief rays, Zernike), 4 (general)
+
+## [1.0.0] — 2026-04-16
+
+### Initial Release
+- Параксиальный расчёт (y-nu метод)
+- Суммы Зейделя SI–SV
+- Реальная трассировка лучей (Снеллиус, TIR, OPL)
+- Каталог 889 стёкол (ГОСТ + Schott + HOYA + Ohara)
+- 13 вкладок анализа
+- Ход лучей (QPainter, зум/пан)
+- Оптимизация (DLS, Nelder-Mead)
+- Импорт .OPJ (83 файла)
+- 108 тестов

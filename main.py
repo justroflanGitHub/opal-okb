@@ -1661,9 +1661,12 @@ class MainWindow(QMainWindow):
         lib = build_library()
         entries = {}  # QTreeWidgetItem -> entry dict
         lbo_categories = {}  # QTreeWidgetItem -> lbo_path
-        for category, items in lib.items():
+        
+        # Sort categories: LBO first, then others alphabetically
+        sorted_cats = sorted(lib.items(), key=lambda kv: (0 if "LBO" in kv[0] else 1, kv[0]))
+        
+        for category, items in sorted_cats:
             cat_item = QTreeWidgetItem(tree, [category])
-            cat_item.setExpanded(True)
             font = cat_item.font(0)
             font.setBold(True)
             cat_item.setFont(0, font)
@@ -1672,8 +1675,16 @@ class MainWindow(QMainWindow):
                 if entry.get("lbo_path") and not entry.get("opj_data"):
                     # LBO category — store for expansion
                     lbo_categories[id(item)] = entry
+                    # Pre-load children immediately so expand arrow works
+                    from library import expand_lbo
+                    systems = expand_lbo(entry["lbo_path"])
+                    for s in systems:
+                        child = QTreeWidgetItem(item, [s["name"]])
+                        entries[id(child)] = s
+                    item.setExpanded(False)  # collapsed by default, but expandable
                 else:
                     entries[id(item)] = entry
+            cat_item.setExpanded(True)
 
         layout.addWidget(tree)
 
@@ -1682,19 +1693,9 @@ class MainWindow(QMainWindow):
         buttons.rejected.connect(dlg.reject)
         layout.addWidget(buttons)
 
-        # Double-click: expand LBO or open system
+        # Double-click: open system immediately
         def on_double_click(item, col):
-            if id(item) in lbo_categories:
-                # Expand LBO: load systems and replace children
-                entry = lbo_categories[id(item)]
-                item.takeChildren()  # clear
-                from library import expand_lbo
-                systems = expand_lbo(entry["lbo_path"])
-                for s in systems:
-                    child = QTreeWidgetItem(item, [s["name"]])
-                    entries[id(child)] = s
-                item.setExpanded(True)
-            elif id(item) in entries:
+            if id(item) in entries:
                 dlg.accept()
         tree.itemDoubleClicked.connect(on_double_click)
 

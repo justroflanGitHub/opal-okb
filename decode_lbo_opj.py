@@ -44,7 +44,12 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
             thicknesses.append(0.0); continue
         d = struct.unpack_from('<d', data, off)[0]
         if abs(d) > 1e15:
-            thicknesses.append(0.0); break
+            # Маркер 1e20 = последняя толщина (BFD) неизвестна
+            thicknesses.append(0.0)
+            if i < num_surf - 1:
+                break  # настоящий маркер, обрываем
+            else:
+                continue  # последняя поверхность — оставляем 0, вычислим позже
         thicknesses.append(d)
     while len(thicknesses) < num_surf:
         thicknesses.append(0.0)
@@ -241,30 +246,30 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     else:
         field_deg = 0.0
     
-    # Aperture type at 0x3A: 0=NA(sin), 2=F/#, 4=D(mm)
-    ap_type_code = struct.unpack_from('<H', data, 0x3A)[0] if len(data) > 0x3B else 4
-    # 0x5C = aperture value (float64): NA, F/#, или D/2 в мм
+    # 0x3A = ND (номер поверхности диафрагмы / stop surface)
+    stop_surface_num = struct.unpack_from('<H', data, 0x3A)[0] if len(data) > 0x3B else 0
+    # 0x5C = aperture value (float64): если <1 → NA(sin), если >=1 → D/2 (мм)
     ap_val_5c = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
     if math.isnan(ap_val_5c) or ap_val_5c > 1e4:
         ap_val_5c = 0.0
-    
-    # Определить f/# из названия (например "1:4.5")
-    f_match_name = re.search(r"1:(\d+[.,]?\d*)", name)
+    # 0x6C = SD диафрагмы (semi-diameter of stop surface, мм)
+    stop_sd = abs(struct.unpack_from('<d', data, 0x6C)[0]) if len(data) > 0x73 else 0.0
+    if math.isnan(stop_sd):
+        stop_sd = 0.0
     
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
     sys_obj.object_height = field_deg if field_deg > 0.001 else 0.0
     
-    # Апертура
-    if ap_type_code == 0 and ap_val_5c < 1.0:
+    # Апертура: автоопределение типа по значению 0x5C
+    if ap_val_5c > 0 and ap_val_5c < 1.0:
+        # NA (sin) — для светосильных и зеркальных систем
         sys_obj.aperture_type = ApertureType.NUMERICAL_APERTURE
         sys_obj.aperture_value = ap_val_5c
-    elif ap_type_code == 2:
-        sys_obj.aperture_type = ApertureType.F_NUMBER
-        sys_obj.aperture_value = ap_val_5c if ap_val_5c > 0 else 5.5
     else:
+        # D/2 (мм) — высота по Y
         sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
-        if ap_val_5c > 1.0:
+        if ap_val_5c >= 1.0:
             sys_obj.aperture_value = ap_val_5c * 2  # D/2 → D
         elif semi_diameters:
             sys_obj.aperture_value = max(semi_diameters) * 2
@@ -318,7 +323,19 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
 
         sys_obj.surfaces.append(surf)
 
-    sys_obj.stop_surface = 1
+    # Номер поверхности диафрагмы (ND из LBO)
+    if 1 <= stop_surface_num <= num_surf:
+        sys_obj.stop_surface = stop_surface_num
+    else:
+        sys_obj.stop_surface = 1
+
+    # Вычислить BFD и установить толщину последней поверхности
+    if sys_obj.surfaces:
+        from optics_engine import paraxial_trace as _pt
+        _parax = _pt(sys_obj)
+        _bfd = _parax.get('back_focal_distance', 0)
+        if _bfd and abs(_bfd) > 0.1:
+            sys_obj.surfaces[-1].thickness = abs(_bfd)
 
     return sys_obj
 

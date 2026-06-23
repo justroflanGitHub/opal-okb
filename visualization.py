@@ -500,8 +500,8 @@ class OpticalSystemView(QWidget):
         sd = surf.semi_diameter if surf.semi_diameter > 0 else 15
         R = surf.radius if abs(surf.radius) > 1e-10 else 0
         
-        # Основная дуга зеркала
-        painter.setPen(QPen(self.COLOR_MIRROR, 2.5))
+        # Основная дуга зеркала — толстая золотистая линия
+        painter.setPen(QPen(self.COLOR_MIRROR, 3))
         painter.setBrush(Qt.NoBrush)
         
         n_pts = 60
@@ -518,29 +518,32 @@ class OpticalSystemView(QWidget):
                 path.lineTo(sx, sy)
         painter.drawPath(path)
         
-        # Штриховка на отражающей стороне (короткие линии под 45°)
-        painter.setPen(QPen(QColor(200, 160, 30, 150), 1))
-        n_hash = 12
-        hash_len = max(3, scale * 0.04)
+        # Штриховка на обращённой к падающему свету стороне
+        # Свет приходит слева — штрихи рисуем слева от поверхности
+        hash_color = QColor(200, 160, 30)
+        painter.setPen(QPen(hash_color, 1.5))
+        n_hash = max(8, int(sd * scale / 15))  # плотность зависит от масштаба
+        hash_len = max(5, scale * 0.06)  # длина штриха
+        
         for j in range(1, n_hash):
             y = -sd + 2 * sd * j / n_hash
-            if abs(y) > abs(R) * 0.98:
+            if abs(R) > 0 and abs(y) > abs(R) * 0.95:
                 continue
             sag = self._sag(R, y)
             sx, sy = to_screen(z + sag, y)
-            # Штрих под 45° (вниз-вправо для выпуклой стороны)
-            side_sign = 1 if R > 0 else -1
+            # Штрих от поверхности влево-вниз (обозначает отражающую сторону)
+            dx = -hash_len * 0.6  # влево
+            dy = hash_len * 0.6   # вниз
             painter.drawLine(
                 int(sx), int(sy),
-                int(sx + side_sign * hash_len * 0.7),
-                int(sy + hash_len)
+                int(sx + dx), int(sy + dy)
             )
         
         # Подпись «З» (зеркало) рядом с поверхностью
         painter.setPen(QPen(self.COLOR_MIRROR))
-        painter.setFont(QFont("Consolas", 8, QFont.Bold))
-        label_pos = to_screen(z, sd + 2)
-        painter.drawText(int(label_pos[0]) - 4, int(label_pos[1]) - 2, "З")
+        painter.setFont(QFont("Consolas", 9, QFont.Bold))
+        label_pos = to_screen(z, sd + 3)
+        painter.drawText(int(label_pos[0]) - 5, int(label_pos[1]) - 2, "З")
     
     def _draw_surface_edge(self, painter, surf, z, to_screen, scale, idx):
         """Контуры поверхностей."""

@@ -233,20 +233,24 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     # 10. Build system
     # Field value at 0x74: stored as radians for INFINITE object
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
-    # Если |field_val| < 0.1 — это радианы (INFINITE object)
-    if 0 < abs(field_val) < 0.1:
+    # Если |field_val| < 1.0 — это радианы (INFINITE object)
+    if 0 < abs(field_val) < 1.0:
         field_deg = math.degrees(abs(field_val))
-    elif abs(field_val) >= 0.1:
-        field_deg = abs(field_val)
+    elif abs(field_val) >= 1.0:
+        field_deg = abs(field_val)  # уже в градусах
     else:
         field_deg = 0.0
     
-    # Aperture: берём из semi-diameters (первая поверхность)
-    if semi_diameters:
-        pupil_radius = semi_diameters[0] if semi_diameters[0] > 0 else max(semi_diameters)
+    # Y height (Высота по Y) at 0x5C = pupil semi-diameter
+    y_height = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
+    if y_height < 0.01 or y_height > 1e4:  # garbage check
+        y_height = 0.0
+    if y_height > 0:
+        pupil_diameter = y_height * 2
+    elif semi_diameters:
+        pupil_diameter = max(semi_diameters) * 2
     else:
-        pupil_radius = 20.0
-    pupil_diameter = pupil_radius * 2
+        pupil_diameter = 20.0
     
     # Определить f/# из названия (например "1:4.5")
     f_match_name = re.search(r"1:(\d+[.,]?\d*)", name)

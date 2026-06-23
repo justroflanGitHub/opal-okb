@@ -13,16 +13,27 @@ All notable changes to OPAL-OKB will be documented in this file.
   - `paraxial_trace()`: n sign flip + reflection formula для зеркальных поверхностей
   - `seidel_aberrations()`: mirror-aware n_vals and ray tracing
 - **Визуализация зеркал**: золотистый контур + штриховка отражающей стороны + метка «З»
+- **Г.ММСС формат**: функции конвертации `deg_to_gmms`, `gmms_to_deg`, `gmms_to_str` в system_utils
+  - В GUI рядом с полем отображается Г.ММСС: `= 0.3000 гр.мнск (0°30'00")`
 - **Кнопка «По умолчанию (e, G', C)»** в диалоге спектральных линий
-- **Авто-имена стандартных линий** при загрузке OPJ (e, G', C, d, F, g, и др.)
+- **Парсинг апертуры из LBO**: 0x3A (type) + 0x5C (value) — NA / F/# / D(mm)
 
 ### Fixed
-- **КВАРЦСТК**: умный split склеенных имён стёкол в LBO glass block (ВОЗДУХ+КВ → ВОЗДУХ, КВАРЦСТК)
+- **КВАРЦСТК**: умный split склеенных имён стёкол в LBO glass block
 - **LBO wavelengths**: wl_idx=0 → нет данных → fallback на e/G'/C вместо 5×D-line
 - **OPJ wavelengths**: дедупликация по значению, не по offset
-- **BFD estimation removed**: убрана подгонка толщины последней поверхности по f' из названия
+- **BFD estimation removed**: убрана подгонка толщины последней поверхности
 - **S6 mirror**: второе зеркало определяется по glass_idx_before=65535
-- **Field value**: корректное чтение field_val из 0x74 (радианы → градусы)
+- **Field value**: корректное чтение field_val из 0x74 (rad если |v|<1, deg если |v|≥1)
+- **Aperture**: чтение из 0x5C+0x3A вместо мусорного 0x58
+  - NA=0.089 для зеркально-линзовой f'=450 ✓
+  - D=21.1mm для Индустар-23у ✓
+  - F/100 для об. Цуканова ✓
+
+### Changed
+- Заголовки LBO: 0x36=flags, 0x3A=aperture type, 0x5C=aperture value
+- Документация LBO формата обновлена: зеркала, апертура, Г.ММСС, конкатенация имён
+- `_std_wavelengths()`: e/G'/C вместо d/F/C
 
 ## [1.1.0] — 2026-06-20
 

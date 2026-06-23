@@ -35,20 +35,22 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 | 0x08   | 4    | bytes | Reserved |
 | 0x0C   | 40   | char[40] | System name (cp866, Russian) |
 | 0x34   | 2    | uint16 | num_surf (surface count, NOT including trailing air) |
-| 0x36   | 2    | uint16 | Unknown |
+| 0x36   | 2    | uint16 | flags (3 = standard centered system) |
 | 0x38   | 2    | uint16 | num_wl (wavelength count) |
-| 0x3A   | 6    | bytes | Config flags |
+| 0x3A   | 2    | uint16 | **Aperture type**: 0=NA(sin), 2=F/#, 4=D(mm) |
+| 0x3C   | 2    | bytes | Reserved |
 
 ### System Parameters
 
 | Offset | Size | Type | Description |
 |--------|------|------|-------------|
-| 0x40   | 16   | bytes | Config/aperture data |
-| 0x58   | 8    | float64 | Y height (semi-aperture, mm) |
-| 0x60   | 8    | float64 | Duplicate or field data |
-| 0x68   | 8    | float64 | SD (stop diameter or f/number) |
-| 0x70   | 8    | float64 | Field angle 1 (radians) |
-| 0x78   | 8    | float64 | Field angle 2 (radians) |
+| 0x40   | 24   | bytes | Config/reserved |
+| 0x58   | 4    | bytes | Reserved/padding |
+| 0x5C   | 8    | float64 | **Aperture value** (interpretation depends on 0x3A): NA(sin), F/#, or D/2 (mm) |
+| 0x64   | 8    | float64 | Aperture value duplicate |
+| 0x6C   | 8    | float64 | Unknown (possibly rear aperture related) |
+| 0x74   | 8    | float64 | **Field angle** (radians if |v|<1, degrees if |v|≥1). Negative = infinite object |
+| 0x7C   | 8    | float64 | Field angle duplicate |
 | 0x80   | 24   | bytes | Zeros / reserved |
 
 ### Surface Data
@@ -73,8 +75,12 @@ Last thickness is followed by **end marker**: `float64` value of `1.0e+20`.
 - Index **2** = first glass in block
 - Index **3** = second glass
 - etc.
+- Index **65535** (0xFFFF) = **Зеркало** (mirror surface)
 
 **Mapping rule**: glass AFTER surface `i` = `glass_names[glass_indices[i+1] - 1]`
+
+**Mirror detection**: if `glass_indices[i]` or `glass_indices[i+1]` = 65535,
+surface `i` is reflective (`is_reflective = True`).
 
 (Glass at position `i` in the index array represents the medium **to the left** of surface `i`, which equals the medium **after** surface `i-1`.)
 
@@ -97,11 +103,15 @@ Last thickness is followed by **end marker**: `float64` value of `1.0e+20`.
 
 Located by searching for cp866 bytes of `"ВОЗДУХ"`.
 
-Each entry: 8 bytes, cp866 encoded, null-padded.
+Glass names can be **concatenated** within 8-byte slots when names exceed
+8 characters (e.g. ВОЗДУХ + КВ | АРЦСТК = two names ВОЗДУХ and КВАРЦСТК
+in 16 bytes). The decoder splits them using a database of known glass names.
 
 Format: `[ВОЗДУХ] [glass_1] [glass_2] ... [glass_N]`
 
 Only **unique** glass names stored (repeating glasses not duplicated).
+
+Known long names: КВАРЦ, КВАРЦСТК, ФЛЮОРИТ.
 
 ### Semi-Diameters (after glass block)
 
@@ -163,7 +173,38 @@ Result: f' = 109.83 mm (target: 110 mm, error: 0.2%)
 | ZOOM.LBO | 6 | Zoom lenses |
 | **Total** | **612** | |
 
-## Validation Results
+## Example: Об.зеркально-линз. f'=450 1:5.5 2w=1
+
+```
+num_surf = 6, num_wl = 2
+Aperture: 0x3A=0 (NA), 0x5C=0.089
+Field: 0x74=-0.008727 rad = -0.5° (= -0.3 гр.мнск)
+
+Surfaces:
+  S1: R=382.80, d=10.30, glass=КВАРЦСТК, sd=40.35
+  S2: R=-361.40, d=6.40, glass=ВОЗДУХ, sd=40.35
+  S3: R=-105.20, d=6.40, glass=КВАРЦСТК, sd=40.00
+  S4: R=-223.40, d=54.10, glass=ВОЗДУХ, sd=41.00
+  S5: R=-155.96, d=-61.20, glass=ЗЕРКАЛО, sd=42.00, is_reflective=True
+  S6: R=-37.41, d=0, glass=ЗЕРКАЛО, sd=9.00, is_reflective=True
+
+Result: f' = 428.62 mm (target: 450, error: 4.8%)
+```
+
+## Wavelength Fallback
+
+If wavelength indices in LBO are all zero (no wavelength data stored),
+the decoder falls back to standard set: **e (0.54607), G' (0.43405),
+C (0.65627)**. Standard line names are auto-assigned when values match
+known spectral lines.
+
+## Angle Format: Г.ММСС
+
+OPAL-PC uses **Г.ММСС** (градусы.минутысекунды) format for angular fields:
+- 0.30 гр.мнск = 0°30'00" = 0.5°
+- 23.1200 гр.мнск = 23°12'00" = 23.2°
+
+Conversion functions: `deg_to_gmms()`, `gmms_to_deg()`, `gmms_to_str()` in `system_utils.py`.
 
 20/20 LENS.LBO systems loaded within 1% of target focal length:
 

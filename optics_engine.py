@@ -266,10 +266,15 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     ns = len(sys.surfaces)
 
     # Показатели преломления для каждой среды (ns+1 сред)
+    # Для зеркал: после отражения n меняет знак
     n_medium = [1.0]  # воздух перед системой
     for i in range(ns):
         s = sys.surfaces[i]
-        n_medium.append(refractive_index(s.glass, wl_primary, catalog, getattr(s, 'n_override', None)))
+        if s.is_reflective:
+            # Зеркало: после отражения n меняет знак
+            n_medium.append(-n_medium[-1])
+        else:
+            n_medium.append(refractive_index(s.glass, wl_primary, catalog, getattr(s, 'n_override', None)))
 
     # ===== Длина системы =====
     L = sum(s.thickness for s in sys.surfaces)
@@ -287,7 +292,11 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         n_b = n_medium[i]
         n_a = n_medium[i + 1]
 
-        phi_i = (n_a - n_b) / R
+        if s.is_reflective:
+            # Зеркало: nu' = nu + 2*y*n/R (отражение)
+            phi_i = -2.0 * n_b / R
+        else:
+            phi_i = (n_a - n_b) / R
         nu1[i] = nu1[i] - y1[i] * phi_i
 
         if i < ns - 1:
@@ -312,7 +321,10 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         n_b = n_medium[i]
         n_a = n_medium[i + 1]
 
-        phi_i = (n_a - n_b) / R
+        if s.is_reflective:
+            phi_i = -2.0 * n_b / R
+        else:
+            phi_i = (n_a - n_b) / R
         nu2[i] = nu2[i] - y2[i] * phi_i
 
         if i < ns - 1:
@@ -655,7 +667,10 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
     # Показатели преломления
     n_vals = [1.0]  # перед первой поверхностью — воздух
     for i, s in enumerate(sys.surfaces):
-        n_vals.append(refractive_index(s.glass, wl, catalog, getattr(s, 'n_override', None)))
+        if s.is_reflective:
+            n_vals.append(-n_vals[-1])
+        else:
+            n_vals.append(refractive_index(s.glass, wl, catalog, getattr(s, 'n_override', None)))
 
     # ===== Параксиальный краевой луч (marginal ray) =====
     # y[0]=1, nu[0]=0 — параллельный оси на единичной высоте
@@ -667,10 +682,16 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
     for i in range(ns):
         s = sys.surfaces[i]
         R = s.radius if s.radius != 0 else float('inf')
-        if R != float('inf'):
-            nu[i + 1] = nu[i] - y[i] * (n_vals[i + 1] - n_vals[i]) / R
+        if s.is_reflective:
+            if R != float('inf'):
+                nu[i + 1] = nu[i] - y[i] * (-2.0 * n_vals[i] / R)
+            else:
+                nu[i + 1] = nu[i]
         else:
-            nu[i + 1] = nu[i]
+            if R != float('inf'):
+                nu[i + 1] = nu[i] - y[i] * (n_vals[i + 1] - n_vals[i]) / R
+            else:
+                nu[i + 1] = nu[i]
         if i < ns - 1:
             y[i + 1] = y[i] + nu[i + 1] * s.thickness / n_vals[i + 1]
         else:

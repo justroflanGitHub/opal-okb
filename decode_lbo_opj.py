@@ -89,43 +89,107 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     glass_names = []
     nglass_text = 0
     if glass_off >= 0:
-        for i in range(num_surf + 1):
+        # Сначала читаем по 8-байтным слотам
+        # Но некоторые имена длиннее 8 байт (КВАРЦСТК=8, склеено с предыдущим)
+        # Поэтому: собираем весь текстовый блок, потом разбиваем по смыслу
+        raw_glass_bytes = b''
+        for i in range(num_surf + 2):
             off = glass_off + i * 8
             if off + 8 > len(data): break
             raw = data[off:off + 8]
-            # Strict validation: glass names contain only cp866 letters,
-            # digits, spaces, and null padding
             def _is_glass_byte(b):
-                if b == 0 or b == 0x20: return True  # null/space
-                if 0x30 <= b <= 0x39: return True     # 0-9
-                if 0x41 <= b <= 0x5A: return True     # A-Z
-                if 0x61 <= b <= 0x7A: return True     # a-z
-                if 0x80 <= b <= 0xAF: return True     # cp866 А-п
-                if 0xE0 <= b <= 0xEF: return True     # cp866 р-я
+                if b == 0 or b == 0x20: return True
+                if 0x30 <= b <= 0x39: return True
+                if 0x41 <= b <= 0x5A: return True
+                if 0x61 <= b <= 0x7A: return True
+                if 0x80 <= b <= 0xAF: return True
+                if 0xE0 <= b <= 0xEF: return True
                 return False
-            is_text = all(_is_glass_byte(b) for b in raw)
-            if not is_text: break
-            gname = raw.decode('cp866', errors='replace').rstrip('\x00').strip()
-            glass_names.append(gname)
+            if not all(_is_glass_byte(b) for b in raw):
+                break
+            raw_glass_bytes += raw
             nglass_text = i + 1
+        
+        # Разбиваем накопленный текст на отдельные имена стёкол
+        # Известные имена: ВОЗДУХ, КВАРЦ, КВАРЦСТК, К8, ТФ1, etc.
+        # Алгоритм: ищем ВОЗДУХ в начале, потом парсим остальные
+        full_text = raw_glass_bytes.decode('cp866', errors='replace').replace('\x00', ' ')
+        # Убираем множественные пробелы
+        while '  ' in full_text:
+            full_text = full_text.replace('  ', ' ')
+        full_text = full_text.strip()
+        
+        # Если ВОЗДУХ в начале — это первое стекло
+        if full_text.startswith('ВОЗДУХ'):
+            glass_names.append('ВОЗДУХ')
+            rest = full_text[6:].strip()
+        else:
+            rest = full_text
+        
+        # Разбиваем остаток на имена
+        # Используем базу российских стёкол для распознавания
+        known_glasses = set()
+        try:
+            from glass_catalog import GLASS_CATALOG
+            known_glasses = set(k.upper() for k in GLASS_CATALOG.keys())
+        except:
+            pass
+        # Добавляем специальные "стекла"
+        known_glasses.update(['КВАРЦ', 'КВАРЦСТК', 'ФЛЮОРИТ', 'ЗЕРКАЛО'])
+        
+        pos = 0
+        while pos < len(rest):
+            # Пропускаем пробелы
+            while pos < len(rest) and rest[pos] == ' ':
+                pos += 1
+            if pos >= len(rest):
+                break
+            # Ищем самое длинное совпадение из known_glasses
+            best_match = None
+            for glen in range(min(10, len(rest) - pos), 0, -1):
+                candidate = rest[pos:pos+glen].upper()
+                if candidate in known_glasses:
+                    best_match = rest[pos:pos+glen]
+                    break
+            if best_match:
+                glass_names.append(best_match)
+                pos += len(best_match)
+            else:
+                # Берём до следующего пробела или конца
+                end = rest.find(' ', pos)
+                if end < 0: end = len(rest)
+                name = rest[pos:end].strip()
+                if name:
+                    glass_names.append(name)
+                pos = end
 
     # 7. Map glass indices to glass names
     # glass_indices[i] = glass BEFORE surface i (medium to the left)
     # For our Surface model: glass = medium AFTER surface = glass_indices[i+1]
     # glass_indices[0] = leading ВОЗДУХ (before S0)
+    # Special: glass_index = 65535 (0xFFFF) = ЗЕРКАЛО
     glass_for_surface = []
+    is_mirror_surface = []
     for i in range(num_surf):
-        # Glass AFTER surface i = glass at position i+1 in indices
         gi = glass_indices[i + 1] if i + 1 < len(glass_indices) else 1
-        name_idx = gi - 1  # 0-based into glass_names
-        if 0 <= name_idx < len(glass_names):
-            gname = glass_names[name_idx]
-            if gname.upper() in ('ВОЗДУХ', 'AIR', ''):
-                glass_for_surface.append('')
-            else:
-                glass_for_surface.append(gname)
+        gi_before = glass_indices[i] if i < len(glass_indices) else 1
+        # Зеркальная поверхность: glass_index = 65535 до или после
+        is_mirror = (gi == 65535 or gi == 0xFFFF or
+                     gi_before == 65535 or gi_before == 0xFFFF)
+        if is_mirror:
+            glass_for_surface.append('ЗЕРКАЛО')
+            is_mirror_surface.append(True)
         else:
-            glass_for_surface.append('')
+            name_idx = gi - 1
+            if 0 <= name_idx < len(glass_names):
+                gname = glass_names[name_idx]
+                if gname.upper() in ('ВОЗДУХ', 'AIR', ''):
+                    glass_for_surface.append('')
+                else:
+                    glass_for_surface.append(gname)
+            else:
+                glass_for_surface.append('')
+            is_mirror_surface.append(False)
 
     # 8. Semi-diameters: float32 after glass block + 4-byte gap
     sd_base = glass_off + nglass_text * 8 + 4 if glass_off >= 0 else 0
@@ -201,6 +265,11 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         d = thicknesses[i]
         sd = semi_diameters[i] if i < len(semi_diameters) else 10.0
         surf = Surface(radius=r, thickness=d, glass=glass_for_surface[i], semi_diameter=sd)
+
+        # Зеркальная поверхность
+        if i < len(is_mirror_surface) and is_mirror_surface[i]:
+            surf.is_reflective = True
+            surf.glass = 'ЗЕРКАЛО'
 
         # Set n_override from RI block
         if glass_for_surface[i]:

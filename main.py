@@ -36,7 +36,7 @@ from achromat import design_achromat, GLASS_PAIRS
 class SurfaceTable(QTableWidget):
     """Таблица поверхностей оптической системы."""
 
-    HEADERS = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла", "Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
+    HEADERS = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла", "n (при λ)", "Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
 
     def __init__(self, parent=None):
         super().__init__(0, len(self.HEADERS), parent)
@@ -53,17 +53,34 @@ class SurfaceTable(QTableWidget):
         self._stop_surface = sys.stop_surface
         self.setRowCount(len(sys.surfaces) + 1)  # +1 для плоскости изображения
 
+        # Первичная длина волны для расчёта n
+        wl_primary = sys.wavelengths[0].value if sys.wavelengths else 0.54607
+
         for i, s in enumerate(sys.surfaces):
             self.setItem(i, 0, QTableWidgetItem(str(i + 1)))
             self.setItem(i, 1, QTableWidgetItem(f"{s.radius:.4f}" if s.radius != 0 else "∞"))
             self.setItem(i, 2, QTableWidgetItem(f"{s.thickness:.4f}"))
             self.setItem(i, 3, QTableWidgetItem(s.glass if s.glass else "ВОЗДУХ"))
-            self.setItem(i, 4, QTableWidgetItem(f"{s.semi_diameter:.2f}"))
-            self.setItem(i, 5, QTableWidgetItem(s.surface_type.name))
+
+            # Показатель преломления n (6 знаков)
+            from optics_engine import refractive_index
+            if s.glass and s.glass.upper().strip() not in ('', 'ВОЗДУХ', 'AIR'):
+                n_val = refractive_index(s.glass, wl_primary, None, getattr(s, 'n_override', None))
+                n_text = f"{n_val:.6f}"
+            else:
+                n_text = "1.000000"
+            n_item = QTableWidgetItem(n_text)
+            n_item.setFlags(Qt.ItemIsEnabled)  # read-only
+            n_item.setTextAlignment(Qt.AlignCenter)
+            n_item.setForeground(QColor(80, 80, 80))
+            self.setItem(i, 4, n_item)
+
+            self.setItem(i, 5, QTableWidgetItem(f"{s.semi_diameter:.2f}"))
+            self.setItem(i, 6, QTableWidgetItem(s.surface_type.name))
 
             # Коническая постоянная k
             k_text = f"{s.conic_constant:.4f}" if abs(s.conic_constant) > 1e-10 else "0"
-            self.setItem(i, 6, QTableWidgetItem(k_text))
+            self.setItem(i, 7, QTableWidgetItem(k_text))
 
             # Стоп-чекбокс
             stop_item = QTableWidgetItem()
@@ -73,10 +90,10 @@ class SurfaceTable(QTableWidget):
             else:
                 stop_item.setCheckState(Qt.Unchecked)
             stop_item.setTextAlignment(Qt.AlignCenter)
-            self.setItem(i, 7, stop_item)
+            self.setItem(i, 8, stop_item)
 
             # Выравнивание
-            for col in [0, 1, 2, 4, 6]:
+            for col in [0, 1, 2, 5, 7]:
                 item = self.item(i, col)
                 if item:
                     item.setTextAlignment(Qt.AlignCenter)
@@ -85,12 +102,8 @@ class SurfaceTable(QTableWidget):
         last = len(sys.surfaces)
         self.setItem(last, 0, QTableWidgetItem("Изобр."))
         self.setItem(last, 1, QTableWidgetItem("∞"))
-        self.setItem(last, 2, QTableWidgetItem(""))
-        self.setItem(last, 3, QTableWidgetItem(""))
-        self.setItem(last, 4, QTableWidgetItem(""))
-        self.setItem(last, 5, QTableWidgetItem(""))
-        self.setItem(last, 6, QTableWidgetItem(""))
-        self.setItem(last, 7, QTableWidgetItem(""))
+        for col in range(2, self.columnCount()):
+            self.setItem(last, col, QTableWidgetItem(""))
 
         # Подсветка стоп-поверхности
         if 0 < sys.stop_surface <= self.rowCount():
@@ -102,7 +115,7 @@ class SurfaceTable(QTableWidget):
     def get_stop_surface(self) -> int:
         """Получить номер стоп-поверхности из таблицы."""
         for i in range(self.rowCount()):
-            item = self.item(i, 7)
+            item = self.item(i, 8)
             if item and item.checkState() == Qt.Checked:
                 return i + 1
         return self._stop_surface
@@ -227,20 +240,27 @@ class ResultsPanel(QWidget):
         self.parax_table.setMinimumWidth(250)
         # No max width - let it expand
 
-        # Единицы зрачков
-        pupil_unit_layout = QHBoxLayout()
-        pupil_unit_layout.addWidget(QLabel("Единицы зрачков:"))
-        self.pupil_unit_combo = QComboBox()
-        self.pupil_unit_combo.addItems(["мм", "дптр"])
-        self.pupil_unit_combo.setToolTip("Единицы для sP и sP'")
-        self.pupil_unit_combo.currentIndexChanged.connect(self._on_pupil_unit_changed)
-        pupil_unit_layout.addWidget(self.pupil_unit_combo)
-        pupil_unit_layout.addStretch()
-        self._parax_result = {}
-        self._current_system_ref = None
+        # Мульти-λ параксиальная таблица
+        self.parax_wl_table = QTableWidget()
+        self.parax_wl_table.setColumnCount(4)
+        self.parax_wl_table.setHorizontalHeaderLabels(["λ", "f' (мм)", "sF' (мм)", "Δf' (мм)"])
+        self.parax_wl_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.parax_wl_table.verticalHeader().setVisible(False)
+        self.parax_wl_table.setAlternatingRowColors(True)
+        self.parax_wl_table.setFont(QFont("Courier", 9))
+        self.parax_wl_table.horizontalHeader().setFont(QFont("Courier", 9, QFont.Bold))
+        self.parax_wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.parax_wl_table.setMinimumWidth(250)
+        self.parax_wl_table.setVisible(False)  # скрыта, пока 1 длина волны
 
         parax_layout.addLayout(pupil_unit_layout)
         parax_layout.addWidget(self.parax_table)
+        # Подпись мульти-λ таблицы
+        self.parax_wl_label = QLabel("Параксиальные по длинам волн:")
+        self.parax_wl_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.parax_wl_label.setVisible(False)
+        parax_layout.addWidget(self.parax_wl_label)
+        parax_layout.addWidget(self.parax_wl_table)
         parax_group.setLayout(parax_layout)
 
         # Суммы Зейделя - таблица
@@ -406,28 +426,75 @@ class ResultsPanel(QWidget):
         self._update_paraxial_all_wl(sys)
 
         self.log_text.append(f"Расчёт: f'={parax.get('focal_length', 0):.2f} мм")
-
     def _update_paraxial_all_wl(self, sys: OpticalSystem):
-        """Показать f', BFD для каждой рабочей длины волны."""
+        """Показать f', sF' и хроматические разности для каждой длины волны."""
         if len(sys.wavelengths) <= 1:
+            self.parax_wl_table.setVisible(False)
+            self.parax_wl_label.setVisible(False)
             return
 
-        # Добавляем информацию в лог
-        self.log_text.append("\n── Параксиальные по λ ──")
+        import copy
+
+        # Базовое фокусное расстояние (первая λ)
+        base_f = None
+        base_bfd = None
+        rows_data = []
+
         for wl in sys.wavelengths:
             wl_name = wl.name if wl.name else f"{wl.value:.3f}"
             try:
-                # Создаём копию системы с одной длиной волны
-                import copy
                 sys_wl = copy.deepcopy(sys)
                 sys_wl.wavelengths = [wl]
                 parax_wl = paraxial_trace(sys_wl)
                 f_wl = parax_wl.get('focal_length', 0)
                 bfd_wl = parax_wl.get('back_focal_distance', 0)
-                self.log_text.append(
-                    f"  {wl_name}: f'={f_wl:.4f} мм, BFD={bfd_wl:.4f} мм")
-            except Exception as e:
-                self.log_text.append(f"  {wl_name}: ошибка - {e}")
+
+                if base_f is None:
+                    base_f = f_wl
+                    base_bfd = bfd_wl
+                    delta_f = 0.0
+                else:
+                    delta_f = f_wl - base_f
+
+                rows_data.append((wl_name, f_wl, bfd_wl, delta_f))
+            except Exception:
+                rows_data.append((wl_name, 0, 0, 0))
+
+        if not rows_data:
+            self.parax_wl_table.setVisible(False)
+            self.parax_wl_label.setVisible(False)
+            return
+
+        # Заполняем таблицу
+        self.parax_wl_table.setRowCount(len(rows_data))
+        for i, (wl_name, f_val, bfd_val, df_val) in enumerate(rows_data):
+            items = [
+                QTableWidgetItem(wl_name),
+                QTableWidgetItem(f"{f_val:.4f}"),
+                QTableWidgetItem(f"{bfd_val:.4f}"),
+                QTableWidgetItem(f"{df_val:+.4f}" if i > 0 else "—"),
+            ]
+            for j, item in enumerate(items):
+                item.setTextAlignment(Qt.AlignCenter if j == 0 else Qt.AlignRight | Qt.AlignVCenter)
+                if i % 2 == 1:
+                    item.setBackground(QColor(240, 240, 245))
+                self.parax_wl_table.setItem(i, j, item)
+
+        self.parax_wl_table.setFixedHeight(28 + len(rows_data) * 20)
+        self.parax_wl_table.setVisible(True)
+        self.parax_wl_label.setVisible(True)
+
+        # Дополнительно: продольная хроматическая аберрация в лог
+        if len(rows_data) >= 2:
+            f_min = min(r[1] for r in rows_data)
+            f_max = max(r[1] for r in rows_data)
+            bfd_min = min(r[2] for r in rows_data)
+            bfd_max = max(r[2] for r in rows_data)
+            self.log_text.append("\n── Параксиальные по λ ──")
+            for wl_name, f_val, bfd_val, df_val in rows_data:
+                self.log_text.append(f"  {wl_name}: f'={f_val:.4f} мм, sF'={bfd_val:.4f} мм")
+            self.log_text.append(f"  Δf'(хром.) = {f_max - f_min:.4f} мм")
+            self.log_text.append(f"  ΔsF'(хром.) = {bfd_max - bfd_min:.4f} мм")
 
 
 class SystemParamsWidget(QWidget):
@@ -498,9 +565,9 @@ class SystemParamsWidget(QWidget):
     def _add_wavelength(self):
         row = self.wl_table.rowCount()
         self.wl_table.insertRow(row)
-        self.wl_table.setItem(row, 0, QTableWidgetItem("0.58756"))
+        self.wl_table.setItem(row, 0, QTableWidgetItem("0.54607"))
         self.wl_table.setItem(row, 1, QTableWidgetItem("1.0"))
-        self.wl_table.setItem(row, 2, QTableWidgetItem("d"))
+        self.wl_table.setItem(row, 2, QTableWidgetItem("e"))
 
     def _standard_wavelengths(self):
         """Диалог выбора стандартной длины волны."""
@@ -844,8 +911,9 @@ class MainWindow(QMainWindow):
 
     def _init_new_system(self):
         """Silent init - no dialog, just defaults."""
+        from optics_engine import _std_wavelengths
         self.current_system = OpticalSystem(name="Новая система")
-        self.current_system.wavelengths = [Wavelength(0.58756, 1.0, "d")]
+        self.current_system.wavelengths = _std_wavelengths()
         self.current_system.field_points = [FieldPoint(0.0)]
         self.current_system.stop_surface = 1
         self._current_file = None
@@ -879,9 +947,8 @@ class MainWindow(QMainWindow):
             return
 
         self.current_system = OpticalSystem(name="Новая система")
-        self.current_system.wavelengths = [
-            Wavelength(0.58756, 1.0, "d"),
-        ]
+        from optics_engine import _std_wavelengths
+        self.current_system.wavelengths = _std_wavelengths()
         self.current_system.field_points = [FieldPoint(0.0)]
         self.current_system.stop_surface = 1
         self._current_file = None
@@ -945,7 +1012,7 @@ class MainWindow(QMainWindow):
             r_item = self.surface_table.item(i, 1)
             d_item = self.surface_table.item(i, 2)
             g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, 4)
+            sd_item = self.surface_table.item(i, 5)
 
             if r_item:
                 txt = r_item.text().strip()
@@ -963,7 +1030,7 @@ class MainWindow(QMainWindow):
             if sd_item:
                 txt = sd_item.text().strip()
                 sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.surface_table.item(i, 6)
+            k_item = self.surface_table.item(i, 7)
             if k_item:
                 txt = k_item.text().strip()
                 try:
@@ -1318,6 +1385,7 @@ class MainWindow(QMainWindow):
 
         self.analysis.update_parax(parax, fno, epd, sys=sys)
         self.analysis.update_seidel(seidel)
+        self.results._update_paraxial_all_wl(sys)
 
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1373,7 +1441,7 @@ class MainWindow(QMainWindow):
             r_item = self.surface_table.item(i, 1)
             d_item = self.surface_table.item(i, 2)
             g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, 4)
+            sd_item = self.surface_table.item(i, 5)
             if r_item:
                 txt = r_item.text().strip()
                 sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
@@ -1392,7 +1460,7 @@ class MainWindow(QMainWindow):
                 txt = sd_item.text().strip()
                 sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
             # Коническая постоянная k
-            k_item = self.surface_table.item(i, 6)
+            k_item = self.surface_table.item(i, 7)
             if k_item:
                 txt = k_item.text().strip()
                 try:

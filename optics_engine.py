@@ -762,11 +762,7 @@ def create_demo_system() -> OpticalSystem:
         object_type=ObjectType.INFINITE,
         object_height=5.0,
     )
-    sys.wavelengths = [
-        Wavelength(0.58756, 1.0, "d"),
-        Wavelength(0.48613, 1.0, "F"),
-        Wavelength(0.65627, 1.0, "C"),
-    ]
+    sys.wavelengths = _std_wavelengths()
     sys.field_points = [FieldPoint(0.0), FieldPoint(3.0), FieldPoint(5.0)]
     sys.aperture_type = ApertureType.ENTRANCE_PUPIL
     sys.aperture_value = 20.0
@@ -779,9 +775,10 @@ def create_demo_system() -> OpticalSystem:
 
 
 def _std_wavelengths():
+    """Стандартный набор длин волн: e, G', C."""
     return [
-        Wavelength(0.58756, 1.0, "d"),
-        Wavelength(0.48613, 1.0, "F"),
+        Wavelength(0.54607, 1.0, "e"),
+        Wavelength(0.43584, 1.0, "G'"),
         Wavelength(0.65627, 1.0, "C"),
     ]
 

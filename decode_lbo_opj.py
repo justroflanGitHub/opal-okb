@@ -231,15 +231,34 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     ri_per_wl = (len(ri_values) - nair_ri) // ng if ng > 0 else 0
 
     # 10. Build system
-    y_height = struct.unpack_from('<d', data, 0x58)[0] if len(data) > 0x60 else 10.0
+    # y_height (pupil/semi-diameter) at 0x58
+    y_height = abs(struct.unpack_from('<d', data, 0x58)[0]) if len(data) > 0x60 else 0.0
+    # field value at 0x74 (radians for INFINITE, mm for FINITE)
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
-    field_deg = math.degrees(abs(field_val)) if 0 < abs(field_val) < 0.1 else abs(field_val)
-
+    # Если |field_val| < 0.1 — это радианы (INFINITE object)
+    if 0 < abs(field_val) < 0.1:
+        field_deg = math.degrees(abs(field_val))
+    else:
+        field_deg = abs(field_val)
+    
+    # Aperture: y_height = pupil semi-diameter в мм
+    # Если y_height = 0 — пробуем взять из semi-diameters поверхностей
+    if y_height < 0.1 and semi_diameters:
+        y_height = max(semi_diameters) if semi_diameters else 20.0
+    pupil_diameter = max(y_height * 2, 10.0)
+    
+    # Определить тип апертуры из флагов (0x36)
+    flags_val = struct.unpack_from('<H', data, 0x36)[0] if len(data) > 0x37 else 0
+    # В OPAL-PC: flags bit 0 = object type (0=INFINITE, 1=FINITE)
+    # Aperture type: 0=ENTRANCE_PUPIL, 1=NA, 2=F/#
+    # Если в названии есть 1:X — можно извлечь f/#
+    f_match_name = re.search(r"1:(\d+[.,]?\d*)", name)
+    
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
     sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
-    sys_obj.aperture_value = max(y_height * 2, 10.0)
-    sys_obj.object_height = field_deg if field_deg > 0 else 5.0
+    sys_obj.aperture_value = pupil_diameter
+    sys_obj.object_height = field_deg if field_deg > 0.001 else 0.0
     # Длины волн с именами стандартных линий
     _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
                  0.58756: 'd', 0.48613: 'F', 0.43584: 'g',
@@ -289,23 +308,6 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         sys_obj.surfaces.append(surf)
 
     sys_obj.stop_surface = 1
-
-    # Estimate BFD
-    f_match = re.search(r"f'=?([\d.]+)", name)
-    f_target = float(f_match.group(1)) if f_match else 100.0
-    if sys_obj.surfaces:
-        best_d = f_target * 0.15
-        best_err = 1e10
-        for trial_d in [f_target * k for k in [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]]:
-            sys_obj.surfaces[-1].thickness = trial_d
-            from optics_engine import paraxial_trace as _pt
-            _p = _pt(sys_obj)
-            _f = abs(_p.get('focal_length', 0))
-            _err = abs(_f - f_target)
-            if _err < best_err:
-                best_err = _err
-                best_d = trial_d
-        sys_obj.surfaces[-1].thickness = best_d
 
     return sys_obj
 

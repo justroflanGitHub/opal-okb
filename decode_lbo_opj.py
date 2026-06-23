@@ -252,10 +252,10 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     ap_val_5c = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
     if math.isnan(ap_val_5c) or ap_val_5c > 1e4:
         ap_val_5c = 0.0
-    # 0x6C = SD диафрагмы (semi-diameter of stop surface, мм)
-    stop_sd = abs(struct.unpack_from('<d', data, 0x6C)[0]) if len(data) > 0x73 else 0.0
-    if math.isnan(stop_sd):
-        stop_sd = 0.0
+    # 0x6C = SD (смещение диафрагмы от stop_surface, мм)
+    stop_offset = abs(struct.unpack_from('<d', data, 0x6C)[0]) if len(data) > 0x73 else 0.0
+    if math.isnan(stop_offset):
+        stop_offset = 0.0
     
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
@@ -323,11 +323,12 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
 
         sys_obj.surfaces.append(surf)
 
-    # Номер поверхности диафрагмы (ND из LBO)
+    # Номер поверхности диафрагмы (ND из LBO) и смещение (SD)
     if 1 <= stop_surface_num <= num_surf:
         sys_obj.stop_surface = stop_surface_num
     else:
         sys_obj.stop_surface = 1
+    sys_obj.stop_offset = stop_offset
 
     # Вычислить BFD и установить толщину последней поверхности
     if sys_obj.surfaces:

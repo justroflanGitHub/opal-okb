@@ -107,6 +107,7 @@ class OpticalSystem:
     field_points: List[FieldPoint] = field(default_factory=list)
     # Стоп-поверхность (апертурная диафрагма)
     stop_surface: int = 1
+    stop_offset: float = 0.0  # мм — смещение диафрагмы от stop_surface вправо
     # Экранирование
     obscuration_ratio: float = 0.0  # 0 = нет экранирования, 0.3 = 30% центральное
     # Режимы расчёта габаритов (#15)
@@ -384,12 +385,24 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
 
     # ===== Положение зрачков (sP, sP') =====
     stop_idx = max(0, min(sys.stop_surface - 1, ns - 1))  # 0-based
+    stop_off = getattr(sys, 'stop_offset', 0.0)  # смещение диафрагмы от stop_surface (мм)
 
-    # Обратная трассировка от стопа к первой поверхности
+    # Обратная трассировка от диафрагмы к первой поверхности
+    # Диафрагма находится на z = z(stop_surface) + stop_offset
+    # yb на диафрагме = 0, nub = 1
     yb = [0.0] * (ns + 1)
     nub = [0.0] * (ns + 1)
     yb[stop_idx] = 0.0
     nub[stop_idx] = 1.0
+
+    # Сначала трассируем от stop_idx назад, учитывая смещение
+    # Если stop_offset > 0, диафрагма между stop_idx и stop_idx+1
+    # Сместим начальную точку: yb[stop_idx] уже = 0
+    # Но при переносе назад к stop_idx нужно учесть смещение
+    # yb_at_stop_surface = 0 - nub * stop_offset / n_medium[stop_idx]
+    if stop_off > 0 and stop_idx < ns:
+        n_after_stop = n_medium[stop_idx + 1]
+        yb[stop_idx] = -nub[stop_idx] * stop_off / n_after_stop
 
     for i in range(stop_idx - 1, -1, -1):
         s = sys.surfaces[i]
@@ -403,7 +416,17 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         else:
             nub[i] = nub[i + 1]
 
-    # Прямая трассировка от стопа к последней поверхности
+    # Прямая трассировка от stop_surface к последней поверхности
+    # Сбросим yb на стоп-поверхности обратно (для прямого хода)
+    yb[stop_idx] = 0.0
+    nub[stop_idx] = 1.0
+    if stop_off > 0 and stop_idx < ns:
+        n_after_stop = n_medium[stop_idx + 1]
+        # Перенос от диафрагмы вперёд к следующей поверхности
+        d_to_next = sys.surfaces[stop_idx].thickness - stop_off
+        if stop_idx + 1 <= ns:
+            yb[stop_idx + 1] = nub[stop_idx] * stop_off / n_after_stop
+            nub_next = nub[stop_idx]
     for i in range(stop_idx, ns):
         s = sys.surfaces[i]
         R = s.radius if s.radius != 0 else 1e15
@@ -411,8 +434,6 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         n2 = n_medium[i + 1]
         if R != 1e15:
             nub[i] = nub[i] - yb[i] * (n2 - n1) / R
-        else:
-            pass
         if i < ns - 1:
             d = s.thickness
             yb[i + 1] = yb[i] + nub[i] * d / n_medium[i + 1]

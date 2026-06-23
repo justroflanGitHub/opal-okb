@@ -778,7 +778,7 @@ def _std_wavelengths():
     """Стандартный набор длин волн: e, G', C."""
     return [
         Wavelength(0.54607, 1.0, "e"),
-        Wavelength(0.43584, 1.0, "G'"),
+        Wavelength(0.43405, 1.0, "G'"),
         Wavelength(0.65627, 1.0, "C"),
     ]
 

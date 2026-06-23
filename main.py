@@ -240,6 +240,18 @@ class ResultsPanel(QWidget):
         self.parax_table.setMinimumWidth(250)
         # No max width - let it expand
 
+        # Единицы зрачков
+        pupil_unit_layout = QHBoxLayout()
+        pupil_unit_layout.addWidget(QLabel("Единицы зрачков:"))
+        self.pupil_unit_combo = QComboBox()
+        self.pupil_unit_combo.addItems(["мм", "дптр"])
+        self.pupil_unit_combo.setToolTip("Единицы для sP и sP'")
+        self.pupil_unit_combo.currentIndexChanged.connect(self._on_pupil_unit_changed)
+        pupil_unit_layout.addWidget(self.pupil_unit_combo)
+        pupil_unit_layout.addStretch()
+        self._parax_result = {}
+        self._current_system_ref = None
+
         # Мульти-λ параксиальная таблица
         self.parax_wl_table = QTableWidget()
         self.parax_wl_table.setColumnCount(4)

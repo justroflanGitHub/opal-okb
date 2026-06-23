@@ -33,6 +33,8 @@ class OpticalSystemView(QWidget):
     COLOR_FOCAL = QColor(200, 200, 60)              # Жёлтый F'
     COLOR_STOP = QColor(200, 60, 60)                # Стоп (красный)
     COLOR_GRID = QColor(30, 30, 50)                 # Сетка
+    COLOR_MIRROR = QColor(220, 180, 40)             # Зеркало (золотой)
+    COLOR_MIRROR_FILL = QColor(180, 140, 20, 100)   # Заливка зеркала
     
     # Цвета лучей по длине волны (нм)
     WL_COLORS = {
@@ -311,14 +313,19 @@ class OpticalSystemView(QWidget):
             painter.setFont(QFont("Consolas", 8))
             painter.drawText(int(p_top[0]) - 15, int(p_top[1]) - 5, "Предмет")
         
-        # ===== Линзы (заливка) =====
+        # ===== Линзы и зеркала (заливка) =====
         for i, s in enumerate(self.system.surfaces):
-            if s.glass and s.glass.upper() not in ('ВОЗДУХ', 'AIR', ''):
+            if s.is_reflective:
+                self._draw_mirror(painter, i, s, z_pos, to_screen, scale)
+            elif s.glass and s.glass.upper() not in ('ВОЗДУХ', 'AIR', ''):
                 self._draw_lens(painter, i, s, z_pos, to_screen, scale)
         
         # ===== Поверхности (контуры) =====
         for i, s in enumerate(self.system.surfaces):
-            self._draw_surface_edge(painter, s, z_pos[i], to_screen, scale, i)
+            if s.is_reflective:
+                self._draw_mirror_edge(painter, s, z_pos[i], to_screen, scale, i)
+            else:
+                self._draw_surface_edge(painter, s, z_pos[i], to_screen, scale, i)
         
         # ===== Лучи =====
         for rtype, wl, results in self.ray_results:
@@ -453,6 +460,87 @@ class OpticalSystemView(QWidget):
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(grad))
         painter.drawPath(path)
+    
+    def _draw_mirror(self, painter, idx, surf, z_pos, to_screen, scale):
+        """Отрисовка зеркальной поверхности с заливкой."""
+        sd = surf.semi_diameter if surf.semi_diameter > 0 else 15
+        z = z_pos[idx]
+        R = surf.radius if abs(surf.radius) > 1e-10 else 0
+        
+        n_pts = 60
+        path = QPainterPath()
+        first = True
+        for j in range(n_pts + 1):
+            y = -sd + 2 * sd * j / n_pts
+            sag = self._sag(R, y)
+            sx, sy = to_screen(z + sag, y)
+            if first:
+                path.moveTo(sx, sy)
+                first = False
+            else:
+                path.lineTo(sx, sy)
+        
+        # Зеркальная дуга (тонкая заливка)
+        # Добавляем обратную сторону (тонкий слой)
+        mirror_thickness = max(2.0, scale * 0.03)  # толщина слоя зеркала на экране
+        for j in range(n_pts, -1, -1):
+            y = -sd + 2 * sd * j / n_pts
+            sag = self._sag(R, y)
+            # Сдвигаем назад по Z для создания объёма
+            sx, sy = to_screen(z + sag + mirror_thickness / scale, y)
+            path.lineTo(sx, sy)
+        path.closeSubpath()
+        
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(self.COLOR_MIRROR_FILL))
+        painter.drawPath(path)
+    
+    def _draw_mirror_edge(self, painter, surf, z, to_screen, scale, idx):
+        """Контуры зеркальной поверхности — золотистая линия с штриховкой."""
+        sd = surf.semi_diameter if surf.semi_diameter > 0 else 15
+        R = surf.radius if abs(surf.radius) > 1e-10 else 0
+        
+        # Основная дуга зеркала
+        painter.setPen(QPen(self.COLOR_MIRROR, 2.5))
+        painter.setBrush(Qt.NoBrush)
+        
+        n_pts = 60
+        path = QPainterPath()
+        first = True
+        for j in range(n_pts + 1):
+            y = -sd + 2 * sd * j / n_pts
+            sag = self._sag(R, y)
+            sx, sy = to_screen(z + sag, y)
+            if first:
+                path.moveTo(sx, sy)
+                first = False
+            else:
+                path.lineTo(sx, sy)
+        painter.drawPath(path)
+        
+        # Штриховка на отражающей стороне (короткие линии под 45°)
+        painter.setPen(QPen(QColor(200, 160, 30, 150), 1))
+        n_hash = 12
+        hash_len = max(3, scale * 0.04)
+        for j in range(1, n_hash):
+            y = -sd + 2 * sd * j / n_hash
+            if abs(y) > abs(R) * 0.98:
+                continue
+            sag = self._sag(R, y)
+            sx, sy = to_screen(z + sag, y)
+            # Штрих под 45° (вниз-вправо для выпуклой стороны)
+            side_sign = 1 if R > 0 else -1
+            painter.drawLine(
+                int(sx), int(sy),
+                int(sx + side_sign * hash_len * 0.7),
+                int(sy + hash_len)
+            )
+        
+        # Подпись «З» (зеркало) рядом с поверхностью
+        painter.setPen(QPen(self.COLOR_MIRROR))
+        painter.setFont(QFont("Consolas", 8, QFont.Bold))
+        label_pos = to_screen(z, sd + 2)
+        painter.drawText(int(label_pos[0]) - 4, int(label_pos[1]) - 2, "З")
     
     def _draw_surface_edge(self, painter, surf, z, to_screen, scale, idx):
         """Контуры поверхностей."""

@@ -36,11 +36,14 @@ from achromat import design_achromat, GLASS_PAIRS
 class SurfaceTable(QTableWidget):
     """Таблица поверхностей оптической системы."""
 
-    HEADERS = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла", "n (при λ)", "Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
+    # Базовые заголовки (до n-колонок и после)
+    BASE_BEFORE = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла"]
+    BASE_AFTER = ["Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
 
     def __init__(self, parent=None):
-        super().__init__(0, len(self.HEADERS), parent)
-        self.setHorizontalHeaderLabels(self.HEADERS)
+        super().__init__(0, len(self.BASE_BEFORE) + 1 + len(self.BASE_AFTER), parent)
+        self._n_wl_cols = 1  # обновляется в load_system
+        self._update_headers(1)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setAlternatingRowColors(True)
@@ -48,39 +51,73 @@ class SurfaceTable(QTableWidget):
         self.setMinimumHeight(200)
         self._stop_surface = 1
 
+    def _update_headers(self, n_wl):
+        """Обновить заголовки таблицы под заданное число длин волн."""
+        self._n_wl_cols = n_wl
+        headers = list(self.BASE_BEFORE)
+        for j in range(n_wl):
+            headers.append(f"n{j+1}")
+        headers.extend(self.BASE_AFTER)
+        self.setColumnCount(len(headers))
+        self.setHorizontalHeaderLabels(headers)
+
+    def _col_indices(self):
+        """Вернуть словарь индексов колонок в зависимости от числа длин волн."""
+        n = self._n_wl_cols
+        return {
+            'no': 0, 'r': 1, 'd': 2, 'glass': 3,
+            'n_start': 4,
+            'sd': 4 + n,
+            'type': 4 + n + 1,
+            'k': 4 + n + 2,
+            'stop': 4 + n + 3,
+        }
+
     def load_system(self, sys: OpticalSystem):
         """Загрузить оптическую систему в таблицу."""
         self._stop_surface = sys.stop_surface
-        self.setRowCount(len(sys.surfaces) + 1)  # +1 для плоскости изображения
+        n_wl = max(1, len(sys.wavelengths))
+        self._n_wl_cols = n_wl
+        # Формируем заголовки с учётом длин волн
+        headers = list(self.BASE_BEFORE)
+        for j, wl in enumerate(sys.wavelengths if sys.wavelengths else [Wavelength(0.54607, 1.0, "e")]):
+            wl_name = wl.name if wl.name else f"{wl.value:.5f}"
+            headers.append(f"n{j+1}\n({wl_name}={wl.value:.5f})")
+        headers.extend(self.BASE_AFTER)
+        self.setColumnCount(len(headers))
+        self.setHorizontalHeaderLabels(headers)
+        self.setRowCount(len(sys.surfaces) + 1)
 
-        # Первичная длина волны для расчёта n
-        wl_primary = sys.wavelengths[0].value if sys.wavelengths else 0.54607
+        cols = self._col_indices()
+        wl_values = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.54607]
+
+        from optics_engine import refractive_index
 
         for i, s in enumerate(sys.surfaces):
-            self.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-            self.setItem(i, 1, QTableWidgetItem(f"{s.radius:.4f}" if s.radius != 0 else "∞"))
-            self.setItem(i, 2, QTableWidgetItem(f"{s.thickness:.4f}"))
-            self.setItem(i, 3, QTableWidgetItem(s.glass if s.glass else "ВОЗДУХ"))
+            self.setItem(i, cols['no'], QTableWidgetItem(str(i + 1)))
+            self.setItem(i, cols['r'], QTableWidgetItem(f"{s.radius:.4f}" if s.radius != 0 else "∞"))
+            self.setItem(i, cols['d'], QTableWidgetItem(f"{s.thickness:.4f}"))
+            self.setItem(i, cols['glass'], QTableWidgetItem(s.glass if s.glass else "ВОЗДУХ"))
 
-            # Показатель преломления n (6 знаков)
-            from optics_engine import refractive_index
-            if s.glass and s.glass.upper().strip() not in ('', 'ВОЗДУХ', 'AIR'):
-                n_val = refractive_index(s.glass, wl_primary, None, getattr(s, 'n_override', None))
-                n_text = f"{n_val:.6f}"
-            else:
-                n_text = "1.000000"
-            n_item = QTableWidgetItem(n_text)
-            n_item.setFlags(Qt.ItemIsEnabled)  # read-only
-            n_item.setTextAlignment(Qt.AlignCenter)
-            n_item.setForeground(QColor(80, 80, 80))
-            self.setItem(i, 4, n_item)
+            # Колонки n для каждой длины волны
+            for j, wl_val in enumerate(wl_values):
+                if s.glass and s.glass.upper().strip() not in ('', 'ВОЗДУХ', 'AIR'):
+                    n_val = refractive_index(s.glass, wl_val, None, getattr(s, 'n_override', None))
+                    n_text = f"{n_val:.6f}"
+                else:
+                    n_text = "1.000000"
+                n_item = QTableWidgetItem(n_text)
+                n_item.setFlags(Qt.ItemIsEnabled)  # read-only
+                n_item.setTextAlignment(Qt.AlignCenter)
+                n_item.setForeground(QColor(80, 80, 80))
+                self.setItem(i, cols['n_start'] + j, n_item)
 
-            self.setItem(i, 5, QTableWidgetItem(f"{s.semi_diameter:.2f}"))
-            self.setItem(i, 6, QTableWidgetItem(s.surface_type.name))
+            self.setItem(i, cols['sd'], QTableWidgetItem(f"{s.semi_diameter:.2f}"))
+            self.setItem(i, cols['type'], QTableWidgetItem(s.surface_type.name))
 
             # Коническая постоянная k
             k_text = f"{s.conic_constant:.4f}" if abs(s.conic_constant) > 1e-10 else "0"
-            self.setItem(i, 7, QTableWidgetItem(k_text))
+            self.setItem(i, cols['k'], QTableWidgetItem(k_text))
 
             # Стоп-чекбокс
             stop_item = QTableWidgetItem()
@@ -90,18 +127,18 @@ class SurfaceTable(QTableWidget):
             else:
                 stop_item.setCheckState(Qt.Unchecked)
             stop_item.setTextAlignment(Qt.AlignCenter)
-            self.setItem(i, 8, stop_item)
+            self.setItem(i, cols['stop'], stop_item)
 
             # Выравнивание
-            for col in [0, 1, 2, 5, 7]:
-                item = self.item(i, col)
+            for key in ['no', 'r', 'd', 'sd', 'k']:
+                item = self.item(i, cols[key])
                 if item:
                     item.setTextAlignment(Qt.AlignCenter)
 
         # Строка плоскости изображения
         last = len(sys.surfaces)
-        self.setItem(last, 0, QTableWidgetItem("Изобр."))
-        self.setItem(last, 1, QTableWidgetItem("∞"))
+        self.setItem(last, cols['no'], QTableWidgetItem("Изобр."))
+        self.setItem(last, cols['r'], QTableWidgetItem("∞"))
         for col in range(2, self.columnCount()):
             self.setItem(last, col, QTableWidgetItem(""))
 
@@ -110,12 +147,13 @@ class SurfaceTable(QTableWidget):
             for col in range(self.columnCount()):
                 item = self.item(sys.stop_surface - 1, col)
                 if item:
-                    item.setBackground(QColor(255, 200, 200))  # красноватый для стопа
+                    item.setBackground(QColor(255, 200, 200))
 
     def get_stop_surface(self) -> int:
         """Получить номер стоп-поверхности из таблицы."""
+        cols = self._col_indices()
         for i in range(self.rowCount()):
-            item = self.item(i, 8)
+            item = self.item(i, cols['stop'])
             if item and item.checkState() == Qt.Checked:
                 return i + 1
         return self._stop_surface
@@ -1020,11 +1058,14 @@ class MainWindow(QMainWindow):
             return
 
         # Обновить поверхности из таблицы
+        n_wl = max(1, len(sys.wavelengths))
+        sd_col = 4 + n_wl    # D/2
+        k_col = 4 + n_wl + 2  # k
         for i in range(min(self.surface_table.rowCount(), len(sys.surfaces))):
             r_item = self.surface_table.item(i, 1)
             d_item = self.surface_table.item(i, 2)
             g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, 5)
+            sd_item = self.surface_table.item(i, sd_col)
 
             if r_item:
                 txt = r_item.text().strip()
@@ -1042,7 +1083,7 @@ class MainWindow(QMainWindow):
             if sd_item:
                 txt = sd_item.text().strip()
                 sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.surface_table.item(i, 7)
+            k_item = self.surface_table.item(i, k_col)
             if k_item:
                 txt = k_item.text().strip()
                 try:
@@ -1448,12 +1489,15 @@ class MainWindow(QMainWindow):
     def _collect_system_from_ui(self):
         """Собрать текущие данные из UI в current_system (без запуска расчёта)."""
         sys = self.current_system
+        n_wl = max(1, len(sys.wavelengths))
+        sd_col = 4 + n_wl    # D/2
+        k_col = 4 + n_wl + 2  # k
         # Поверхности
         for i in range(min(self.surface_table.rowCount(), len(sys.surfaces))):
             r_item = self.surface_table.item(i, 1)
             d_item = self.surface_table.item(i, 2)
             g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, 5)
+            sd_item = self.surface_table.item(i, sd_col)
             if r_item:
                 txt = r_item.text().strip()
                 sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
@@ -1472,7 +1516,7 @@ class MainWindow(QMainWindow):
                 txt = sd_item.text().strip()
                 sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
             # Коническая постоянная k
-            k_item = self.surface_table.item(i, 7)
+            k_item = self.surface_table.item(i, k_col)
             if k_item:
                 txt = k_item.text().strip()
                 try:

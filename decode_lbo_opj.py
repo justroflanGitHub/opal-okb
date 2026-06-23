@@ -241,25 +241,35 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     else:
         field_deg = 0.0
     
-    # Y height (Высота по Y) at 0x5C = pupil semi-diameter
-    y_height = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
-    if y_height < 0.01 or y_height > 1e4:  # garbage check
-        y_height = 0.0
-    if y_height > 0:
-        pupil_diameter = y_height * 2
-    elif semi_diameters:
-        pupil_diameter = max(semi_diameters) * 2
-    else:
-        pupil_diameter = 20.0
+    # Aperture type at 0x3A: 0=NA(sin), 2=F/#, 4=D(mm)
+    ap_type_code = struct.unpack_from('<H', data, 0x3A)[0] if len(data) > 0x3B else 4
+    # 0x5C = aperture value (float64): NA, F/#, или D/2 в мм
+    ap_val_5c = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
+    if math.isnan(ap_val_5c) or ap_val_5c > 1e4:
+        ap_val_5c = 0.0
     
     # Определить f/# из названия (например "1:4.5")
     f_match_name = re.search(r"1:(\d+[.,]?\d*)", name)
     
     sys_obj = OpticalSystem(name=name)
     sys_obj.object_type = ObjectType.INFINITE
-    sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
-    sys_obj.aperture_value = pupil_diameter
     sys_obj.object_height = field_deg if field_deg > 0.001 else 0.0
+    
+    # Апертура
+    if ap_type_code == 0 and ap_val_5c < 1.0:
+        sys_obj.aperture_type = ApertureType.NUMERICAL_APERTURE
+        sys_obj.aperture_value = ap_val_5c
+    elif ap_type_code == 2:
+        sys_obj.aperture_type = ApertureType.F_NUMBER
+        sys_obj.aperture_value = ap_val_5c if ap_val_5c > 0 else 5.5
+    else:
+        sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
+        if ap_val_5c > 1.0:
+            sys_obj.aperture_value = ap_val_5c * 2  # D/2 → D
+        elif semi_diameters:
+            sys_obj.aperture_value = max(semi_diameters) * 2
+        else:
+            sys_obj.aperture_value = 20.0
     # Длины волн с именами стандартных линий
     _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
                  0.58756: 'd', 0.48613: 'F', 0.43584: 'g',

@@ -560,14 +560,22 @@ class SystemParamsWidget(QWidget):
 
         self.obj_type_combo = QComboBox()
         self.obj_type_combo.addItems(["Бесконечно удалённый предмет (∞)", "Конечный предмет"])
+        self.obj_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         layout.addRow("Тип предмета:", self.obj_type_combo)
 
         self.obj_height_spin = QDoubleSpinBox()
         self.obj_height_spin.setRange(-1000, 1000)
-        self.obj_height_spin.setDecimals(4)
+        self.obj_height_spin.setDecimals(6)
         self.obj_height_spin.setValue(5.0)
         self.obj_height_spin.setToolTip("Угловое поле (град) для ∞ или высота предмета (мм) для конечного")
-        layout.addRow("Поле/высота предмета:", self.obj_height_spin)
+        # Подпись с форматом + поле для отображения Г.ММСС
+        field_layout = QHBoxLayout()
+        field_layout.addWidget(self.obj_height_spin)
+        self.obj_height_gmms_label = QLabel("")
+        self.obj_height_gmms_label.setStyleSheet("color: #666;")
+        self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
+        field_layout.addWidget(self.obj_height_gmms_label)
+        layout.addRow("Поле/высота предмета:", field_layout)
 
         self.aperture_type_combo = QComboBox()
         self.aperture_type_combo.addItems(["Входной зрачок D (мм)", "Числовая апертура NA", "F/#"])
@@ -610,6 +618,17 @@ class SystemParamsWidget(QWidget):
         self.wl_table = QTableWidget(0, 3)
         self.wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
         self.wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def _update_gmms_label(self, val=None):
+        """Обновить отображение поля в формате Г.ММСС."""
+        from system_utils import deg_to_gmms, gmms_to_str
+        deg = self.obj_height_spin.value()
+        if self.obj_type_combo.currentIndex() == 0 and abs(deg) > 0.001:
+            # Бесконечный предмет — показываем Г.ММСС
+            gmms = deg_to_gmms(deg)
+            self.obj_height_gmms_label.setText(f"= {gmms:.4f} гр.мнск ({gmms_to_str(gmms)})")
+        else:
+            self.obj_height_gmms_label.setText("")
         self.wl_table.setVisible(False)  # скрытый
 
     def _add_wavelength(self):

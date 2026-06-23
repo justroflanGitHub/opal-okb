@@ -231,27 +231,24 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     ri_per_wl = (len(ri_values) - nair_ri) // ng if ng > 0 else 0
 
     # 10. Build system
-    # y_height (pupil/semi-diameter) at 0x58
-    y_height = abs(struct.unpack_from('<d', data, 0x58)[0]) if len(data) > 0x60 else 0.0
-    # field value at 0x74 (radians for INFINITE, mm for FINITE)
+    # Field value at 0x74: stored as radians for INFINITE object
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
     # Если |field_val| < 0.1 — это радианы (INFINITE object)
     if 0 < abs(field_val) < 0.1:
         field_deg = math.degrees(abs(field_val))
-    else:
+    elif abs(field_val) >= 0.1:
         field_deg = abs(field_val)
+    else:
+        field_deg = 0.0
     
-    # Aperture: y_height = pupil semi-diameter в мм
-    # Если y_height = 0 — пробуем взять из semi-diameters поверхностей
-    if y_height < 0.1 and semi_diameters:
-        y_height = max(semi_diameters) if semi_diameters else 20.0
-    pupil_diameter = max(y_height * 2, 10.0)
+    # Aperture: берём из semi-diameters (первая поверхность)
+    if semi_diameters:
+        pupil_radius = semi_diameters[0] if semi_diameters[0] > 0 else max(semi_diameters)
+    else:
+        pupil_radius = 20.0
+    pupil_diameter = pupil_radius * 2
     
-    # Определить тип апертуры из флагов (0x36)
-    flags_val = struct.unpack_from('<H', data, 0x36)[0] if len(data) > 0x37 else 0
-    # В OPAL-PC: flags bit 0 = object type (0=INFINITE, 1=FINITE)
-    # Aperture type: 0=ENTRANCE_PUPIL, 1=NA, 2=F/#
-    # Если в названии есть 1:X — можно извлечь f/#
+    # Определить f/# из названия (например "1:4.5")
     f_match_name = re.search(r"1:(\d+[.,]?\d*)", name)
     
     sys_obj = OpticalSystem(name=name)

@@ -30,6 +30,70 @@ STANDARD_RADII = [
 ]
 
 
+# ============================================================
+# Конвертация угловых величин: десятичные градусы ↔ Г.ММСС
+# ============================================================
+
+def deg_to_gmms(deg: float) -> float:
+    """Десятичные градусы → формат Г.ММСС (градусы.минутысекунды).
+    
+    Пример: 0.5° → 0.30 (0°30'00")
+            23.2° → 23.1200 (23°12'00")
+            5.25° → 5.1500 (5°15'00")
+    """
+    sign = -1 if deg < 0 else 1
+    deg = abs(deg)
+    d = int(deg)
+    m_full = (deg - d) * 60
+    m = int(m_full)
+    s = round((m_full - m) * 60)
+    if s >= 60:
+        s -= 60
+        m += 1
+    if m >= 60:
+        m -= 60
+        d += 1
+    return sign * (d + m / 100.0 + s / 10000.0)
+
+
+def gmms_to_deg(gmms: float) -> float:
+    """Формат Г.ММСС → десятичные градусы.
+    
+    Пример: 0.30 → 0.5° (0°30'00")
+            23.1200 → 23.2° (23°12'00")
+            0.3000 → 0.5°
+    """
+    sign = -1 if gmms < 0 else 1
+    gmms = abs(gmms)
+    d = int(gmms)
+    frac = gmms - d
+    # Первые 2 цифры дробной части = минуты, следующие 2 = секунды
+    m = int(frac * 100)
+    s = round((frac * 100 - m) * 100)
+    if s >= 60:
+        s -= 60
+        m += 1
+    if m >= 60:
+        m -= 60
+        d += 1
+    return sign * (d + m / 60.0 + s / 3600.0)
+
+
+def gmms_to_str(gmms: float) -> str:
+    """Г.ММСС → строка 'ГГ°ММ'СС\"'"""
+    sign = '-' if gmms < 0 else ''
+    gmms = abs(gmms)
+    d = int(gmms)
+    frac = gmms - d
+    m = int(frac * 100)
+    s = round((frac * 100 - m) * 100)
+    if s >= 60:
+        s -= 60; m += 1
+    if m >= 60:
+        m -= 60; d += 1
+    return f"{sign}{d}°{m:02d}'{s:02d}\""
+
+
 def nearest_standard_radius(radius: float) -> float:
     """Найти ближайший стандартный радиус по ГОСТ 1807-75.
 

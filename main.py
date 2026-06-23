@@ -1017,6 +1017,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Демо: {self.current_system.name}")
 
     def _refresh_ui(self):
+        # Если в системе нет длин волн — подставить стандартные e, G', C
+        if not self.current_system.wavelengths:
+            from optics_engine import _std_wavelengths
+            self.current_system.wavelengths = _std_wavelengths()
         self.surface_table.load_system(self.current_system)
         self.sys_params.load_system(self.current_system)
         self.results.log_text.clear()
@@ -1647,10 +1651,15 @@ class MainWindow(QMainWindow):
         wl_table = QTableWidget(0, 3)
         wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
         wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        for wl in self.current_system.wavelengths:
+        # Если в системе нет длин волн — подставить стандартные e, G', C
+        current_wls = self.current_system.wavelengths
+        if not current_wls:
+            from optics_engine import _std_wavelengths
+            current_wls = _std_wavelengths()
+        for wl in current_wls:
             r = wl_table.rowCount()
             wl_table.insertRow(r)
-            wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.4f}"))
+            wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.5f}"))
             wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
             wl_table.setItem(r, 2, QTableWidgetItem(wl.name or ""))
         layout.addWidget(wl_table)
@@ -1659,8 +1668,21 @@ class MainWindow(QMainWindow):
         add_btn = QPushButton("+ Добавить")
         del_btn = QPushButton("- Удалить")
         std_btn = QPushButton("Стандартные...")
+        default_btn = QPushButton("По умолчанию (e, G', C)")
         add_btn.clicked.connect(lambda: wl_table.insertRow(wl_table.rowCount()))
         del_btn.clicked.connect(lambda: wl_table.removeRow(wl_table.currentRow()) if wl_table.currentRow() >= 0 else None)
+        # Кнопка "По умолчанию" — очищает и заполняет e, G', C
+        def _set_default_wls():
+            from optics_engine import _std_wavelengths
+            std = _std_wavelengths()
+            wl_table.setRowCount(0)
+            for wl in std:
+                r = wl_table.rowCount()
+                wl_table.insertRow(r)
+                wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.5f}"))
+                wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
+                wl_table.setItem(r, 2, QTableWidgetItem(wl.name))
+        default_btn.clicked.connect(_set_default_wls)
         # Standard wavelengths dialog
         from io_utils import STANDARD_WAVELENGTHS
         def _add_std():
@@ -1691,6 +1713,7 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(del_btn)
         btn_layout.addWidget(std_btn)
+        btn_layout.addWidget(default_btn)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)

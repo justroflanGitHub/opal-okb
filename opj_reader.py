@@ -239,7 +239,25 @@ def load_opj(filepath):
                 if len(wavelengths) >= 5:
                     break
     
-    sys.wavelengths = [Wavelength(w, 1.0) for w in wavelengths] if wavelengths else [Wavelength(0.58756, 1.0, "d")]
+    # Длины волн: если не найдены — стандарт e, G', C
+    from optics_engine import _std_wavelengths
+    if not wavelengths:
+        sys.wavelengths = _std_wavelengths()
+    else:
+        # Назначаем имена стандартных линий
+        _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
+                     0.58756: 'd', 0.48613: 'F', 0.43584: 'g',
+                     0.40466: 'h', 0.36501: 'i', 0.70652: 'r',
+                     0.85211: 's', 0.64385: "C'", 0.47999: "F'"}
+        wl_list = []
+        for w in wavelengths:
+            name = ''
+            for wlv, wln in _wl_names.items():
+                if abs(w - wlv) < 0.0002:
+                    name = wln
+                    break
+            wl_list.append(Wavelength(w, 1.0, name))
+        sys.wavelengths = wl_list
     sys.surfaces = surfaces
     sys.stop_surface = 1
     sys.aperture_value = 20.0

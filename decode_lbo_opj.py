@@ -74,9 +74,14 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         off = wl_idx_off + i * 2
         if off + 2 > len(data): break
         wl_idx = struct.unpack_from('<H', data, off)[0]
-        wavelengths.append(OPAL_WL.get(wl_idx, 0.58930))
+        wavelengths.append(OPAL_WL.get(wl_idx, 0.0))
+    # Фильтруем нули — нет реальных данных о длинах волн в LBO
+    wavelengths = [w for w in wavelengths if w > 0.0]
+    # Если длины волн не найдены — используем стандартный набор e, G', C
     if not wavelengths:
-        wavelengths = [0.58930]
+        from optics_engine import _std_wavelengths
+        _std = _std_wavelengths()
+        wavelengths = [w.value for w in _std]
 
     # 6. Glass block: search ВОЗДУХ
     vozdh = 'ВОЗДУХ'.encode('cp866')
@@ -171,7 +176,21 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
     sys_obj.aperture_value = max(y_height * 2, 10.0)
     sys_obj.object_height = field_deg if field_deg > 0 else 5.0
-    sys_obj.wavelengths = [Wavelength(wl, 1.0) for wl in wavelengths[:num_wl]]
+    # Длины волн с именами стандартных линий
+    _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
+                 0.58756: 'd', 0.48613: 'F', 0.43584: 'g',
+                 0.40466: 'h', 0.36501: 'i', 0.70652: 'r',
+                 0.85211: 's', 0.64385: "C'", 0.47999: "F'",
+                 0.58930: 'D'}
+    _wl_list = []
+    for wl in wavelengths:
+        name = ''
+        for wlv, wln in _wl_names.items():
+            if abs(wl - wlv) < 0.0002:
+                name = wln
+                break
+        _wl_list.append(Wavelength(wl, 1.0, name))
+    sys_obj.wavelengths = _wl_list
     sys_obj.field_points = [FieldPoint(0.0)]
     if field_deg > 0:
         sys_obj.field_points.append(FieldPoint(field_deg))

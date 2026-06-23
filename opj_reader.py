@@ -221,23 +221,38 @@ def load_opj(filepath):
     wl_search_start = surf_start + num_surf * 16 if surf_start >= 0 else 0x58
     wl_search_end = glass_start if glass_start >= 0 else len(data)
     
-    seen_offsets = set()
+    seen_values = set()
     for i in range(wl_search_start, min(wl_search_end, len(data)) - 7, 8):
         v = struct.unpack_from('<d', data, i)[0]
-        if v == v and 0.35 < v < 2.5 and i not in seen_offsets:
-            wavelengths.append(v)
-            seen_offsets.add(i)
-            if len(wavelengths) >= 5:
-                break
+        if v == v and 0.35 < v < 2.5:
+            rounded = round(v, 5)
+            if rounded not in seen_values:
+                wavelengths.append(v)
+                seen_values.add(rounded)
+                if len(wavelengths) >= max(num_wl, 5):
+                    break
     
     # If no wavelengths found between blocks, search entire file
     if not wavelengths:
         for i in range(0, len(data) - 7, 8):
             v = struct.unpack_from('<d', data, i)[0]
             if v == v and 0.35 < v < 2.5:
-                wavelengths.append(v)
-                if len(wavelengths) >= 5:
-                    break
+                rounded = round(v, 5)
+                if rounded not in seen_values:
+                    wavelengths.append(v)
+                    seen_values.add(rounded)
+                    if len(wavelengths) >= max(num_wl, 5):
+                        break
+    
+    # Дедупликация: оставить только уникальные значения
+    unique_wl = []
+    seen = set()
+    for w in wavelengths:
+        r = round(w, 5)
+        if r not in seen:
+            seen.add(r)
+            unique_wl.append(w)
+    wavelengths = unique_wl
     
     # Длины волн: если не найдены — стандарт e, G', C
     from optics_engine import _std_wavelengths

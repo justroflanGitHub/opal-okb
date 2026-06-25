@@ -51,7 +51,7 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 | 0x5C   | 8    | float64 | **Апертура**: Y/2 (мм) если ≥1, NA (sin) если <1 |
 | 0x64   | 8    | float64 | Апертура (duplicate) |
 | 0x6C   | 8    | float64 | **SD** (смещение диафрагмы от ND, мм) |
-| 0x70   | 8    | float64 | Неизвестно (возможно спец. параметр) |
+| 0x70   | 8    | float64 | Флаг виньетирования/светораспределения: +2.0, -2.0, или 0 (25+5 из 612 систем) |
 | 0x74   | 8    | float64 | **Поле** (радианы если |v|<1, градусы если |v|≥1) |
 | 0x7C   | 8    | float64 | Поле (duplicate) |
 | 0x80   | 24   | bytes | Zeros / reserved |

@@ -200,17 +200,17 @@ def test_object_image_types():
     check("LENS obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
     check("LENS img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
 
-    # MICROLEN: ближний → дальний (микрообъектив)
+    # MICROLEN: ближний → ближний (микрообъектив: препарат близко, изображение в тубусе)
     micro = load_lbo_fast('extracted/opal_okb/Lib/MICROLEN.LBO')
     s = decode_lbo_opj(micro[0]['opj_data'])  # ОМ-2
     check("MICRO obj=FINITE", s.object_type == ObjectType.FINITE, str(s.object_type))
-    check("MICRO img=INFINITE", s.image_type == ObjectType.INFINITE, str(s.image_type))
+    check("MICRO img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
 
-    # OCULAR: дальний → дальний (окуляр)
+    # OCULAR: дальний → ближний (окуляр: глаз в фокусе, изображение вблизи)
     ocul = load_lbo_fast('extracted/opal_okb/Lib/OCULAR.LBO')
     s = decode_lbo_opj(ocul[0]['opj_data'])  # f'=5
     check("OCUL obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
-    check("OCUL img=INFINITE", s.image_type == ObjectType.INFINITE, str(s.image_type))
+    check("OCUL img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
 
     # REPROD: ближний → ближний (репродукционный)
     rep = load_lbo_fast('extracted/opal_okb/Lib/REPROD.LBO')

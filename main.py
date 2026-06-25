@@ -634,9 +634,9 @@ class SystemParamsWidget(QWidget):
         grid.addWidget(QLabel("Мера величины:"), row, col_img)
         row += 1
         self.obj_measure_combo = QComboBox()
-        self.obj_measure_combo.addItems(["град", "мм"])
+        self.obj_measure_combo.addItems(["tg", "мм"])
         self.img_measure_combo = QComboBox()
-        self.img_measure_combo.addItems(["град", "мм"])
+        self.img_measure_combo.addItems(["tg", "мм"])
         grid.addWidget(self.obj_measure_combo, row, col_obj)
         grid.addWidget(self.img_measure_combo, row, col_img)
         row += 1
@@ -742,15 +742,32 @@ class SystemParamsWidget(QWidget):
         self.wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
         # Сигналы
-        self.obj_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
+        self.obj_type_combo.currentIndexChanged.connect(lambda idx: self._on_type_changed('obj', idx))
+        self.img_type_combo.currentIndexChanged.connect(lambda idx: self._on_type_changed('img', idx))
         self.obj_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
-        self.img_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         self.img_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         self.img_height_spin.valueChanged.connect(self._update_gmms_label)
         # Связь передней апертуры с aperture_type_combo/aperture_spin для совместимости
         self.front_ap_spin.valueChanged.connect(self._sync_aperture)
         self.front_ap_combo.currentIndexChanged.connect(self._sync_aperture)
+
+    def _on_type_changed(self, side: str, idx: int):
+        """Auto-set мера/отрезок при смене типа предмета/изображения.
+        
+        Дальнего типа (∞): мера=tg, отрезок=дптр, величина=гр.ММСС
+        Ближнего типа:    мера=мм, отрезок=мм, величина=мм
+        """
+        is_far = (idx == 0)
+        if side == 'obj':
+            self.obj_measure_combo.setCurrentIndex(0 if is_far else 1)  # tg / мм
+            self.front_section_combo.setCurrentIndex(1 if is_far else 0)  # дптр / мм
+            self.obj_height_spin.setSuffix('' if is_far else ' мм')
+        else:
+            self.img_measure_combo.setCurrentIndex(0 if is_far else 1)
+            self.back_shift_combo.setCurrentIndex(1 if is_far else 0)
+            self.img_height_spin.setSuffix('' if is_far else ' мм')
+        self._update_gmms_label()
 
     def _sync_aperture(self):
         """Синхронизировать переднюю апертуру с legacy aperture_spin/aperture_type_combo."""
@@ -826,8 +843,14 @@ class SystemParamsWidget(QWidget):
 
     def load_system(self, sys: OpticalSystem):
         self.name_edit.setText(sys.name)
+        # Тип предмета: 0=INFINITE(∞), 1=FINITE(ближний)
         self.obj_type_combo.setCurrentIndex(0 if sys.object_type == ObjectType.INFINITE else 1)
+        # Тип изображения: 0=INFINITE(∞), 1=FINITE(ближний)
+        self.img_type_combo.setCurrentIndex(0 if sys.image_type == ObjectType.INFINITE else 1)
         self.obj_height_spin.setValue(sys.object_height)
+        # Auto-set мера/отрезок по типу
+        self._on_type_changed('obj', self.obj_type_combo.currentIndex())
+        self._on_type_changed('img', self.img_type_combo.currentIndex())
 
         # Апертура: автоматически выбрать тип и значение
         if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
@@ -1297,6 +1320,7 @@ class MainWindow(QMainWindow):
         sys.stop_offset = self.sys_params.stop_sd_spin.value()
         sys.name = self.sys_params.name_edit.text()
         sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
+        sys.image_type = ObjectType.INFINITE if self.sys_params.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = self.sys_params.obj_height_spin.value()
         # Апертура из новых виджетов
         ap_idx = self.sys_params.front_ap_combo.currentIndex()
@@ -1742,6 +1766,7 @@ class MainWindow(QMainWindow):
         # Параметры
         sys.name = self.sys_params.name_edit.text()
         sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
+        sys.image_type = ObjectType.INFINITE if self.sys_params.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = self.sys_params.obj_height_spin.value()
         # Апертура из новых виджетов
         ap_idx = self.sys_params.front_ap_combo.currentIndex()

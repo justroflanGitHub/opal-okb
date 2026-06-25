@@ -39,8 +39,8 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 | 0x38   | 2    | uint16 | num_wl (wavelength count) |
 | 0x3A   | 2    | uint16 | **ND** (stop surface number) |
 | 0x3C   | 2    | uint16 | **Тип предмета**: 0=дальний (∞), 1=ближний (конечный) |
-| 0x3E   | 2    | uint16 | Reserved (always 1) |
-| 0x46   | 2    | uint16 | **Тип изображения**: 0=ближний, 65535=дальний (∞) |
+| 0x3E   | 2    | uint16 | **Тип изображения**: 0=дальний (∞), 1=ближний (конечный) |
+| 0x46   | 2    | uint16 | Не тип изображения (формат данных?) |
 
 ### System Parameters
 

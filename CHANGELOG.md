@@ -2,6 +2,23 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.3.1] — 2026-06-25
+
+### Fixed
+- **image_type** parsed from **0x3E** (not 0x46 or 0x4A)
+  - 0x3E = 0: дальнего типа (∞, телескопические системы)
+  - 0x3E = 1: ближнего типа (фотообъективы, окуляры, микроскопы)
+  - Verified: Индустар-23у (ближ), Окуляр (ближ), ОМ-2 (ближ), Галилей (даль), BINOC-8X (даль)
+- **UI**: `img_type_combo` auto-set from LBO on system load
+- **UI**: `_on_type_changed()` auto-sets мера/отрезок/величина:
+  - Дальнего типа: мера=tg, отрезок=дптр, величина=гр.ММСС
+  - Ближнего типа: мера=мм, отрезок=мм, величина=мм
+- **0x70** identified as vignetting/light distribution flag (±2.0 or 0)
+
+### Added
+- `OpticalSystem.image_type` field (INFINITE/FINITE)
+- 9 new parser tests for object/image types (53 total)
+
 ## [1.3.0] — 2026-06-25
 
 ### Added

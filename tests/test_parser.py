@@ -191,6 +191,39 @@ def test_kvarts_n():
     check("n(C)<n(e)", n_c < n_e, f"n(C)={n_c:.6f} n(e)={n_e:.6f}")
 
 
+def test_object_image_types():
+    """Тип предмета и изображения для разных каталогов."""
+    print("\n=== Object/Image types ===")
+    # LENS: дальний → ближний (фотообъектив)
+    lens = load_lbo_fast('extracted/opal_okb/Lib/LENS.LBO')
+    s = decode_lbo_opj(lens[3]['opj_data'])  # Индустар-23у
+    check("LENS obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
+    check("LENS img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+
+    # MICROLEN: ближний → дальний (микрообъектив)
+    micro = load_lbo_fast('extracted/opal_okb/Lib/MICROLEN.LBO')
+    s = decode_lbo_opj(micro[0]['opj_data'])  # ОМ-2
+    check("MICRO obj=FINITE", s.object_type == ObjectType.FINITE, str(s.object_type))
+    check("MICRO img=INFINITE", s.image_type == ObjectType.INFINITE, str(s.image_type))
+
+    # OCULAR: дальний → дальний (окуляр)
+    ocul = load_lbo_fast('extracted/opal_okb/Lib/OCULAR.LBO')
+    s = decode_lbo_opj(ocul[0]['opj_data'])  # f'=5
+    check("OCUL obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
+    check("OCUL img=INFINITE", s.image_type == ObjectType.INFINITE, str(s.image_type))
+
+    # REPROD: ближний → ближний (репродукционный)
+    rep = load_lbo_fast('extracted/opal_okb/Lib/REPROD.LBO')
+    s = decode_lbo_opj(rep[0]['opj_data'])
+    check("REPROD obj=FINITE", s.object_type == ObjectType.FINITE, str(s.object_type))
+
+    # LENS_SPC: дальний → ближний (зеркально-линзовый)
+    spc = load_lbo_fast('extracted/opal_okb/Lib/LENS_SPC.LBO')
+    s = decode_lbo_opj(spc[1]['opj_data'])  # f'=450
+    check("SPC obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
+    check("SPC img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+
+
 if __name__ == '__main__':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -200,6 +233,7 @@ if __name__ == '__main__':
     test_kvarts_n()
     test_industar23u()
     test_mirror_lens()
+    test_object_image_types()
     test_batch_lens_lbo()
 
     print(f"\n{'='*50}")

@@ -94,6 +94,7 @@ class OpticalSystem:
     name: str = ""
     # Предмет
     object_type: ObjectType = ObjectType.INFINITE
+    image_type: ObjectType = ObjectType.FINITE   # Тип изображения: INFINITE=дальний, FINITE=ближний
     object_height: float = 0.0     # мм (для FINITE) или градусы (для INFINITE)
     object_distance: float = 0.0   # мм — расстояние от предмета до первой поверхности (для FINITE)
     # Поверхности

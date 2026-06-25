@@ -548,87 +548,238 @@ class ResultsPanel(QWidget):
 
 
 class SystemParamsWidget(QWidget):
-    """Параметры оптической системы (длины волн, поле, апертура)."""
+    """Формирование оптической системы."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        layout = QFormLayout(self)
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
 
+        # === Наименование ===
+        name_layout = QHBoxLayout()
+        name_layout.addWidget(QLabel("Наименование:"))
         self.name_edit = QLineEdit()
-        layout.addRow("Название:", self.name_edit)
+        name_layout.addWidget(self.name_edit, 1)
+        layout.addLayout(name_layout)
 
+        # === Двухколоночная схема: Предмет | Изображение ===
+        grid = QGridLayout()
+        grid.setSpacing(4)
+        col_obj = 0   # колонка предмета
+        col_img = 2   # колонка изображения
+        row = 0
+
+        # Заголовки
+        lbl_obj = QLabel("Предмет")
+        lbl_obj.setStyleSheet("font-weight: bold; color: #3a6ea5;")
+        lbl_img = QLabel("Изображение")
+        lbl_img.setStyleSheet("font-weight: bold; color: #3a6ea5;")
+        grid.addWidget(lbl_obj, row, col_obj)
+        grid.addWidget(lbl_img, row, col_img)
+        row += 1
+
+        # Тип: дальнего/ближнего
         self.obj_type_combo = QComboBox()
-        self.obj_type_combo.addItems(["Бесконечно удалённый предмет (∞)", "Конечный предмет"])
-        self.obj_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
-        layout.addRow("Тип предмета:", self.obj_type_combo)
+        self.obj_type_combo.addItems(["Дальнего типа (∞)", "Ближнего типа"])
+        self.img_type_combo = QComboBox()
+        self.img_type_combo.addItems(["Дальнего типа (∞)", "Ближнего типа"])
+        grid.addWidget(self.obj_type_combo, row, col_obj)
+        grid.addWidget(self.img_type_combo, row, col_img)
+        row += 1
 
+        # Передний отрезок / Смещение
+        grid.addWidget(QLabel("Передний отрезок:"), row, col_obj)
+        grid.addWidget(QLabel("Смещ. от пл.Гаусса:"), row, col_img)
+        row += 1
+        self.front_section_spin = QDoubleSpinBox()
+        self.front_section_spin.setRange(-100000, 100000)
+        self.front_section_spin.setDecimals(4)
+        self.front_section_spin.setSuffix(" мм")
+        self.back_shift_spin = QDoubleSpinBox()
+        self.back_shift_spin.setRange(-100000, 100000)
+        self.back_shift_spin.setDecimals(4)
+        self.back_shift_spin.setSuffix(" мм")
+        self.front_section_combo = QComboBox()
+        self.front_section_combo.addItems(["мм", "дптр"])
+        self.back_shift_combo = QComboBox()
+        self.back_shift_combo.addItems(["мм", "дптр"])
+        fs_layout = QHBoxLayout()
+        fs_layout.addWidget(self.front_section_spin)
+        fs_layout.addWidget(self.front_section_combo)
+        bs_layout = QHBoxLayout()
+        bs_layout.addWidget(self.back_shift_spin)
+        bs_layout.addWidget(self.back_shift_combo)
+        grid.addLayout(fs_layout, row, col_obj)
+        grid.addLayout(bs_layout, row, col_img)
+        row += 1
+
+        # Радиус предмета / изображения
+        grid.addWidget(QLabel("Радиус предмета:"), row, col_obj)
+        grid.addWidget(QLabel("Радиус изображения:"), row, col_img)
+        row += 1
+        self.obj_radius_spin = QDoubleSpinBox()
+        self.obj_radius_spin.setRange(-1e6, 1e6)
+        self.obj_radius_spin.setDecimals(4)
+        self.obj_radius_spin.setSuffix(" мм")
+        self.img_radius_spin = QDoubleSpinBox()
+        self.img_radius_spin.setRange(-1e6, 1e6)
+        self.img_radius_spin.setDecimals(4)
+        self.img_radius_spin.setSuffix(" мм")
+        grid.addWidget(self.obj_radius_spin, row, col_obj)
+        grid.addWidget(self.img_radius_spin, row, col_img)
+        row += 1
+
+        # Мера величины
+        grid.addWidget(QLabel("Мера величины:"), row, col_obj)
+        grid.addWidget(QLabel("Мера величины:"), row, col_img)
+        row += 1
+        self.obj_measure_combo = QComboBox()
+        self.obj_measure_combo.addItems(["град", "мм"])
+        self.img_measure_combo = QComboBox()
+        self.img_measure_combo.addItems(["град", "мм"])
+        grid.addWidget(self.obj_measure_combo, row, col_obj)
+        grid.addWidget(self.img_measure_combo, row, col_img)
+        row += 1
+
+        # Величина предмета / изображения
+        grid.addWidget(QLabel("Величина предмета:"), row, col_obj)
+        grid.addWidget(QLabel("Величина изображения:"), row, col_img)
+        row += 1
         self.obj_height_spin = QDoubleSpinBox()
         self.obj_height_spin.setRange(-1000, 1000)
         self.obj_height_spin.setDecimals(6)
-        self.obj_height_spin.setValue(5.0)
-        self.obj_height_spin.setToolTip("Угловое поле (град) для ∞ или высота предмета (мм) для конечного")
-        # Подпись с форматом + поле для отображения Г.ММСС
-        field_layout = QHBoxLayout()
-        field_layout.addWidget(self.obj_height_spin)
+        self.obj_height_spin.setValue(0.0)
         self.obj_height_gmms_label = QLabel("")
-        self.obj_height_gmms_label.setStyleSheet("color: #666;")
-        self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
-        field_layout.addWidget(self.obj_height_gmms_label)
-        layout.addRow("Поле/высота предмета:", field_layout)
+        self.obj_height_gmms_label.setStyleSheet("color: #666; font-size: 9px;")
+        self.img_height_spin = QDoubleSpinBox()
+        self.img_height_spin.setRange(-1000, 1000)
+        self.img_height_spin.setDecimals(6)
+        self.img_height_spin.setValue(0.0)
+        self.img_height_gmms_label = QLabel("")
+        self.img_height_gmms_label.setStyleSheet("color: #666; font-size: 9px;")
+        obj_h_layout = QVBoxLayout()
+        oh_h = QHBoxLayout()
+        oh_h.addWidget(self.obj_height_spin)
+        obj_h_layout.addLayout(oh_h)
+        obj_h_layout.addWidget(self.obj_height_gmms_label)
+        img_h_layout = QVBoxLayout()
+        ih_h = QHBoxLayout()
+        ih_h.addWidget(self.img_height_spin)
+        img_h_layout.addLayout(ih_h)
+        img_h_layout.addWidget(self.img_height_gmms_label)
+        grid.addLayout(obj_h_layout, row, col_obj)
+        grid.addLayout(img_h_layout, row, col_img)
+        row += 1
 
-        self.aperture_type_combo = QComboBox()
+        # Колонка-разделитель
+        grid.setColumnMinimumWidth(1, 10)
+        layout.addLayout(grid)
+
+        # === Диафрагма / Вх.зрачок ===
+        stop_group = QGroupBox("Диафрагма / Вх. зрачок")
+        stop_layout = QHBoxLayout(stop_group)
+        stop_layout.addWidget(QLabel("ND:"))
+        self.stop_nd_spin = QDoubleSpinBox()
+        self.stop_nd_spin.setRange(0, 50)
+        self.stop_nd_spin.setDecimals(0)
+        self.stop_nd_spin.setValue(1)
+        self.stop_nd_spin.setToolTip("Номер поверхности диафрагмы")
+        stop_layout.addWidget(self.stop_nd_spin)
+        stop_layout.addWidget(QLabel("SD:"))
+        self.stop_sd_spin = QDoubleSpinBox()
+        self.stop_sd_spin.setRange(-1000, 1000)
+        self.stop_sd_spin.setDecimals(4)
+        self.stop_sd_spin.setSuffix(" мм")
+        self.stop_sd_spin.setToolTip("Смещение диафрагмы от поверхности ND")
+        stop_layout.addWidget(self.stop_sd_spin)
+        stop_layout.addStretch()
+        layout.addWidget(stop_group)
+
+        # === Апертуры ===
+        ap_group = QGroupBox("Апертуры")
+        ap_grid = QGridLayout(ap_group)
+        ap_grid.addWidget(QLabel("Передняя апертура:"), 0, 0)
+        self.front_ap_spin = QDoubleSpinBox()
+        self.front_ap_spin.setRange(0, 1000)
+        self.front_ap_spin.setDecimals(6)
+        self.front_ap_combo = QComboBox()
+        self.front_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
+        ap_grid.addWidget(self.front_ap_spin, 0, 1)
+        ap_grid.addWidget(self.front_ap_combo, 0, 2)
+
+        ap_grid.addWidget(QLabel("Задняя апертура:"), 1, 0)
+        self.rear_ap_spin = QDoubleSpinBox()
+        self.rear_ap_spin.setRange(0, 1000)
+        self.rear_ap_spin.setDecimals(6)
+        self.rear_ap_combo = QComboBox()
+        self.rear_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
+        ap_grid.addWidget(self.rear_ap_spin, 1, 1)
+        ap_grid.addWidget(self.rear_ap_combo, 1, 2)
+        layout.addWidget(ap_group)
+
+        # === Скрытые виджеты для совместимости ===
+        self.aperture_type_combo = QComboBox()  # legacy compat
         self.aperture_type_combo.addItems(["Входной зрачок D (мм)", "Числовая апертура NA", "F/#"])
-        layout.addRow("Тип апертуры:", self.aperture_type_combo)
-
         self.aperture_spin = QDoubleSpinBox()
         self.aperture_spin.setRange(0, 10000)
         self.aperture_spin.setDecimals(4)
         self.aperture_spin.setValue(20.0)
-        layout.addRow("Значение апертуры:", self.aperture_spin)
-
-        # Виньетирование
-        self.vignetting_check = QCheckBox("Виньетирование")
-        self.vignetting_check.setToolTip("Отсекать лучи за пределами полудиаметра поверхностей")
-        layout.addRow(self.vignetting_check)
-
-        # Экранирование
         self.obscuration_spin = QDoubleSpinBox()
         self.obscuration_spin.setRange(0, 50)
         self.obscuration_spin.setDecimals(1)
         self.obscuration_spin.setValue(0.0)
-        self.obscuration_spin.setSuffix(" %")
-        self.obscuration_spin.setToolTip("Центральное экранирование (0% = нет)")
-        layout.addRow("Экранирование:", self.obscuration_spin)
-
-        # Режимы расчёта габаритов (#15)
         self.beam_mode_combo = QComboBox()
         self.beam_mode_combo.addItems(["Реальные", "Заданные"])
-        self.beam_mode_combo.setToolTip("Режим расчёта габаритов")
-        layout.addRow("Габариты:", self.beam_mode_combo)
-
-        self.sharp_edge_check = QCheckBox("Острый край")
-        self.sharp_edge_check.setToolTip("Учитывать острый край при расчёте габаритов")
+        self.sharp_edge_check = QCheckBox()
         self.sharp_edge_check.setChecked(True)
-        layout.addRow(self.sharp_edge_check)
+        self.vignetting_check = QCheckBox()
 
-        # Точки поля и спектральные линии — в меню Характеристики
+        # Точки поля и спектральные линии
         self.field_points_widget = FieldPointsWidget()
-        self.field_points_widget.setVisible(False)  # скрытый, для загрузки/сохранения
+        self.field_points_widget.setVisible(False)
         self.wl_table = QTableWidget(0, 3)
         self.wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
         self.wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
+        # Сигналы
+        self.obj_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
+        self.obj_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
+        self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
+        self.img_type_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
+        self.img_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
+        self.img_height_spin.valueChanged.connect(self._update_gmms_label)
+        # Связь передней апертуры с aperture_type_combo/aperture_spin для совместимости
+        self.front_ap_spin.valueChanged.connect(self._sync_aperture)
+        self.front_ap_combo.currentIndexChanged.connect(self._sync_aperture)
+
+    def _sync_aperture(self):
+        """Синхронизировать переднюю апертуру с legacy aperture_spin/aperture_type_combo."""
+        idx = self.front_ap_combo.currentIndex()
+        val = self.front_ap_spin.value()
+        # 0=Y height (D/2), 1=NA, 2=F/#
+        self.aperture_type_combo.setCurrentIndex(idx)
+        if idx == 0:  # Y → D
+            self.aperture_spin.setValue(val * 2 if val > 0 else 20.0)
+        else:
+            self.aperture_spin.setValue(val)
+
     def _update_gmms_label(self, val=None):
         """Обновить отображение поля в формате Г.ММСС."""
         from system_utils import deg_to_gmms, gmms_to_str
-        deg = self.obj_height_spin.value()
-        if self.obj_type_combo.currentIndex() == 0 and abs(deg) > 0.001:
-            # Бесконечный предмет — показываем Г.ММСС
+        # Предмет
+        if self.obj_type_combo.currentIndex() == 0 and abs(self.obj_height_spin.value()) > 0.001:
+            deg = self.obj_height_spin.value()
             gmms = deg_to_gmms(deg)
             self.obj_height_gmms_label.setText(f"= {gmms:.4f} гр.мнск ({gmms_to_str(gmms)})")
         else:
             self.obj_height_gmms_label.setText("")
+        # Изображение
+        if self.img_type_combo.currentIndex() == 0 and abs(self.img_height_spin.value()) > 0.001:
+            deg = self.img_height_spin.value()
+            gmms = deg_to_gmms(deg)
+            self.img_height_gmms_label.setText(f"= {gmms:.4f} гр.мнск ({gmms_to_str(gmms)})")
+        else:
+            self.img_height_gmms_label.setText("")
         self.wl_table.setVisible(False)  # скрытый
 
     def _add_wavelength(self):
@@ -677,8 +828,24 @@ class SystemParamsWidget(QWidget):
         self.name_edit.setText(sys.name)
         self.obj_type_combo.setCurrentIndex(0 if sys.object_type == ObjectType.INFINITE else 1)
         self.obj_height_spin.setValue(sys.object_height)
+
+        # Апертура: автоматически выбрать тип и значение
+        if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
+            self.front_ap_combo.setCurrentIndex(0)  # Y height
+            self.front_ap_spin.setValue(sys.aperture_value / 2.0)  # D → D/2
+        elif sys.aperture_type == ApertureType.NUMERICAL_APERTURE:
+            self.front_ap_combo.setCurrentIndex(1)  # NA
+            self.front_ap_spin.setValue(sys.aperture_value)
+        elif sys.aperture_type == ApertureType.F_NUMBER:
+            self.front_ap_combo.setCurrentIndex(2)  # F/#
+            self.front_ap_spin.setValue(sys.aperture_value)
+        # Legacy sync
         self.aperture_type_combo.setCurrentIndex(sys.aperture_type.value)
         self.aperture_spin.setValue(sys.aperture_value)
+
+        # Диафрагма
+        self.stop_nd_spin.setValue(sys.stop_surface)
+        self.stop_sd_spin.setValue(getattr(sys, 'stop_offset', 0.0))
 
         # Экранирование
         self.obscuration_spin.setValue(getattr(sys, 'obscuration_ratio', 0.0) * 100)
@@ -696,6 +863,8 @@ class SystemParamsWidget(QWidget):
             self.wl_table.setItem(i, 0, QTableWidgetItem(str(wl.value)))
             self.wl_table.setItem(i, 1, QTableWidgetItem(str(wl.weight)))
             self.wl_table.setItem(i, 2, QTableWidgetItem(wl.name))
+
+        self._update_gmms_label()
 
 
 class MainWindow(QMainWindow):
@@ -746,9 +915,14 @@ class MainWindow(QMainWindow):
         # System params
         self.sys_params = SystemParamsWidget()
 
+        sys_params_group = QGroupBox("Формирование оптической системы")
+        sp_layout = QVBoxLayout(sys_params_group)
+        sp_layout.setContentsMargins(2, 2, 2, 2)
+        sp_layout.addWidget(self.sys_params)
+
         left_splitter.addWidget(surf_group)
-        left_splitter.addWidget(self.sys_params)
-        left_splitter.setSizes([400, 300])
+        left_splitter.addWidget(sys_params_group)
+        left_splitter.setSizes([350, 350])
 
         # Right: Visualization + Results
         right_splitter = QSplitter(Qt.Vertical)
@@ -1119,12 +1293,23 @@ class MainWindow(QMainWindow):
                 except ValueError:
                     pass
 
-        sys.stop_surface = self.surface_table.get_stop_surface()
+        sys.stop_surface = int(self.sys_params.stop_nd_spin.value())
+        sys.stop_offset = self.sys_params.stop_sd_spin.value()
         sys.name = self.sys_params.name_edit.text()
         sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = self.sys_params.obj_height_spin.value()
-        sys.aperture_type = ApertureType(self.sys_params.aperture_type_combo.currentIndex())
-        sys.aperture_value = self.sys_params.aperture_spin.value()
+        # Апертура из новых виджетов
+        ap_idx = self.sys_params.front_ap_combo.currentIndex()
+        ap_val = self.sys_params.front_ap_spin.value()
+        if ap_idx == 0:  # Y height (D/2)
+            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
+            sys.aperture_value = ap_val * 2
+        elif ap_idx == 1:  # NA
+            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
+            sys.aperture_value = ap_val
+        else:  # F/#
+            sys.aperture_type = ApertureType.F_NUMBER
+            sys.aperture_value = ap_val
         sys.obscuration_ratio = self.sys_params.obscuration_spin.value() / 100.0
         sys.beam_mode = "real" if self.sys_params.beam_mode_combo.currentIndex() == 0 else "given"
         sys.sharp_edge = self.sys_params.sharp_edge_check.isChecked()
@@ -1552,13 +1737,24 @@ class MainWindow(QMainWindow):
                 except ValueError:
                     pass
         # Стоп-поверхность
-        sys.stop_surface = self.surface_table.get_stop_surface()
+        sys.stop_surface = int(self.sys_params.stop_nd_spin.value())
+        sys.stop_offset = self.sys_params.stop_sd_spin.value()
         # Параметры
         sys.name = self.sys_params.name_edit.text()
         sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = self.sys_params.obj_height_spin.value()
-        sys.aperture_type = ApertureType(self.sys_params.aperture_type_combo.currentIndex())
-        sys.aperture_value = self.sys_params.aperture_spin.value()
+        # Апертура из новых виджетов
+        ap_idx = self.sys_params.front_ap_combo.currentIndex()
+        ap_val = self.sys_params.front_ap_spin.value()
+        if ap_idx == 0:
+            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
+            sys.aperture_value = ap_val * 2
+        elif ap_idx == 1:
+            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
+            sys.aperture_value = ap_val
+        else:
+            sys.aperture_type = ApertureType.F_NUMBER
+            sys.aperture_value = ap_val
         # Экранирование
         sys.obscuration_ratio = self.sys_params.obscuration_spin.value() / 100.0
         # Режимы габаритов (#15)

@@ -236,29 +236,37 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     ri_per_wl = (len(ri_values) - nair_ri) // ng if ng > 0 else 0
 
     # 10. Build system
+    # 0x3C = Тип предмета: 0=дальний (∞), 1=ближний (конечный)
+    obj_type_code = struct.unpack_from('<H', data, 0x3C)[0] if len(data) > 0x3D else 0
+    # 0x46 = Тип изображения: 0=ближний, 65535=дальний (∞)
+    img_type_code = struct.unpack_from('<H', data, 0x46)[0] if len(data) > 0x47 else 0
     # Field value at 0x74: stored as radians for INFINITE object
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
-    # Если |field_val| < 1.0 — это радианы (INFINITE object)
     if 0 < abs(field_val) < 1.0:
         field_deg = math.degrees(abs(field_val))
     elif abs(field_val) >= 1.0:
-        field_deg = abs(field_val)  # уже в градусах
+        field_deg = abs(field_val)
     else:
         field_deg = 0.0
     
-    # 0x3A = ND (номер поверхности диафрагмы / stop surface)
+    # 0x3A = ND (номер поверхности диафрагмы)
     stop_surface_num = struct.unpack_from('<H', data, 0x3A)[0] if len(data) > 0x3B else 0
-    # 0x5C = aperture value (float64): если <1 → NA(sin), если >=1 → D/2 (мм)
+    # 0x5C = апертура (Y/2 мм или NA)
     ap_val_5c = abs(struct.unpack_from('<d', data, 0x5C)[0]) if len(data) > 0x63 else 0.0
     if math.isnan(ap_val_5c) or ap_val_5c > 1e4:
         ap_val_5c = 0.0
-    # 0x6C = SD (смещение диафрагмы от stop_surface, мм)
-    stop_offset = abs(struct.unpack_from('<d', data, 0x6C)[0]) if len(data) > 0x73 else 0.0
+    # 0x6C = SD (смещение диафрагмы, мм)
+    stop_offset = struct.unpack_from('<d', data, 0x6C)[0] if len(data) > 0x73 else 0.0
     if math.isnan(stop_offset):
         stop_offset = 0.0
+    # 0x70 = неизв. (возможно виньетирование или спец параметр)
+    val_70 = struct.unpack_from('<d', data, 0x70)[0] if len(data) > 0x77 else 0.0
+    if math.isnan(val_70):
+        val_70 = 0.0
     
     sys_obj = OpticalSystem(name=name)
-    sys_obj.object_type = ObjectType.INFINITE
+    # Тип предмета
+    sys_obj.object_type = ObjectType.FINITE if obj_type_code == 1 else ObjectType.INFINITE
     sys_obj.object_height = field_deg if field_deg > 0.001 else 0.0
     
     # Апертура: автоопределение типа по значению 0x5C

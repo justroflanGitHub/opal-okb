@@ -37,8 +37,10 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 | 0x34   | 2    | uint16 | num_surf (surface count, NOT including trailing air) |
 | 0x36   | 2    | uint16 | flags (3 = standard centered system) |
 | 0x38   | 2    | uint16 | num_wl (wavelength count) |
-| 0x3A   | 2    | uint16 | **Aperture type**: 0=NA(sin), 2=F/#, 4=D(mm) |
-| 0x3C   | 2    | bytes | Reserved |
+| 0x3A   | 2    | uint16 | **ND** (stop surface number) |
+| 0x3C   | 2    | uint16 | **Тип предмета**: 0=дальний (∞), 1=ближний (конечный) |
+| 0x3E   | 2    | uint16 | Reserved (always 1) |
+| 0x46   | 2    | uint16 | **Тип изображения**: 0=ближний, 65535=дальний (∞) |
 
 ### System Parameters
 
@@ -46,11 +48,12 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 |--------|------|------|-------------|
 | 0x40   | 24   | bytes | Config/reserved |
 | 0x58   | 4    | bytes | Reserved/padding |
-| 0x5C   | 8    | float64 | **Aperture value** (interpretation depends on 0x3A): NA(sin), F/#, or D/2 (mm) |
-| 0x64   | 8    | float64 | Aperture value duplicate |
-| 0x6C   | 8    | float64 | Unknown (possibly rear aperture related) |
-| 0x74   | 8    | float64 | **Field angle** (radians if |v|<1, degrees if |v|≥1). Negative = infinite object |
-| 0x7C   | 8    | float64 | Field angle duplicate |
+| 0x5C   | 8    | float64 | **Апертура**: Y/2 (мм) если ≥1, NA (sin) если <1 |
+| 0x64   | 8    | float64 | Апертура (duplicate) |
+| 0x6C   | 8    | float64 | **SD** (смещение диафрагмы от ND, мм) |
+| 0x70   | 8    | float64 | Неизвестно (возможно спец. параметр) |
+| 0x74   | 8    | float64 | **Поле** (радианы если |v|<1, градусы если |v|≥1) |
+| 0x7C   | 8    | float64 | Поле (duplicate) |
 | 0x80   | 24   | bytes | Zeros / reserved |
 
 ### Surface Data

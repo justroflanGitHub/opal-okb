@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QMenu, QAction, QToolBar, QStatusBar, QTabWidget,
     QGroupBox, QLabel, QLineEdit, QComboBox, QDoubleSpinBox,
     QPushButton, QFileDialog, QMessageBox, QSplitter,
-    QFormLayout, QSpinBox, QTextEdit, QFrame, QInputDialog,
+    QFormLayout, QGridLayout, QSpinBox, QTextEdit, QFrame, QInputDialog,
     QCheckBox, QAbstractItemView
 )
 from PyQt5.QtCore import Qt, QSize

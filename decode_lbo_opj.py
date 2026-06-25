@@ -267,9 +267,9 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     sys_obj = OpticalSystem(name=name)
     # Тип предмета: 0x3C — 0=дальний(∞), 1=ближний
     sys_obj.object_type = ObjectType.FINITE if obj_type_code == 1 else ObjectType.INFINITE
-    # Тип изображения: 0x4A — 0=ближний, 1=дальний(∞)
-    img_type_4a = struct.unpack_from('<H', data, 0x4A)[0] if len(data) > 0x4B else 0
-    sys_obj.image_type = ObjectType.INFINITE if img_type_4a == 1 else ObjectType.FINITE
+    # Тип изображения: 0x3E — 0=дальний(∞), 1=ближний
+    img_type_3e = struct.unpack_from('<H', data, 0x3E)[0] if len(data) > 0x3F else 1
+    sys_obj.image_type = ObjectType.FINITE if img_type_3e == 1 else ObjectType.INFINITE
     sys_obj.object_height = field_deg if field_deg > 0.001 else 0.0
     
     # Апертура: автоопределение типа по значению 0x5C

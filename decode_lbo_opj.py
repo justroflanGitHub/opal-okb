@@ -163,9 +163,9 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
                 # Берём до следующего пробела или конца
                 end = rest.find(' ', pos)
                 if end < 0: end = len(rest)
-                name = rest[pos:end].strip()
-                if name:
-                    glass_names.append(name)
+                glass_name = rest[pos:end].strip()
+                if glass_name:
+                    glass_names.append(glass_name)
                 pos = end
 
     # 7. Map glass indices to glass names
@@ -283,12 +283,12 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
                  0.58930: 'D'}
     _wl_list = []
     for wl in wavelengths:
-        name = ''
+        wl_name = ''
         for wlv, wln in _wl_names.items():
             if abs(wl - wlv) < 0.0002:
-                name = wln
+                wl_name = wln
                 break
-        _wl_list.append(Wavelength(wl, 1.0, name))
+        _wl_list.append(Wavelength(wl, 1.0, wl_name))
     sys_obj.wavelengths = _wl_list
     sys_obj.field_points = [FieldPoint(0.0)]
     if field_deg > 0:

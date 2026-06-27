@@ -2,6 +2,20 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.3.2] — 2026-06-27
+
+### Reverse Engineering (via opal_api.dll)
+- **0x46 = Stop type**: 0=`d` (диафрагма), 1=`z` (зрачок-z), 65535=`p` (зрачок)
+- **0x3C = Object type** и **0x3E = Image type** confirmed (19/19 systems)
+- **0x4A = Data format flag**: 0=Russian, 1-3=US format variants
+- **0x30/0x32 = Format magic IDs** (varies by library)
+- **0x98/0xA0** = precision constants (~0.000087, ~0.000183)
+- **0xA8/0xB0** = first surface curvatures (C₁, C₂)
+- Used `opal_api.dll` (32-bit) via ctypes with 19 test systems from 8 libraries
+- Cross-referenced API getters (`OPAL_Object_Get_Type`, `OPAL_Image_Get_Type`,
+  `OPAL_Stop_Get_Type`, `OPAL_Stop_Get_Size`, etc.) against raw LBO bytes
+- Docs: full `LBO_FORMAT.md` updated with verified field map
+
 ## [1.3.1] — 2026-06-25
 
 ### Fixed

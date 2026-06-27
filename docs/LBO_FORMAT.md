@@ -34,27 +34,47 @@ Each `.LBO` file contains multiple optical systems in a compact binary format.
 | 0x04   | 4    | uint32 | Total size |
 | 0x08   | 4    | bytes | Reserved |
 | 0x0C   | 40   | char[40] | System name (cp866, Russian) |
+| 0x30   | 2    | uint16 | Magic/format ID (varies by library: 42925=LENS, 43828=OCULAR, etc.) |
+| 0x32   | 2    | uint16 | Format sub-ID |
 | 0x34   | 2    | uint16 | num_surf (surface count, NOT including trailing air) |
 | 0x36   | 2    | uint16 | flags (3 = standard centered system) |
 | 0x38   | 2    | uint16 | num_wl (wavelength count) |
 | 0x3A   | 2    | uint16 | **ND** (stop surface number) |
 | 0x3C   | 2    | uint16 | **Тип предмета**: 0=дальний (∞), 1=ближний (конечный) |
 | 0x3E   | 2    | uint16 | **Тип изображения**: 0=дальний (∞), 1=ближний (конечный) |
-| 0x46   | 2    | uint16 | Не тип изображения (формат данных?) |
+| 0x40   | 12   | bytes | Config/reserved |
+| 0x46   | 2    | uint16 | **Stop type**: 0=диафрагма (d), 1=зрачок-z (z), 65535=зрачок (p) |
+| 0x48   | 2    | uint16 | Reserved |
+| 0x4A   | 2    | uint16 | Data format flag (0=Russian, 1-3=US format variants) |
 
 ### System Parameters
 
 | Offset | Size | Type | Description |
 |--------|------|------|-------------|
-| 0x40   | 24   | bytes | Config/reserved |
+| 0x40   | 12   | bytes | Config/reserved (REPROD has data here) |
+| 0x4C   | 16   | bytes | Reserved (REPROD/HELIOS have data) |
 | 0x58   | 4    | bytes | Reserved/padding |
-| 0x5C   | 8    | float64 | **Апертура**: Y/2 (мм) если ≥1, NA (sin) если <1 |
-| 0x64   | 8    | float64 | Апертура (duplicate) |
+| 0x5C   | 8    | float64 | **Stop size / Апертура**: Y/2 (мм) если ≥1, NA (sin) если <1 |
+| 0x64   | 8    | float64 | Reserved (часто ~0) |
 | 0x6C   | 8    | float64 | **SD** (смещение диафрагмы от ND, мм) |
-| 0x70   | 8    | float64 | Флаг виньетирования/светораспределения: +2.0, -2.0, или 0 (25+5 из 612 систем) |
-| 0x74   | 8    | float64 | **Поле** (радианы если |v|<1, градусы если |v|≥1) |
-| 0x7C   | 8    | float64 | Поле (duplicate) |
-| 0x80   | 24   | bytes | Zeros / reserved |
+| 0x70   | 8    | float64 | Флаг виньетирования/светораспределения: ±2.0 или 0 |
+| 0x74   | 8    | float64 | **Поле** (радианы если |v|<1, градусы/мм если |v|≥1) |
+| 0x7C-0x97| 32  | bytes | Reserved (обычно 0) |
+| 0x98   | 8    | float64 | Константа точности (~0.000087, одинакова по библиотекам) |
+| 0xA0   | 8    | float64 | Константа точности (~0.000183, одинакова по библиотекам) |
+| 0xA8   | 8    | float64 | Начало surface data: curvature C₁ = 1/R₁ |
+| 0xB0   | 8    | float64 | Curvature C₂ = 1/R₂ |
+
+**Подтверждено через opal_api.dll** (19 систем, cross-reference):
+
+| Поле | Offset | API match |
+|------|--------|----------|
+| Object type | 0x3C | 19/19 ✓ |
+| Image type | 0x3E | 19/19 ✓ |
+| Stop type (d/p/z) | 0x46 | 19/19 ✓ |
+| Stop size | 0x5C | 19/19 ✓ |
+| Object size (field) | 0x74 | 18/19 ✓ |
+| Stop surface | 0x3A | API = 0x3A+1 (1-based) |
 
 ### Surface Data
 

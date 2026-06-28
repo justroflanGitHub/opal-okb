@@ -489,9 +489,26 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
         y_start = py * aperture / 2
 
         if sys.object_type == ObjectType.INFINITE:
-            # Параллельный пучок под углом
+            # Параллельный пучок под углом в меридиональной плоскости Y-Z
+            # y_start = позиция луча во входном зрачке
+            # Стартуем лучи так, чтобы они прошли через входной зрачок
             angle = math.radians(field_y) if field_y != 0 else 0.0
-            ray = Ray(x=0, y=y_start, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+            # Z входного зрачка (диафрагма)
+            stop_idx = getattr(sys, 'stop_surface', 0)
+            stop_off = getattr(sys, 'stop_offset', 0.0)
+            z_pupil = 0.0
+            for j in range(min(stop_idx, len(sys.surfaces))):
+                z_pupil += sys.surfaces[j].thickness
+            z_pupil += stop_off
+            # Стартуем лучи на z = z_pupil - delta, y = y_start - delta*tan(angle)
+            # чтобы при достижении z_pupil y = y_start
+            # Проще: стартуем от z_pupil и трассируем в обратную сторону не нужно —
+            # стартуем с z перед системой, y так чтобы луч прошёл через зрачок
+            z_start = -1.0
+            # y at z_pupil should be y_start
+            dz = z_pupil - z_start
+            y_at_start = y_start - dz * math.sin(angle) / math.cos(angle)
+            ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
         else:
             # Конечный предмет: точечный источник в переднем фокусе (sF)
             from optics_engine import paraxial_trace

@@ -3099,16 +3099,17 @@ class AnalysisPanel(QTabWidget):
         n_wl = len(wl_labels)
 
         # Table 1: Cardinal params (same for all λ) — 2 columns
+        f_val = parax.get('focal_length', 0)
         common_rows = [
-            ["f'", f"{parax.get('focal_length', 0):.4f}"],
-            ["FFD", f"{parax.get('front_focal_distance', 0):.4f}"],
+            ["F", f"{-f_val:.4f}"],
+            ["F'", f"{f_val:.4f}"],
             ["sF", f"{parax.get('sF', 0):.4f}"],
             ["sF'", f"{parax.get('sF_prime', 0):.4f}"],
             ["sH", f"{parax.get('sH', 0):.4f}"],
             ["sH'", f"{parax.get('sH_prime', 0):.4f}"],
-            ["L", f"{parax.get('L', 0):.4f}"],
+            ["L", f"{parax.get('L', 0):.2f}"],
             ["f/#", f"{self._fno:.2f}"],
-            ["D вх.зрачка", f"{self._epd:.4f}"],
+            ["D вх.зрачка", f"{self._epd:.2f}"],
         ]
         table1 = _make_table(["Кардинальные", "Значение"], common_rows, [90, 80])
         table1.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)

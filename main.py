@@ -389,15 +389,15 @@ class ResultsPanel(QWidget):
         if not self._parax_result:
             return
         parax = self._parax_result
+        f_val = parax.get('focal_length', 0)
         rows = [
-            ("f'", f"{parax.get('focal_length', 0):.4f} мм"),
-            ("BFD", f"{parax.get('back_focal_distance', 0):.4f} мм"),
-            ("FFD", f"{parax.get('front_focal_distance', 0):.4f} мм"),
+            ("F", f"{-f_val:.4f} мм"),
+            ("F'", f"{f_val:.4f} мм"),
             ("sF", f"{parax.get('sF', 0):.4f} мм"),
             ("sF'", f"{parax.get('sF_prime', 0):.4f} мм"),
             ("sH", f"{parax.get('sH', 0):.4f} мм"),
             ("sH'", f"{parax.get('sH_prime', 0):.4f} мм"),
-            ("L", f"{parax.get('L', 0):.4f} мм"),
+            ("L", f"{parax.get('L', 0):.2f} мм"),
             ("V", f"{parax.get('V', 0):.4f}"),
             ("f/#", f"{self._fno:.2f}"),
             ("D вх.зрачка", f"{self._epd:.2f} мм"),
@@ -1367,8 +1367,8 @@ class MainWindow(QMainWindow):
             self._update_after_calc(sys, phase1_data, phase2_data)
             return
 
-        # Показать промежуточный результат
-        f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
+        # Показать промежуточный результат (F' — вторая строка)
+        f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
         self.statusBar().showMessage(f"Расчёт анализа... f'={f_text}")
 
         # Phase 2: тяжёлые вычисления (в Worker потоке)
@@ -1616,7 +1616,7 @@ class MainWindow(QMainWindow):
             self.surface_table.load_system(sys)
             self.viz.set_system(sys, trace_rays=True)
             self.analysis.analyze(sys)
-            f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
+            f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
             self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
             return
 
@@ -1636,7 +1636,7 @@ class MainWindow(QMainWindow):
             self.analysis.apply_results(sys, data)
         else:
             self.analysis.analyze(sys)
-        f_text = self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else "—"
+        f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
         self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
 
     def _update_parax_and_seidel(self, sys, data=None):
@@ -2030,7 +2030,7 @@ class MainWindow(QMainWindow):
         self.current_system = system
         self._refresh_ui()
         self.statusBar().showMessage(
-            f"Ахромат: {system.name},  f'={self.results.parax_table.item(0, 1).text() if self.results.parax_table.rowCount() > 0 else '-'}"
+            f"Ахромат: {system.name},  f'={self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else '-'}"
         )
 
     def _show_library(self):

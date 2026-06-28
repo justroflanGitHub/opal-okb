@@ -115,25 +115,9 @@ class OpticalSystemView(QWidget):
                 if max_fp > 0:
                     field_angle = max_fp
             
-            # pupil_range: подбираем так, чтобы все лучи прошли
-            # Binary search не нужен — просто ограничиваем по диафрагме
-            # и используем достаточно малый pupil_range чтобы все прошли
+            # pupil_range: по диафрагме
             if field_angle > 0:
-                import math as _m
-                angle_rad = _m.radians(field_angle)
-                # Находим максимальный pupil_range где все лучи проходят
-                min_sd = min((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
-                z_acc = 0.0
-                max_shift_ratio = 0.0
-                for s2 in sys.surfaces:
-                    if s2.semi_diameter > 0:
-                        sh = abs(_m.tan(angle_rad)) * z_acc
-                        # pupil_y * cos + sh < semi_d
-                        ratio = max((s2.semi_diameter - sh) / ap_r, 0.1)
-                        max_shift_ratio = max(max_shift_ratio, 1.0 - ratio + 0.05)
-                    z_acc += s2.thickness
-                pupil_rng = max(min_sd / ap_r - max_shift_ratio, 0.15)
-                pupil_rng = min(pupil_rng, 1.0)
+                pupil_rng = 1.0
             else:
                 max_sd = max((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
                 pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
@@ -357,6 +341,10 @@ class OpticalSystemView(QWidget):
         # ===== Лучи =====
         for rtype, wl, results in self.ray_results:
             for rr in results:
+                # Пропускаем EDGE-blocked лучи (виньетирование поверхности)
+                # Рисуем только STOP-blocked (диафрагма) и успешные
+                if rr.error == 'EDGE':
+                    continue
                 if len(rr.path) >= 2:
                     self._draw_ray(painter, rr, to_screen, rtype, wl, 
                                    blocked=not rr.success)
@@ -419,8 +407,8 @@ class OpticalSystemView(QWidget):
         painter.setPen(QPen(QColor(200, 200, 220)))
         painter.setFont(QFont("Consolas", 10, QFont.Bold))
         title = self.system.name if self.system.name else ""
-        if efl != 0:
-            title += f"   f'={efl:.2f} мм"
+        if parax and parax.get('focal_length', 0) != 0:
+            title += f"   f'={parax['focal_length']:.2f} мм"
         painter.drawText(10, 16, title)
         
         # ===== Статус бар внизу =====

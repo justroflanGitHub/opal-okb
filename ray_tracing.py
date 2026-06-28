@@ -326,8 +326,38 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     # (до первой поверхности — воздух/вакуум)
     current_n = compute_refractive_index("", wl)  # n среды перед системой
     
+    # Параметры диафрагмы (aperture stop)
+    stop_surf_idx = getattr(sys, 'stop_surface', -1)
+    stop_offset = getattr(sys, 'stop_offset', 0.0)
+    stop_radius = sys.aperture_value / 2.0 if getattr(sys, 'aperture_value', 0) > 0 else 0
+    # aperture_value = D (полный диаметр), stop_radius = D/2 = радиус
+    # Z-позиция диафрагмы
+    z_stop = None
+    if 0 <= stop_surf_idx < len(z_positions):
+        z_stop = z_positions[stop_surf_idx] + stop_offset
+    
     for i, s in enumerate(sys.surfaces):
         z_surf = z_positions[i]
+        
+        # Проверка диафрагмы: если она между лучом и следующей поверхностью
+        if z_stop is not None and z_stop > current_ray.z + 1e-10 and z_stop < z_surf - 1e-10:
+            if abs(current_ray.m) > 1e-15:
+                dt_stop = (z_stop - current_ray.z) / current_ray.m
+                sx = current_ray.x + dt_stop * current_ray.k
+                sy = current_ray.y + dt_stop * current_ray.l
+                r_at_stop = math.sqrt(sx**2 + sy**2)
+                if stop_radius > 0 and r_at_stop > stop_radius:
+                    result.success = False
+                    result.error = 'STOP'
+                    result.add_point(sx, sy, z_stop)
+                    result.opl += current_n * dt_stop
+                    return result
+                # Луч прошёл диафрагму — добавим точку
+                result.add_point(sx, sy, z_stop)
+                result.opl += current_n * dt_stop
+                current_ray.x = sx
+                current_ray.y = sy
+                current_ray.z = z_stop
         R = s.radius if abs(s.radius) > 1e-10 else 0.0
         
         # Пересечение с поверхностью
@@ -454,7 +484,7 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
             results.append(blocked)
             continue
 
-        # Начальная точка: зрачок
+        # Начальная точка: зрачок (aperture_value = D, y_start = py * D/2)
         aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
         y_start = py * aperture / 2
 

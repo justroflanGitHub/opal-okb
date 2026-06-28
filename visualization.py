@@ -106,15 +106,20 @@ class OpticalSystemView(QWidget):
             wavelengths_to_trace = [wl.value for wl in sys.wavelengths]
         
         for wl in wavelengths_to_trace:
-            # Осевой пучок
-            axial = trace_fan(sys, num_rays=9, pupil_range=1.0, wl=wl, field_y=0.0)
+            # Осевой пучок — крайние лучи блокируются диафрагмой (STOP)
+            # aperture_value = D, stop_r = D/2
+            ap_r = sys.aperture_value / 2.0 if sys.aperture_value > 0 else 10.0
+            max_sd = max((s.semi_diameter for s in sys.surfaces if s.semi_diameter > 0), default=ap_r)
+            # pupil_range: лучи чуть шире диафрагмы для визуализации клиппинга
+            pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
+            axial = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=0.0)
             self.ray_results.append(('axial', wl, axial))
             
             # Внеосевые пучки
             if sys.field_points:
                 for fp in sys.field_points:
                     if fp.y != 0:
-                        fan = trace_fan(sys, num_rays=5, pupil_range=1.0, wl=wl, field_y=fp.y)
+                        fan = trace_fan(sys, num_rays=7, pupil_range=pupil_rng, wl=wl, field_y=fp.y)
                         self.ray_results.append(('field', wl, fan))
     
     def reset_view(self):
@@ -330,8 +335,9 @@ class OpticalSystemView(QWidget):
         # ===== Лучи =====
         for rtype, wl, results in self.ray_results:
             for rr in results:
-                if rr.success and len(rr.path) >= 2:
-                    self._draw_ray(painter, rr, to_screen, rtype, wl)
+                if len(rr.path) >= 2:
+                    self._draw_ray(painter, rr, to_screen, rtype, wl, 
+                                   blocked=not rr.success)
         
         # ===== Фокальная точка =====
         parax = paraxial_trace(self.system)
@@ -570,22 +576,36 @@ class OpticalSystemView(QWidget):
                 path.lineTo(sx, sy)
         painter.drawPath(path)
         
-        # Стоп-поверхность
+        # Стоп-поверхность (диафрагма)
         if idx + 1 == self.system.stop_surface:
-            painter.setPen(QPen(self.COLOR_STOP, 1, Qt.DashLine))
-            s1 = to_screen(z, sd * 1.15)
-            s2 = to_screen(z, -sd * 1.15)
+            sd_offset = getattr(self.system, 'stop_offset', 0.0)
+            z_stop = z + sd_offset
+            stop_r = self.system.aperture_value / 2.0 if self.system.aperture_value > 0 else sd * 0.9
+            # aperture_value = D (полный диаметр), stop_r = D/2 = радиус
+            # Сплошная линия — чуть длиннее диафрагмы
+            painter.setPen(QPen(self.COLOR_STOP, 2, Qt.SolidLine))
+            ext = stop_r * 1.15
+            s1 = to_screen(z_stop, ext)
+            s2 = to_screen(z_stop, -ext)
             painter.drawLine(int(s1[0]), int(s1[1]), int(s2[0]), int(s2[1]))
+            # Штрихованная = точно aperture_value (D/2 до -D/2)
+            painter.setPen(QPen(self.COLOR_STOP, 1, Qt.DashLine))
+            s3 = to_screen(z_stop, stop_r)
+            s4 = to_screen(z_stop, -stop_r)
+            painter.drawLine(int(s3[0]), int(s3[1]), int(s4[0]), int(s4[1]))
     
     def _sag(self, R, y):
         if abs(R) < 1e-10: return 0.0
         if abs(y) > abs(R): return 0.0
         return R - math.copysign(math.sqrt(R**2 - y**2), R)
     
-    def _draw_ray(self, painter, result, to_screen, rtype, wl=0.589):
-        color = self._wl_color(wl) if self.chromatic_rays else \
-                (self.COLOR_RAY if rtype == 'axial' else self.COLOR_RAY_FIELD)
-        painter.setPen(QPen(color, 1.2))
+    def _draw_ray(self, painter, result, to_screen, rtype, wl=0.589, blocked=False):
+        if blocked:
+            color = QColor(100, 100, 100, 100)  # серый полупрозрачный для заблокированных
+        else:
+            color = self._wl_color(wl) if self.chromatic_rays else \
+                    (self.COLOR_RAY if rtype == 'axial' else self.COLOR_RAY_FIELD)
+        painter.setPen(QPen(color, 1.2 if not blocked else 0.8))
         painter.setBrush(Qt.NoBrush)
         
         # Draw ray segments

@@ -329,7 +329,14 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     # Параметры диафрагмы (aperture stop)
     stop_surf_idx = getattr(sys, 'stop_surface', -1)
     stop_offset = getattr(sys, 'stop_offset', 0.0)
-    stop_radius = sys.aperture_value / 2.0 if getattr(sys, 'aperture_value', 0) > 0 else 0
+    # Detect bogus aperture_value (F/# or NA stored instead of diameter)
+    raw_aperture = getattr(sys, 'aperture_value', 0)
+    if raw_aperture > 0 and raw_aperture < 1.0:
+        # Likely F/# or normalized value; use max semi_diameter instead
+        real_sd_vals = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > raw_aperture]
+        if real_sd_vals:
+            raw_aperture = max(real_sd_vals) * 2.0
+    stop_radius = raw_aperture / 2.0 if raw_aperture > 0 else 0
     # aperture_value = D (полный диаметр), stop_radius = D/2 = радиус
     # Z-позиция диафрагмы
     z_stop = None
@@ -368,6 +375,13 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         else:
             hit = intersect_sphere(current_ray, R, z_surf)
         if hit is None:
+            # If surface is behind the ray (e.g. virtual surface in mirror/laser systems),
+            # skip it and continue tracing
+            going_forward = current_ray.m > 0
+            surface_behind = (z_surf < current_ray.z - 1e-6) if going_forward else (z_surf > current_ray.z + 1e-6)
+            if surface_behind:
+                # Skip this virtual surface — don't refract, just continue
+                continue
             result.success = False
             result.error = 'MISS'
             return result
@@ -375,7 +389,14 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         hx, hy, hz, t = hit
         
         # Проверка полудиаметра
-        semi_d = abs(s.semi_diameter) if s.semi_diameter > 0 else 1e6
+        # Skip EDGE check for bogus semi_diameters (decoder artifacts):
+        # Real semi_diameters should be comparable to aperture, not tiny fractions.
+        # If semi_diameter > 0 but < aperture/10, it's likely a decoder artifact.
+        aperture = getattr(sys, 'aperture_value', 0) or 20.0
+        if s.semi_diameter > 0 and s.semi_diameter < aperture / 10.0:
+            semi_d = 1e6  # bogus semi_diameter — treat as unlimited
+        else:
+            semi_d = abs(s.semi_diameter) if s.semi_diameter > 0 else 1e6
         r_hit = math.sqrt(hx**2 + hy**2)
         if r_hit > semi_d:
             result.success = False
@@ -470,59 +491,73 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
     field_y: смещение по полю (мм или градусы)
     Лучи с |ρ| < obscuration_ratio отсекаются (центральное экранирование).
     """
-    results = []
     obscuration = getattr(sys, 'obscuration_ratio', 0.0)
+    aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
 
-    for i in range(num_rays):
-        py = -pupil_range + 2 * pupil_range * i / (num_rays - 1) if num_rays > 1 else 0.0
+    # Auto-reduce: if aperture_value looks like F/# or NA (very small),
+    # estimate real aperture from max semi_diameter
+    real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > aperture / 10.0]
+    if aperture < 1.0 and real_sd:
+        # aperture_value is likely F/# or normalized, not mm diameter
+        # Use max semi_diameter as the real aperture radius
+        aperture = max(real_sd) * 1.2
 
-        # Проверка экранирования: |ρ| < obscuration_ratio → луч блокируется
-        if obscuration > 0 and abs(py) < obscuration:
-            blocked = TraceResult()
-            blocked.success = False
-            blocked.error = 'OBSCURED'
-            results.append(blocked)
-            continue
+    def _do_trace(pr):
+        """Trace num_rays with given pupil_range, return list of TraceResult."""
+        res = []
+        for i in range(num_rays):
+            py = -pr + 2 * pr * i / (num_rays - 1) if num_rays > 1 else 0.0
 
-        # Начальная точка: зрачок (aperture_value = D, y_start = py * D/2)
-        aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
-        y_start = py * aperture / 2
+            # Проверка экранирования: |ρ| < obscuration_ratio → луч блокируется
+            if obscuration > 0 and abs(py) < obscuration:
+                blocked = TraceResult()
+                blocked.success = False
+                blocked.error = 'OBSCURED'
+                res.append(blocked)
+                continue
 
-        if sys.object_type == ObjectType.INFINITE:
-            # Параллельный пучок под углом в меридиональной плоскости Y-Z
-            # y_start = позиция луча во входном зрачке
-            # Стартуем лучи так, чтобы они прошли через входной зрачок
-            angle = math.radians(field_y) if field_y != 0 else 0.0
-            # Z входного зрачка (диафрагма)
-            stop_idx = getattr(sys, 'stop_surface', 0)
-            stop_off = getattr(sys, 'stop_offset', 0.0)
-            z_pupil = 0.0
-            for j in range(min(stop_idx, len(sys.surfaces))):
-                z_pupil += sys.surfaces[j].thickness
-            z_pupil += stop_off
-            # Стартуем лучи на z = z_pupil - delta, y = y_start - delta*tan(angle)
-            # чтобы при достижении z_pupil y = y_start
-            # Проще: стартуем от z_pupil и трассируем в обратную сторону не нужно —
-            # стартуем с z перед системой, y так чтобы луч прошёл через зрачок
-            z_start = -1.0
-            # y at z_pupil should be y_start
-            dz = z_pupil - z_start
-            y_at_start = y_start - dz * math.sin(angle) / math.cos(angle)
-            ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
-        else:
-            # Конечный предмет: точечный источник в переднем фокусе (sF)
-            from optics_engine import paraxial_trace
-            parax = paraxial_trace(sys)
-            sF = parax.get('sF', 0)  # передний фокальный отрезок
-            obj_dist = abs(sF) if sF and abs(sF) > 1e-6 else 100.0
-            obj_y = field_y  # высота точки предмета (мм)
-            ray = Ray(x=0, y=obj_y, z=-obj_dist,
-                     k=0, l=y_start - obj_y, m=obj_dist)
-            # Нормализация
-            norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
-            ray.k /= norm; ray.l /= norm; ray.m /= norm
+            y_start = py * aperture / 2
 
-        results.append(trace_ray_through_system(sys, ray, wl))
+            if sys.object_type == ObjectType.INFINITE:
+                angle = math.radians(field_y) if field_y != 0 else 0.0
+                stop_idx = getattr(sys, 'stop_surface', 0)
+                stop_off = getattr(sys, 'stop_offset', 0.0)
+                z_pupil = 0.0
+                for j in range(min(stop_idx, len(sys.surfaces))):
+                    z_pupil += sys.surfaces[j].thickness
+                z_pupil += stop_off
+                z_start = -1.0
+                dz = z_pupil - z_start
+                y_at_start = y_start - dz * math.sin(angle) / math.cos(angle)
+                ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
+            else:
+                from optics_engine import paraxial_trace
+                parax = paraxial_trace(sys)
+                sF = parax.get('sF', 0)
+                obj_dist = abs(sF) if sF and abs(sF) > 1e-6 else 100.0
+                obj_y = field_y
+                ray = Ray(x=0, y=obj_y, z=-obj_dist,
+                         k=0, l=y_start - obj_y, m=obj_dist)
+                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+                ray.k /= norm; ray.l /= norm; ray.m /= norm
+
+            res.append(trace_ray_through_system(sys, ray, wl))
+        return res
+
+    results = _do_trace(pupil_range)
+
+    # Auto-reduce: if all rays failed with EDGE or MISS, try smaller pupil_range
+    edge_count = sum(1 for r in results if r.error == 'EDGE')
+    miss_count = sum(1 for r in results if r.error == 'MISS')
+    ok_count = sum(1 for r in results if r.success)
+    if ok_count == 0 and (edge_count > 0 or miss_count > 0):
+        for reduction in [0.3, 0.1, 0.03, 0.01, 0.003]:
+            if reduction >= pupil_range:
+                continue
+            results = _do_trace(reduction)
+            ok_count = sum(1 for r in results if r.success)
+            if ok_count > 0:
+                break
 
     return results
 

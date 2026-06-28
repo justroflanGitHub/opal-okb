@@ -93,6 +93,7 @@ class OpticalSystemView(QWidget):
             self.ray_results = []
             wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
             # Только осевой пучок, num_rays=11 — быстро (<100мс)
+            # trace_fan now auto-reduces pupil_range if needed
             axial = trace_fan(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
             self.ray_results.append(('axial', wl, axial))
         self.update()
@@ -107,7 +108,15 @@ class OpticalSystemView(QWidget):
         
         for wl in wavelengths_to_trace:
             # aperture_value = D, stop_r = D/2
-            ap_r = sys.aperture_value / 2.0 if sys.aperture_value > 0 else 10.0
+            ap = sys.aperture_value if sys.aperture_value > 0 else 20.0
+            ap_r = ap / 2.0
+            
+            # Detect bogus aperture_value (F/# or NA stored instead of diameter)
+            real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > ap / 10.0]
+            if ap < 1.0 and real_sd:
+                ap = max(real_sd) * 2.0
+                ap_r = ap / 2.0
+            
             # Основной пучок под углом поля (берём крайнее поле)
             field_angle = 0.0
             if sys.field_points:
@@ -115,18 +124,29 @@ class OpticalSystemView(QWidget):
                 if max_fp > 0:
                     field_angle = max_fp
             
-            # pupil_range: по диафрагме
+            # Compute safe pupil_range: for wide angles, reduce to fit surfaces
             if field_angle > 0:
-                pupil_rng = 1.0
+                # For wide-angle systems, beam spreads significantly
+                # Reduce pupil_range proportional to field angle
+                angle_rad = math.radians(field_angle)
+                # Heuristic: pupil_range * cos(angle) keeps beams within surfaces
+                pupil_rng = max(0.05, math.cos(angle_rad) ** 2)
             else:
                 max_sd = max((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
                 pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
             
-            axial = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
-            self.ray_results.append(('axial', wl, axial))
+            # Trace at field angle (trace_fan auto-reduces if EDGE failures)
+            fan = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
+            self.ray_results.append(('axial', wl, fan))
             
-            # Дополнительный пучок под 0° (осевой) — только если есть поле
-            # (убрано: все лучи идут под углом поля)
+            # Also trace field=0 (guaranteed axial bundle) if field_angle > 0
+            if field_angle > 0:
+                axial_pr = 1.0
+                # For systems with tiny aperture, use conservative pupil_range
+                if ap < 1.0:
+                    axial_pr = 0.3
+                axial_fan = trace_fan(sys, num_rays=11, pupil_range=axial_pr, wl=wl, field_y=0.0)
+                self.ray_results.append(('field0', wl, axial_fan))
     
     def reset_view(self):
         self._zoom = 1.0

@@ -24,7 +24,7 @@ class OpticalSystemView(QWidget):
     
     # Оригинальные цвета OPAL-PC
     COLOR_BG = QColor(0, 0, 0)                    # Чёрный фон
-    COLOR_AXIS = QColor(40, 40, 60)                # Оптическая ось
+    COLOR_AXIS = QColor(120, 120, 160)             # Оптическая ось
     COLOR_LENS_FILL = QColor(30, 60, 120, 140)     # Голубая заливка линзы
     COLOR_LENS_EDGE = QColor(60, 140, 220)          # Голубой контур
     COLOR_RAY = QColor(0, 200, 80, 200)             # Зелёные лучи
@@ -296,7 +296,7 @@ class OpticalSystemView(QWidget):
             z += z_step
         
         # ===== Оптическая ось =====
-        pen_axis = QPen(self.COLOR_AXIS, 1, Qt.DashDotLine)
+        pen_axis = QPen(self.COLOR_AXIS, 1.5, Qt.SolidLine)
         painter.setPen(pen_axis)
         ax1 = to_screen(z_min, 0)
         ax2 = to_screen(z_max, 0)

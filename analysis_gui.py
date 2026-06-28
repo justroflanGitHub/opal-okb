@@ -3116,8 +3116,8 @@ class AnalysisPanel(QTabWidget):
 
         # Table 2: Per-wavelength params — columns = wavelengths
         per_wl_keys = [
-            ("s' (мм)", 'back_focal_distance'),
             ("s' (дптр)", 'back_focal_distance'),  # will convert to diopters
+            ("s' (мм)", 'back_focal_distance'),
             ("s'G (мм)", 'back_focal_distance'),
             ("V", 'V'),
             ("sP (мм)", 'sP'),
@@ -3127,12 +3127,24 @@ class AnalysisPanel(QTabWidget):
         wl_rows = []
         for name, key in per_wl_keys:
             vals = []
+            raw_vals = []
             for wl in wl_labels:
                 p = parax_by_wl.get(wl, {})
                 v = p.get(key, 0)
                 if 'дптр' in name and v:
                     v = 1000.0 / v if abs(v) > 1e-10 else 0
-                vals.append(f"{v:.4f}" if v is not None else "—")
+                raw_vals.append(v)
+            # V: first column = raw, rest = delta from first
+            if name == 'V' and len(raw_vals) > 1:
+                base = raw_vals[0]
+                for i, v in enumerate(raw_vals):
+                    if i == 0:
+                        vals.append(f"{v:.5f}" if v is not None else "—")
+                    else:
+                        vals.append(f"{v - base:+.5f}" if v is not None else "—")
+            else:
+                for v in raw_vals:
+                    vals.append(f"{v:.4f}" if v is not None else "—")
             wl_rows.append([name] + vals)
         table2 = _make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
         table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)

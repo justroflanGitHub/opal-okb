@@ -461,22 +461,20 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
 
     # ===== Обобщённое увеличение V =====
     if sys.object_type == ObjectType.FINITE and abs(sys.object_height) > 1e-10:
-        # Для конечного предмета: V = s'/s
-        # Параксиальное увеличение через кардинальные отрезки
-        # Упрощённо: используем nu_last для оценки
+        # Для конечного предмета: V = f' / (s + f') where s = -obj_dist
         if abs(nu_last) > 1e-15:
             obj_dist = sys.surfaces[0].thickness if sys.surfaces else 0.0
             if abs(obj_dist) > 1e-10:
-                # V = f' / (s - f') where s = -obj_dist
                 efl = results.get('focal_length', 0)
                 s_val = -obj_dist
-                if abs(s_val - (-efl)) > 1e-10:
+                if abs(s_val + efl) > 1e-10:
                     results['V'] = efl / (s_val + efl)
                     results['magnification'] = results['V']
     else:
-        # Для бесконечного предмета V = 0 (в информационном плане)
-        results['V'] = 0.0
-        results['magnification'] = 0.0
+        # Для бесконечного предмета: V = -f'
+        efl = results.get('focal_length', 0)
+        results['V'] = -efl
+        results['magnification'] = -efl
 
     return results
 

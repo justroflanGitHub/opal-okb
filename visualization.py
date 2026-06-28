@@ -587,12 +587,17 @@ class OpticalSystemView(QWidget):
             s3 = to_screen(z_stop, stop_r)
             s4 = to_screen(z_stop, -stop_r)
             painter.drawLine(int(s3[0]), int(s3[1]), int(s4[0]), int(s4[1]))
-            # Сплошная линия — чуть длиннее диафрагмы (рисуется поверх)
+            # Сплошные засечки за пределами диафрагмы
             painter.setPen(QPen(self.COLOR_STOP, 2, Qt.SolidLine))
             ext = stop_r * 1.15
-            s1 = to_screen(z_stop, ext)
-            s2 = to_screen(z_stop, -ext)
-            painter.drawLine(int(s1[0]), int(s1[1]), int(s2[0]), int(s2[1]))
+            # Верхняя засечка: от stop_r до ext
+            s1a = to_screen(z_stop, stop_r)
+            s1b = to_screen(z_stop, ext)
+            painter.drawLine(int(s1a[0]), int(s1a[1]), int(s1b[0]), int(s1b[1]))
+            # Нижняя засечка: от -stop_r до -ext
+            s2a = to_screen(z_stop, -stop_r)
+            s2b = to_screen(z_stop, -ext)
+            painter.drawLine(int(s2a[0]), int(s2a[1]), int(s2b[0]), int(s2b[1]))
     
     def _sag(self, R, y):
         if abs(R) < 1e-10: return 0.0

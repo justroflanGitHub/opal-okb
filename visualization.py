@@ -108,22 +108,41 @@ class OpticalSystemView(QWidget):
         for wl in wavelengths_to_trace:
             # aperture_value = D, stop_r = D/2
             ap_r = sys.aperture_value / 2.0 if sys.aperture_value > 0 else 10.0
-            max_sd = max((s.semi_diameter for s in sys.surfaces if s.semi_diameter > 0), default=ap_r)
-            pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
-            
             # Основной пучок под углом поля (берём крайнее поле)
             field_angle = 0.0
             if sys.field_points:
                 max_fp = max(abs(fp.y) for fp in sys.field_points if fp.y != 0)
                 if max_fp > 0:
                     field_angle = max_fp
+            
+            # pupil_range: подбираем так, чтобы все лучи прошли
+            # Binary search не нужен — просто ограничиваем по диафрагме
+            # и используем достаточно малый pupil_range чтобы все прошли
+            if field_angle > 0:
+                import math as _m
+                angle_rad = _m.radians(field_angle)
+                # Находим максимальный pupil_range где все лучи проходят
+                min_sd = min((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
+                z_acc = 0.0
+                max_shift_ratio = 0.0
+                for s2 in sys.surfaces:
+                    if s2.semi_diameter > 0:
+                        sh = abs(_m.tan(angle_rad)) * z_acc
+                        # pupil_y * cos + sh < semi_d
+                        ratio = max((s2.semi_diameter - sh) / ap_r, 0.1)
+                        max_shift_ratio = max(max_shift_ratio, 1.0 - ratio + 0.05)
+                    z_acc += s2.thickness
+                pupil_rng = max(min_sd / ap_r - max_shift_ratio, 0.15)
+                pupil_rng = min(pupil_rng, 1.0)
+            else:
+                max_sd = max((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
+                pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
+            
             axial = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
             self.ray_results.append(('axial', wl, axial))
             
-            # Дополнительный пучок под 0° (осевой)
-            if field_angle > 0:
-                fan0 = trace_fan(sys, num_rays=7, pupil_range=pupil_rng, wl=wl, field_y=0.0)
-                self.ray_results.append(('field', wl, fan0))
+            # Дополнительный пучок под 0° (осевой) — только если есть поле
+            # (убрано: все лучи идут под углом поля)
     
     def reset_view(self):
         self._zoom = 1.0
@@ -342,36 +361,23 @@ class OpticalSystemView(QWidget):
                     self._draw_ray(painter, rr, to_screen, rtype, wl, 
                                    blocked=not rr.success)
         
-        # ===== Фокальная точка =====
+        # ===== Фокальная точка F' =====
         parax = paraxial_trace(self.system)
-        efl = parax.get('focal_length', 0)
-        bfd = parax.get('back_focal_distance', 0)
-        if efl != 0 and len(self.system.surfaces) > 0:
+        sF_prime = parax.get('sF_prime', 0)
+        if sF_prime != 0 and len(self.system.surfaces) > 0:
+            # sF' = расстояние от последней поверхности до фокуса
             last_surf_z = z_pos[len(self.system.surfaces) - 1]
-            # BFD = расстояние от последней поверхности до фокуса
-            # Но z_pos[-1] уже включает толщину последней поверхности
-            # Фокус на расстоянии BFD от последней поверхности
-            # В нашей модели: z_pos[-1] = сумма всех толщин
-            # Найдём фокус по осевому лучу
-            for rtype, wl, results in self.ray_results:
-                if rtype == 'axial':
-                    # Найдём где лучи пересекают y=0
-                    for rr in results:
-                        if rr.success and len(rr.path) >= 2 and abs(rr.path[0][1]) > 1:
-                            # Линейная интерполяция между последними двумя точками
-                            p1 = rr.path[-2]
-                            p2 = rr.path[-1]
-                            if abs(p2[1] - p1[1]) > 1e-10:
-                                t = -p1[1] / (p2[1] - p1[1])
-                                fz = p1[2] + t * (p2[2] - p1[2])
-                                fx, fy = to_screen(fz, 0)
-                                painter.setPen(QPen(self.COLOR_FOCAL, 2))
-                                painter.drawLine(int(fx) - 5, int(fy), int(fx) + 5, int(fy))
-                                painter.drawLine(int(fx), int(fy) - 5, int(fx), int(fy) + 5)
-                                painter.setFont(QFont("Consolas", 9))
-                                painter.drawText(int(fx) - 5, int(fy) + 18, "F'")
-                                break
-                    break
+            # z_pos[-1] = сумма всех толщин = позиция плоскости изображения
+            # Фокус: sF' от последней поверхности
+            z_focal = z_pos[-2] + sF_prime  # z_pos[-2] = вершина последней поверхности
+            fx, fy = to_screen(z_focal, 0)
+            # Перпендикулярная линия к оптической оси
+            painter.setPen(QPen(self.COLOR_FOCAL, 2))
+            painter.drawLine(int(fx), int(fy) - 15, int(fx), int(fy) + 15)
+            # Маркер F'
+            painter.drawLine(int(fx) - 5, int(fy), int(fx) + 5, int(fy))
+            painter.setFont(QFont("Consolas", 9))
+            painter.drawText(int(fx) - 5, int(fy) - 18, "F'")
         
         # ===== Экранирование =====
         obscuration = getattr(self.system, 'obscuration_ratio', 0.0)

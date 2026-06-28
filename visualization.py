@@ -582,17 +582,17 @@ class OpticalSystemView(QWidget):
             z_stop = z + sd_offset
             stop_r = self.system.aperture_value / 2.0 if self.system.aperture_value > 0 else sd * 0.9
             # aperture_value = D (полный диаметр), stop_r = D/2 = радиус
-            # Сплошная линия — чуть длиннее диафрагмы
-            painter.setPen(QPen(self.COLOR_STOP, 2, Qt.SolidLine))
-            ext = stop_r * 1.15
-            s1 = to_screen(z_stop, ext)
-            s2 = to_screen(z_stop, -ext)
-            painter.drawLine(int(s1[0]), int(s1[1]), int(s2[0]), int(s2[1]))
             # Штрихованная = точно aperture_value (D/2 до -D/2)
             painter.setPen(QPen(self.COLOR_STOP, 1, Qt.DashLine))
             s3 = to_screen(z_stop, stop_r)
             s4 = to_screen(z_stop, -stop_r)
             painter.drawLine(int(s3[0]), int(s3[1]), int(s4[0]), int(s4[1]))
+            # Сплошная линия — чуть длиннее диафрагмы (рисуется поверх)
+            painter.setPen(QPen(self.COLOR_STOP, 2, Qt.SolidLine))
+            ext = stop_r * 1.15
+            s1 = to_screen(z_stop, ext)
+            s2 = to_screen(z_stop, -ext)
+            painter.drawLine(int(s1[0]), int(s1[1]), int(s2[0]), int(s2[1]))
     
     def _sag(self, R, y):
         if abs(R) < 1e-10: return 0.0

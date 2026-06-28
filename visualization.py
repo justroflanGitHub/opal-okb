@@ -295,11 +295,15 @@ class OpticalSystemView(QWidget):
             painter.drawLine(int(sx1), int(sy1), int(sx2), int(sy2))
             z += z_step
         
-        # ===== Оптическая ось =====
+        # ===== Оптическая ось (до F') =====
         pen_axis = QPen(self.COLOR_AXIS, 1.5, Qt.SolidLine)
         painter.setPen(pen_axis)
+        # Вычисляем z_focal для продления оси
+        _parax = paraxial_trace(self.system)
+        _sF_prime = _parax.get('sF_prime', 0)
+        _z_focal = z_pos[-2] + _sF_prime if _sF_prime != 0 and len(z_pos) >= 2 else z_max
         ax1 = to_screen(z_min, 0)
-        ax2 = to_screen(z_max, 0)
+        ax2 = to_screen(max(z_max, _z_focal), 0)
         painter.drawLine(int(ax1[0]), int(ax1[1]), int(ax2[0]), int(ax2[1]))
         
         # ===== Предмет (для конечного предмета) =====

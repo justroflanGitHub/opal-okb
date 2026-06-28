@@ -106,21 +106,24 @@ class OpticalSystemView(QWidget):
             wavelengths_to_trace = [wl.value for wl in sys.wavelengths]
         
         for wl in wavelengths_to_trace:
-            # Осевой пучок — крайние лучи блокируются диафрагмой (STOP)
             # aperture_value = D, stop_r = D/2
             ap_r = sys.aperture_value / 2.0 if sys.aperture_value > 0 else 10.0
             max_sd = max((s.semi_diameter for s in sys.surfaces if s.semi_diameter > 0), default=ap_r)
-            # pupil_range: лучи чуть шире диафрагмы для визуализации клиппинга
             pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
-            axial = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=0.0)
+            
+            # Основной пучок под углом поля (берём крайнее поле)
+            field_angle = 0.0
+            if sys.field_points:
+                max_fp = max(abs(fp.y) for fp in sys.field_points if fp.y != 0)
+                if max_fp > 0:
+                    field_angle = max_fp
+            axial = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
             self.ray_results.append(('axial', wl, axial))
             
-            # Внеосевые пучки
-            if sys.field_points:
-                for fp in sys.field_points:
-                    if fp.y != 0:
-                        fan = trace_fan(sys, num_rays=7, pupil_range=pupil_rng, wl=wl, field_y=fp.y)
-                        self.ray_results.append(('field', wl, fan))
+            # Дополнительный пучок под 0° (осевой)
+            if field_angle > 0:
+                fan0 = trace_fan(sys, num_rays=7, pupil_range=pupil_rng, wl=wl, field_y=0.0)
+                self.ray_results.append(('field', wl, fan0))
     
     def reset_view(self):
         self._zoom = 1.0

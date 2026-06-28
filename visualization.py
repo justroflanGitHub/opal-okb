@@ -353,19 +353,32 @@ class OpticalSystemView(QWidget):
         parax = paraxial_trace(self.system)
         sF_prime = parax.get('sF_prime', 0)
         if sF_prime != 0 and len(self.system.surfaces) > 0:
-            # sF' = расстояние от последней поверхности до фокуса
-            last_surf_z = z_pos[len(self.system.surfaces) - 1]
-            # z_pos[-1] = сумма всех толщин = позиция плоскости изображения
-            # Фокус: sF' от последней поверхности
-            z_focal = z_pos[-2] + sF_prime  # z_pos[-2] = вершина последней поверхности
-            fx, fy = to_screen(z_focal, 0)
-            # Перпендикулярная линия к оптической оси
+            z_focal = z_pos[-2] + sF_prime
+            # Найдём высоту Y схождения пучка в плоскости фокуса
+            y_focal = 0.0
+            for rtype, wl, results in self.ray_results:
+                if rtype == 'axial':
+                    for rr in results:
+                        if rr.success and len(rr.path) >= 2:
+                            # Интерполируем последний сегмент до z_focal
+                            p1 = rr.path[-2]
+                            p2 = rr.path[-1]
+                            if abs(p2[2] - p1[2]) > 1e-10:
+                                t = (z_focal - p1[2]) / (p2[2] - p1[2])
+                                if 0 <= t <= 2:  # допускаем экстраполяцию
+                                    y_focal = p1[1] + t * (p2[1] - p1[1])
+                                    break
+                    break
+            fx, fy_axis = to_screen(z_focal, 0)
+            fx, fy = to_screen(z_focal, y_focal)
+            # Вертикальная линия от F' до оптической оси
+            painter.setPen(QPen(self.COLOR_FOCAL, 1, Qt.DashLine))
+            painter.drawLine(int(fx), int(fy), int(fx), int(fy_axis))
+            # Маркер F' на высоте схождения
             painter.setPen(QPen(self.COLOR_FOCAL, 2))
-            painter.drawLine(int(fx), int(fy) - 15, int(fx), int(fy) + 15)
-            # Маркер F'
             painter.drawLine(int(fx) - 5, int(fy), int(fx) + 5, int(fy))
             painter.setFont(QFont("Consolas", 9))
-            painter.drawText(int(fx) - 5, int(fy) - 18, "F'")
+            painter.drawText(int(fx) + 7, int(fy) + 4, "F'")
         
         # ===== Экранирование =====
         obscuration = getattr(self.system, 'obscuration_ratio', 0.0)

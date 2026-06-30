@@ -562,6 +562,121 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
     return results
 
 
+def trace_grid_3d(sys: OpticalSystem, num_rings: int = 3, num_azimuths: int = 8,
+                   wl: float = 0.546, field_y: float = 0.0) -> List[List['TraceResult']]:
+    """
+    3D ray tracing: generate a grid of rays across the entrance pupil.
+    
+    For each ring (0..num_rings-1) and each azimuthal position (0..num_azimuths-1),
+    create a ray that passes through that point in the entrance pupil.
+    
+    Returns List[List[TraceResult]] - outer list per ring, inner list per azimuth.
+    """
+    # Compute aperture radius
+    aperture = sys.aperture_value if sys.aperture_value > 0 else 20.0
+    # Detect bogus aperture_value (F/# or NA stored instead of diameter)
+    real_sd = [s.semi_diameter for s in sys.surfaces if s.semi_diameter > aperture / 10.0]
+    if aperture < 1.0 and real_sd:
+        aperture = max(real_sd) * 2.0
+    pupil_radius = aperture / 2.0
+    
+    # Compute z-position of entrance pupil (approximately at stop surface + offset)
+    stop_idx = getattr(sys, 'stop_surface', 1)
+    stop_off = getattr(sys, 'stop_offset', 0.0)
+    z_pupil = 0.0
+    for j in range(min(stop_idx, len(sys.surfaces))):
+        z_pupil += sys.surfaces[j].thickness
+    z_pupil += stop_off
+    
+    # For infinite object: field angle
+    is_infinite = (sys.object_type == ObjectType.INFINITE)
+    angle = math.radians(field_y) if (is_infinite and field_y != 0) else 0.0
+    
+    # Starting z position (before the system)
+    z_start = -1.0 if is_infinite else z_pupil - 1.0
+    
+    results = []
+    
+    for ring in range(num_rings):
+        # ring 0 = center, then increasing radii
+        if num_rings == 1:
+            r = 0.0
+        else:
+            r = (ring + 1) / num_rings * pupil_radius
+        
+        # Special case: ring 0 with r=0 is just a single ray at center
+        if ring == 0 and num_rings > 1:
+            # Include center ray
+            ring_results = []
+            if is_infinite:
+                # Ray starts at z_start, aimed at (0, 0) at z_pupil with field angle
+                # For on-axis (field_y=0): ray goes straight along z
+                # For off-axis: ray has tilt
+                dz = z_pupil - z_start
+                y_at_start = -dz * math.sin(angle) / math.cos(angle) if abs(math.cos(angle)) > 1e-10 else 0.0
+                ray = Ray(x=0, y=y_at_start, z=z_start,
+                         k=math.sin(angle) if field_y != 0 else 0.0,
+                         l=0.0,
+                         m=math.cos(angle) if field_y != 0 else 1.0)
+            else:
+                from optics_engine import paraxial_trace
+                parax = paraxial_trace(sys)
+                sF = parax.get('sF', 0)
+                obj_dist = abs(sF) if sF and abs(sF) > 1e-6 else 100.0
+                obj_y = field_y
+                ray = Ray(x=0, y=obj_y, z=-obj_dist,
+                         k=0, l=0.0 - obj_y, m=obj_dist)
+                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+                ray.k /= norm; ray.l /= norm; ray.m /= norm
+            
+            ring_results.append(trace_ray_through_system(sys, ray, wl))
+            results.append(ring_results)
+            continue
+        
+        ring_results = []
+        for az in range(num_azimuths):
+            az_angle = 2 * math.pi * az / num_azimuths
+            px = r * math.cos(az_angle)
+            py = r * math.sin(az_angle)
+            
+            if is_infinite:
+                # Ray must pass through (px, py) at z_pupil
+                # Direction has tilt from field angle
+                # The ray starts at z_start, and at z_pupil it should be at (px, py)
+                # For field angle in Y direction: direction = (0, sin(angle), cos(angle))
+                # But we need the ray to hit (px, py) at z_pupil
+                # Start position: at z_start, the ray is at:
+                #   x = px (no x-field angle)
+                #   y = py - dz * sin(angle)/cos(angle)
+                dz = z_pupil - z_start
+                y_at_start = py - dz * math.sin(angle) / math.cos(angle) if abs(math.cos(angle)) > 1e-10 else py
+                
+                ray = Ray(x=px, y=y_at_start, z=z_start,
+                         k=0.0,
+                         l=math.sin(angle) if field_y != 0 else 0.0,
+                         m=math.cos(angle) if field_y != 0 else 1.0)
+            else:
+                from optics_engine import paraxial_trace
+                parax = paraxial_trace(sys)
+                sF = parax.get('sF', 0)
+                obj_dist = abs(sF) if sF and abs(sF) > 1e-6 else 100.0
+                obj_y = field_y
+                # Aim from object point to pupil point
+                dx = px - 0.0
+                dy = py - obj_y
+                dz_val = z_pupil - (-obj_dist)
+                ray = Ray(x=0, y=obj_y, z=-obj_dist,
+                         k=dx, l=dy, m=dz_val)
+                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+                ray.k /= norm; ray.l /= norm; ray.m /= norm
+            
+            ring_results.append(trace_ray_through_system(sys, ray, wl))
+        
+        results.append(ring_results)
+    
+    return results
+
+
 def get_focal_spot(sys: OpticalSystem, wl: float = 0.58756, num_rays: int = 20) -> List[Tuple[float, float]]:
     """
     Точечная диаграмма в фокальной плоскости (Л1.6.1 Точечная диаграмма).

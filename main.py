@@ -26,6 +26,7 @@ from optics_engine import (
     apply_vignetting
 )
 from visualization import OpticalSystemView
+from visualization3d import Visualization3D
 from analysis_gui import AnalysisPanel
 from system_utils import reverse_system, scale_system, nearest_standard_radius, standardize_radii, get_radii_changes
 from io_utils import save_json, load_json, append_system, export_protocol, STANDARD_WAVELENGTHS
@@ -961,6 +962,8 @@ class MainWindow(QMainWindow):
 
         # Create viz widget FIRST (before connecting signals)
         self.viz = OpticalSystemView()
+        self.viz_3d = Visualization3D()
+        self._viz_mode = '2d'
 
         self.btn_viz_fit = QPushButton("Сброс")
         self.btn_viz_fit.setMaximumWidth(70)
@@ -994,6 +997,13 @@ class MainWindow(QMainWindow):
         self.btn_zernike_chrom.setToolTip("Показывать лучи для всех длин волн")
         self.btn_zernike_chrom.clicked.connect(self._toggle_chromatic_rays)
 
+        # 2D/3D toggle
+        self.btn_3d_toggle = QPushButton("3D")
+        self.btn_3d_toggle.setMaximumWidth(50)
+        self.btn_3d_toggle.setCheckable(True)
+        self.btn_3d_toggle.setToolTip("Switch 2D / 3D view")
+        self.btn_3d_toggle.clicked.connect(self._toggle_viz_3d)
+
         viz_ctrl.addWidget(self.btn_viz_fit)
         viz_ctrl.addWidget(self.btn_viz_zoomin)
         viz_ctrl.addWidget(self.btn_viz_zoomout)
@@ -1001,10 +1011,16 @@ class MainWindow(QMainWindow):
         viz_ctrl.addWidget(self.btn_ray_table)
         viz_ctrl.addWidget(self.btn_wf_3d)
         viz_ctrl.addWidget(self.btn_zernike_chrom)
+        viz_ctrl.addWidget(self.btn_3d_toggle)
         viz_ctrl.addStretch()
         viz_layout.addLayout(viz_ctrl)
 
-        viz_layout.addWidget(self.viz)
+        # Stacked container for 2D and 3D views
+        from PyQt5.QtWidgets import QStackedWidget
+        self.viz_stack = QStackedWidget()
+        self.viz_stack.addWidget(self.viz)       # index 0 = 2D
+        self.viz_stack.addWidget(self.viz_3d)    # index 1 = 3D
+        viz_layout.addWidget(self.viz_stack)
         viz_group.setLayout(viz_layout)
 
         self.results = ResultsPanel()  # Kept for compat (tests access w.results.parax_table)
@@ -1615,6 +1631,8 @@ class MainWindow(QMainWindow):
             self._update_parax_and_seidel(sys, None)
             self.surface_table.load_system(sys)
             self.viz.set_system(sys, trace_rays=True)
+            if self._viz_mode == '3d':
+                self.viz_3d.set_system(sys)
             self.analysis.analyze(sys)
             f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
             self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
@@ -1632,6 +1650,8 @@ class MainWindow(QMainWindow):
         self._update_parax_and_seidel(sys, data)
         self.surface_table.load_system(sys)
         self.viz.set_system(sys, trace_rays=True)
+        if self._viz_mode == '3d':
+            self.viz_3d.set_system(sys)
         if data:
             self.analysis.apply_results(sys, data)
         else:
@@ -2339,6 +2359,22 @@ class MainWindow(QMainWindow):
             self.viz.update()
         mode = "все длины волн" if self.viz.chromatic_rays else "одна длина волны"
         self.statusBar().showMessage(f"Ход лучей: {mode}")
+
+    def _toggle_viz_3d(self):
+        """Switch between 2D and 3D visualization."""
+        if self.btn_3d_toggle.isChecked():
+            self.viz_stack.setCurrentIndex(1)
+            self._viz_mode = '3d'
+            self.btn_3d_toggle.setText("2D")
+            # Update 3D view with current system
+            if self.current_system and self.current_system.surfaces:
+                self.viz_3d.set_system(self.current_system)
+            self.statusBar().showMessage("3D view")
+        else:
+            self.viz_stack.setCurrentIndex(0)
+            self._viz_mode = '2d'
+            self.btn_3d_toggle.setText("3D")
+            self.statusBar().showMessage("2D view")
 
 
 def main():

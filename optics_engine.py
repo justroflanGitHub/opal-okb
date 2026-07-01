@@ -12,7 +12,7 @@ from enum import Enum
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from glass_catalog import compute_refractive_index
-from optics_utils import compute_z_positions, get_primary_wl
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
 class SurfaceType(Enum):

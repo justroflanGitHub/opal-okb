@@ -12,6 +12,7 @@ from enum import Enum
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from glass_catalog import compute_refractive_index
+from optics_utils import compute_z_positions, get_primary_wl
 
 
 class SurfaceType(Enum):
@@ -143,11 +144,9 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         return False
     
     # Z-позиции
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     
-    wl = system.wavelengths[0].value if system.wavelengths else 0.58756
+    wl = get_primary_wl(system)
     
     # Начальные параметры луча
     if system.object_type == ObjectType.INFINITE:
@@ -264,7 +263,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         'entrance_pupil_diameter': 0.0,  # D входного зрачка
     }
 
-    wl_primary = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+    wl_primary = get_primary_wl(sys)
     ns = len(sys.surfaces)
 
     # Показатели преломления для каждой среды (ns+1 сред)
@@ -496,9 +495,9 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
     }
     """
     if wl is None:
-        wl = system.wavelengths[0].value if system.wavelengths else 0.58756
+        wl = get_primary_wl(system)
 
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     parax = paraxial_trace(system)
     efl = parax.get('focal_length', 0)
     fno = parax.get('f_number', 0)
@@ -516,9 +515,7 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
         sag_x_start = aperture / 2.0
 
         # Z-позиции поверхностей
-        z_pos = [0.0]
-        for s in system.surfaces:
-            z_pos.append(z_pos[-1] + s.thickness)
+        z_pos = compute_z_positions(system)
 
         def _trace_marginal_ray(y_start, x_start, field_y_val):
             """Трассировка габаритного луча, возвращает (y_img, x_img, success, max_clear_aperture)"""
@@ -679,7 +676,7 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
     SIV — кривизна поля
     SV — дисторсия
     """
-    wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+    wl = get_primary_wl(sys)
     ns = len(sys.surfaces)
     if ns < 2:
         return {'SI': 0, 'SII': 0, 'SIII': 0, 'SIV': 0, 'SV': 0}

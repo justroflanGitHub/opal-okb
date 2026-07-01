@@ -3,6 +3,7 @@ import sys, os, struct, math, re, io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from optics_engine import (OpticalSystem, Surface, Wavelength, FieldPoint,
                             ObjectType, ApertureType)
+from optics_utils import wl_name as _wl_name_lookup
 from lbo_reader import load_lbo_fast
 
 # OPAL-PC standard wavelength table (by index)
@@ -287,19 +288,9 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         else:
             sys_obj.aperture_value = 20.0
     # Длины волн с именами стандартных линий
-    _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
-                 0.58756: 'd', 0.48613: 'F', 0.43584: 'g',
-                 0.40466: 'h', 0.36501: 'i', 0.70652: 'r',
-                 0.85211: 's', 0.64385: "C'", 0.47999: "F'",
-                 0.58930: 'D'}
     _wl_list = []
     for wl in wavelengths:
-        wl_name = ''
-        for wlv, wln in _wl_names.items():
-            if abs(wl - wlv) < 0.0002:
-                wl_name = wln
-                break
-        _wl_list.append(Wavelength(wl, 1.0, wl_name))
+        _wl_list.append(Wavelength(wl, 1.0, _wl_name_lookup(wl)))
     sys_obj.wavelengths = _wl_list
     sys_obj.field_points = [FieldPoint(0.0)]
     if field_deg > 0:

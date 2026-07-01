@@ -1,5 +1,5 @@
 """
-OPAL-OKB — Анализ аберраций (Л1.4.6-Л1.4.7)
+OPAL-OKB - Анализ аберраций (Л1.4.6-Л1.4.7)
 Графики: поперечные, продольные, волновые аберрации
 Точечные диаграммы (Л1.6.1)
 """
@@ -8,46 +8,45 @@ from typing import List, Tuple, Dict
 from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
-def trace_aberration_fan(sys: OpticalSystem, wl: float, 
+def trace_aberration_fan(sys: OpticalSystem, wl: float,
                           num_rays: int = 20, field_y: float = 0.0
                           ) -> List[Dict]:
     """
     Трассировка веера лучей для анализа аберраций.
     Возвращает список словарей с данными каждого луча.
-    
+
     Для каждого луча:
     - pupil_y: зрачковая координата (0..1)
     - dy: поперечная аберрация (мм)
-    - ds: продольная аберрация (мм)  
-    - wave: волновая аберрация (длины волн) — через OPL
+    - ds: продольная аберрация (мм)
+    - wave: волновая аберрация (длины волн) - через OPL
     - y_img: высота на плоскости изображения
     """
-    aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
-    
+    aperture = get_effective_aperture(sys, default=10.0)
+
     # Найдём фокальную плоскость через параксиальный расчёт
     parax = paraxial_trace(sys)
     bfd = parax.get('back_focal_distance', 0)
     efl = parax.get('focal_length', 0)
-    
+
     # Z-позиции
-    z_pos = [0.0]
-    for s in sys.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
-    
+    z_pos = compute_z_positions(sys)
+
     img_z = z_pos[-1]
-    
+
     # ===== Вычисляем волновую аберрацию через OPL =====
     # 1. Определяем параксиальный фокус
     last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
     parax_focus_z = last_surf_z + bfd if bfd != 0 else img_z
-    
+
     # 2. Радиус reference sphere
     ref_sphere_radius = parax_focus_z - last_surf_z
     if abs(ref_sphere_radius) < 1e-10:
         ref_sphere_radius = 1.0  # fallback
-    
+
     # 3. Трассируем главный луч (через центр зрачка) для OPL_chief
     if sys.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
@@ -55,46 +54,46 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     else:
         obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
-    
+
     # Для осевого пучка (field_y=0) главный луч идёт вдоль оси
     chief_trace = trace_ray_through_system(sys, chief_ray, wl)
     opl_chief = chief_trace.opl if chief_trace.success else 0.0
-    
+
     # Если главный луч успешен, добавим OPL от последней поверхности до reference sphere
     if chief_trace.success and len(chief_trace.path) >= 2:
         chief_last = chief_trace.path[-1]
         # OPL от img_z до reference sphere
         dz_to_ref = parax_focus_z - chief_last[2]
-        # Среда после последней поверхности — воздух
+        # Среда после последней поверхности - воздух
         opl_chief += 1.0 * dz_to_ref  # n_air = 1
-    
+
     results = []
-    
+
     for i in range(num_rays):
         # Зрачковая координата от -1 до 1
         pupil_y = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
         y_start = pupil_y * aperture / 2
-        
+
         # Создаём луч
         if sys.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
-            ray = Ray(x=0, y=y_start, z=-50, 
+            ray = Ray(x=0, y=y_start, z=-50,
                      k=math.sin(angle), l=0, m=math.cos(angle))
         else:
             ray = Ray(x=0, y=field_y, z=-50,
                      k=0, l=(y_start - field_y) / 50, m=1)
             norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
             ray.k /= norm; ray.l /= norm; ray.m /= norm
-        
+
         # Трассировка
         result = trace_ray_through_system(sys, ray, wl)
-        
+
         if result.success and len(result.path) >= 2:
             last = result.path[-1]
-            
+
             # Поперечная аберрация: отклонение от главного луча
             dy = last[1]
-            
+
             # Продольная аберрация
             if len(result.path) >= 2:
                 prev = result.path[-2]
@@ -103,7 +102,7 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
                 ds = -dy / slope_y if abs(slope_y) > 1e-10 else 0
             else:
                 ds = 0
-            
+
             # Волновая аберрация через OPL:
             # W = (OPL_луча_до_reference_sphere - OPL_главного_до_reference_sphere) / λ
             # OPL до reference sphere = result.opl + n_air * dist(ref_sphere_intersection)
@@ -111,7 +110,7 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
             dz_to_focus = parax_focus_z - last[2]
             opl_full = result.opl + 1.0 * dz_to_focus  # n_air = 1
             wave = (opl_full - opl_chief) / wl if wl > 0 else 0.0
-            
+
             results.append({
                 'pupil_y': pupil_y,
                 'dy': dy,
@@ -131,7 +130,7 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
                 'z_img': None,
                 'success': False,
             })
-    
+
     return results
 
 
@@ -142,35 +141,35 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
     Точечная диаграмма (Л1.6.1).
     Трассировка сетки лучей на зрачке → координаты (dx, dy) на изображении.
     """
-    aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
-    
+    aperture = get_effective_aperture(sys, default=10.0)
+
     # Главный луч (для определения центра)
     chief_ray = Ray(x=0, y=0, z=-50, k=0, l=0, m=1)
     if sys.object_type == ObjectType.INFINITE and field_y != 0:
         angle = math.radians(field_y)
         chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
-    
+
     chief_result = trace_ray_through_system(sys, chief_ray, wl)
     if not chief_result.success or not chief_result.path:
         return []
-    
+
     chief_y = chief_result.path[-1][1]
     chief_x = chief_result.path[-1][0]
-    
+
     spots = []
     for i in range(num_rays):
         for j in range(num_rays):
             # Зрачковые координаты (квадратная сетка)
             px = -1.0 + 2.0 * i / (num_rays - 1)
             py = -1.0 + 2.0 * j / (num_rays - 1)
-            
+
             # Проверяем, что точка внутри круглого зрачка
             if px**2 + py**2 > 1.0:
                 continue
-            
+
             y_start = py * aperture / 2
             x_start = px * aperture / 2
-            
+
             if sys.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
                 ray = Ray(x=x_start, y=y_start, z=-50,
@@ -180,15 +179,15 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
                          k=x_start/50, l=(y_start-field_y)/50, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
-            
+
             result = trace_ray_through_system(sys, ray, wl)
-            
+
             if result.success and result.path:
                 last = result.path[-1]
                 dx = last[0] - chief_x
                 dy = last[1] - chief_y
                 spots.append((dx, dy))
-    
+
     return spots
 
 
@@ -203,7 +202,7 @@ def compute_rms_spot(spots: List[Tuple[float, float]]) -> float:
 def compute_rms_spot_xy(spot_points: List[Tuple[float, float]]) -> Dict:
     """
     Раздельные RMS по X и Y + энергетический центр.
-    
+
     Возвращает: {
         'rms_x': float,  # RMS по X (сагиттальный)
         'rms_y': float,  # RMS по Y (меридиональный)
@@ -253,7 +252,7 @@ def _find_focal_z(rays_data, coord_key, slope_key, img_z, efl):
                 z1 = r1['z']
                 z2 = r2['z']
                 z_int = (v2 - v1 - z2 * s2 + z1 * s1) / ds
-                # Вес: ближе к зрачку — больше вес
+                # Вес: ближе к зрачку - больше вес
                 w = max(0.1, 1.0 - abs(r1['pupil'] + r2['pupil']) / 2)
                 if abs(z_int - img_z) < abs(efl) * 3:  # sanity
                     z_intersections.append((z_int, w))
@@ -286,14 +285,12 @@ def compute_field_aberrations(system: OpticalSystem,
     if not field_points:
         return []
 
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     parax = paraxial_trace(system)
     efl = parax.get('focal_length', 0)
 
     # Z-позиции поверхностей
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     img_z = z_pos[-1]
 
     results = []
@@ -438,18 +435,16 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
     }
     """
     if wl is None:
-        wl = system.wavelengths[0].value if system.wavelengths else 0.58756
+        wl = get_primary_wl(system)
 
     parax = paraxial_trace(system)
     efl = parax.get('focal_length', 0)
 
     # Z-позиции поверхностей
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     img_z = z_pos[-1]
 
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
 
     results = []
 
@@ -588,33 +583,33 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
                         freq_lpmm=50.0, num_rays=30, field_y=0.0) -> list:
     """
     Фокусировочная кривая: MTF vs смещение плоскости изображения (Л1.7.4).
-    
+
     Возвращает [(defocus_mm, mtf_value), ...]
     defocus_range: ±мм от лучшей фокальной плоскости
     freq_lpmm: частота для оценки MTF (лин/мм)
-    
+
     Метод: трассируем лучи через систему, затем для каждого смещения
     propagated лучи до нужной z-плоскости и вычисляем RMS пятна → MTF.
     Автоматически находит лучшую фокальную плоскость через предварительный
     грубый поиск.
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
-    
-    # Трассируем сетку лучей на зрачке — получаем позиции и направления
+    aperture = get_effective_aperture(system, default=10.0)
+
+    # Трассируем сетку лучей на зрачке - получаем позиции и направления
     # на выходе в плоскость изображения
-    exit_rays = []  # [(x, y, z, kx, ky)]  — kx,ky = dx/dz, dy/dz
-    
+    exit_rays = []  # [(x, y, z, kx, ky)]  - kx,ky = dx/dz, dy/dz
+
     for i in range(num_rays):
         for j in range(num_rays):
             px = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
             py = -1.0 + 2.0 * j / (num_rays - 1) if num_rays > 1 else 0.0
-            
+
             if px**2 + py**2 > 1.0:
                 continue
-            
+
             y_start = py * aperture / 2
             x_start = px * aperture / 2
-            
+
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
                 ray = Ray(x=x_start, y=y_start, z=-50,
@@ -624,9 +619,9 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
                          k=x_start/50, l=(y_start-field_y)/50, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
-            
+
             result = trace_ray_through_system(system, ray, wl)
-            
+
             if result.success and len(result.path) >= 2:
                 last = result.path[-1]
                 prev = result.path[-2]
@@ -635,16 +630,14 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
                     kx = (last[0] - prev[0]) / dz
                     ky = (last[1] - prev[1]) / dz
                     exit_rays.append((last[0], last[1], last[2], kx, ky))
-    
+
     if not exit_rays:
         return []
-    
+
     # Z-позиция номинальной плоскости изображения
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     img_z_nominal = z_pos[-1]
-    
+
     def _rms_at_z(target_z):
         """Вычислить RMS пятна при заданной z-позиции."""
         xs, ys = [], []
@@ -656,7 +649,7 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
         cy = sum(ys) / len(ys)
         r2 = sum((x - cx)**2 + (y - cy)**2 for x, y in zip(xs, ys)) / len(xs)
         return math.sqrt(r2)
-    
+
     # Фаза 1: грубый поиск лучшего фокуса
     # Ищем в широком диапазоне (до ±EFL или ±50мм)
     parax = paraxial_trace(system)
@@ -665,7 +658,7 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
     coarse_steps = 50
     best_z = img_z_nominal
     best_rms = float('inf')
-    
+
     for ic in range(coarse_steps + 1):
         dz = -coarse_range + 2.0 * coarse_range * ic / coarse_steps
         z_test = img_z_nominal + dz
@@ -673,22 +666,22 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
         if rms < best_rms:
             best_rms = rms
             best_z = z_test
-    
+
     # Фаза 2: тонкий скан вокруг найденного фокуса
     curve = []
     for ip in range(num_points):
         defocus = -defocus_range + 2.0 * defocus_range * ip / (num_points - 1) if num_points > 1 else 0.0
         target_z = best_z + defocus
         rms = _rms_at_z(target_z)
-        
-        # MTF — нормализованная оценка качества через RMS пятна
-        # Аппроксимация: MTF ≈ 1/(1 + (π·σ·ν)²)
+
+        # MTF - нормализованная оценка качества через RMS пятна
+        # Аппроксимация: MTF ≈ 1/(1 + (π·σ·ν)2)
         # σ = RMS радиус (мм), ν = частота (лин/мм)
         mtf = 1.0 / (1.0 + (math.pi * rms * freq_lpmm)**2)
         mtf = max(0.0, min(1.0, mtf))
-        
+
         curve.append((defocus, mtf))
-    
+
     return curve
 
 
@@ -699,7 +692,7 @@ def compute_spot_diagram_polychromatic(sys: OpticalSystem,
     """
     Полихроматическая точечная диаграмма.
     Трассирует лучи для каждой длины волны из system.wavelengths.
-    
+
     Возвращает: список (x, y, wavelength_index) для каждой точки.
     """
     spots = []
@@ -713,7 +706,7 @@ def compute_spot_diagram_polychromatic(sys: OpticalSystem,
 def compute_polychromatic_rms(sys: OpticalSystem, num_rays: int = 30, field_y: float = None):
     """
     RMS пятна рассеяния по всем полям и длинам волн.
-    Взвешенная сумма: sqrt(Σ(w_i * rms_i²) / Σ(w_i))
+    Взвешенная сумма: sqrt(Σ(w_i * rms_i2) / Σ(w_i))
     """
     total_rms_sq = 0.0
     total_weight = 0.0
@@ -746,35 +739,35 @@ def compute_polychromatic_rms(sys: OpticalSystem, num_rays: int = 30, field_y: f
 def compute_spot_heatmap(system, wl=0.58756, num_rays=500, field_y=0.0, grid_size=100):
     """
     Топограмма плотности точек пятна рассеяния.
-    
+
     1. Трассировать num_rays лучей → spot diagram (x, y)
     2. Создать grid_size × grid_size гистограмму
     3. Нормировать: максимум = 1.0
-    
+
     Возвращает: (heatmap, x_range, y_range)
         heatmap: 2D массив (grid_size × grid_size), нормированный [0, 1]
         x_range: (x_min, x_max) в мм
         y_range: (y_min, y_max) в мм
     """
     import numpy as _np
-    
+
     # Получаем точки пятна (сетка на зрачке)
     # Используем квадратную сетку num_rays × num_rays, отбираем внутри круга
     side = int(math.sqrt(num_rays))
     if side < 2:
         side = 2
-    
+
     spots = compute_spot_diagram(system, wl=wl, num_rays=side, field_y=field_y)
     if not spots:
         empty = _np.zeros((grid_size, grid_size))
         return empty, (0.0, 0.0), (0.0, 0.0)
-    
+
     xs = [dx for dx, dy in spots]
     ys = [dy for dx, dy in spots]
-    
+
     x_min, x_max = min(xs), max(xs)
     y_min, y_max = min(ys), max(ys)
-    
+
     # Добавляем небольшой запас
     margin_x = max((x_max - x_min) * 0.1, 1e-6)
     margin_y = max((y_max - y_min) * 0.1, 1e-6)
@@ -782,7 +775,7 @@ def compute_spot_heatmap(system, wl=0.58756, num_rays=500, field_y=0.0, grid_siz
     x_max += margin_x
     y_min -= margin_y
     y_max += margin_y
-    
+
     # Делаем квадратную область
     x_range = x_max - x_min
     y_range = y_max - y_min
@@ -793,130 +786,130 @@ def compute_spot_heatmap(system, wl=0.58756, num_rays=500, field_y=0.0, grid_siz
     x_max = x_center + max_range / 2
     y_min = y_center - max_range / 2
     y_max = y_center + max_range / 2
-    
+
     # Создаём гистограмму
     heatmap = _np.zeros((grid_size, grid_size), dtype=_np.float64)
-    
+
     for dx, dy in spots:
         ix = int((dx - x_min) / (x_max - x_min) * (grid_size - 1))
         iy = int((dy - y_min) / (y_max - y_min) * (grid_size - 1))
         if 0 <= ix < grid_size and 0 <= iy < grid_size:
             heatmap[iy, ix] += 1.0
-    
+
     # Нормируем
     max_val = heatmap.max()
     if max_val > 0:
         heatmap /= max_val
-    
+
     return heatmap, (x_min, x_max), (y_min, y_max)
 
 
-def compute_geometric_mtf(spots: List[Tuple[float, float]], 
+def compute_geometric_mtf(spots: List[Tuple[float, float]],
                            max_freq: float = 100.0,
                            num_freqs: int = 20) -> List[Tuple[float, float, float]]:
     """
     Геометрическая ЧКХ (Л1.6.7).
     Возвращает [(freq, MTF_tangential, MTF_sagittal), ...]
-    
+
     Метод: FFT точечной диаграммы.
     1. Создать гистограмму точек на 2D сетке
-    2. FFT → |FFT|² = PSF
+    2. FFT → |FFT|2 = PSF
     3. FFT(PSF) → OTF → |OTF| = MTF
     """
     if not spots or len(spots) < 10:
         return []
-    
+
     # Диапазон частот (лин/мм)
     freqs = [max_freq * i / num_freqs for i in range(num_freqs + 1)]
-    
+
     # Размер сетки (степень двойки для FFT)
     N = 256
-    
+
     # Определяем масштаб: размер поля в мм
     if not spots:
         return []
-    
+
     dx_vals = [dx for dx, dy in spots]
     dy_vals = [dy for dx, dy in spots]
-    
+
     max_range = max(
         max(abs(v) for v in dx_vals) if dx_vals else 0.001,
         max(abs(v) for v in dy_vals) if dy_vals else 0.001
     )
     max_range = max(max_range, 1e-6)
-    
+
     # Поле: ±field_size мм
     field_size = max_range * 1.5  # с запасом
     pixel_size = 2 * field_size / N  # мм/пиксель
-    
+
     # Создаём гистограмму (PSF)
     psf = [[0.0] * N for _ in range(N)]
-    
+
     for dx, dy in spots:
         # Координаты в пикселях
         ix = int((dx + field_size) / pixel_size)
         iy = int((dy + field_size) / pixel_size)
         if 0 <= ix < N and 0 <= iy < N:
             psf[iy][ix] += 1.0
-    
+
     # Нормализация
     total = sum(sum(row) for row in psf)
     if total < 1e-15:
         return [(f, 0.0, 0.0) for f in freqs]
-    
+
     for iy in range(N):
         for ix in range(N):
             psf[iy][ix] /= total
-    
+
     # FFT 2D (DFT, т.к. numpy может быть недоступен)
     # Используем простую реализацию через строки + столбцы
     # FFT PSF → OTF
     otf = _fft2d(psf, N)
-    
+
     # |OTF| = MTF; нормализация: MTF(0) = 1
     mtf_2d = [[0.0] * N for _ in range(N)]
     dc_val = math.sqrt(otf[0][0][0]**2 + otf[0][0][1]**2)
     if dc_val < 1e-15:
         dc_val = 1.0
-    
+
     for iy in range(N):
         for ix in range(N):
             mtf_2d[iy][ix] = math.sqrt(otf[iy][ix][0]**2 + otf[iy][ix][1]**2) / dc_val
-    
+
     # Разрешение в частотах: df = 1 / (N * pixel_size) лин/мм
     df = 1.0 / (N * pixel_size)
-    
+
     # Извлекаем MTF для заданных частот
     # Тангенциальная: срез по оси x (freq_x)
     # Сагиттальная: срез по оси y (freq_y)
     mtf_data = []
     half_N = N // 2
-    
+
     for freq in freqs:
         if freq == 0:
             mtf_data.append((0, 1.0, 1.0))
             continue
-        
+
         # Индекс в массиве для данной частоты
         # Частоты в FFT: 0..half_N-1 соответствуют 0..(half_N-1)*df
-        # Потом half_N..N-1 — отрицательные частоты
+        # Потом half_N..N-1 - отрицательные частоты
         k = freq / df
         k_int = int(round(k))
-        
+
         if k_int >= half_N:
             mtf_data.append((freq, 0.0, 0.0))
             continue
-        
+
         # Тангенциальная: частота по оси x (горизонтальная)
-        # MTF_t = mtf_2d[0][k_int]  — срез по y=0
+        # MTF_t = mtf_2d[0][k_int]  - срез по y=0
         mtf_t = mtf_2d[0][k_int]
-        
-        # Сагиттальная: частота по оси y (вертикальная) 
-        # MTF_s = mtf_2d[k_int][0]  — срез по x=0
+
+        # Сагиттальная: частота по оси y (вертикальная)
+        # MTF_s = mtf_2d[k_int][0]  - срез по x=0
         mtf_s = mtf_2d[k_int][0]
-        
+
         mtf_data.append((freq, max(0.0, mtf_t), max(0.0, mtf_s)))
-    
+
     return mtf_data
 
 
@@ -924,20 +917,18 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
     """
     Spot diagram со смещением плоскости изображения.
     defocus_mm > 0 = дальше от системы, < 0 = ближе.
-    
+
     Метод: трассируем лучи, на выходе имеем (x, y, z, kx, ky),
     propagate каждый луч на целевую z-плоскость.
     Возвращает: [(dx, dy), ...] относительно центроида.
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
-    
+    aperture = get_effective_aperture(system, default=10.0)
+
     # Z-позиции поверхностей
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     img_z = z_pos[-1]
     target_z = img_z + defocus_mm
-    
+
     # Трассируем сетку лучей
     exit_rays = []  # [(x, y, z, kx, ky)]
     for i in range(num_rays):
@@ -966,21 +957,21 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
                     kx = (last[0] - prev[0]) / dz
                     ky = (last[1] - prev[1]) / dz
                     exit_rays.append((last[0], last[1], last[2], kx, ky))
-    
+
     if not exit_rays:
         return []
-    
+
     # Propagate до target_z
     propagated = []
     for (rx, ry, rz, kx, ky) in exit_rays:
         dz = target_z - rz
         propagated.append((rx + kx * dz, ry + ky * dz))
-    
+
     # Центроид
     n = len(propagated)
     cx = sum(dx for dx, dy in propagated) / n
     cy = sum(dy for dx, dy in propagated) / n
-    
+
     return [(dx - cx, dy - cy) for dx, dy in propagated]
 
 
@@ -989,15 +980,15 @@ def _fft1d(x_real, N):
     # Возвращает список комплексных пар [(re, im), ...]
     if N == 1:
         return [(x_real[0], 0.0)]
-    
+
     # Bit-reversal permutation + iterative FFT
     # Раскладываем на чётные и нечётные
     even = [x_real[2 * i] for i in range(N // 2)]
     odd = [x_real[2 * i + 1] for i in range(N // 2)]
-    
+
     E = _fft1d(even, N // 2)
     O = _fft1d(odd, N // 2)
-    
+
     result = [(0.0, 0.0)] * N
     for k in range(N // 2):
         angle = -2.0 * math.pi * k / N
@@ -1008,7 +999,7 @@ def _fft1d(x_real, N):
         t_im = O[k][0] * wi + O[k][1] * wr
         result[k] = (E[k][0] + t_re, E[k][1] + t_im)
         result[k + N // 2] = (E[k][0] - t_re, E[k][1] - t_im)
-    
+
     return result
 
 
@@ -1018,7 +1009,7 @@ def _fft2d(matrix, N):
     row_fft = []
     for iy in range(N):
         row_fft.append(_fft1d(matrix[iy], N))
-    
+
     # FFT по столбцам
     result = [[(0.0, 0.0)] * N for _ in range(N)]
     for ix in range(N):
@@ -1026,31 +1017,31 @@ def _fft2d(matrix, N):
         col_fft = _fft1d(col, N)
         for iy in range(N):
             result[iy][ix] = col_fft[iy]
-    
+
     return result
 
 
 def compute_isoplanatism(system, wl=0.58756, num_rays=20, field_y=0.0):
     """
     Вычислить неизопланатизм (нарушение изопланатизма).
-    
+
     Неизопланатизм = разность между поперечной аберрацией реального луча
     и линейной аппроксимацией по полю.
-    
+
     Для осевого пучка: η = Δy'_real(h) - Δy'_paraxial(h)
-    где h — высота на зрачке.
-    
+    где h - высота на зрачке.
+
     Параксиальная аппроксимация строится по линейной регрессии Δy'(h).
-    
+
     Возвращает: (pupil_heights, isoplanatism_values_um)
     """
     fan = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=field_y)
-    
+
     # Собираем успешные лучи
     successful = [(r['pupil_y'], r['dy']) for r in fan if r['success']]
     if len(successful) < 3:
         return ([], [])
-    
+
     # Линейная аппроксимация: Δy'_paraxial(h) = a * h + b
     # Используем все точки для линейной регрессии (least squares).
     n = len(successful)
@@ -1058,14 +1049,14 @@ def compute_isoplanatism(system, wl=0.58756, num_rays=20, field_y=0.0):
     sum_dy = sum(dy for _, dy in successful)
     sum_h2 = sum(h * h for h, _ in successful)
     sum_hdy = sum(h * dy for h, dy in successful)
-    
+
     denom = n * sum_h2 - sum_h * sum_h
     if abs(denom) < 1e-15:
         return ([], [])
-    
+
     a = (n * sum_hdy - sum_h * sum_dy) / denom
     b = (sum_dy - a * sum_h) / n
-    
+
     # Неизопланатизм = отклонение от линейной аппроксимации
     pupils = []
     iso_vals = []  # в мкм
@@ -1074,7 +1065,7 @@ def compute_isoplanatism(system, wl=0.58756, num_rays=20, field_y=0.0):
         eta = (dy - dy_paraxial) * 1000.0  # мм -> мкм
         pupils.append(h)
         iso_vals.append(eta)
-    
+
     return (pupils, iso_vals)
 
 
@@ -1082,15 +1073,15 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     """
     Аберрации в косом сечении.
     azimuth_deg=0 → меридиональное, =90 → сагиттальное, =45 → косое.
-    
+
     Возвращает: (pupil_heights, dy_mer_um, dy_sag_um)
         pupil_heights: list of float (-1..1)
         dy_mer_um: поперечная аберрация в меридиональной плоскости (мкм)
         dy_sag_um: поперечная аберрация в сагиттальной плоскости (мкм)
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     az = math.radians(azimuth_deg)
-    
+
     # Главный луч для определения центра
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
@@ -1098,25 +1089,25 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     else:
         obj_z = -system.surfaces[0].thickness if system.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
-    
+
     chief_result = trace_ray_through_system(system, chief_ray, wl)
     if not chief_result.success or not chief_result.path:
         return ([], [], [])
     chief_x = chief_result.path[-1][0]
     chief_y = chief_result.path[-1][1]
-    
+
     pupil_heights = []
     dy_mer_um = []
     dy_sag_um = []
-    
+
     for i in range(num_rays):
         h = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
-        
+
         # Раскладываем зрачковую координату по меридиональному и сагиттальному направлениям
         # с учётом азимутального угла
         y_start = h * math.cos(az) * aperture / 2  # меридиональная компонента
         x_start = h * math.sin(az) * aperture / 2  # сагиттальная компонента
-        
+
         if system.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
             ray = Ray(x=x_start, y=y_start, z=-50,
@@ -1128,9 +1119,9 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
                      k=x_start/d, l=(y_start - field_y)/d, m=1)
             norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
             ray.k /= norm; ray.l /= norm; ray.m /= norm
-        
+
         result = trace_ray_through_system(system, ray, wl)
-        
+
         if result.success and result.path:
             last = result.path[-1]
             dx = (last[0] - chief_x) * 1000  # мм -> мкм
@@ -1142,14 +1133,14 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
             pupil_heights.append(h)
             dy_mer_um.append(None)
             dy_sag_um.append(None)
-    
+
     return (pupil_heights, dy_mer_um, dy_sag_um)
 
 
 def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
     """
     Координаты габаритных лучей на каждой поверхности.
-    
+
     Возвращает: list of dicts:
     [
         {'surface': 0, 'x_upper': .., 'y_upper': .., 'z_upper': ..,
@@ -1158,14 +1149,14 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
         ...
     ]
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
-    
+    aperture = get_effective_aperture(system, default=10.0)
+
     # Три луча: верхний, нижний, главный
     # Верхний луч (pupil_y = +1)
     y_up = aperture / 2
     # Нижний луч (pupil_y = -1)
     y_low = -aperture / 2
-    
+
     def _make_ray(y_start, x_start=0.0):
         if system.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
@@ -1179,34 +1170,32 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
             norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
             ray.k /= norm; ray.l /= norm; ray.m /= norm
             return ray
-    
+
     # Трассируем три луча
     upper_result = trace_ray_through_system(system, _make_ray(y_up), wl)
     lower_result = trace_ray_through_system(system, _make_ray(y_low), wl)
     chief_result = trace_ray_through_system(system, _make_ray(0.0), wl)
-    
+
     # Определяем количество поверхностей + стартовая точка
     n_surfs = len(system.surfaces)
     # path содержит n_surfs+1 точку (начальная + на каждой поверхности)
     # Если есть толщина после последней поверхности, path может содержать ещё одну точку
-    
+
     # Z-позиции поверхностей
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
-    
+    z_pos = compute_z_positions(system)
+
     results = []
-    
+
     # Для каждой поверхности (включая плоскость изображения)
     max_points = max(
         len(upper_result.path) if upper_result.success else 0,
         len(lower_result.path) if lower_result.success else 0,
         len(chief_result.path) if chief_result.success else 0,
     )
-    
+
     for i in range(max_points):
         entry = {'surface': i}
-        
+
         if upper_result.success and i < len(upper_result.path):
             p = upper_result.path[i]
             entry['x_upper'] = p[0]
@@ -1216,7 +1205,7 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
             entry['x_upper'] = None
             entry['y_upper'] = None
             entry['z_upper'] = None
-        
+
         if lower_result.success and i < len(lower_result.path):
             p = lower_result.path[i]
             entry['x_lower'] = p[0]
@@ -1226,7 +1215,7 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
             entry['x_lower'] = None
             entry['y_lower'] = None
             entry['z_lower'] = None
-        
+
         if chief_result.success and i < len(chief_result.path):
             p = chief_result.path[i]
             entry['x_chief'] = p[0]
@@ -1236,26 +1225,26 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
             entry['x_chief'] = None
             entry['y_chief'] = None
             entry['z_chief'] = None
-        
+
         results.append(entry)
-    
+
     return results
 
 
 def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=10):
     """
     СКВ волновой аберрации по полю.
-    
+
     Для каждой точки поля (0..max_field):
     1. Трассировать лучи
     2. Вычислить W (OPL-based)
-    3. RMS = sqrt(mean(W²))
-    
+    3. RMS = sqrt(mean(W2))
+
     Также: RMS за вычетом дефокуса, за вычетом наклона.
-    
+
     Возвращает: (field_y_values, rms_wavelengths, rms_no_defocus, rms_no_tilt)
         rms_wavelengths: полное СКВ в длинах волн
-        rms_no_defocus: СКВ после вычета наилучшего дефокуса (W2 = W - a*(2h²-1))
+        rms_no_defocus: СКВ после вычета наилучшего дефокуса (W2 = W - a*(2h2-1))
         rms_no_tilt: СКВ после вычета наилучшего наклона (W3 = W - b*h)
     """
     # Определяем диапазон поля
@@ -1263,19 +1252,19 @@ def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=1
         max_field = max(fp.y for fp in system.field_points)
     else:
         max_field = 0.0
-    
+
     if max_field <= 0:
         max_field = 5.0  # градусов по умолчанию
-    
+
     field_values = [max_field * i / max(num_fields - 1, 1) for i in range(num_fields)]
-    
+
     rms_full = []
     rms_no_def = []
     rms_no_tilt = []
-    
+
     for field_y in field_values:
         fan = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=field_y)
-        
+
         # Собираем W и зрачковые координаты
         pts = [(r['pupil_y'], r['wave']) for r in fan if r['success']]
         if len(pts) < 3:
@@ -1283,18 +1272,18 @@ def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=1
             rms_no_def.append(float('nan'))
             rms_no_tilt.append(float('nan'))
             continue
-        
+
         hs = [h for h, _ in pts]
         ws = [w for _, w in pts]
         n = len(ws)
-        
+
         # Полное СКВ
         mean_w2 = sum(w * w for w in ws) / n
         rms_full.append(math.sqrt(mean_w2))
-        
-        # За вычетом дефокуса: W' = W - a*(2*h² - 1)
-        # Минимизируем sum(W')² по a
-        # a = sum(W_i * f_i) / sum(f_i²),  f_i = 2*h_i² - 1
+
+        # За вычетом дефокуса: W' = W - a*(2*h2 - 1)
+        # Минимизируем sum(W')2 по a
+        # a = sum(W_i * f_i) / sum(f_i2),  f_i = 2*h_i2 - 1
         fs = [2 * h * h - 1 for h in hs]
         sum_wf = sum(w * f for w, f in zip(ws, fs))
         sum_f2 = sum(f * f for f in fs)
@@ -1304,9 +1293,9 @@ def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=1
             a_def = 0.0
         ws_no_def = [w - a_def * f for w, f in zip(ws, fs)]
         rms_no_def.append(math.sqrt(sum(w * w for w in ws_no_def) / n))
-        
+
         # За вычетом наклона (тильта): W'' = W - b*h
-        # b = sum(W_i * h_i) / sum(h_i²)
+        # b = sum(W_i * h_i) / sum(h_i2)
         sum_wh = sum(w * h for w, h in zip(ws, hs))
         sum_h2 = sum(h * h for h in hs)
         if abs(sum_h2) > 1e-15:
@@ -1315,5 +1304,5 @@ def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=1
             b_tilt = 0.0
         ws_no_tilt = [w - b_tilt * h for w, h in zip(ws, hs)]
         rms_no_tilt.append(math.sqrt(sum(w * w for w in ws_no_tilt) / n))
-    
+
     return (field_values, rms_full, rms_no_def, rms_no_tilt)

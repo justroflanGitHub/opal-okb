@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple
 from optics_engine import OpticalSystem, ObjectType, Wavelength, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
 def compute_wavefront_map(system: OpticalSystem, 
@@ -22,7 +23,7 @@ def compute_wavefront_map(system: OpticalSystem,
     - wavefront: 2D массив W(x,y) в длинах волн (λ)
     - pupil_mask: 2D массив (1 внутри зрачка, 0 снаружи)
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     efl = paraxial_trace(system).get('focal_length', 0)
     
     # Главный луч (для определения опорного фронта)
@@ -35,9 +36,7 @@ def compute_wavefront_map(system: OpticalSystem,
     chief_result = trace_ray_through_system(system, chief_ray, wl)
     
     # Z-позиции
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     img_z = z_pos[-1]
     
     # OPL для главного луча (approximate)
@@ -154,7 +153,7 @@ def compute_diffraction_mtf(system: OpticalSystem,
     mtf_2d = np.maximum(mtf_2d, 0)
     
     # Частота среза
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     efl = abs(paraxial_trace(system).get('focal_length', 1))
     na = aperture / (2 * efl) if efl > 0 else 0.1
     cutoff = 2 * na / (wl * 1e-3)  # лин/мм (λ в мм)
@@ -275,10 +274,10 @@ def compute_diffraction_limited_mtf(system: OpticalSystem,
     }
     """
     if wl is None:
-        wl = system.wavelengths[0].value if system.wavelengths else 0.58756
+        wl = get_primary_wl(system)
     
     # Вычисляем NA и частоту обрезания
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     efl = abs(paraxial_trace(system).get('focal_length', 1))
     na = aperture / (2 * efl) if efl > 0 else 0.1
     

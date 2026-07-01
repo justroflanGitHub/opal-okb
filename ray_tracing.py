@@ -6,6 +6,7 @@ import math
 from typing import List, Tuple, Optional
 from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, SurfaceType
 from glass_catalog import compute_refractive_index
+from optics_utils import get_effective_aperture
 
 
 class Ray:
@@ -492,7 +493,7 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
     Лучи с |ρ| < obscuration_ratio отсекаются (центральное экранирование).
     """
     obscuration = getattr(sys, 'obscuration_ratio', 0.0)
-    aperture = sys.aperture_value if sys.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(sys, default=10.0)
 
     # Auto-reduce: if aperture_value looks like F/# or NA (very small),
     # estimate real aperture from max semi_diameter
@@ -573,7 +574,7 @@ def trace_grid_3d(sys: OpticalSystem, num_rings: int = 3, num_azimuths: int = 8,
     Returns List[List[TraceResult]] - outer list per ring, inner list per azimuth.
     """
     # Compute aperture radius
-    aperture = sys.aperture_value if sys.aperture_value > 0 else 20.0
+    aperture = get_effective_aperture(sys, default=20.0)
     # Detect bogus aperture_value (F/# or NA stored instead of diameter)
     real_sd = [s.semi_diameter for s in sys.surfaces if s.semi_diameter > aperture / 10.0]
     if aperture < 1.0 and real_sd:

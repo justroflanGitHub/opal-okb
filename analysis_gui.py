@@ -27,23 +27,7 @@ from aberrations import (trace_aberration_fan, compute_spot_diagram,
                           compute_oblique_fan, compute_ray_coordinates)
 from advanced_analysis import compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf, compute_psf_3d, compute_bar_target_image, compute_bar_target_mtf_table
 from zernike import compute_zernike_coefficients, compute_wavefront_map_2d, compute_zernike_chromatic
-
-
-def _copy_table_selection(table):
-    """Копирует выделенные ячейки таблицы в буфер обмена (tab-separated)."""
-    selection = table.selectedRanges()
-    if not selection:
-        return
-    lines = []
-    for rng in selection:
-        for row in range(rng.topRow(), rng.bottomRow() + 1):
-            cells = []
-            for col in range(rng.leftColumn(), rng.rightColumn() + 1):
-                item = table.item(row, col)
-                cells.append(item.text() if item else "")
-            lines.append("\t".join(cells))
-    text = "\n".join(lines)
-    QApplication.clipboard().setText(text)
+from optics_utils import get_primary_wl, get_effective_aperture, fmt_val, copy_table_selection
 
 
 def compute_all_analysis(sys, defocus=0.0, azimuth=0.0):
@@ -52,7 +36,7 @@ def compute_all_analysis(sys, defocus=0.0, azimuth=0.0):
     """
     import traceback as _tb
     d = {}
-    wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+    wl = get_primary_wl(sys)
     wl_list = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.58756]
     d['wl'] = wl
     d['wl_list'] = wl_list
@@ -322,7 +306,7 @@ def _make_table(headers, rows, col_widths=None):
     table.setContextMenuPolicy(Qt.ActionsContextMenu)
     copy_action = QAction("Копировать (Ctrl+C)", table)
     copy_action.setShortcut("Ctrl+C")
-    copy_action.triggered.connect(lambda checked=False, t=table: _copy_table_selection(t))
+    copy_action.triggered.connect(lambda checked=False, t=table: copy_table_selection(t))
     table.addAction(copy_action)
 
     # No fixed width constraints — let table expand to fill available space
@@ -568,7 +552,7 @@ class SpotDiagramWidget(AberrationPlotWidget):
         self.polychromatic = True
     
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         self.rms = compute_rms_spot(self.spots_mono)
         self._wl_cache = [w.value for w in sys.wavelengths]
@@ -916,7 +900,7 @@ class MTFWidget(AberrationPlotWidget):
         self.diff_limited_mtf = None
     
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         spots = compute_spot_diagram(sys, wl=wl, num_rays=40)
         self.geo_mtf = compute_geometric_mtf(spots, max_freq=100, num_freqs=20)
         try:
@@ -1056,7 +1040,7 @@ class DistortionWidget(AberrationPlotWidget):
         self.field_data = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
         self.update()
 
@@ -1117,7 +1101,7 @@ class AstigmatismWidget(AberrationPlotWidget):
         self.field_data = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
         self.update()
 
@@ -1196,7 +1180,7 @@ class ComaWidget(AberrationPlotWidget):
         self.field_data = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
         self.update()
 
@@ -1260,7 +1244,7 @@ class FocusCurveWidget(AberrationPlotWidget):
         self.best_mtf = 0.0
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.curve_data = compute_focus_curve(sys, wl=wl, num_points=40,
                                                defocus_range=2.0, freq_lpmm=50.0,
                                                num_rays=25, field_y=0.0)
@@ -1359,7 +1343,7 @@ class PSFWidget(AberrationPlotWidget):
         self.dy = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.psf_data, self.dx, self.dy = compute_psf(sys, wl=wl, num_rays=64)
         except Exception:
@@ -1444,7 +1428,7 @@ class LSFWidget(AberrationPlotWidget):
         self.axis = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.lsf_tan, ax1 = compute_lsf(sys, wl=wl, num_rays=64, direction='tangential')
             self.lsf_sag, ax2 = compute_lsf(sys, wl=wl, num_rays=64, direction='sagittal')
@@ -1521,7 +1505,7 @@ class ENCWidget(AberrationPlotWidget):
         self.enc = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.r_um, self.enc = compute_enc(sys, wl=wl, num_rays=100)
         except Exception:
@@ -1592,7 +1576,7 @@ class PTFWidget(AberrationPlotWidget):
         self.ptf_data = None
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.ptf_data = compute_ptf(sys, wl=wl, num_rays=64)
         except Exception:
@@ -1693,7 +1677,7 @@ class HeatmapWidget(AberrationPlotWidget):
         self._zoom_rect = None
     
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.heatmap, self.x_range, self.y_range = compute_spot_heatmap(
                 sys, wl=wl, num_rays=500, field_y=0.0, grid_size=self.grid_size)
@@ -1842,7 +1826,7 @@ class BeamGeometryWidget(AberrationPlotWidget):
 
         aperture = 0.0
         if hasattr(self, '_sys_ref'):
-            aperture = self._sys_ref.aperture_value if self._sys_ref.aperture_value > 0 else 10.0
+            aperture = get_effective_aperture(self._sys_ref, default=10.0)
         if aperture <= 0:
             aperture = 10.0
 
@@ -2029,7 +2013,7 @@ class ZernikeWidget(AberrationPlotWidget):
         self._show_chromatic = False
 
     def set_data(self, sys: OpticalSystem, defocus_offset: float = 0.0):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.coeffs = compute_zernike_coefficients(sys, wl=wl, num_rays=32,
                                                         max_order=4,
@@ -2204,7 +2188,7 @@ class WavefrontMapWidget(AberrationPlotWidget):
         self._mode_3d = False  # Переключатель 2D/3D
 
     def set_data(self, sys: OpticalSystem, defocus_offset: float = 0.0):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.wf_data, self.coords, self.mask = compute_wavefront_map_2d(
                 sys, wl=wl, grid_size=48, defocus_offset=defocus_offset)
@@ -2368,7 +2352,7 @@ class ESFWidget(AberrationPlotWidget):
         self.esf = None
 
     def set_data(self, sys: OpticalSystem, defocus_offset: float = 0.0):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.x_um, self.esf = compute_esf(sys, wl=wl, field_y=0.0)
         except Exception:
@@ -2436,7 +2420,7 @@ class BarTargetWidget(AberrationPlotWidget):
         self.mtf_table = None  # list of dicts
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.x_um, self.ideal, self.blurred = compute_bar_target_image(
                 sys, wl=wl, field_y=0.0, num_bars=5, bar_freq_lp_mm=10)
@@ -2547,7 +2531,7 @@ class FocusDiagramWidget(QWidget, InteractivePlot):
         self._interactive_mouseDoubleClickEvent(event)
     
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         parax = paraxial_trace(sys)
         bfd = parax.get('back_focal_distance', 0)
         # DS' = BFD * 0.01 (настраиваемый)
@@ -2670,7 +2654,7 @@ class PSF3DWidget(AberrationPlotWidget):
         self.Z = None
     
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             self.x_coords, self.y_coords, self.Z = compute_psf_3d(
                 sys, wl=wl, grid_size=64, field_y=0.0)
@@ -2765,7 +2749,7 @@ class WavefrontRmsVsFieldWidget(AberrationPlotWidget):
         self.field_data = None  # (field_y_values, rms_full, rms_no_def, rms_no_tilt)
 
     def set_data(self, sys: OpticalSystem):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         self.field_data = compute_wavefront_rms_vs_field(sys, wl=wl)
         self.update()
 
@@ -3668,10 +3652,8 @@ class AnalysisPanel(QTabWidget):
         if wf_rms and wf_rms[0]:
             field_vals, rms_full, rms_no_def, rms_no_tilt = wf_rms
             rows_wr = []
-            def _fmt(v):
-                return f"{v:.5f}" if v == v else "\u2014"
             for f, r_f, r_d, r_t in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-                rows_wr.append([f"{f:.2f}\u00b0", _fmt(r_f), _fmt(r_d), _fmt(r_t)])
+                rows_wr.append([f"{f:.2f}\u00b0", fmt_val(r_f), fmt_val(r_d), fmt_val(r_t)])
             self._set_table('wf_rms_field', _make_table(
                 ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 (\u03bb)", "\u0421\u041a\u0412-\u0434\u0435\u0444", "\u0421\u041a\u0412-\u0442\u0438\u043b\u044c\u0442"],
                 rows_wr, [55, 75, 75, 75]))
@@ -3753,7 +3735,7 @@ class AnalysisPanel(QTabWidget):
             self.analyze(sys)
             return
 
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
 
         # Spot
         if 'spots_mono' in data:
@@ -4007,7 +3989,7 @@ class AnalysisPanel(QTabWidget):
     
     def _update_transverse_table(self, sys):
         rows = []
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         fan = trace_aberration_fan(sys, wl, num_rays=30)
         # Sample 13 points evenly
         step = max(1, len(fan) // 13)
@@ -4020,7 +4002,7 @@ class AnalysisPanel(QTabWidget):
     
     def _update_longitudinal_table(self, sys):
         rows = []
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         fan = trace_aberration_fan(sys, wl, num_rays=30)
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
@@ -4032,7 +4014,7 @@ class AnalysisPanel(QTabWidget):
     
     def _update_wavefront_table(self, sys):
         rows = []
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         fan = trace_aberration_fan(sys, wl, num_rays=30)
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
@@ -4044,7 +4026,7 @@ class AnalysisPanel(QTabWidget):
     
     def _update_mtf_table(self, sys):
         rows = []
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         # Геометрическая MTF
         spots = compute_spot_diagram(sys, wl=wl, num_rays=40)
         geo_mtf = compute_geometric_mtf(spots, max_freq=100, num_freqs=20)
@@ -4080,7 +4062,7 @@ class AnalysisPanel(QTabWidget):
             rows, [45, 48, 48, 48, 48, 48, 45]))
     
     def _update_distortion_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         data = compute_field_aberrations(sys, wl=wl)
         rows = []
         for d in data:
@@ -4093,7 +4075,7 @@ class AnalysisPanel(QTabWidget):
             ["Поле Y (мм)", "Дист. %", "Дист. (мм)"], rows, [75, 70, 75]))
     
     def _update_astigmatism_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         data = compute_field_aberrations(sys, wl=wl)
         rows = []
         for d in data:
@@ -4105,7 +4087,7 @@ class AnalysisPanel(QTabWidget):
             ["Поле Y (мм)", "Z'm (мм)", "Z's (мм)", "ΔZ (мм)"], rows, [70, 65, 65, 65]))
     
     def _update_coma_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         data = compute_field_aberrations(sys, wl=wl)
         rows = []
         for d in data:
@@ -4116,7 +4098,7 @@ class AnalysisPanel(QTabWidget):
             ["Поле Y (мм)", "Кома X (мкм)", "Кома Y (мкм)"], rows, [75, 75, 75]))
     
     def _update_focus_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         curve = compute_focus_curve(sys, wl=wl, num_points=40,
                                     defocus_range=2.0, freq_lpmm=50.0,
                                     num_rays=25, field_y=0.0)
@@ -4145,7 +4127,7 @@ class AnalysisPanel(QTabWidget):
         self._set_table('focus', table)
     
     def _update_psf_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         try:
             psf_data, dx, dy = compute_psf(sys, wl=wl, num_rays=64)
@@ -4176,7 +4158,7 @@ class AnalysisPanel(QTabWidget):
             ["Параметр", "Значение"], rows, [100, 120]))
     
     def _update_lsf_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             lsf_t, ax1 = compute_lsf(sys, wl=wl, num_rays=64, direction='tangential')
             lsf_s, ax2 = compute_lsf(sys, wl=wl, num_rays=64, direction='sagittal')
@@ -4191,7 +4173,7 @@ class AnalysisPanel(QTabWidget):
             self._set_table('lsf', None)
     
     def _update_enc_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             r_um, enc = compute_enc(sys, wl=wl, num_rays=100)
             rows = []
@@ -4211,7 +4193,7 @@ class AnalysisPanel(QTabWidget):
             self._set_table('enc', None)
     
     def _update_ptf_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             ptf = compute_ptf(sys, wl=wl, num_rays=64)
             if ptf is None:
@@ -4231,7 +4213,7 @@ class AnalysisPanel(QTabWidget):
             self._set_table('ptf', None)
     
     def _update_heatmap_table(self, sys):
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         rows = []
         rows.append(["Длина волны", f"{wl:.4f} мкм"])
         rows.append(["Сетка", f"{self.heatmap_w.grid_size}×{self.heatmap_w.grid_size}"])
@@ -4284,7 +4266,7 @@ class AnalysisPanel(QTabWidget):
 
     def _update_zernike_table(self, sys):
         """Таблица коэффициентов Цернике."""
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         defocus = self.get_defocus_offset()
         try:
             coeffs = compute_zernike_coefficients(sys, wl=wl, num_rays=32,
@@ -4341,7 +4323,7 @@ class AnalysisPanel(QTabWidget):
 
     def _update_wfmap_table(self, sys):
         """Таблица параметров волнового фронта."""
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         try:
             wf, coords, mask = compute_wavefront_map_2d(sys, wl=wl, grid_size=48,
@@ -4366,7 +4348,7 @@ class AnalysisPanel(QTabWidget):
 
     def _update_esf_table(self, sys):
         """Таблица ESF."""
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             x_um, esf = compute_esf(sys, wl=wl)
             if x_um is None:
@@ -4406,7 +4388,7 @@ class AnalysisPanel(QTabWidget):
     
     def _update_psf3d_table(self, sys):
         """Таблица для PSF 3D."""
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         if self.psf_3d_w.Z is not None:
             Z = self.psf_3d_w.Z
@@ -4430,15 +4412,13 @@ class AnalysisPanel(QTabWidget):
         field_vals, rms_full, rms_no_def, rms_no_tilt = data
         rows = []
         for f, r_full, r_def, r_tilt in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-            def _fmt(v):
-                return f"{v:.5f}" if v == v else "—"  # NaN check
-            rows.append([f"{f:.2f}°", _fmt(r_full), _fmt(r_def), _fmt(r_tilt)])
+            rows.append([f"{f:.2f}°", fmt_val(r_full), fmt_val(r_def), fmt_val(r_tilt)])
         self._set_table('wf_rms_field', _make_table(
             ["Поле", "СКВ (λ)", "СКВ-деф", "СКВ-тильт"], rows, [55, 75, 75, 75]))
 
     def _update_bar_target_table(self, sys):
         """Таблица миры: частота | контраст идеал | контраст реальный | MTF."""
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             mtf_data = self.bar_target_w.mtf_table
             if not mtf_data:

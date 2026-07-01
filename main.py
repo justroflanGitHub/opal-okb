@@ -32,6 +32,7 @@ from system_utils import reverse_system, scale_system, nearest_standard_radius, 
 from io_utils import save_json, load_json, append_system, export_protocol, STANDARD_WAVELENGTHS
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
+from optics_utils import get_primary_wl, copy_table_selection
 
 
 class SurfaceTable(QTableWidget):
@@ -268,7 +269,7 @@ class ResultsPanel(QWidget):
         self.parax_table.setContextMenuPolicy(Qt.ActionsContextMenu)
         copy_action_parax = QAction("Копировать (Ctrl+C)", self.parax_table)
         copy_action_parax.setShortcut("Ctrl+C")
-        copy_action_parax.triggered.connect(lambda: self._copy_parax_table())
+        copy_action_parax.triggered.connect(lambda: copy_table_selection(self.parax_table))
         self.parax_table.addAction(copy_action_parax)
         self.parax_table.verticalHeader().setVisible(False)
         self.parax_table.setAlternatingRowColors(True)
@@ -326,7 +327,7 @@ class ResultsPanel(QWidget):
         self.seidel_table.setContextMenuPolicy(Qt.ActionsContextMenu)
         copy_action_seidel = QAction("Копировать (Ctrl+C)", self.seidel_table)
         copy_action_seidel.setShortcut("Ctrl+C")
-        copy_action_seidel.triggered.connect(lambda: self._copy_seidel_table())
+        copy_action_seidel.triggered.connect(lambda: copy_table_selection(self.seidel_table))
         self.seidel_table.addAction(copy_action_seidel)
         self.seidel_table.verticalHeader().setVisible(False)
         self.seidel_table.setAlternatingRowColors(True)
@@ -350,36 +351,6 @@ class ResultsPanel(QWidget):
         layout.addWidget(QLabel("Лог:"))
         layout.addWidget(self.log_text, 1)  # stretch factor 1 — log takes extra space
         layout.addStretch()
-
-    def _copy_parax_table(self):
-        """Копирует выделенные ячейки таблицы параксиальных параметров."""
-        selection = self.parax_table.selectedRanges()
-        if not selection:
-            return
-        lines = []
-        for rng in selection:
-            for row in range(rng.topRow(), rng.bottomRow() + 1):
-                cells = []
-                for col in range(rng.leftColumn(), rng.rightColumn() + 1):
-                    item = self.parax_table.item(row, col)
-                    cells.append(item.text() if item else "")
-                lines.append("\t".join(cells))
-        QApplication.clipboard().setText("\n".join(lines))
-
-    def _copy_seidel_table(self):
-        """Копирует выделенные ячейки таблицы сумм Зейделя."""
-        selection = self.seidel_table.selectedRanges()
-        if not selection:
-            return
-        lines = []
-        for rng in selection:
-            for row in range(rng.topRow(), rng.bottomRow() + 1):
-                cells = []
-                for col in range(rng.leftColumn(), rng.rightColumn() + 1):
-                    item = self.seidel_table.item(row, col)
-                    cells.append(item.text() if item else "")
-                lines.append("\t".join(cells))
-        QApplication.clipboard().setText("\n".join(lines))
 
     def _on_pupil_unit_changed(self, index):
         """Переключение единиц зрачков мм/дптр."""
@@ -1417,7 +1388,7 @@ class MainWindow(QMainWindow):
         from optics_engine import paraxial_trace, seidel_aberrations
         from aberrations import compute_spot_diagram
 
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         return {
             'parax': paraxial_trace(sys),
             'seidel': seidel_aberrations(sys),
@@ -1440,7 +1411,7 @@ class MainWindow(QMainWindow):
         from advanced_analysis import compute_psf, compute_lsf, compute_esf, compute_enc, compute_ptf, compute_bar_target_mtf_table, compute_bar_target_image
         from zernike import compute_zernike_coefficients, compute_zernike_chromatic, compute_wavefront_map_2d
 
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         wl_list = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.58756]
         n_workers = min(8, max(2, __import__('os').cpu_count() or 4))
 
@@ -2293,7 +2264,7 @@ class MainWindow(QMainWindow):
         """Показать таблицу координат габаритных лучей (#7)."""
         from aberrations import compute_ray_coordinates
         sys = self.current_system
-        wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+        wl = get_primary_wl(sys)
         try:
             coords = compute_ray_coordinates(sys, wl=wl, field_y=0.0)
         except Exception as e:

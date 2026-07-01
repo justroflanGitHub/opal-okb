@@ -8,6 +8,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 
 from optics_engine import OpticalSystem, ObjectType, paraxial_trace
+from optics_utils import get_effective_aperture
 from diffraction_mtf import compute_wavefront_map
 
 
@@ -43,7 +44,7 @@ def compute_psf(system: OpticalSystem,
         psf = psf / psf_max
     
     # Координатные оси в мкм
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     efl = abs(paraxial_trace(system).get('focal_length', 1))
     
     # Шаг на зрачке (мм)
@@ -179,7 +180,7 @@ def compute_ptf(system: OpticalSystem,
     ptf_2d = np.angle(otf)
     
     # Частота среза
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
     efl = abs(paraxial_trace(system).get('focal_length', 1))
     na = aperture / (2 * efl) if efl > 0 else 0.1
     cutoff = 2 * na / (wl * 1e-3)  # лин/мм

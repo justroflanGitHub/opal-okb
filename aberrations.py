@@ -295,6 +295,13 @@ def compute_field_aberrations(system: OpticalSystem,
 
     results = []
 
+    # Temporarily increase semi_diameters so field rays can pass through
+    # (LBO semi_diameters are often slightly underestimated)
+    _orig_sds = [s.semi_diameter for s in system.surfaces]
+    for s in system.surfaces:
+        if s.semi_diameter > 0:
+            s.semi_diameter = abs(s.semi_diameter) * 1.4
+
     for fp in field_points:
         field_y = fp[0] if isinstance(fp, (list, tuple)) else fp
         if field_y == 0:
@@ -311,9 +318,28 @@ def compute_field_aberrations(system: OpticalSystem,
         angle = math.radians(field_y)
         sin_a, cos_a = math.sin(angle), math.cos(angle)
 
-        # ===== 1. Главный луч (через центр зрачка) =====
+        # ===== 1. Главный луч (через центр входного зрачка) =====
+        # Поле в Y-Z плоскости (l=sin(angle), m=cos(angle))
+        # Старт с z чуть перед системой, чтобы луч попал на первую поверхность
+        stop_idx = getattr(system, 'stop_surface', 0)
+        stop_off = getattr(system, 'stop_offset', 0.0)
+        # z входного зрачка
+        z_pupil = 0.0
+        for j in range(min(stop_idx, len(system.surfaces))):
+            z_pupil += system.surfaces[j].thickness
+        z_pupil += stop_off
+        # Chief ray: приходит под углом, проходит через entrance pupil
+        # Start до первой поверхности так, чтобы луч прошёл через EP центр
+        # Direction: (0, sin(angle), cos(angle))
+        # EP at z = sP. Start at z = sP - dz, y = -dz*sin/cos
+        sP = parax.get('sP', z_pupil) if parax else z_pupil
+        # Простой способ: старт из (0, 0, -eps), направление (0, sin, cos)
+        # Луч пройдёт через y = (z - z_start) * tan(angle) на каждой z
+        # Но нужно проверить, что y на первой поверхности (z=0) < sd
+        z_start = -1.0  # чуть перед первой поверхностью
+        
         if system.object_type == ObjectType.INFINITE:
-            chief_ray = Ray(x=0, y=0, z=-50, k=sin_a, l=0, m=cos_a)
+            chief_ray = Ray(x=0, y=0, z=z_start, k=0, l=sin_a, m=cos_a)
         else:
             obj_z = -system.surfaces[0].thickness if system.surfaces else -50
             chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
@@ -325,52 +351,32 @@ def compute_field_aberrations(system: OpticalSystem,
             continue
 
         chief_last = chief_result.path[-1]
-        chief_x_img = chief_last[0]  # меридиональная координата
+        chief_y_img = chief_last[1]  # меридиональная координата (Y)
 
-        # Параксиальная высота изображения (по x, т.к. поле в x-z плоскости)
+        # Параксиальная высота изображения (по Y)
+        # Chief ray: l=+sin(angle) → идёт в +Y. Изображение в -Y (inverted).
+        # Но луч идёт через систему и выходит в +Y → изображение inverted = +Y
+        # На практике: chief_y_img имеет тот же знак, что и поле
         if abs(efl) > 0 and system.object_type == ObjectType.INFINITE:
-            x_parax = efl * math.tan(angle)
+            y_parax = efl * math.tan(angle)  # без минуса: chief ray +Y → image +Y
         else:
-            x_parax = field_y
+            y_parax = field_y
 
-        # ===== 2. Меридиональный веер (в плоскости x-z, varying x_start) =====
+        # ===== 2. Меридиональный веер (в плоскости Y-Z, varying y_start) =====
         merid_rays = []
-        for i in range(num_fan_rays):
-            px = -1.0 + 2.0 * i / (num_fan_rays - 1)
-            x_start = px * aperture / 2
-
-            if system.object_type == ObjectType.INFINITE:
-                ray = Ray(x=x_start, y=0, z=-50, k=sin_a, l=0, m=cos_a)
-            else:
-                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
-                d = abs(obj_z)
-                ray = Ray(x=x_start, y=field_y, z=obj_z,
-                         k=(x_start) / d, l=0, m=1)
-                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
-                ray.k /= norm; ray.l /= norm; ray.m /= norm
-
-            res = trace_ray_through_system(system, ray, wl)
-            if res.success and len(res.path) >= 2:
-                last = res.path[-1]
-                prev = res.path[-2]
-                dz = last[2] - prev[2]
-                slope_x = (last[0] - prev[0]) / dz if abs(dz) > 1e-12 else 0
-                merid_rays.append({'x': last[0], 'z': last[2],
-                                   'slope_x': slope_x, 'pupil': px})
-
-        # ===== 3. Сагиттальный веер (в плоскости y-z, varying y_start) =====
-        sag_rays = []
         for i in range(num_fan_rays):
             py = -1.0 + 2.0 * i / (num_fan_rays - 1)
             y_start = py * aperture / 2
 
             if system.object_type == ObjectType.INFINITE:
-                ray = Ray(x=0, y=y_start, z=-50, k=sin_a, l=0, m=cos_a)
+                # Лучи с полевым углом + смещение по Y
+                # y at z=0: y_start_offset + dz_from_start * tan(angle)
+                ray = Ray(x=0, y=y_start, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
-                ray = Ray(x=0, y=y_start, z=obj_z,
-                         k=0, l=(y_start - field_y) / d, m=1)
+                ray = Ray(x=0, y=y_start + field_y, z=obj_z,
+                         k=0, l=y_start / d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
@@ -380,29 +386,55 @@ def compute_field_aberrations(system: OpticalSystem,
                 prev = res.path[-2]
                 dz = last[2] - prev[2]
                 slope_y = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else 0
-                sag_rays.append({'y': last[1], 'z': last[2],
-                                 'slope_y': slope_y, 'pupil': py})
+                merid_rays.append({'y': last[1], 'z': last[2],
+                                   'slope_y': slope_y, 'pupil': py})
+
+        # ===== 3. Сагиттальный веер (в плоскости X-Z, varying x_start) =====
+        sag_rays = []
+        for i in range(num_fan_rays):
+            px = -1.0 + 2.0 * i / (num_fan_rays - 1)
+            x_start = px * aperture / 2
+
+            if system.object_type == ObjectType.INFINITE:
+                # Сагиттальный луч: поле по Y, смещение по X
+                ray = Ray(x=x_start, y=0, z=z_start, k=0, l=sin_a, m=cos_a)
+            else:
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                         k=x_start / d, l=0, m=1)
+                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+                ray.k /= norm; ray.l /= norm; ray.m /= norm
+
+            res = trace_ray_through_system(system, ray, wl)
+            if res.success and len(res.path) >= 2:
+                last = res.path[-1]
+                prev = res.path[-2]
+                dz = last[2] - prev[2]
+                slope_x = (last[0] - prev[0]) / dz if abs(dz) > 1e-12 else 0
+                sag_rays.append({'x': last[0], 'z': last[2],
+                                 'slope_x': slope_x, 'pupil': px})
 
         # ===== 4. Фокальные расстояния =====
-        z_m = _find_focal_z(merid_rays, 'x', 'slope_x', img_z, efl)
-        z_s = _find_focal_z(sag_rays, 'y', 'slope_y', img_z, efl)
+        z_m = _find_focal_z(merid_rays, 'y', 'slope_y', img_z, efl)
+        z_s = _find_focal_z(sag_rays, 'x', 'slope_x', img_z, efl)
 
         delta_zm = z_m - img_z
         delta_zs = z_s - img_z
         astigmatism = delta_zm - delta_zs
 
         # ===== 5. Дисторсия =====
-        distortion = ((chief_x_img - x_parax) / x_parax * 100.0) if abs(x_parax) > 1e-10 else 0.0
+        distortion = ((chief_y_img - y_parax) / y_parax * 100.0) if abs(y_parax) > 1e-10 else 0.0
 
         # ===== 6. Кома =====
-        # Асимметрия меридионального веера: (x_upper + x_lower)/2 - x_chief
+        # Асимметрия меридионального веера: (y_upper + y_lower)/2 - y_chief
         coma = 0.0
         coma_pairs = 0
         for i in range(len(merid_rays)):
             for j in range(i + 1, len(merid_rays)):
                 if abs(merid_rays[i]['pupil'] + merid_rays[j]['pupil']) < 0.15:
-                    mid_x = (merid_rays[i]['x'] + merid_rays[j]['x']) / 2
-                    coma += mid_x - chief_x_img
+                    mid_y = (merid_rays[i]['y'] + merid_rays[j]['y']) / 2
+                    coma += mid_y - chief_y_img
                     coma_pairs += 1
         if coma_pairs > 0:
             coma /= coma_pairs
@@ -415,6 +447,10 @@ def compute_field_aberrations(system: OpticalSystem,
             'z_s': delta_zs,
             'coma': coma,
         })
+
+    # Restore original semi_diameters
+    for i, s in enumerate(system.surfaces):
+        s.semi_diameter = _orig_sds[i]
 
     return results
 

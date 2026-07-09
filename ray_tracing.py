@@ -497,11 +497,21 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
 
     # Auto-reduce: if aperture_value looks like F/# or NA (very small),
     # estimate real aperture from max semi_diameter
-    real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > aperture / 10.0]
-    if aperture < 1.0 and real_sd:
-        # aperture_value is likely F/# or normalized, not mm diameter
-        # Use max semi_diameter as the real aperture radius
-        aperture = max(real_sd) * 1.2
+    if aperture < 1.0:
+        # semi_diameters may also be normalized/bogus
+        # Only trust sd values that are reasonable (> 1.0 mm)
+        real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 1.0]
+        if real_sd:
+            aperture = max(real_sd) * 1.2
+        else:
+            # semi_diameters also bogus — compute from NA and focal length
+            from optics_engine import paraxial_trace as _pt
+            _efl = _pt(sys).get('focal_length', 0)
+            if _efl and abs(_efl) > 0.1:
+                # aperture is NA → D = 2*NA*f'
+                aperture = 2.0 * aperture * abs(_efl)
+            else:
+                aperture = 20.0  # last resort
 
     def _do_trace(pr):
         """Trace num_rays with given pupil_range, return list of TraceResult."""

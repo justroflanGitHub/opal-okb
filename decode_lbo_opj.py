@@ -276,8 +276,10 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     # Апертура: автоопределение типа по значению 0x5C
     if ap_val_5c > 0 and ap_val_5c < 1.0:
         # NA (sin) — для светосильных и зеркальных систем
+        # Конвертируем NA в D через фокусное расстояние: D = 2*NA*f'
         sys_obj.aperture_type = ApertureType.NUMERICAL_APERTURE
-        sys_obj.aperture_value = ap_val_5c
+        # Считаем предварительный f' через paraxial (если возможно)
+        sys_obj.aperture_value = ap_val_5c  # сохраняем NA, будет конвертировано позже
     else:
         # D/2 (мм) — высота по Y
         sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
@@ -339,6 +341,22 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         _bfd = _parax.get('back_focal_distance', 0)
         if _bfd and abs(_bfd) > 0.1:
             sys_obj.surfaces[-1].thickness = abs(_bfd)
+        
+        # Если апертура = NA и f' достаточно большой, можно сконвертировать в D
+        # Но это делается в trace_fan, не здесь — декодер сохраняет исходное значение
+        
+        # Исправить semi_diameters: если 0/мусор/слишком маленькие, вычислить из aperture
+        # Сначала получим реальный D — если NA, сконвертировать через f'
+        _ap_eff = sys_obj.aperture_value
+        if sys_obj.aperture_type == ApertureType.NUMERICAL_APERTURE and _ap_eff < 1.0:
+            _efl_for_sd = _parax.get('focal_length', 0)
+            if _efl_for_sd and abs(_efl_for_sd) > 0.1:
+                _ap_eff = 2.0 * _ap_eff * abs(_efl_for_sd)
+        if _ap_eff > 1.0:
+            _min_sd = _ap_eff / 4.0
+            for s in sys_obj.surfaces:
+                if s.semi_diameter <= 0 or s.semi_diameter > 1e6 or s.semi_diameter < _min_sd:
+                    s.semi_diameter = _ap_eff / 2.0 * 1.1
 
     return sys_obj
 

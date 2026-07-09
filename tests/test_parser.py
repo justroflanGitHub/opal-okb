@@ -117,10 +117,10 @@ def test_mirror_lens():
     has_quartz = any('КВАРЦ' in s.glass.upper() for s in sys_obj.surfaces if s.glass)
     check("КВАРЦСТК", has_quartz, f"glasses={[s.glass for s in sys_obj.surfaces]}")
 
-    # NA
-    check("NA≈0.089",
-          sys_obj.aperture_type == ApertureType.NUMERICAL_APERTURE and
-          abs(sys_obj.aperture_value - 0.089) < 0.005,
+    # Апертура (NA→D конвертирован, ожидаем D≈80)
+    check("D≈80 (из NA≈0.089)",
+          sys_obj.aperture_type == ApertureType.ENTRANCE_PUPIL and
+          abs(sys_obj.aperture_value - 80.0) < 5.0,
           f"got type={sys_obj.aperture_type.name} val={sys_obj.aperture_value}")
 
     # Длины волн

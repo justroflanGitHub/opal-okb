@@ -342,16 +342,18 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         if _bfd and abs(_bfd) > 0.1:
             sys_obj.surfaces[-1].thickness = abs(_bfd)
         
-        # Если апертура = NA и f' достаточно большой, можно сконвертировать в D
-        # Но это делается в trace_fan, не здесь — декодер сохраняет исходное значение
+        # Если апертура = NA (sin u), конвертировать в D (мм) через фокусное расстояние
+        # D = 2 * NA * f' (для объекта в бесконечности)
+        if sys_obj.aperture_type == ApertureType.NUMERICAL_APERTURE and sys_obj.aperture_value < 1.0:
+            _efl = _parax.get('focal_length', 0) or _parax.get('effective_focal_length', 0)
+            if _efl and abs(_efl) > 0.1:
+                _D = 2.0 * sys_obj.aperture_value * abs(_efl)
+                if _D > 1.0:
+                    sys_obj.aperture_value = _D
+                    sys_obj.aperture_type = ApertureType.ENTRANCE_PUPIL
         
         # Исправить semi_diameters: если 0/мусор/слишком маленькие, вычислить из aperture
-        # Сначала получим реальный D — если NA, сконвертировать через f'
         _ap_eff = sys_obj.aperture_value
-        if sys_obj.aperture_type == ApertureType.NUMERICAL_APERTURE and _ap_eff < 1.0:
-            _efl_for_sd = _parax.get('focal_length', 0)
-            if _efl_for_sd and abs(_efl_for_sd) > 0.1:
-                _ap_eff = 2.0 * _ap_eff * abs(_efl_for_sd)
         if _ap_eff > 1.0:
             _min_sd = _ap_eff / 4.0
             for s in sys_obj.surfaces:

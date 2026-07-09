@@ -23,6 +23,11 @@ All notable changes to OPAL-OKB will be documented in this file.
 - **trace_fan NA fallback**: если aperture < 1.0 и semi_diameters тоже мусор,
   D вычисляется через paraxial f'
 - Только 2 системы остаются NA (paraxial f'=0: Телеобъектив ПК-300, Подводный ГОИ)
+- **Внеосевые аберрации**: chief ray пускался в X-Z вместо Y-Z плоскости,
+  старт из z=-50 (мимо первой поверхности), знак y_parax инвертирован.
+  Поле переведено в Y-Z (l=sin), merid=YZ/sag=XZ разделены правильно.
+  Индустар-23у 26°: distortion=-2.5%, astigmatism=-7.5мм, coma=-0.13мм
+- **semi_diameters для field rays**: временное увеличение ×1.4 (LBO sds занижены)
 
 ### Tests
 - 53/53 parser tests pass (обновлён тест NA→D)

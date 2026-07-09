@@ -14,6 +14,7 @@ from PyQt5.QtGui import (QPainter, QPen, QBrush, QColor, QFont,
 
 from optics_engine import OpticalSystem, Surface, ObjectType, paraxial_trace
 from ray_tracing import trace_fan, TraceResult
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
 class OpticalSystemView(QWidget):
@@ -91,7 +92,7 @@ class OpticalSystemView(QWidget):
         self.system = sys
         if sys and sys.surfaces:
             self.ray_results = []
-            wl = sys.wavelengths[0].value if sys.wavelengths else 0.58756
+            wl = get_primary_wl(sys)
             # Только осевой пучок, num_rays=11 — быстро (<100мс)
             # trace_fan now auto-reduces pupil_range if needed
             axial = trace_fan(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
@@ -108,7 +109,7 @@ class OpticalSystemView(QWidget):
         
         for wl in wavelengths_to_trace:
             # aperture_value = D, stop_r = D/2
-            ap = sys.aperture_value if sys.aperture_value > 0 else 20.0
+            ap = get_effective_aperture(sys, default=20.0)
             ap_r = ap / 2.0
             
             # Detect bogus aperture_value (F/# or NA stored instead of diameter)
@@ -246,9 +247,7 @@ class OpticalSystemView(QWidget):
             return
         
         # ===== Координатная система =====
-        z_pos = [0.0]
-        for s in self.system.surfaces:
-            z_pos.append(z_pos[-1] + s.thickness)
+        z_pos = compute_z_positions(self.system)
         
         margin = 40
         z_min = -max(30, z_pos[-1] * 0.25)
@@ -282,7 +281,7 @@ class OpticalSystemView(QWidget):
             z_max = z_pos[-1] + max(20, z_pos[-1] * 0.2)
         
         max_sd = max((s.semi_diameter for s in self.system.surfaces if s.semi_diameter > 0), default=15)
-        aperture = self.system.aperture_value if self.system.aperture_value > 0 else 20
+        aperture = get_effective_aperture(self.system, default=20)
         y_max = max(max_sd, aperture / 2) * 1.4
         
         z_range = z_max - z_min

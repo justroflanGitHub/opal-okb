@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from optics_engine import OpticalSystem, Surface, Wavelength, FieldPoint, ObjectType, ApertureType
+from optics_utils import wl_name as _wl_name_lookup
 
 
 # Константа: большой double, означающий "нет данных" / конец реальных поверхностей
@@ -260,18 +261,9 @@ def load_opj(filepath):
         sys.wavelengths = _std_wavelengths()
     else:
         # Назначаем имена стандартных линий
-        _wl_names = {0.54607: 'e', 0.43405: "G'", 0.65627: 'C',
-                     0.58756: 'd', 0.48613: 'F', 0.43584: 'g',
-                     0.40466: 'h', 0.36501: 'i', 0.70652: 'r',
-                     0.85211: 's', 0.64385: "C'", 0.47999: "F'"}
         wl_list = []
         for w in wavelengths:
-            name = ''
-            for wlv, wln in _wl_names.items():
-                if abs(w - wlv) < 0.0002:
-                    name = wln
-                    break
-            wl_list.append(Wavelength(w, 1.0, name))
+            wl_list.append(Wavelength(w, 1.0, _wl_name_lookup(w)))
         sys.wavelengths = wl_list
     sys.surfaces = surfaces
     sys.stop_surface = 1

@@ -38,6 +38,7 @@ except ImportError:
 
 from optics_engine import OpticalSystem, Surface, ObjectType, paraxial_trace
 from ray_tracing import trace_ray_through_system, trace_grid_3d, Ray, TraceResult
+from optics_utils import compute_z_positions, get_effective_aperture
 
 
 class Visualization3D(QWidget):
@@ -274,9 +275,7 @@ class _GLWidget(QOpenGLWidget):
             return
 
         # Compute z-positions
-        z_pos = [0.0]
-        for s in sys.surfaces:
-            z_pos.append(z_pos[-1] + s.thickness)
+        z_pos = compute_z_positions(sys)
 
         # Center the system around z=0 BEFORE rotation
         # so rotation pivot is at the center of the optical system
@@ -290,7 +289,7 @@ class _GLWidget(QOpenGLWidget):
         # Determine scale factor
         total_z = z_pos[-1] - z_pos[0]
         max_sd = max((s.semi_diameter for s in sys.surfaces if s.semi_diameter > 0), default=15.0)
-        aperture = sys.aperture_value if sys.aperture_value > 0 else 20.0
+        aperture = get_effective_aperture(sys, default=20.0)
         if aperture < 1.0:
             real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > aperture / 10.0]
             if real_sd:
@@ -331,7 +330,7 @@ class _GLWidget(QOpenGLWidget):
         sd = abs(surf.semi_diameter) if surf.semi_diameter > 0 else 15.0
         
         # Detect bogus semi_diameter
-        aperture = sys.aperture_value if sys.aperture_value > 0 else 20.0
+        aperture = get_effective_aperture(sys, default=20.0)
         if aperture < 1.0:
             real_sd_list = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > aperture / 10.0]
             if real_sd_list:
@@ -479,7 +478,7 @@ class _GLWidget(QOpenGLWidget):
 
         z_stop = z_pos[stop_idx] + stop_off
 
-        aperture = sys.aperture_value if sys.aperture_value > 0 else 20.0
+        aperture = get_effective_aperture(sys, default=20.0)
         if aperture < 1.0:
             real_sd = [s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > aperture / 10.0]
             if real_sd:

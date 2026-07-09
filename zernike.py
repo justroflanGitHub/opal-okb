@@ -10,6 +10,7 @@ from typing import List, Tuple, Dict
 from optics_engine import OpticalSystem, ObjectType, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
 # ── Zernike polynomial definitions (polar ρ, θ) ──────────────────────────
@@ -121,7 +122,7 @@ def compute_zernike_coefficients(system: OpticalSystem,
     Возвращает: list of (coeff, name) — например:
     [(0.0, 'Z00 Piston'), (-0.5, 'Z1-1 Tilt Y'), (2.3, 'Z20 Defocus'), ...]
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
 
     # Build list of terms up to max_order
     terms = [(n, m, name) for n, m, name in ZERNIKE_TERMS if n <= max_order]
@@ -139,9 +140,7 @@ def compute_zernike_coefficients(system: OpticalSystem,
     chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
 
     # Z-positions for defocus propagation
-    z_pos = [0.0]
-    for s in system.surfaces:
-        z_pos.append(z_pos[-1] + s.thickness)
+    z_pos = compute_z_positions(system)
     last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
 
     for i in range(num_rays):
@@ -222,7 +221,7 @@ def compute_wavefront_map_2d(system: OpticalSystem,
         coords: 1D массив нормированных координат зрачка (-1..1)
         pupil_mask: 2D массив (1 внутри зрачка, 0 снаружи)
     """
-    aperture = system.aperture_value if system.aperture_value > 0 else 10.0
+    aperture = get_effective_aperture(system, default=10.0)
 
     # Chief ray OPL
     if system.object_type == ObjectType.INFINITE:
@@ -341,7 +340,7 @@ def compute_zernike_chromatic(system, num_rays=64, max_order=4):
                 break
     if d_wl is None:
         # Берём основную (первую) длину волны
-        d_wl = system.wavelengths[0].value if system.wavelengths else 0.58756
+        d_wl = get_primary_wl(system)
     
     # Вычисляем разности
     if f_wl is not None and f_wl in wl_coeffs and d_wl in wl_coeffs:

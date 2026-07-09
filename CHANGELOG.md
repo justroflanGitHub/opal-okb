@@ -2,6 +2,32 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.4.0] — 2026-07-02
+
+### Refactoring
+- **optics_utils.py** — новый модуль с общими функциями:
+  - `compute_z_positions()` — заменила 12 дубликатов
+  - `get_primary_wl()` — заменила 49 дубликатов
+  - `get_effective_aperture(default=)` — заменила 20 дубликатов (с сохранением fallback)
+  - `wl_name()` + `WL_NAMES` — заменила 2 словаря
+  - `copy_table_selection()` — заменила 3 метода
+  - `fmt_val()` — заменила 2 inline-функции
+- **REFACTORING.md** — полный анализ дубликатов (что перемещено, что оставлено)
+- `_sag()`, `_wl_color()`, `compute_refractive_index()` — оставлены раздельно (разная логика)
+
+### Bug Fixes
+- **NA→D конвертация**: `aperture_value < 1.0` (NA = 1/(2×F#)) теперь конвертируется
+  в D = 2×NA×f' через paraxial в декодере. Индустар-22м: было 1:6.9 → стало 1:3.5
+- **Bogus semi_diameters**: нулевые/мусорные значения (1e-45, 0, нормированные)
+  заменяются на D/2×1.1
+- **trace_fan NA fallback**: если aperture < 1.0 и semi_diameters тоже мусор,
+  D вычисляется через paraxial f'
+- Только 2 системы остаются NA (paraxial f'=0: Телеобъектив ПК-300, Подводный ГОИ)
+
+### Tests
+- 53/53 parser tests pass (обновлён тест NA→D)
+- 12/12 ray tracing tests pass
+
 ## [1.3.2] — 2026-06-27
 
 ### Reverse Engineering (via opal_api.dll)

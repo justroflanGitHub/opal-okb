@@ -1,67 +1,50 @@
 """Регрессионный тест: OPJ файлы с мусорными поверхностями не вызывают зависание."""
-import sys, os, io, math
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import math
+import os
+import time
+from pathlib import Path
 
-from opj_reader import load_opj
-from optics_engine import paraxial_trace
-from ray_tracing import trace_fan
+import pytest
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+EXTRACTED_DIR = BASE_DIR / "extracted" / "opal_okb"
 
 
 class TestOPJGarbage:
     def test_andrew_2_no_garbage(self):
-        """ANDREW_2.OPJ не содержит мусорные поверхности."""
-        path = os.path.join(os.path.dirname(__file__), '..', 'extracted', 'opal_okb', 'ANDREW_2.OPJ')
-        if not os.path.exists(path):
-            print('  ⏭ Skip (file not found)')
-            return
-        sys_obj, _ = load_opj(path)
+        """ANDREW_2.OPJ не содержит мусорные поверхность."""
+        path = EXTRACTED_DIR / "ANDREW_2.OPJ"
+        if not path.exists():
+            pytest.skip("file not found")
+        from opj_reader import load_opj
+        sys_obj, _ = load_opj(str(path))
         for s in sys_obj.surfaces:
-            assert not math.isnan(s.radius), f"NaN radius in surface"
-            assert not math.isinf(s.thickness), f"Inf thickness"
+            assert not math.isnan(s.radius), "NaN radius in surface"
+            assert not math.isinf(s.thickness), "Inf thickness"
             assert abs(s.thickness) < 1e6, f"Garbage thickness {s.thickness}"
-        print(f'  ✅ test_andrew_2_no_garbage ({len(sys_obj.surfaces)} surfaces)')
 
     def test_helios8_no_garbage(self):
         """HELIOS8.OPJ не содержит мусорные поверхности."""
-        path = os.path.join(os.path.dirname(__file__), '..', 'extracted', 'opal_okb', 'HELIOS8.OPJ')
-        if not os.path.exists(path):
-            print('  ⏭ Skip (file not found)')
-            return
-        sys_obj, _ = load_opj(path)
+        path = EXTRACTED_DIR / "HELIOS8.OPJ"
+        if not path.exists():
+            pytest.skip("file not found")
+        from opj_reader import load_opj
+        sys_obj, _ = load_opj(str(path))
         for s in sys_obj.surfaces:
-            assert not math.isnan(s.radius), f"NaN radius"
-            assert abs(s.thickness) < 1e6, f"Garbage thickness"
-        print(f'  ✅ test_helios8_no_garbage ({len(sys_obj.surfaces)} surfaces)')
+            assert not math.isnan(s.radius), "NaN radius"
+            assert abs(s.thickness) < 1e6, f"Garbage thickness {s.thickness}"
 
     def test_opj_no_hang(self):
         """Загрузка + расчёт OPJ не зависает (timeout test)."""
-        import time
-        path = os.path.join(os.path.dirname(__file__), '..', 'extracted', 'opal_okb', 'HELIOS8.OPJ')
-        if not os.path.exists(path):
-            print('  ⏭ Skip (file not found)')
-            return
+        path = EXTRACTED_DIR / "HELIOS8.OPJ"
+        if not path.exists():
+            pytest.skip("file not found")
+        from opj_reader import load_opj
+        from optics_engine import paraxial_trace
+        from ray_tracing import trace_fan
         t0 = time.time()
-        sys_obj, _ = load_opj(path)
+        sys_obj, _ = load_opj(str(path))
         paraxial_trace(sys_obj)
         trace_fan(sys_obj, num_rays=5, wl=0.58756, field_y=0.0)
         t1 = time.time()
-        assert t1 - t0 < 5.0, f"Took {t1-t0:.1f}s — possible hang"
-        print(f'  ✅ test_opj_no_hang ({t1-t0:.2f}s)')
-
-
-if __name__ == '__main__':
-    test = TestOPJGarbage()
-    methods = [m for m in dir(test) if m.startswith('test_')]
-    passed = 0
-    failed = 0
-    for m in methods:
-        try:
-            getattr(test, m)()
-            passed += 1
-        except Exception as e:
-            print(f'  ❌ {m}: {e}')
-            failed += 1
-    print(f'\n{"="*60}')
-    print(f'ИТОГО: {passed}/{passed+failed} пройдено, {failed} не пройдено')
-    print(f'{"="*60}')
+        assert t1 - t0 < 5.0, f"Took {t1 - t0:.1f}s — possible hang"

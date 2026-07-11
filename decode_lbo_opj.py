@@ -3,7 +3,7 @@ import sys, os, struct, math, re, io
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from optics_engine import (OpticalSystem, Surface, Wavelength, FieldPoint,
                             ObjectType, ApertureType)
-from optics_utils import wl_name as _wl_name_lookup
+from optics_utils import wl_name as _wl_name_lookup, EPSILON
 from lbo_reader import load_lbo_fast
 
 # OPAL-PC standard wavelength table (by index)
@@ -45,12 +45,16 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
             thicknesses.append(0.0); continue
         d = struct.unpack_from('<d', data, off)[0]
         if abs(d) > 1e15:
-            # Маркер 1e20 = последняя толщина (BFD) неизвестна
-            thicknesses.append(0.0)
+            # Маркер 1e20 = конец реальных поверхностей
             if i < num_surf - 1:
-                break  # настоящий маркер, обрываем
+                # Маркер внутри массива — обрезаем количество поверхностей
+                num_surf = i
+                curvatures = curvatures[:num_surf]
+                break
             else:
-                continue  # последняя поверхность — оставляем 0, вычислим позже
+                # Последняя поверхность — BFD неизвестна, оставляем 0
+                thicknesses.append(0.0)
+                continue
         thicknesses.append(d)
     while len(thicknesses) < num_surf:
         thicknesses.append(0.0)
@@ -138,8 +142,8 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
         try:
             from glass_catalog import GLASS_CATALOG
             known_glasses = set(k.upper() for k in GLASS_CATALOG.keys())
-        except:
-            pass
+        except Exception:
+            pass  # glass_catalog not available — use hardcoded set below
         # Добавляем специальные "стекла"
         known_glasses.update(['КВАРЦ', 'КВАРЦСТК', 'ФЛЮОРИТ', 'ЗЕРКАЛО'])
         
@@ -260,10 +264,8 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     stop_offset = struct.unpack_from('<d', data, 0x6C)[0] if len(data) > 0x73 else 0.0
     if math.isnan(stop_offset):
         stop_offset = 0.0
-    # 0x70 = неизв. (возможно виньетирование или спец параметр)
-    val_70 = struct.unpack_from('<d', data, 0x70)[0] if len(data) > 0x77 else 0.0
-    if math.isnan(val_70):
-        val_70 = 0.0
+    # 0x70 = неизв. (возможно виньетирование или спец параметр) — не используется
+    # val_70 = struct.unpack_from('<d', data, 0x70)[0]
     
     sys_obj = OpticalSystem(name=name)
     # Тип предмета: 0x3C — 0=дальний(∞), 1=ближний
@@ -300,7 +302,7 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
 
     for i in range(num_surf):
         c = curvatures[i] if i < len(curvatures) else 0.0
-        r = 1.0 / c if abs(c) > 1e-10 else 0.0
+        r = 1.0 / c if abs(c) > EPSILON else 0.0
         d = thicknesses[i]
         sd = semi_diameters[i] if i < len(semi_diameters) else 10.0
         surf = Surface(radius=r, thickness=d, glass=glass_for_surface[i], semi_diameter=sd)

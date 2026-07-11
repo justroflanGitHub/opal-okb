@@ -1,75 +1,77 @@
-"""OPAL-OKB — Compatibility shim for the analysis GUI package.
+"""GUI analysis widgets package — re-exports all widget classes.
 
-All widget classes and the :class:`AnalysisPanel` orchestrator have been
-moved to the :mod:`gui` package.  This module re-exports them so that
-existing imports such as ``from analysis_gui import AnalysisPanel``
-continue to work unchanged.
+Import from here for backward compatibility::
+
+    from gui.widgets import SpotDiagramWidget, MTFWidget, AnalysisPanel
 """
 
-# Public API re-exported from the gui package
-from gui.analysis_panel import AnalysisPanel
-from gui.analysis_pipeline import compute_all_analysis
-from gui.widgets import (
-    # Base
+from .base import (
     InteractivePlot,
     AberrationPlotWidget,
     make_table,
     clear_layout,
     wl_to_plot_color,
-    # Spot diagram family
+)
+from .spot_diagram import (
     SpotDiagramWidget,
     HeatmapWidget,
     FocusDiagramWidget,
-    # Aberration graphs
+)
+from .aberration_graphs import (
     AberrationGraphWidget,
     DistortionWidget,
     AstigmatismWidget,
     ComaWidget,
-    # MTF
-    MTFWidget,
-    # PSF family
+)
+from .mtf_widgets import MTFWidget
+from .psf_widgets import (
     PSFWidget,
     LSFWidget,
     ENCWidget,
     PTFWidget,
     ESFWidget,
     PSF3DWidget,
-    # Wavefront
+)
+from .wavefront import (
     WavefrontMapWidget,
     ZernikeWidget,
     WavefrontRmsVsFieldWidget,
-    # Other widgets
-    FocusCurveWidget,
-    ChiefRayWidget,
-    BeamGeometryWidget,
-    BarTargetWidget,
 )
+from .focus_curve import FocusCurveWidget
+from .chief_ray import ChiefRayWidget
+from .beam_geometry import BeamGeometryWidget
+from .bar_target import BarTargetWidget
 
 __all__ = [
-    'AnalysisPanel',
-    'compute_all_analysis',
+    # Base
     'InteractivePlot',
     'AberrationPlotWidget',
     'make_table',
     'clear_layout',
     'wl_to_plot_color',
+    # Spot
     'SpotDiagramWidget',
     'HeatmapWidget',
     'FocusDiagramWidget',
+    # Aberration graphs
     'AberrationGraphWidget',
     'DistortionWidget',
     'AstigmatismWidget',
     'ComaWidget',
+    # MTF
     'MTFWidget',
+    # PSF family
     'PSFWidget',
     'LSFWidget',
     'ENCWidget',
     'PTFWidget',
     'ESFWidget',
     'PSF3DWidget',
+    # Wavefront
     'WavefrontMapWidget',
     'ZernikeWidget',
     'WavefrontRmsVsFieldWidget',
+    # Other
     'FocusCurveWidget',
     'ChiefRayWidget',
     'BeamGeometryWidget',

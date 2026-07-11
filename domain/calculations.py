@@ -126,6 +126,16 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     """
     Параксиальный расчёт оптической системы.
     Возвращает полный набор кардинальных отрезков и характеристик.
+
+    Note: sys.stop_type ('d', 'z', 'p') определяет тип диафрагмы, но
+    текущий расчёт работает только с типом 'd' (апертурная диафрагма).
+    Все существующие системы из LBO используют тип 'd'.
+
+    Note: Surfaces with non-zero tilt/decenter are treated as
+    ordinary surfaces in the paraxial approximation.  Full tilt
+    support in paraxial optics requires ABCD matrix rotation which
+    is not implemented here.  The paraxial results are therefore
+    approximate for systems with tilted/decentered elements.
     """
     if not sys.surfaces:
         return {}

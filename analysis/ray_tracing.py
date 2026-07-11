@@ -347,6 +347,114 @@ def _check_aperture_stop(current_ray: Ray, z_stop: float, z_surf: float,
     return (sx, sy, z_stop, dt_stop)
 
 
+def _has_coord_break(s: Surface) -> bool:
+    """Check if a surface has non-zero tilt or decenter.
+
+    Returns True when any of the coordinate-break parameters
+    (tilt_x, tilt_y, decenter_x, decenter_y) differ from zero
+    by more than a numerical threshold.
+    """
+    return (abs(getattr(s, 'tilt_x', 0.0)) > 1e-12 or
+            abs(getattr(s, 'tilt_y', 0.0)) > 1e-12 or
+            abs(getattr(s, 'decenter_x', 0.0)) > 1e-12 or
+            abs(getattr(s, 'decenter_y', 0.0)) > 1e-12)
+
+
+def _apply_coord_break(ray: Ray, tilt_x_deg: float, tilt_y_deg: float,
+                       dec_x: float, dec_y: float) -> Ray:
+    """Apply coordinate break: decenter then tilt.
+
+    Transforms a ray from global coordinates to surface-local
+    coordinates before intersection.
+
+    Convention (right-handed, Z = optical axis):
+
+    1. **Decenter** — translate the ray origin laterally by
+       ``(-dec_x, -dec_y)`` so the surface vertex sits at the
+       origin in local XY.
+
+    2. **Tilt X** — rotate direction cosines around the X axis
+       (Y-Z plane) by *tilt_x_deg* degrees.  Positive angle
+       tilts the surface normal toward +Y.
+
+    3. **Tilt Y** — rotate direction cosines around the Y axis
+       (X-Z plane) by *tilt_y_deg* degrees.  Positive angle
+       tilts the surface normal toward +X.
+
+    Only the direction cosines are rotated; the ray's (x, y, z)
+    position is shifted by the decenter alone.  This is exact for
+    pure decenter and exact to first order for tilt.
+
+    Args:
+        ray: Incoming ray in global coordinates.
+        tilt_x_deg: Tilt around X (degrees).
+        tilt_y_deg: Tilt around Y (degrees).
+        dec_x: Lateral decenter in X (mm).
+        dec_y: Lateral decenter in Y (mm).
+
+    Returns:
+        Ray in surface-local coordinates.
+    """
+    # Decenter: translate ray position
+    x = ray.x - dec_x
+    y = ray.y - dec_y
+    k, l, m = ray.k, ray.l, ray.m
+
+    # Tilt around X axis (rotation in Y-Z plane)
+    if abs(tilt_x_deg) > 1e-12:
+        a = math.radians(tilt_x_deg)
+        c, s = math.cos(a), math.sin(a)
+        l, m = l * c - m * s, l * s + m * c
+
+    # Tilt around Y axis (rotation in X-Z plane)
+    if abs(tilt_y_deg) > 1e-12:
+        b = math.radians(tilt_y_deg)
+        c, s = math.cos(b), math.sin(b)
+        k, m = k * c - m * s, k * s + m * c
+
+    return Ray(x=x, y=y, z=ray.z, k=k, l=l, m=m)
+
+
+def _undo_coord_break(ray: Ray, tilt_x_deg: float, tilt_y_deg: float,
+                      dec_x: float, dec_y: float) -> Ray:
+    """Reverse a coordinate break after intersection/refraction.
+
+    Transforms a ray from surface-local coordinates back to
+    global coordinates.  Operations are applied in reverse order
+    relative to :func:`_apply_coord_break`: reverse tilt-Y,
+    reverse tilt-X, then reverse decenter.
+
+    Args:
+        ray: Ray in surface-local coordinates.
+        tilt_x_deg: Tilt around X (degrees) that was applied.
+        tilt_y_deg: Tilt around Y (degrees) that was applied.
+        dec_x: Lateral decenter in X (mm) that was applied.
+        dec_y: Lateral decenter in Y (mm) that was applied.
+
+    Returns:
+        Ray in global coordinates.
+    """
+    k, l, m = ray.k, ray.l, ray.m
+
+    # Reverse tilt around Y axis
+    if abs(tilt_y_deg) > 1e-12:
+        b = math.radians(-tilt_y_deg)
+        c, s = math.cos(b), math.sin(b)
+        k, m = k * c - m * s, k * s + m * c
+
+    # Reverse tilt around X axis
+    if abs(tilt_x_deg) > 1e-12:
+        a = math.radians(-tilt_x_deg)
+        c, s = math.cos(a), math.sin(a)
+        l, m = l * c - m * s, l * s + m * c
+
+    # Reverse decenter
+    x = ray.x + dec_x
+    y = ray.y + dec_y
+
+    return Ray(x=x, y=y, z=ray.z, k=k, l=l, m=m)
+
+
 def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) -> TraceResult:
     """
     Трассировка реального луча через оптическую систему.
@@ -404,6 +512,14 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             current_ray.x = sx
             current_ray.y = sy
             current_ray.z = sz
+
+        # Apply coordinate break (tilt/decenter) before intersection
+        has_cb = _has_coord_break(s)
+        if has_cb:
+            current_ray = _apply_coord_break(
+                current_ray, s.tilt_x, s.tilt_y,
+                s.decenter_x, s.decenter_y)
+
         R = s.radius if abs(s.radius) > EPSILON else 0.0
         
         # Пересечение с поверхностью
@@ -498,7 +614,13 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
                 result.error = 'TIR'
                 return result
             current_ray.k, current_ray.l, current_ray.m = ref
-    
+
+        # Undo coordinate break after refraction/reflection
+        if has_cb:
+            current_ray = _undo_coord_break(
+                current_ray, s.tilt_x, s.tilt_y,
+                s.decenter_x, s.decenter_y)
+
     # После последней поверхности — propagate до плоскости изображения
     if sys.surfaces:
         last = sys.surfaces[-1]

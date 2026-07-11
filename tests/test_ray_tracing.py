@@ -393,6 +393,246 @@ class TestMicrolenSystems:
 
 
 # =========================================================================== #
+# E. TILT / DECENTER (COORDINATE BREAKS)
+# =========================================================================== #
+
+class TestTiltDecenter:
+    """Tests for surface tilt/decenter (coordinate break support)."""
+
+    def test_no_tilt_no_change(self):
+        """Surface with zero tilt/decenter behaves identically to before."""
+        from domain.models import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, ApertureType
+
+        # Simple thin lens
+        sys = OpticalSystem(
+            name="Test lens",
+            object_type=ObjectType.INFINITE,
+            object_height=5.0,
+        )
+        sys.wavelengths = [Wavelength(0.54607, 1.0, "e")]
+        sys.field_points = [FieldPoint(0.0)]
+        sys.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys.aperture_value = 20.0
+        sys.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0,
+                    tilt_x=0.0, tilt_y=0.0, decenter_x=0.0, decenter_y=0.0),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0,
+                    tilt_x=0.0, tilt_y=0.0, decenter_x=0.0, decenter_y=0.0),
+        ]
+        sys.stop_surface = 1
+
+        ray = Ray(x=0, y=5.0, z=-1, k=0, l=0, m=1)
+        result = trace_ray_through_system(sys, ray, 0.54607)
+
+        # Must succeed and hit both surfaces
+        assert result.success, f"Ray failed: {result.error}"
+        assert result.surfaces_hit == 2
+
+        # Compare with a system that doesn't have tilt/decenter fields at all
+        sys2 = OpticalSystem(
+            name="Test lens no cb",
+            object_type=ObjectType.INFINITE,
+            object_height=5.0,
+        )
+        sys2.wavelengths = [Wavelength(0.54607, 1.0, "e")]
+        sys2.field_points = [FieldPoint(0.0)]
+        sys2.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys2.aperture_value = 20.0
+        sys2.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0),
+        ]
+        sys2.stop_surface = 1
+
+        result2 = trace_ray_through_system(sys2, ray, 0.54607)
+        assert result2.success
+
+        # Path must be identical
+        assert len(result.path) == len(result2.path), \
+            f"Path lengths differ: {len(result.path)} vs {len(result2.path)}"
+        for p1, p2 in zip(result.path, result2.path):
+            assert p1[0] == pytest.approx(p2[0], abs=1e-10), f"x mismatch: {p1[0]} vs {p2[0]}"
+            assert p1[1] == pytest.approx(p2[1], abs=1e-10), f"y mismatch: {p1[1]} vs {p2[1]}"
+            assert p1[2] == pytest.approx(p2[2], abs=1e-10), f"z mismatch: {p1[2]} vs {p2[2]}"
+
+    def test_decenter_shifts_image(self):
+        """A decentered lens shifts the image position laterally."""
+        from domain.models import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, ApertureType
+
+        # Reference system (no decenter)
+        sys_ref = OpticalSystem(
+            name="Reference",
+            object_type=ObjectType.INFINITE,
+        )
+        sys_ref.wavelengths = [Wavelength(0.54607)]
+        sys_ref.field_points = [FieldPoint(0.0)]
+        sys_ref.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys_ref.aperture_value = 20.0
+        sys_ref.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0),
+        ]
+        sys_ref.stop_surface = 1
+
+        # Decentered system: first surface decentered by 2mm in Y
+        dec_y = 2.0
+        sys_dec = OpticalSystem(
+            name="Decentered",
+            object_type=ObjectType.INFINITE,
+        )
+        sys_dec.wavelengths = [Wavelength(0.54607)]
+        sys_dec.field_points = [FieldPoint(0.0)]
+        sys_dec.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys_dec.aperture_value = 20.0
+        sys_dec.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0,
+                    decenter_y=dec_y),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0),
+        ]
+        sys_dec.stop_surface = 1
+
+        ray = Ray(x=0, y=0.0, z=-1, k=0, l=0, m=1)
+        r_ref = trace_ray_through_system(sys_ref, ray, 0.54607)
+        r_dec = trace_ray_through_system(sys_dec, ray, 0.54607)
+
+        assert r_ref.success and r_dec.success
+
+        # The final image point should differ in Y by approximately dec_y
+        # (decenter shifts the ray's effective position on the surface)
+        final_ref = r_ref.path[-1]
+        final_dec = r_dec.path[-1]
+
+        # The decenter should cause a lateral shift in the image
+        y_shift = abs(final_dec[1] - final_ref[1])
+        assert y_shift > 0.01, \
+            f"Decenter should shift image: y_shift={y_shift:.6f}, " \
+            f"ref_y={final_ref[1]:.4f}, dec_y={final_dec[1]:.4f}"
+
+    def test_tilt_rotates_image(self):
+        """A tilted surface changes the ray direction and shifts the image."""
+        from domain.models import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, ApertureType
+
+        # Reference system (no tilt)
+        sys_ref = OpticalSystem(
+            name="Reference",
+            object_type=ObjectType.INFINITE,
+        )
+        sys_ref.wavelengths = [Wavelength(0.54607)]
+        sys_ref.field_points = [FieldPoint(0.0)]
+        sys_ref.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys_ref.aperture_value = 20.0
+        sys_ref.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0),
+        ]
+        sys_ref.stop_surface = 1
+
+        # Tilted system: first surface tilted by 5 degrees around X
+        tilt_angle = 5.0
+        sys_tilt = OpticalSystem(
+            name="Tilted",
+            object_type=ObjectType.INFINITE,
+        )
+        sys_tilt.wavelengths = [Wavelength(0.54607)]
+        sys_tilt.field_points = [FieldPoint(0.0)]
+        sys_tilt.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys_tilt.aperture_value = 20.0
+        sys_tilt.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0,
+                    tilt_x=tilt_angle),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0),
+        ]
+        sys_tilt.stop_surface = 1
+
+        ray = Ray(x=0, y=0.0, z=-1, k=0, l=0, m=1)
+        r_ref = trace_ray_through_system(sys_ref, ray, 0.54607)
+        r_tilt = trace_ray_through_system(sys_tilt, ray, 0.54607)
+
+        assert r_ref.success, f"Reference failed: {r_ref.error}"
+        assert r_tilt.success, f"Tilted trace failed: {r_tilt.error}"
+
+        # The tilt should change where the ray ends up
+        final_ref = r_ref.path[-1]
+        final_tilt = r_tilt.path[-1]
+
+        # For an on-axis ray through a tilted surface, the image should shift
+        # in Y (tilt around X causes Y-shift)
+        y_shift = abs(final_tilt[1] - final_ref[1])
+        assert y_shift > 0.1, \
+            f"Tilt should shift image in Y: y_shift={y_shift:.6f}, " \
+            f"ref_y={final_ref[1]:.4f}, tilt_y={final_tilt[1]:.4f}"
+
+    def test_tilt_and_decenter_no_crash(self):
+        """System with both tilt and decenter traces without exceptions."""
+        from domain.models import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, ApertureType
+
+        sys = OpticalSystem(
+            name="Tilt+Decenter",
+            object_type=ObjectType.INFINITE,
+        )
+        sys.wavelengths = [Wavelength(0.54607)]
+        sys.field_points = [FieldPoint(0.0)]
+        sys.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys.aperture_value = 20.0
+        sys.surfaces = [
+            Surface(radius=50.0, thickness=5.0, glass="\u041a8", semi_diameter=12.0,
+                    tilt_x=3.0, tilt_y=-2.0, decenter_x=1.0, decenter_y=-0.5),
+            Surface(radius=-200.0, thickness=90.0, glass="", semi_diameter=12.0,
+                    tilt_x=-1.0, decenter_y=0.5),
+        ]
+        sys.stop_surface = 1
+
+        # Should not crash for axial rays
+        for y_start in [0.0, 3.0, -3.0, 8.0, -8.0]:
+            ray = Ray(x=0, y=y_start, z=-1, k=0, l=0, m=1)
+            result = trace_ray_through_system(sys, ray, 0.54607)
+            # It's OK if some rays fail (EDGE, TIR) but shouldn't crash
+            assert isinstance(result.success, bool)
+            assert isinstance(result.path, list)
+
+    def test_coord_break_undo_roundtrip(self):
+        """Apply + undo coord break returns ray to original direction."""
+        from ray_tracing import _apply_coord_break, _undo_coord_break
+
+        original = Ray(x=1.0, y=2.0, z=10.0, k=0.0, l=0.1, m=0.995)
+
+        # Apply then undo
+        tilted = _apply_coord_break(original, 10.0, -5.0, 2.0, -1.0)
+        restored = _undo_coord_break(tilted, 10.0, -5.0, 2.0, -1.0)
+
+        assert restored.x == pytest.approx(original.x, abs=1e-10)
+        assert restored.y == pytest.approx(original.y, abs=1e-10)
+        assert restored.z == pytest.approx(original.z, abs=1e-10)
+        assert restored.k == pytest.approx(original.k, abs=1e-10)
+        assert restored.l == pytest.approx(original.l, abs=1e-10)
+        assert restored.m == pytest.approx(original.m, abs=1e-10)
+
+    def test_zero_coord_break_identity(self):
+        """Applying and undoing zero coord break is identity."""
+        from ray_tracing import _apply_coord_break, _undo_coord_break, _has_coord_break
+        from domain.models import Surface
+
+        s = Surface()  # all defaults
+        assert not _has_coord_break(s)
+
+        original = Ray(x=3.0, y=-1.0, z=50.0, k=0.0, l=0.2, m=0.98)
+
+        forward = _apply_coord_break(original, 0.0, 0.0, 0.0, 0.0)
+        assert forward.x == pytest.approx(original.x)
+        assert forward.y == pytest.approx(original.y)
+        assert forward.k == pytest.approx(original.k)
+        assert forward.l == pytest.approx(original.l)
+        assert forward.m == pytest.approx(original.m)
+
+        backward = _undo_coord_break(forward, 0.0, 0.0, 0.0, 0.0)
+        assert backward.x == pytest.approx(original.x)
+        assert backward.y == pytest.approx(original.y)
+        assert backward.k == pytest.approx(original.k)
+        assert backward.l == pytest.approx(original.l)
+        assert backward.m == pytest.approx(original.m)
+
+
+# =========================================================================== #
 # Manual runner — preserves `py tests\test_ray_tracing.py` execution
 # =========================================================================== #
 

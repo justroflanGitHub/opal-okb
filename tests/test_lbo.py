@@ -1,3 +1,4 @@
+# TODO: convert to pytest — uses custom runner
 # -*- coding: utf-8 -*-
 """
 Тесты для LBO reader.

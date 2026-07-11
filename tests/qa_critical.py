@@ -1,3 +1,4 @@
+# TODO: convert to pytest — uses custom check() runner
 """QA critical checks #1-5 + tab count + isoplanatism line"""
 import sys, os, re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

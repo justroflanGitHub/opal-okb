@@ -45,12 +45,16 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
             thicknesses.append(0.0); continue
         d = struct.unpack_from('<d', data, off)[0]
         if abs(d) > 1e15:
-            # Маркер 1e20 = последняя толщина (BFD) неизвестна
-            thicknesses.append(0.0)
+            # Маркер 1e20 = конец реальных поверхностей
             if i < num_surf - 1:
-                break  # настоящий маркер, обрываем
+                # Маркер внутри массива — обрезаем количество поверхностей
+                num_surf = i
+                curvatures = curvatures[:num_surf]
+                break
             else:
-                continue  # последняя поверхность — оставляем 0, вычислим позже
+                # Последняя поверхность — BFD неизвестна, оставляем 0
+                thicknesses.append(0.0)
+                continue
         thicknesses.append(d)
     while len(thicknesses) < num_surf:
         thicknesses.append(0.0)

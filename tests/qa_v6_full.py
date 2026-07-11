@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# TODO: convert to pytest — uses custom check() runner
 # -*- coding: utf-8 -*-
 """QA v6 — Full module/function verification for OPAL-OKB"""
 import sys, os, traceback, glob, tempfile

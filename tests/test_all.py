@@ -1,3 +1,4 @@
+# TODO: convert to pytest — uses custom runner
 """
 OPAL-OKB — Финальный независимый QA-тест (исправленный)
 """

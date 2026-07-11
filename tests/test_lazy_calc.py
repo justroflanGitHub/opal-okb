@@ -1,6 +1,8 @@
+# TODO: convert to pytest — uses sys.stdout hack and custom runner
 """Тесты двухфазного расчёта (lazy calculation) и регрессии."""
 import sys, os, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if __name__ == '__main__':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

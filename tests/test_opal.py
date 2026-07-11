@@ -13,7 +13,8 @@ OPAL-OKB Полное тестирование
 - Validation-тесты: сравнение с аналитическими решениями
 """
 import sys, io, os, math, time
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if __name__ == '__main__':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 

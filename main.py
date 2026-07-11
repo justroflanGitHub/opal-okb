@@ -34,6 +34,14 @@ from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
 from optics_utils import get_primary_wl, copy_table_selection
 
+from gui.controllers.calculation_controller import CalculationController
+from gui.controllers.system_controller import SystemController
+from gui.dialogs.library_dialog import LibraryDialog
+from gui.dialogs.spectral_dialog import SpectralDialog
+from gui.dialogs.field_dialog import FieldPointsDialog
+from gui.dialogs.fit_dialog import FitDialog
+from gui.dialogs.achromat_dialog import AchromatDialog
+
 
 class SurfaceTable(QTableWidget):
     """Таблица поверхностей оптической системы."""
@@ -871,6 +879,9 @@ class MainWindow(QMainWindow):
         self._current_file = None
         self._init_ui()
         self._init_new_system()  # Silent init, no dialog
+        # Controllers
+        self._calc_controller = CalculationController(self)
+        self._system_controller = SystemController(self)
 
     def _init_ui(self):
         self.setWindowTitle("OPAL-OKB - САПР Оптических Систем")
@@ -1230,438 +1241,40 @@ class MainWindow(QMainWindow):
         self.viz.set_system(self.current_system, trace_rays=False)
 
     def _add_surface(self):
-        """Вставить пустую поверхность перед текущей строкой."""
-        rows = self.surface_table.selectionModel().selectedRows()
-        if rows:
-            idx = rows[0].row()
-        else:
-            idx = len(self.current_system.surfaces)
-        # Clamp to valid range
-        idx = max(0, min(idx, len(self.current_system.surfaces)))
-        s = Surface()
-        self.current_system.surfaces.insert(idx, s)
-        self._refresh_ui()
-        self.statusBar().showMessage(f"Поверхность вставлена перед S{idx+1}")
+        """Insert a blank surface before the selected row."""
+        self._system_controller.add_surface()
 
     def _del_surface(self):
-        """Удалить выбранные поверхности."""
-        rows = sorted(set(i.row() for i in self.surface_table.selectedItems()), reverse=True)
-        if not rows:
-            self.statusBar().showMessage("Выберите поверхность для удаления")
-            return
-        for r in rows:
-            if r < len(self.current_system.surfaces):
-                del self.current_system.surfaces[r]
-        self._refresh_ui()
-        self.statusBar().showMessage(f"Удалено поверхностей: {len(rows)}")
+        """Delete selected surface row(s)."""
+        self._system_controller.del_surface()
 
     def _calculate(self):
-        """Собрать данные из таблицы и рассчитать."""
-        sys = self.current_system
-
-        # Защита от пустой системы
-        if not sys.surfaces:
-            self.statusBar().showMessage("Нет поверхностей")
-            return
-
-        # Обновить поверхности из таблицы
-        n_wl = max(1, len(sys.wavelengths))
-        sd_col = 4 + n_wl    # D/2
-        k_col = 4 + n_wl + 2  # k
-        for i in range(min(self.surface_table.rowCount(), len(sys.surfaces))):
-            r_item = self.surface_table.item(i, 1)
-            d_item = self.surface_table.item(i, 2)
-            g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, sd_col)
-
-            if r_item:
-                txt = r_item.text().strip()
-                sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
-            if d_item:
-                txt = d_item.text().strip()
-                sys.surfaces[i].thickness = float(txt) if txt else 0.0
-            if g_item:
-                glass = g_item.text().strip()
-                sys.surfaces[i].glass = glass
-                if glass.upper() in ("ЗЕРКАЛО", "MIRROR"):
-                    sys.surfaces[i].is_reflective = True
-                else:
-                    sys.surfaces[i].is_reflective = False
-            if sd_item:
-                txt = sd_item.text().strip()
-                sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.surface_table.item(i, k_col)
-            if k_item:
-                txt = k_item.text().strip()
-                try:
-                    k_val = float(txt)
-                    sys.surfaces[i].conic_constant = k_val
-                    if abs(k_val) > 1e-10:
-                        sys.surfaces[i].surface_type = SurfaceType.CONIC
-                    elif sys.surfaces[i].surface_type == SurfaceType.CONIC:
-                        sys.surfaces[i].surface_type = SurfaceType.SPHERE
-                except ValueError:
-                    pass
-
-        sys.stop_surface = int(self.sys_params.stop_nd_spin.value())
-        sys.stop_offset = self.sys_params.stop_sd_spin.value()
-        sys.name = self.sys_params.name_edit.text()
-        sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
-        sys.image_type = ObjectType.INFINITE if self.sys_params.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
-        sys.object_height = self.sys_params.obj_height_spin.value()
-        # Апертура из новых виджетов
-        ap_idx = self.sys_params.front_ap_combo.currentIndex()
-        ap_val = self.sys_params.front_ap_spin.value()
-        if ap_idx == 0:  # Y height (D/2)
-            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
-            sys.aperture_value = ap_val * 2
-        elif ap_idx == 1:  # NA
-            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
-            sys.aperture_value = ap_val
-        else:  # F/#
-            sys.aperture_type = ApertureType.F_NUMBER
-            sys.aperture_value = ap_val
-        sys.obscuration_ratio = self.sys_params.obscuration_spin.value() / 100.0
-        sys.beam_mode = "real" if self.sys_params.beam_mode_combo.currentIndex() == 0 else "given"
-        sys.sharp_edge = self.sys_params.sharp_edge_check.isChecked()
-        fp_data = self.sys_params.field_points_widget.get_field_points()
-        sys.field_points = [FieldPoint(y=y, x=x, weight=w) for y, x, w in fp_data]
-        sys.wavelengths = []
-        for i in range(self.sys_params.wl_table.rowCount()):
-            wl_val = float(self.sys_params.wl_table.item(i, 0).text())
-            wl_w = float(self.sys_params.wl_table.item(i, 1).text())
-            wl_n = self.sys_params.wl_table.item(i, 2).text() if self.sys_params.wl_table.item(i, 2) else ""
-            sys.wavelengths.append(Wavelength(wl_val, wl_w, wl_n))
-
-        # Запустить расчёт (асинхронный или синхронный для тестов)
-        self._run_calc(sys)
+        """Gather UI data and run the calculation pipeline."""
+        self._calc_controller.calculate()
 
     def _run_calc(self, sys, sync=False):
-        """Запустить расчёт — Phase 1 sync (быстро), Phase 2 async (тяжёлый)."""
-        # Phase 1: быстрые вычисления (синхронно, < 0.5 сек)
-        phase1_data = self._do_calc_phase1(sys)
-
-        # Немедленное обновление GUI: ход лучей + parax + seidel
-        self._update_parax_and_seidel(sys, phase1_data)
-        self.surface_table.load_system(sys)
-        self.viz.set_system(sys, trace_rays=True)
-
-        if sync:
-            # Sync mode: выполнить Фазу 2 сразу
-            defocus = self.analysis.get_defocus_offset() if hasattr(self.analysis, 'defocus_spin') else 0.0
-            azimuth = self.analysis.get_azimuth() if hasattr(self.analysis, 'azimuth_spin') else 0.0
-            phase2_data = self._do_calc_phase2(sys, defocus, azimuth)
-            self._update_after_calc(sys, phase1_data, phase2_data)
-            return
-
-        # Показать промежуточный результат (F' — вторая строка)
-        f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
-        self.statusBar().showMessage(f"Расчёт анализа... f'={f_text}")
-
-        # Phase 2: тяжёлые вычисления (в Worker потоке)
-        self.btn_calc.setEnabled(False)
-        self.btn_calc.setText("⏳ Анализ...")
-
-        from PyQt5.QtCore import QThread
-        from worker import Worker
-
-        # Cleanup previous thread if still running
-        if hasattr(self, '_calc_thread') and self._calc_thread.isRunning():
-            self._calc_thread.quit()
-            self._calc_thread.wait(1000)
-
-        # Capture GUI values BEFORE starting thread
-        defocus = self.analysis.get_defocus_offset() if hasattr(self.analysis, 'defocus_spin') else 0.0
-        azimuth = self.analysis.get_azimuth() if hasattr(self.analysis, 'azimuth_spin') else 0.0
-
-        self._calc_thread = QThread()
-        self._calc_worker = Worker(self._do_calc_phase2, sys, defocus, azimuth)
-        self._calc_worker.moveToThread(self._calc_thread)
-        self._calc_thread.started.connect(self._calc_worker.run)
-        self._calc_worker.finished.connect(lambda r: self._update_after_calc(sys, phase1_data, r))
-        self._calc_worker.error.connect(lambda e: self._on_calc_error(e))
-        self._calc_worker.finished.connect(self._calc_thread.quit)
-        self._calc_thread.start()
+        """Run two-phase calculation (Phase 1 sync, Phase 2 async)."""
+        self._calc_controller.run_calc(sys, sync=sync)
 
     def _do_calc_phase1(self, sys):
-        """Фаза 1: Быстрые вычисления — paraxial, Seidel, spot diagram. < 0.5 сек."""
-        from optics_engine import paraxial_trace, seidel_aberrations
-        from aberrations import compute_spot_diagram
-
-        wl = get_primary_wl(sys)
-        return {
-            'parax': paraxial_trace(sys),
-            'seidel': seidel_aberrations(sys),
-            'spots': compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0),
-        }
+        """Phase 1: Fast synchronous computations (< 0.5 s)."""
+        return self._calc_controller.do_calc_phase1(sys)
 
     def _do_calc_phase2(self, sys, defocus, azimuth):
-        """Фаза 2: Тяжёлые вычисления — fans, MTF, PSF, Zernike и т.д.
-        Работает в Worker потоке."""
-        import math, numpy as np
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-        from optics_engine import paraxial_trace, compute_beam_geometry
-        from aberrations import (
-            compute_spot_diagram, compute_rms_spot, compute_spot_diagram_polychromatic,
-            compute_polychromatic_rms, trace_aberration_fan, compute_field_aberrations,
-            compute_focus_curve, compute_spot_diagram_at_defocus, compute_rms_spot_xy,
-            compute_geometric_mtf, compute_chief_ray_characteristics, compute_isoplanatism
-        )
-        from diffraction_mtf import compute_diffraction_mtf, compute_diffraction_limited_mtf
-        from advanced_analysis import compute_psf, compute_lsf, compute_esf, compute_enc, compute_ptf, compute_bar_target_mtf_table, compute_bar_target_image
-        from zernike import compute_zernike_coefficients, compute_zernike_chromatic, compute_wavefront_map_2d
-
-        wl = get_primary_wl(sys)
-        wl_list = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.58756]
-        n_workers = min(8, max(2, __import__('os').cpu_count() or 4))
-
-        results = {}
-
-        # parax нужен для focus diagrams
-        parax = paraxial_trace(sys)
-
-        # spots_mono нужен как вход для нескольких вычислений
-        spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
-        results['spots_mono'] = spots_mono
-        results['rms'] = compute_rms_spot(spots_mono)
-
-        # Polychromatic
-        if len(sys.wavelengths) > 1:
-            results['spots_poly'] = compute_spot_diagram_polychromatic(sys, num_rays=40, field_y=0.0)
-            results['poly_rms'] = compute_polychromatic_rms(sys, num_rays=40, field_y=0.0)
-            results['poly_rms_xy'] = compute_rms_spot_xy([(dx, dy) for dx, dy, _ in results['spots_poly']])
-            results['poly_max'] = max((math.sqrt(dx**2+dy**2) for dx, dy, _ in results['spots_poly']), default=0)
-        else:
-            results['spots_poly'] = [(dx, dy, 0) for dx, dy in spots_mono]
-            results['poly_rms'] = results['rms']
-            results['poly_rms_xy'] = {}
-            results['poly_max'] = 0
-
-        # Parallel independent heavy computations
-        parallel_tasks = {}
-
-        def _task_fan():
-            fans = {w: trace_aberration_fan(sys, w, num_rays=30) for w in wl_list}
-            iso = {}
-            try:
-                for w in wl_list:
-                    iso[w] = compute_isoplanatism(sys, wl=w, num_rays=30)
-            except:
-                pass
-            return (fans, iso)
-
-        def _task_field():
-            return compute_field_aberrations(sys, wl=wl)
-
-        def _task_geo_mtf():
-            return compute_geometric_mtf(spots_mono)
-
-        def _task_diff_mtf():
-            return compute_diffraction_mtf(sys, wl=wl)
-
-        def _task_diff_ltd():
-            return compute_diffraction_limited_mtf(sys, wl=wl)
-
-        def _task_focus():
-            return compute_focus_curve(sys, wl=wl, num_points=40,
-                defocus_range=2.0, freq_lpmm=50.0, num_rays=25, field_y=0.0)
-
-        def _task_psf():
-            try:
-                return compute_psf(sys, wl=wl, num_rays=64)
-            except:
-                return None
-
-        def _task_lsf():
-            try:
-                t, ax1 = compute_lsf(sys, wl=wl, num_rays=64, direction='tangential')
-                s, ax2 = compute_lsf(sys, wl=wl, num_rays=64, direction='sagittal')
-                return (t, ax1, s, ax2)
-            except:
-                return None
-
-        def _task_esf():
-            try:
-                return compute_esf(sys, wl=wl)
-            except:
-                return None
-
-        def _task_enc():
-            try:
-                return compute_enc(sys, wl=wl, num_rays=100)
-            except:
-                return None
-
-        def _task_ptf():
-            try:
-                return compute_ptf(sys, wl=wl, num_rays=64)
-            except:
-                return None
-
-        def _task_beam():
-            return compute_beam_geometry(sys)
-
-        def _task_chief():
-            return compute_chief_ray_characteristics(sys)
-
-        def _task_zernike():
-            try:
-                c = compute_zernike_coefficients(sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
-                ch = compute_zernike_chromatic(sys, num_rays=32, max_order=4) if len(sys.wavelengths) > 1 else None
-                return (c, ch)
-            except:
-                return ([], None)
-
-        def _task_wfmap():
-            try:
-                wf, coords, mask = compute_wavefront_map_2d(sys, wl=wl, grid_size=48, defocus_offset=defocus)
-                return (wf, coords, mask)
-            except:
-                return None
-
-        def _task_bar():
-            try:
-                x, ideal, blurred = compute_bar_target_image(sys, wl=wl, field_y=0.0, num_bars=5, bar_freq_lp_mm=10)
-                mtf = compute_bar_target_mtf_table(sys, wl=wl, field_y=0.0, num_bars=5)
-                return {'bar_x': x, 'bar_ideal': ideal, 'bar_blurred': blurred, 'bar_mtf_table': mtf}
-            except:
-                return None
-
-        task_map = {
-            'fan_data': _task_fan, 'field_aberr': _task_field,
-            'geo_mtf': _task_geo_mtf, 'diff_mtf': _task_diff_mtf,
-            'diff_ltd': _task_diff_ltd, 'focus_curve': _task_focus,
-            'psf_data': _task_psf, 'lsf': _task_lsf,
-            'esf': _task_esf, 'enc': _task_enc, 'ptf_data': _task_ptf,
-            'beam_data': _task_beam, 'chief_data': _task_chief,
-            'zernike': _task_zernike, 'wfmap': _task_wfmap,
-            'bar_mtf': _task_bar,
-        }
-
-        with ThreadPoolExecutor(max_workers=n_workers) as executor:
-            futures = {executor.submit(fn): key for key, fn in task_map.items()}
-            for future in as_completed(futures):
-                key = futures[future]
-                try:
-                    result = future.result()
-                    if key == 'lsf' and result:
-                        results['lsf_t'], results['lsf_ax1'], results['lsf_s'], results['lsf_ax2'] = result
-                    elif key == 'zernike':
-                        results['zernike_coeffs'], results['zernike_chromatic'] = result
-                    elif key == 'enc' and result:
-                        results['enc_r'], results['enc_e'] = result
-                    elif key == 'fan_data' and isinstance(result, tuple):
-                        fans, iso = result
-                        results['fan_data'] = fans
-                        results['isoplanatism'] = iso
-                    elif key == 'esf' and result:
-                        results['esf_x'], results['esf_y'] = result
-                    elif key == 'bar_mtf' and isinstance(result, dict):
-                        results.update(result)
-                    else:
-                        results[key] = result
-                except Exception:
-                    results[key] = None
-
-        # Focus diagrams (depends on parax results)
-        ds = abs(parax.get('longitudinal_spherical', 0)) if parax.get('longitudinal_spherical') else 0.1
-        results['focus_diagrams'] = {}
-        all_spots = []
-        for label, df in [("номинал", 0), ("+DS'", ds), ("-DS'", -ds), ("+2DS'", 2*ds), ("-2DS'", -2*ds)]:
-            try:
-                spots = compute_spot_diagram_at_defocus(sys, wl=wl, num_rays=60, field_y=0.0, defocus_mm=df)
-                rms_info = compute_rms_spot_xy(spots)
-                results['focus_diagrams'][label] = (spots, rms_info, df)
-                all_spots.extend(spots)
-            except:
-                pass
-        results['focus_diag_max'] = max((math.sqrt(dx**2+dy**2) for dx, dy in all_spots), default=1e-6) if all_spots else 1e-6
-
-        return results
+        """Phase 2: Heavy computations (fans, MTF, PSF, Zernike, etc.)."""
+        return self._calc_controller.do_calc_phase2(sys, defocus, azimuth)
 
     def _on_calc_error(self, err):
-        self.btn_calc.setEnabled(True)
-        self.btn_calc.setText("⚙ Рассчитать")
-        self.statusBar().showMessage(f"Ошибка расчёта: {err[:80]}")
+        """Handle calculation error from worker thread."""
+        self._calc_controller._on_calc_error(err)
 
     def _update_after_calc(self, sys, phase1_data=None, phase2_data=None):
-        """Обновить GUI после расчёта.
-
-        Совместимость с тестами: если вызван с одним аргументом (sys),
-        пересчитывает всё на месте.
-        Полный режим: (sys, phase1_data, phase2_data).
-        """
-        if sys is None:
-            return
-        self.current_system = sys
-        self.btn_calc.setEnabled(True)
-        self.btn_calc.setText("⚙ Рассчитать")
-
-        if phase1_data is None and phase2_data is None:
-            # Backward compat path (tests): compute everything fresh
-            self._update_parax_and_seidel(sys, None)
-            self.surface_table.load_system(sys)
-            self.viz.set_system(sys, trace_rays=True)
-            if self._viz_mode == '3d':
-                self.viz_3d.set_system(sys)
-            self.analysis.analyze(sys)
-            f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
-            self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
-            return
-
-        # Объединить данные обеих фаз
-        data = {}
-        if phase1_data:
-            data['parax'] = phase1_data['parax']
-            data['seidel'] = phase1_data['seidel']
-            data['spots_mono'] = phase1_data['spots']
-        if phase2_data:
-            data.update(phase2_data)
-
-        self._update_parax_and_seidel(sys, data)
-        self.surface_table.load_system(sys)
-        self.viz.set_system(sys, trace_rays=True)
-        if self._viz_mode == '3d':
-            self.viz_3d.set_system(sys)
-        if data:
-            self.analysis.apply_results(sys, data)
-        else:
-            self.analysis.analyze(sys)
-        f_text = self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else "—"
-        self.statusBar().showMessage(f"Расчёт выполнен: f'={f_text}")
+        """Update GUI after calculation (backward-compat for tests)."""
+        self._calc_controller.update_after_calc(sys, phase1_data, phase2_data)
 
     def _update_parax_and_seidel(self, sys, data=None):
-        """Update paraxial + seidel in ResultsPanel (compat) and AnalysisPanel."""
-        # Get parax from data or compute
-        if data and 'parax' in data:
-            parax = data['parax']
-        else:
-            parax = paraxial_trace(sys)
-
-        # ResultsPanel — backward compat (tests access w.results.parax_table)
-        self.results._parax_result = parax
-        self.results._current_system_ref = sys
-
-        # f/# and entrance pupil
-        fno = parax.get('f_number', 0)
-        epd = parax.get('entrance_pupil_diameter', 0)
-        if fno == 0:
-            efl = parax.get('focal_length', 0)
-            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
-            fno = efl / epd if epd > 0 else 0
-        self.results._fno = fno
-        self.results._epd = epd
-        self.results._update_parax_display()
-
-        # Seidel
-        if data and 'seidel' in data:
-            seidel = data['seidel']
-        else:
-            seidel = seidel_aberrations(sys)
-
-        self.analysis.update_parax(parax, fno, epd, sys=sys)
-        self.analysis.update_seidel(seidel)
-        self.results._update_paraxial_all_wl(sys)
+        """Update paraxial + Seidel tables in results and analysis panels."""
+        self._calc_controller._update_parax_and_seidel(sys, data)
 
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1710,82 +1323,8 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить:\n{e}")
 
     def _collect_system_from_ui(self):
-        """Собрать текущие данные из UI в current_system (без запуска расчёта)."""
-        sys = self.current_system
-        n_wl = max(1, len(sys.wavelengths))
-        sd_col = 4 + n_wl    # D/2
-        k_col = 4 + n_wl + 2  # k
-        # Поверхности
-        for i in range(min(self.surface_table.rowCount(), len(sys.surfaces))):
-            r_item = self.surface_table.item(i, 1)
-            d_item = self.surface_table.item(i, 2)
-            g_item = self.surface_table.item(i, 3)
-            sd_item = self.surface_table.item(i, sd_col)
-            if r_item:
-                txt = r_item.text().strip()
-                sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
-            if d_item:
-                txt = d_item.text().strip()
-                sys.surfaces[i].thickness = float(txt) if txt else 0.0
-            if g_item:
-                glass = g_item.text().strip()
-                sys.surfaces[i].glass = glass
-                # Поддержка зеркал
-                if glass.upper() in ("ЗЕРКАЛО", "MIRROR"):
-                    sys.surfaces[i].is_reflective = True
-                else:
-                    sys.surfaces[i].is_reflective = False
-            if sd_item:
-                txt = sd_item.text().strip()
-                sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            # Коническая постоянная k
-            k_item = self.surface_table.item(i, k_col)
-            if k_item:
-                txt = k_item.text().strip()
-                try:
-                    k_val = float(txt)
-                    sys.surfaces[i].conic_constant = k_val
-                    if abs(k_val) > 1e-10:
-                        sys.surfaces[i].surface_type = SurfaceType.CONIC
-                    elif sys.surfaces[i].surface_type == SurfaceType.CONIC:
-                        sys.surfaces[i].surface_type = SurfaceType.SPHERE
-                except ValueError:
-                    pass
-        # Стоп-поверхность
-        sys.stop_surface = int(self.sys_params.stop_nd_spin.value())
-        sys.stop_offset = self.sys_params.stop_sd_spin.value()
-        # Параметры
-        sys.name = self.sys_params.name_edit.text()
-        sys.object_type = ObjectType.INFINITE if self.sys_params.obj_type_combo.currentIndex() == 0 else ObjectType.FINITE
-        sys.image_type = ObjectType.INFINITE if self.sys_params.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
-        sys.object_height = self.sys_params.obj_height_spin.value()
-        # Апертура из новых виджетов
-        ap_idx = self.sys_params.front_ap_combo.currentIndex()
-        ap_val = self.sys_params.front_ap_spin.value()
-        if ap_idx == 0:
-            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
-            sys.aperture_value = ap_val * 2
-        elif ap_idx == 1:
-            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
-            sys.aperture_value = ap_val
-        else:
-            sys.aperture_type = ApertureType.F_NUMBER
-            sys.aperture_value = ap_val
-        # Экранирование
-        sys.obscuration_ratio = self.sys_params.obscuration_spin.value() / 100.0
-        # Режимы габаритов (#15)
-        sys.beam_mode = "real" if self.sys_params.beam_mode_combo.currentIndex() == 0 else "given"
-        sys.sharp_edge = self.sys_params.sharp_edge_check.isChecked()
-        # Точки поля
-        fp_data = self.sys_params.field_points_widget.get_field_points()
-        sys.field_points = [FieldPoint(y=y, x=x, weight=w) for y, x, w in fp_data]
-        # Длины волн
-        sys.wavelengths = []
-        for i in range(self.sys_params.wl_table.rowCount()):
-            wl_val = float(self.sys_params.wl_table.item(i, 0).text())
-            wl_w = float(self.sys_params.wl_table.item(i, 1).text())
-            wl_n = self.sys_params.wl_table.item(i, 2).text() if self.sys_params.wl_table.item(i, 2) else ""
-            sys.wavelengths.append(Wavelength(wl_val, wl_w, wl_n))
+        """Collect current UI data into ``current_system`` (without calculation)."""
+        self._system_controller.collect_system_from_ui()
 
     def _reverse_system(self):
         """Обернуть оптическую систему."""
@@ -1854,166 +1393,32 @@ class MainWindow(QMainWindow):
             "Python + PyQt5")
 
     def _show_field_points_dialog(self):
-        """Диалог точек поля."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Точки поля")
-        dlg.setMinimumWidth(350)
-        layout = QVBoxLayout(dlg)
-        fp_widget = FieldPointsWidget()
-        fp_widget.load_system(self.current_system)
-        layout.addWidget(fp_widget)
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(dlg.accept)
-        btns.rejected.connect(dlg.reject)
-        layout.addWidget(btns)
+        """Open the field points editing dialog."""
+        dlg = FieldPointsDialog(self.current_system, FieldPointsWidget, self)
         if dlg.exec_():
-            self.current_system.field_points = fp_widget.get_field_points()
+            self.current_system.field_points = dlg.get_field_points()
             self.sys_params.field_points_widget.load_system(self.current_system)
             self._calculate()
 
     def _show_spectral_dialog(self):
-        """Диалог спектральных линий."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QTableWidget, QTableWidgetItem, QHeaderView
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Спектральные линии")
-        dlg.setMinimumWidth(350)
-        layout = QVBoxLayout(dlg)
-        wl_table = QTableWidget(0, 3)
-        wl_table.setHorizontalHeaderLabels(["λ (мкм)", "Вес", "Имя"])
-        wl_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        # Если в системе нет длин волн — подставить стандартные e, G', C
-        current_wls = self.current_system.wavelengths
-        if not current_wls:
-            from optics_engine import _std_wavelengths
-            current_wls = _std_wavelengths()
-        for wl in current_wls:
-            r = wl_table.rowCount()
-            wl_table.insertRow(r)
-            wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.5f}"))
-            wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
-            wl_table.setItem(r, 2, QTableWidgetItem(wl.name or ""))
-        layout.addWidget(wl_table)
-        # Add/remove buttons
-        btn_layout = QHBoxLayout()
-        add_btn = QPushButton("+ Добавить")
-        del_btn = QPushButton("- Удалить")
-        std_btn = QPushButton("Стандартные...")
-        default_btn = QPushButton("По умолчанию (e, G', C)")
-        add_btn.clicked.connect(lambda: wl_table.insertRow(wl_table.rowCount()))
-        del_btn.clicked.connect(lambda: wl_table.removeRow(wl_table.currentRow()) if wl_table.currentRow() >= 0 else None)
-        # Кнопка "По умолчанию" — очищает и заполняет e, G', C
-        def _set_default_wls():
-            from optics_engine import _std_wavelengths
-            std = _std_wavelengths()
-            wl_table.setRowCount(0)
-            for wl in std:
-                r = wl_table.rowCount()
-                wl_table.insertRow(r)
-                wl_table.setItem(r, 0, QTableWidgetItem(f"{wl.value:.5f}"))
-                wl_table.setItem(r, 1, QTableWidgetItem(f"{wl.weight:.1f}"))
-                wl_table.setItem(r, 2, QTableWidgetItem(wl.name))
-        default_btn.clicked.connect(_set_default_wls)
-        # Standard wavelengths dialog
-        from io_utils import STANDARD_WAVELENGTHS
-        def _add_std():
-            from PyQt5.QtWidgets import QDialog as _D, QDialogButtonBox as _B, QListWidget as _L
-            d = _D(dlg)
-            d.setWindowTitle("Стандартные длины волн")
-            d.setMinimumWidth(250)
-            dl = QVBoxLayout(d)
-            lst = _L()
-            for name, val in sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1]):
-                lst.addItem(f"{name} \u2014 {val:.5f} \u043c\u043a\u043c")
-            dl.addWidget(lst)
-            b = _B(_B.Ok | _B.Cancel)
-            b.accepted.connect(d.accept)
-            b.rejected.connect(d.reject)
-            dl.addWidget(b)
-            if d.exec_():
-                idx = lst.currentRow()
-                if idx >= 0:
-                    items = sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1])
-                    name, val = items[idx]
-                    r = wl_table.rowCount()
-                    wl_table.insertRow(r)
-                    wl_table.setItem(r, 0, QTableWidgetItem(f"{val:.4f}"))
-                    wl_table.setItem(r, 1, QTableWidgetItem("1.0"))
-                    wl_table.setItem(r, 2, QTableWidgetItem(name))
-        std_btn.clicked.connect(_add_std)
-        btn_layout.addWidget(add_btn)
-        btn_layout.addWidget(del_btn)
-        btn_layout.addWidget(std_btn)
-        btn_layout.addWidget(default_btn)
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btns.accepted.connect(dlg.accept)
-        btns.rejected.connect(dlg.reject)
-        layout.addWidget(btns)
+        """Open the spectral lines editing dialog."""
+        dlg = SpectralDialog(self.current_system, self)
         if dlg.exec_():
-            from optics_engine import Wavelength
-            new_wls = []
-            for r in range(wl_table.rowCount()):
-                val_item = wl_table.item(r, 0)
-                w_item = wl_table.item(r, 1)
-                n_item = wl_table.item(r, 2)
-                if val_item:
-                    try:
-                        val = float(val_item.text())
-                        w = float(w_item.text()) if w_item and w_item.text() else 1.0
-                        name = n_item.text() if n_item else ""
-                        new_wls.append(Wavelength(val, w, name))
-                    except ValueError:
-                        pass
+            new_wls = dlg.get_wavelengths()
             if new_wls:
                 self.current_system.wavelengths = new_wls
                 self.sys_params.load_system(self.current_system)
                 self._calculate()
 
     def _design_achromat(self):
-        """Диалог расчёта ахроматического дублета."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Расчёт ахроматического дублета")
-        dlg.setMinimumWidth(300)
-        layout = QFormLayout(dlg)
-
-        # f' input
-        f_spin = QDoubleSpinBox()
-        f_spin.setRange(1.0, 100000.0)
-        f_spin.setDecimals(1)
-        f_spin.setValue(100.0)
-        f_spin.setSuffix(" мм")
-        layout.addRow("Фокусное расстояние f':", f_spin)
-
-        # Апертура
-        ap_spin = QDoubleSpinBox()
-        ap_spin.setRange(0.0, 10000.0)
-        ap_spin.setDecimals(1)
-        ap_spin.setValue(0.0)
-        ap_spin.setSuffix(" мм (0 = авто)")
-        layout.addRow("Входной зрачок D:", ap_spin)
-
-        # Пара стёкол
-        pair_combo = QComboBox()
-        for crown, flint in GLASS_PAIRS:
-            pair_combo.addItem(f"{crown} + {flint}")
-        layout.addRow("Пара стёкол:", pair_combo)
-
-        # Кнопки
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        layout.addRow(buttons)
-
+        """Open the achromatic doublet design dialog."""
+        dlg = AchromatDialog(self)
         if dlg.exec_() != QDialog.Accepted:
             return
 
-        crown, flint = GLASS_PAIRS[pair_combo.currentIndex()]
+        f_val, ap_val, crown, flint = dlg.get_parameters()
         try:
-            system = design_achromat(f_spin.value(), crown, flint, ap_spin.value())
+            system = design_achromat(f_val, crown, flint, ap_val)
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка расчёта ахромата:\n{e}")
             return
@@ -2025,71 +1430,15 @@ class MainWindow(QMainWindow):
         )
 
     def _show_library(self):
-        """Показать диалог библиотеки оптических систем."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QTreeWidget, QTreeWidgetItem
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Библиотека оптических систем")
-        dlg.setMinimumSize(500, 400)
-        layout = QVBoxLayout(dlg)
-
-        tree = QTreeWidget()
-        tree.setHeaderLabels(["Название системы"])
-        tree.setHeaderHidden(False)
-
-        lib = build_library()
-        entries = {}  # QTreeWidgetItem -> entry dict
-        lbo_categories = {}  # QTreeWidgetItem -> lbo_path
-        
-        # Sort categories: LBO first, then others alphabetically
-        sorted_cats = sorted(lib.items(), key=lambda kv: (0 if "LBO" in kv[0] else 1, kv[0]))
-        
-        for category, items in sorted_cats:
-            cat_item = QTreeWidgetItem(tree, [category])
-            font = cat_item.font(0)
-            font.setBold(True)
-            cat_item.setFont(0, font)
-            for entry in items:
-                item = QTreeWidgetItem(cat_item, [entry["name"]])
-                if entry.get("lbo_path") and not entry.get("opj_data"):
-                    # LBO category — store for expansion
-                    lbo_categories[id(item)] = entry
-                    # Pre-load children immediately so expand arrow works
-                    from library import expand_lbo
-                    systems = expand_lbo(entry["lbo_path"])
-                    for s in systems:
-                        child = QTreeWidgetItem(item, [s["name"]])
-                        entries[id(child)] = s
-                    item.setExpanded(False)  # collapsed by default, but expandable
-                else:
-                    entries[id(item)] = entry
-            cat_item.setExpanded(True)
-
-        layout.addWidget(tree)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        layout.addWidget(buttons)
-
-        # Double-click: open system immediately
-        def on_double_click(item, col):
-            if id(item) in entries:
-                dlg.accept()
-        tree.itemDoubleClicked.connect(on_double_click)
-
+        """Open the optical system library browser dialog."""
+        dlg = LibraryDialog(self)
         if dlg.exec_() != QDialog.Accepted:
             return
 
-        selected = tree.selectedItems()
-        if not selected:
+        entry = dlg.get_selected_entry()
+        if entry is None:
             return
 
-        item = selected[0]
-        if id(item) not in entries:
-            return
-
-        entry = entries[id(item)]
         try:
             self.current_system = create_system_from_entry(entry)
             self._refresh_ui()
@@ -2179,83 +1528,36 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", f"Ошибка при построении диаграммы:\n{e}")
 
     def _fit_dialog(self):
-        """Диалог подгонки характеристик."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFormLayout, QSpinBox
+        """Open the parameter fitting dialog."""
         from optimizer import fit_focal_length, fit_bfd
 
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Подгонка характеристик")
-        dlg.setMinimumWidth(350)
-        layout = QFormLayout(dlg)
-
-        # Цель
-        target_combo = QComboBox()
-        target_combo.addItems(["Фокусное расстояние f'", "Задний фок. отрезок BFD"])
-        layout.addRow("Цель:", target_combo)
-
-        target_spin = QDoubleSpinBox()
-        target_spin.setRange(-100000, 100000)
-        target_spin.setDecimals(4)
-        target_spin.setSuffix(" мм")
-        target_spin.setValue(100.0)
-        layout.addRow("Целевое значение:", target_spin)
-
-        # Переменная
-        surf_spin = QSpinBox()
-        surf_spin.setRange(1, max(1, len(self.current_system.surfaces)))
-        surf_spin.setValue(1)
-        layout.addRow("Поверхность No:", surf_spin)
-
-        param_combo = QComboBox()
-        param_combo.addItems(["Радиус R", "Толщина d"])
-        layout.addRow("Параметр:", param_combo)
-
-        # При выборе цели автоматически менять доступные параметры
-        def on_target_changed(idx):
-            if idx == 0:  # f' — только радиус
-                param_combo.setCurrentIndex(0)
-                param_combo.setEnabled(False)
-            else:  # BFD — толщина
-                param_combo.setCurrentIndex(1)
-                param_combo.setEnabled(False)
-        target_combo.currentIndexChanged.connect(on_target_changed)
-        on_target_changed(0)  # initial
-
-        # Кнопки
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        layout.addRow(buttons)
-
+        dlg = FitDialog(len(self.current_system.surfaces), self)
         if dlg.exec_() != QDialog.Accepted:
             return
 
         self._collect_system_from_ui()
-        surf_idx = surf_spin.value() - 1  # 0-based
-        param_type = 'radius' if param_combo.currentIndex() == 0 else 'thickness'
+        target_type, target_val, surf_idx, param_type = dlg.get_parameters()
 
         try:
-            if target_combo.currentIndex() == 0:
+            if target_type == FitDialog.TARGET_FOCAL:
                 result_sys = fit_focal_length(
-                    self.current_system, target_spin.value(),
-                    surf_idx, param_type)
+                    self.current_system, target_val, surf_idx, param_type)
             else:
                 result_sys = fit_bfd(
-                    self.current_system, target_spin.value(),
-                    surf_idx, param_type)
+                    self.current_system, target_val, surf_idx, param_type)
 
             self.current_system = result_sys
             self._refresh_ui()
 
             parax = paraxial_trace(self.current_system)
-            if target_combo.currentIndex() == 0:
+            if target_type == FitDialog.TARGET_FOCAL:
                 ach_f = parax.get('focal_length', 0)
                 self.statusBar().showMessage(
-                    f"Подгонка: f' = {ach_f:.4f} мм (цель: {target_spin.value():.4f})")
+                    f"Подгонка: f' = {ach_f:.4f} мм (цель: {target_val:.4f})")
             else:
                 ach_bfd = parax.get('back_focal_distance', 0)
                 self.statusBar().showMessage(
-                    f"Подгонка: BFD = {ach_bfd:.4f} мм (цель: {target_spin.value():.4f})")
+                    f"Подгонка: BFD = {ach_bfd:.4f} мм (цель: {target_val:.4f})")
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка подгонки:\n{e}")
 

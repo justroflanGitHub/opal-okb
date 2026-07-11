@@ -1,8 +1,16 @@
+"""Тесты парсера LBO/OPJ — проверка корректности загрузки систем.
+
+Запуск:
+    pytest tests/test_parser.py -v          # через pytest
+    py tests\\test_parser.py                  # напрямую (встроенный runner)
 """
-Тесты парсера LBO/OPJ — проверка корректности загрузки систем.
-Запуск: py tests\test_parser.py
-"""
-import sys, os, math, struct
+import sys
+import os
+import re
+import math
+
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lbo_reader import load_lbo_fast
@@ -10,237 +18,316 @@ from decode_lbo_opj import decode_lbo_opj
 from optics_engine import paraxial_trace, refractive_index, ApertureType, ObjectType
 from system_utils import deg_to_gmms, gmms_to_deg, gmms_to_str
 
-passed = 0
-failed = 0
-errors = []
+
+# Path to the canonical library directory — works regardless of CWD.
+_LIB_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "extracted", "opal_okb", "Lib",
+)
+_LENS_LBO = os.path.join(_LIB_DIR, "LENS.LBO")
+_LENS_SPC_LBO = os.path.join(_LIB_DIR, "LENS_SPC.LBO")
+_MICROLEN_LBO = os.path.join(_LIB_DIR, "MICROLEN.LBO")
+_OCULAR_LBO = os.path.join(_LIB_DIR, "OCULAR.LBO")
+_REPROD_LBO = os.path.join(_LIB_DIR, "REPROD.LBO")
 
 
-def check(name, condition, detail=""):
-    global passed, failed
-    if condition:
-        passed += 1
-    else:
-        failed += 1
-        errors.append(f"FAIL: {name} {detail}")
-        print(f"  FAIL: {name} {detail}")
+# --------------------------------------------------------------------------- #
+# Module-level cached loaders (reused across all tests in this file)
+# --------------------------------------------------------------------------- #
+
+@pytest.fixture(scope="module")
+def industar_sys():
+    """Декодированная система Индустар-23у (LENS.LBO index 3)."""
+    systems = load_lbo_fast(_LENS_LBO)
+    return decode_lbo_opj(systems[3]['opj_data'])
 
 
-def test_gmms_conversion():
-    """Конвертация Г.ММСС."""
-    print("\n=== Г.ММСС ===")
-    check("0.5° → 0.30 Г.ММСС", abs(deg_to_gmms(0.5) - 0.30) < 0.001,
-          f"got {deg_to_gmms(0.5)}")
-    check("0.30 Г.ММСС → 0.5°", abs(gmms_to_deg(0.30) - 0.5) < 0.001,
-          f"got {gmms_to_deg(0.30)}")
-    check("26° → 26.0000", abs(deg_to_gmms(26.0) - 26.0) < 0.001)
-    check("23.2° → 23.1200", abs(deg_to_gmms(23.2) - 23.12) < 0.001)
-    check("gmms_to_str", "0°30'00\"" in gmms_to_str(0.30))
+@pytest.fixture(scope="module")
+def mirror450_sys():
+    """Декодированная зеркально-линзовая система f'=450 (LENS_SPC.LBO index 1)."""
+    systems = load_lbo_fast(_LENS_SPC_LBO)
+    return decode_lbo_opj(systems[1]['opj_data'])
 
 
-def test_industar23u():
-    """Индустар-23у f'=110 — основная тестовая система."""
-    print("\n=== Индустар-23у f'=110 ===")
-    systems = load_lbo_fast('extracted/opal_okb/Lib/LENS.LBO')
-    sys_obj = decode_lbo_opj(systems[3]['opj_data'])
+# =========================================================================== #
+# 1. Конвертация Г.ММСС
+# =========================================================================== #
 
-    # Имя не должно быть именем стекла
-    check("Имя системы", "Индустар" in sys_obj.name or "110" in sys_obj.name,
-          f"got {sys_obj.name!r}")
-    check("Имя != ТК20", sys_obj.name != "ТК20", f"got {sys_obj.name!r}")
+class TestGmmsConversion:
+    """Конвертация углов в формат Г.ММСС и обратно."""
 
-    # Поверхности
-    check("7 поверхностей", len(sys_obj.surfaces) == 7,
-          f"got {len(sys_obj.surfaces)}")
+    def test_half_degree_to_gmms(self):
+        assert deg_to_gmms(0.5) == pytest.approx(0.30, rel=1e-3)
 
-    # Стёкла
-    glasses = [s.glass for s in sys_obj.surfaces if s.glass and s.glass not in ('', 'ЗЕРКАЛО')]
-    check("ТК16 в стёклах", any('ТК16' in g for g in glasses), f"{glasses}")
-    check("ЛФ5 в стёклах", any('ЛФ5' in g for g in glasses), f"{glasses}")
+    def test_gmms_to_half_degree(self):
+        assert gmms_to_deg(0.30) == pytest.approx(0.5, rel=1e-3)
 
-    # Зеркал нет
-    check("Нет зеркал", not any(s.is_reflective for s in sys_obj.surfaces))
+    def test_26_degrees(self):
+        assert deg_to_gmms(26.0) == pytest.approx(26.0, rel=1e-3)
 
-    # Stop surface
-    check("stop_surface=4", sys_obj.stop_surface == 4,
-          f"got {sys_obj.stop_surface}")
+    def test_23_2_degrees(self):
+        assert deg_to_gmms(23.2) == pytest.approx(23.12, rel=1e-3)
 
-    # Stop offset
-    check("stop_offset=4.2", abs(sys_obj.stop_offset - 4.2) < 0.01,
-          f"got {sys_obj.stop_offset}")
-
-    # Апертура
-    check("D≈21.1мм", abs(sys_obj.aperture_value - 21.1) < 0.5,
-          f"got {sys_obj.aperture_value}")
-    check("aperture type=ENTRANCE_PUPIL",
-          sys_obj.aperture_type == ApertureType.ENTRANCE_PUPIL)
-
-    # Поле
-    check("field≈26°", abs(sys_obj.object_height - 26.0) < 0.5,
-          f"got {sys_obj.object_height}")
-
-    # Длины волн
-    check("3 длины волн", len(sys_obj.wavelengths) == 3,
-          f"got {len(sys_obj.wavelengths)}")
-    wl_names = [w.name for w in sys_obj.wavelengths]
-    check("e,G',C", "e" in wl_names and "G'" in wl_names and "C" in wl_names,
-          f"got {wl_names}")
-
-    # Параксиальный расчёт
-    parax = paraxial_trace(sys_obj)
-    f_val = parax.get('focal_length', 0)
-    check("f'≈110", abs(f_val - 110) < 5, f"got f'={f_val:.2f}")
-    check("f' не 0", abs(f_val) > 1, f"got f'={f_val}")
-    check("BFD>50", parax.get('back_focal_distance', 0) > 50,
-          f"got BFD={parax.get('back_focal_distance', 0):.2f}")
-
-    # n для КВАРЦСТК не 1.5
-    for s in sys_obj.surfaces:
-        if s.glass and s.glass.upper() not in ('', 'ВОЗДУХ', 'AIR'):
-            n = refractive_index(s.glass, 0.54607)
-            check(f"n({s.glass})≠1.5", abs(n - 1.5) > 0.01,
-                  f"got n={n:.6f}")
+    def test_gmms_to_str_format(self):
+        result = gmms_to_str(0.30)
+        assert "0°30'00\"" in result
 
 
-def test_mirror_lens():
-    """Зеркально-линзовая система f'=450."""
-    print("\n=== Об.зеркально-линз. f'=450 ===")
-    systems = load_lbo_fast('extracted/opal_okb/Lib/LENS_SPC.LBO')
-    sys_obj = decode_lbo_opj(systems[1]['opj_data'])
+# =========================================================================== #
+# 2. Стандартные длины волн
+# =========================================================================== #
 
-    check("Имя содержит 450", "450" in sys_obj.name, f"got {sys_obj.name!r}")
+class TestDefaultWavelengths:
 
-    # Зеркала
-    mirrors = [s for s in sys_obj.surfaces if s.is_reflective]
-    check("2 зеркала", len(mirrors) == 2, f"got {len(mirrors)}")
+    def test_three_wavelengths(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert len(wls) == 3
 
-    # КВАРЦСТК
-    has_quartz = any('КВАРЦ' in s.glass.upper() for s in sys_obj.surfaces if s.glass)
-    check("КВАРЦСТК", has_quartz, f"glasses={[s.glass for s in sys_obj.surfaces]}")
+    def test_e_value(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[0].value == pytest.approx(0.54607, abs=1e-6)
 
-    # Апертура (NA→D конвертирован, ожидаем D≈80)
-    check("D≈80 (из NA≈0.089)",
-          sys_obj.aperture_type == ApertureType.ENTRANCE_PUPIL and
-          abs(sys_obj.aperture_value - 80.0) < 5.0,
-          f"got type={sys_obj.aperture_type.name} val={sys_obj.aperture_value}")
+    def test_g_prime_value(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[1].value == pytest.approx(0.43405, abs=1e-6)
 
-    # Длины волн
-    check("3 длины волн", len(sys_obj.wavelengths) == 3)
+    def test_c_value(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[2].value == pytest.approx(0.65627, abs=1e-6)
 
-    # Параксиальный
-    parax = paraxial_trace(sys_obj)
-    f_val = parax.get('focal_length', 0)
-    check("f'≈420-460", 400 < f_val < 500, f"got f'={f_val:.2f}")
-    check("f'≠0", abs(f_val) > 1)
+    def test_e_name(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[0].name == 'e'
 
+    def test_g_prime_name(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[1].name == "G'"
 
-def test_batch_lens_lbo():
-    """Пакетный тест всех LENS.LBO систем — f' в пределах 15%."""
-    print("\n=== LENS.LBO batch (f' within 15%) ===")
-    import re
-    systems = load_lbo_fast('extracted/opal_okb/Lib/LENS.LBO')
-    good = 0
-    total = 0
-    for i, s in enumerate(systems[:30]):
-        try:
-            sys_obj = decode_lbo_opj(s['opj_data'])
-            parax = paraxial_trace(sys_obj)
-            f_val = abs(parax.get('focal_length', 0))
-            f_match = re.search(r"f'=([\d.]+)", s['name'])
-            if f_match:
-                f_target = float(f_match.group(1))
-                if f_target > 0:
-                    total += 1
-                    ratio = abs(f_val - f_target) / f_target
-                    if ratio < 0.15:
-                        good += 1
-                    else:
-                        sys.stdout.buffer.write(f"  WARN [{i}] f'={f_val:.1f} target={f_target} ratio={ratio:.1%} ".encode())
-                        sys.stdout.buffer.write(s['name'].encode('utf-8')[:40] + b'\n')
-        except Exception as e:
-            sys.stdout.buffer.write(f"  ERROR [{i}] {e}\n".encode())
-
-    check(f"LENS.LBO ≥70% systems OK ({good}/{total})", good >= total * 0.7,
-          f"got {good}/{total}")
+    def test_c_name(self):
+        from optics_engine import _std_wavelengths
+        wls = _std_wavelengths()
+        assert wls[2].name == 'C'
 
 
-def test_wavelengths_default():
-    """Стандартные длины волн."""
-    print("\n=== Default wavelengths ===")
-    from optics_engine import _std_wavelengths
-    wls = _std_wavelengths()
-    check("3 wl", len(wls) == 3)
-    check("e=0.54607", abs(wls[0].value - 0.54607) < 1e-6)
-    check("G'=0.43405", abs(wls[1].value - 0.43405) < 1e-6)
-    check("C=0.65627", abs(wls[2].value - 0.65627) < 1e-6)
-    check("name e", wls[0].name == 'e')
-    check("name G'", wls[1].name == "G'")
-    check("name C", wls[2].name == 'C')
+# =========================================================================== #
+# 3. Показатели преломления КВАРЦСТК
+# =========================================================================== #
+
+class TestKvartsRefractiveIndex:
+
+    def test_n_e_approx_1_46(self):
+        n_e = refractive_index('КВАРЦСТК', 0.54607)
+        assert n_e == pytest.approx(1.46, abs=0.02)
+
+    def test_n_e_not_1_5(self):
+        n_e = refractive_index('КВАРЦСТК', 0.54607)
+        assert abs(n_e - 1.5) > 0.01
+
+    def test_n_g_prime_greater_than_n_e(self):
+        n_g = refractive_index('КВАРЦСТК', 0.43405)
+        n_e = refractive_index('КВАРЦСТК', 0.54607)
+        assert n_g > n_e
+
+    def test_n_c_less_than_n_e(self):
+        n_c = refractive_index('КВАРЦСТК', 0.65627)
+        n_e = refractive_index('КВАРЦСТК', 0.54607)
+        assert n_c < n_e
 
 
-def test_kvarts_n():
-    """Показатели преломления КВАРЦСТК."""
-    print("\n=== КВАРЦСТК n ===")
-    n_e = refractive_index('КВАРЦСТК', 0.54607)
-    check("n(e)≈1.46", abs(n_e - 1.46) < 0.02, f"got {n_e:.6f}")
-    check("n(e)≠1.5", abs(n_e - 1.5) > 0.01, f"got {n_e:.6f}")
+# =========================================================================== #
+# 4. Индустар-23у — основная тестовая система
+# =========================================================================== #
 
-    n_g = refractive_index('КВАРЦСТК', 0.43405)
-    check("n(G')>n(e)", n_g > n_e, f"n(G')={n_g:.6f} n(e)={n_e:.6f}")
+class TestIndustar23u:
+    """Индустар-23у f'=110 — детальная проверка декодирования."""
 
-    n_c = refractive_index('КВАРЦСТК', 0.65627)
-    check("n(C)<n(e)", n_c < n_e, f"n(C)={n_c:.6f} n(e)={n_e:.6f}")
+    def test_name_contains_industar_or_110(self, industar_sys):
+        assert "Индустар" in industar_sys.name or "110" in industar_sys.name, \
+            f"got {industar_sys.name!r}"
+
+    def test_name_not_glass(self, industar_sys):
+        assert industar_sys.name != "ТК20", f"got {industar_sys.name!r}"
+
+    def test_seven_surfaces(self, industar_sys):
+        assert len(industar_sys.surfaces) == 7, f"got {len(industar_sys.surfaces)}"
+
+    def test_has_tk16_glass(self, industar_sys):
+        glasses = [s.glass for s in industar_sys.surfaces
+                    if s.glass and s.glass not in ('', 'ЗЕРКАЛО')]
+        assert any('ТК16' in g for g in glasses), f"{glasses}"
+
+    def test_has_lf5_glass(self, industar_sys):
+        glasses = [s.glass for s in industar_sys.surfaces
+                    if s.glass and s.glass not in ('', 'ЗЕРКАЛО')]
+        assert any('ЛФ5' in g for g in glasses), f"{glasses}"
+
+    def test_no_mirrors(self, industar_sys):
+        assert not any(s.is_reflective for s in industar_sys.surfaces)
+
+    def test_stop_surface_is_4(self, industar_sys):
+        assert industar_sys.stop_surface == 4, f"got {industar_sys.stop_surface}"
+
+    def test_stop_offset(self, industar_sys):
+        assert industar_sys.stop_offset == pytest.approx(4.2, abs=0.01)
+
+    def test_aperture_value(self, industar_sys):
+        assert industar_sys.aperture_value == pytest.approx(21.1, abs=0.5)
+
+    def test_aperture_type(self, industar_sys):
+        assert industar_sys.aperture_type == ApertureType.ENTRANCE_PUPIL
+
+    def test_field_approx_26(self, industar_sys):
+        assert industar_sys.object_height == pytest.approx(26.0, abs=0.5)
+
+    def test_three_wavelengths(self, industar_sys):
+        assert len(industar_sys.wavelengths) == 3
+
+    def test_wavelength_names(self, industar_sys):
+        wl_names = [w.name for w in industar_sys.wavelengths]
+        assert "e" in wl_names and "G'" in wl_names and "C" in wl_names, \
+            f"got {wl_names}"
+
+    def test_focal_length_approx_110(self, industar_sys):
+        parax = paraxial_trace(industar_sys)
+        f_val = parax.get('focal_length', 0)
+        assert f_val == pytest.approx(110, abs=5), f"got f'={f_val:.2f}"
+
+    def test_focal_length_nonzero(self, industar_sys):
+        parax = paraxial_trace(industar_sys)
+        f_val = parax.get('focal_length', 0)
+        assert abs(f_val) > 1, f"got f'={f_val}"
+
+    def test_back_focal_distance(self, industar_sys):
+        parax = paraxial_trace(industar_sys)
+        assert parax.get('back_focal_distance', 0) > 50
+
+    def test_glass_n_not_1_5(self, industar_sys):
+        """Проверка что n ≠ 1.5 для всех реальных стёкол."""
+        for s in industar_sys.surfaces:
+            if s.glass and s.glass.upper() not in ('', 'ВОЗДУХ', 'AIR'):
+                n = refractive_index(s.glass, 0.54607)
+                assert abs(n - 1.5) > 0.01, f"n({s.glass})={n:.6f} ≈ 1.5"
 
 
-def test_object_image_types():
-    """Тип предмета и изображения для разных каталогов."""
-    print("\n=== Object/Image types ===")
-    # LENS: дальний → ближний (фотообъектив)
-    lens = load_lbo_fast('extracted/opal_okb/Lib/LENS.LBO')
-    s = decode_lbo_opj(lens[3]['opj_data'])  # Индустар-23у
-    check("LENS obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
-    check("LENS img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+# =========================================================================== #
+# 5. Зеркально-линзовая система f'=450
+# =========================================================================== #
 
-    # MICROLEN: ближний → ближний (микрообъектив: препарат близко, изображение в тубусе)
-    micro = load_lbo_fast('extracted/opal_okb/Lib/MICROLEN.LBO')
-    s = decode_lbo_opj(micro[0]['opj_data'])  # ОМ-2
-    check("MICRO obj=FINITE", s.object_type == ObjectType.FINITE, str(s.object_type))
-    check("MICRO img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+class TestMirrorLens450:
 
-    # OCULAR: дальний → ближний (окуляр: глаз в фокусе, изображение вблизи)
-    ocul = load_lbo_fast('extracted/opal_okb/Lib/OCULAR.LBO')
-    s = decode_lbo_opj(ocul[0]['opj_data'])  # f'=5
-    check("OCUL obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
-    check("OCUL img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+    def test_name_contains_450(self, mirror450_sys):
+        assert "450" in mirror450_sys.name, f"got {mirror450_sys.name!r}"
 
-    # REPROD: ближний → ближний (репродукционный)
-    rep = load_lbo_fast('extracted/opal_okb/Lib/REPROD.LBO')
-    s = decode_lbo_opj(rep[0]['opj_data'])
-    check("REPROD obj=FINITE", s.object_type == ObjectType.FINITE, str(s.object_type))
+    def test_two_mirrors(self, mirror450_sys):
+        mirrors = [s for s in mirror450_sys.surfaces if s.is_reflective]
+        assert len(mirrors) == 2, f"got {len(mirrors)}"
 
-    # LENS_SPC: дальний → ближний (зеркально-линзовый)
-    spc = load_lbo_fast('extracted/opal_okb/Lib/LENS_SPC.LBO')
-    s = decode_lbo_opj(spc[1]['opj_data'])  # f'=450
-    check("SPC obj=INFINITE", s.object_type == ObjectType.INFINITE, str(s.object_type))
-    check("SPC img=FINITE", s.image_type == ObjectType.FINITE, str(s.image_type))
+    def test_has_kvarts(self, mirror450_sys):
+        has_quartz = any(
+            'КВАРЦ' in s.glass.upper()
+            for s in mirror450_sys.surfaces if s.glass
+        )
+        assert has_quartz, f"glasses={[s.glass for s in mirror450_sys.surfaces]}"
 
+    def test_aperture_from_na(self, mirror450_sys):
+        assert mirror450_sys.aperture_type == ApertureType.ENTRANCE_PUPIL
+        assert mirror450_sys.aperture_value == pytest.approx(80.0, abs=5.0)
+
+    def test_three_wavelengths(self, mirror450_sys):
+        assert len(mirror450_sys.wavelengths) == 3
+
+    def test_focal_length_in_range(self, mirror450_sys):
+        parax = paraxial_trace(mirror450_sys)
+        f_val = parax.get('focal_length', 0)
+        assert 400 < f_val < 500, f"got f'={f_val:.2f}"
+
+    def test_focal_length_nonzero(self, mirror450_sys):
+        parax = paraxial_trace(mirror450_sys)
+        f_val = parax.get('focal_length', 0)
+        assert abs(f_val) > 1
+
+
+# =========================================================================== #
+# 6. Тип предмета и изображения для разных каталогов
+# =========================================================================== #
+
+class TestObjectImageTypes:
+
+    def test_lens_infinite_finite(self):
+        """LENS: дальний → ближний (фотообъектив)."""
+        systems = load_lbo_fast(_LENS_LBO)
+        s = decode_lbo_opj(systems[3]['opj_data'])
+        assert s.object_type == ObjectType.INFINITE
+        assert s.image_type == ObjectType.FINITE
+
+    def test_microlen_finite_finite(self):
+        """MICROLEN: ближний → ближний."""
+        systems = load_lbo_fast(_MICROLEN_LBO)
+        s = decode_lbo_opj(systems[0]['opj_data'])
+        assert s.object_type == ObjectType.FINITE
+        assert s.image_type == ObjectType.FINITE
+
+    def test_ocular_infinite_finite(self):
+        """OCULAR: дальний → ближний."""
+        systems = load_lbo_fast(_OCULAR_LBO)
+        s = decode_lbo_opj(systems[0]['opj_data'])
+        assert s.object_type == ObjectType.INFINITE
+        assert s.image_type == ObjectType.FINITE
+
+    def test_reprod_finite(self):
+        """REPROD: ближний → ближний."""
+        systems = load_lbo_fast(_REPROD_LBO)
+        s = decode_lbo_opj(systems[0]['opj_data'])
+        assert s.object_type == ObjectType.FINITE
+
+    def test_lens_spc_infinite_finite(self):
+        """LENS_SPC: дальний → ближний (зеркально-линзовый)."""
+        systems = load_lbo_fast(_LENS_SPC_LBO)
+        s = decode_lbo_opj(systems[1]['opj_data'])
+        assert s.object_type == ObjectType.INFINITE
+        assert s.image_type == ObjectType.FINITE
+
+
+# =========================================================================== #
+# 7. Пакетный тест LENS.LBO — f' в пределах 15%
+# =========================================================================== #
+
+class TestBatchLensLbo:
+
+    def test_lens_lbo_focal_length_within_15_percent(self):
+        """Все системы LENS.LBO с f'=N в имени: расчётный f' в пределах 15%."""
+        systems = load_lbo_fast(_LENS_LBO)
+        good = 0
+        total = 0
+        for i, s in enumerate(systems[:30]):
+            try:
+                sys_obj = decode_lbo_opj(s['opj_data'])
+                parax = paraxial_trace(sys_obj)
+                f_val = abs(parax.get('focal_length', 0))
+                f_match = re.search(r"f'=([\d.]+)", s['name'])
+                if f_match:
+                    f_target = float(f_match.group(1))
+                    if f_target > 0:
+                        total += 1
+                        ratio = abs(f_val - f_target) / f_target
+                        if ratio < 0.15:
+                            good += 1
+            except Exception:
+                pass
+
+        assert total > 0, "No systems with f'=N in name found"
+        assert good >= total * 0.7, f"Only {good}/{total} systems within 15%"
+
+
+# =========================================================================== #
+# Manual runner — preserves `py tests\test_parser.py` execution
+# =========================================================================== #
 
 if __name__ == '__main__':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
-    test_gmms_conversion()
-    test_wavelengths_default()
-    test_kvarts_n()
-    test_industar23u()
-    test_mirror_lens()
-    test_object_image_types()
-    test_batch_lens_lbo()
-
-    print(f"\n{'='*50}")
-    print(f"Results: {passed} passed, {failed} failed")
-    if errors:
-        print("\nFailed tests:")
-        for e in errors:
-            print(f"  {e}")
-    else:
-        print("ALL TESTS PASSED! ✅")
+    pytest.main([__file__, '-v', '--tb=short'])

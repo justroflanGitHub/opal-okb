@@ -1,6 +1,8 @@
+# TODO: convert to pytest — uses sys.stdout hack and custom runner
 """Регрессионный тест: OPJ файлы с мусорными поверхностями не вызывают зависание."""
 import sys, os, io, math
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if __name__ == '__main__':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from opj_reader import load_opj

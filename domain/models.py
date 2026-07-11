@@ -51,6 +51,11 @@ class Surface:
     hologram_coeffs: List[float] = field(default_factory=list)
     # Override refractive index (if set, used instead of glass_catalog)
     n_override: dict = field(default_factory=dict)  # {wl_value: n}
+    # Coordinate break / tilt / decenter
+    tilt_x: float = 0.0       # tilt around X axis (degrees)
+    tilt_y: float = 0.0       # tilt around Y axis (degrees)
+    decenter_x: float = 0.0   # lateral shift in X (mm)
+    decenter_y: float = 0.0   # lateral shift in Y (mm)
 
 
 @dataclass
@@ -107,6 +112,7 @@ class OpticalSystem:
     # Стоп-поверхность (апертурная диафрагма)
     stop_surface: int = 1
     stop_offset: float = 0.0  # мм — смещение диафрагмы от stop_surface вправо
+    stop_type: str = 'd'  # Тип диафрагмы: 'd' (диафрагма), 'z' (зрачок-z), 'p' (зрачок)
     # Экранирование
     obscuration_ratio: float = 0.0  # 0 = нет экранирования, 0.3 = 30% центральное
     # Режимы расчёта габаритов (#15)

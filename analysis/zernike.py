@@ -36,8 +36,33 @@ ZERNIKE_TERMS = [
 ]
 
 
+# ── Noll normalization ───────────────────────────────────────────────────
+# Each Zernike polynomial Z_n^m has RMS ≠ 1 over the unit disk.
+# The Noll normalization factor N_n^m scales each polynomial to unit RMS:
+#   N_n^m = sqrt(2(n+1))   for m ≠ 0
+#   N_n^m = sqrt(n+1)        for m = 0
+# Reference: R.J. Noll, "Zernike polynomials and atmospheric
+# turbulence", J. Opt. Soc. Am. 66, 207-211 (1976).
+
+
+def _noll_norm(n: int, m: int) -> float:
+    """Noll normalization factor for Z_n^m so that RMS = 1 over unit disk."""
+    if m == 0:
+        return math.sqrt(n + 1)
+    return math.sqrt(2 * (n + 1))
+
+
+def _zernike_poly_noll(n: int, m: int, rho: float, theta: float) -> float:
+    """Evaluate a Noll-normalized Zernike polynomial (unit RMS over unit disk)."""
+    return _noll_norm(n, m) * _zernike_poly(n, m, rho, theta)
+
+
 def _zernike_poly(n: int, m: int, rho: float, theta: float) -> float:
-    """Evaluate a single Zernike polynomial Z_n^m(ρ, θ)."""
+    """Evaluate a single (unnormalized) Zernike polynomial Z_n^m(ρ, θ).
+
+    Kept for backward compatibility. For unit-RMS (Noll) version use
+    _zernike_poly_noll().
+    """
     if n == 0 and m == 0:
         return 1.0
     elif n == 1 and m == 1:
@@ -95,6 +120,38 @@ def _compute_opl_for_ray(system: OpticalSystem, ray: Ray, wl: float) -> float:
     return result.opl
 
 
+def _compute_opl_to_ref_sphere(system: OpticalSystem, ray: Ray, wl: float,
+                                 ref_cx: float, ref_cy: float, ref_cz: float,
+                                 R_ref: float, n_air: float = 1.0) -> float:
+    """Compute OPL from ray start to the reference sphere.
+
+    Traces the ray through the system, then adds the air path from
+    the last surface point to the reference sphere surface:
+        OPL_to_ref = result.opl + n_air * (R_ref - dist_last_to_center)
+
+    Args:
+        system: Optical system.
+        ray: Input ray.
+        wl: Wavelength in micrometers.
+        ref_cx, ref_cy, ref_cz: Reference sphere center coordinates.
+        R_ref: Reference sphere radius.
+        n_air: Refractive index of image-space medium (default 1.0).
+
+    Returns:
+        OPL to reference sphere in mm, or float('inf') if ray fails.
+    """
+    result = trace_ray_through_system(system, ray, wl)
+    if not result.success or len(result.path) < 2:
+        return float('inf')
+    last = result.path[-1]
+    dist_to_center = math.sqrt(
+        (last[0] - ref_cx) ** 2
+        + (last[1] - ref_cy) ** 2
+        + (last[2] - ref_cz) ** 2
+    )
+    return result.opl + n_air * (R_ref - dist_to_center)
+
+
 def compute_zernike_coefficients(system: OpticalSystem,
                                   wl: float = 0.58756,
                                   field_y: float = 0.0,
@@ -135,11 +192,28 @@ def compute_zernike_coefficients(system: OpticalSystem,
         obj_z = -system.surfaces[0].thickness if system.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
-    chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
-
-    # Z-positions for defocus propagation
+    # ===== Reference sphere parameters =====
     z_pos = compute_z_positions(system)
     last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    bfd = parax_zk.get('back_focal_distance', 0)
+    from optics_utils import EPSILON
+    parax_focus_z = last_surf_z + bfd if abs(bfd) > EPSILON else z_pos[-1]
+    efl_zk = parax_zk.get('focal_length', 0)
+
+    if system.object_type == ObjectType.INFINITE and field_y != 0:
+        angle_rad = math.radians(field_y)
+        ref_cx = 0.0
+        ref_cy = efl_zk * math.tan(angle_rad) if efl_zk != 0 else 0.0
+    else:
+        ref_cx = 0.0
+        ref_cy = 0.0
+    ref_cz = parax_focus_z
+    R_ref = abs(parax_focus_z - last_surf_z)
+    if R_ref < EPSILON:
+        R_ref = 1.0
+
+    chief_opl = _compute_opl_to_ref_sphere(system, chief_ray, wl,
+                                             ref_cx, ref_cy, ref_cz, R_ref)
 
     for i in range(num_rays):
         for j in range(num_rays):
@@ -169,7 +243,8 @@ def compute_zernike_coefficients(system: OpticalSystem,
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
-            opl = _compute_opl_for_ray(system, ray, wl)
+            opl = _compute_opl_to_ref_sphere(system, ray, wl,
+                                                ref_cx, ref_cy, ref_cz, R_ref)
             if opl == float('inf'):
                 continue
 
@@ -195,7 +270,7 @@ def compute_zernike_coefficients(system: OpticalSystem,
     for k, (rho, theta, W) in enumerate(ray_data):
         W_vec[k] = W
         for t, (n, m, _) in enumerate(terms):
-            Z[k, t] = _zernike_poly(n, m, rho, theta)
+            Z[k, t] = _zernike_poly_noll(n, m, rho, theta)
 
     # Least squares: a = (Z^T Z)^-1 Z^T W
     try:
@@ -240,6 +315,30 @@ def compute_wavefront_map_2d(system: OpticalSystem,
 
     chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
 
+    # ===== Reference sphere parameters =====
+    z_pos_wm = compute_z_positions(system)
+    last_surf_z_wm = z_pos_wm[-2] if len(z_pos_wm) > 1 else z_pos_wm[-1]
+    bfd_wm = parax_wm.get('back_focal_distance', 0)
+    from optics_utils import EPSILON
+    parax_focus_z_wm = last_surf_z_wm + bfd_wm if abs(bfd_wm) > EPSILON else z_pos_wm[-1]
+    efl_wm = parax_wm.get('focal_length', 0)
+
+    if system.object_type == ObjectType.INFINITE and field_y != 0:
+        angle_rad_wm = math.radians(field_y)
+        ref_cx_wm = 0.0
+        ref_cy_wm = efl_wm * math.tan(angle_rad_wm) if efl_wm != 0 else 0.0
+    else:
+        ref_cx_wm = 0.0
+        ref_cy_wm = 0.0
+    ref_cz_wm = parax_focus_z_wm
+    R_ref_wm = abs(parax_focus_z_wm - last_surf_z_wm)
+    if R_ref_wm < EPSILON:
+        R_ref_wm = 1.0
+
+    # Recompute chief OPL to reference sphere
+    chief_opl = _compute_opl_to_ref_sphere(system, chief_ray, wl,
+                                             ref_cx_wm, ref_cy_wm, ref_cz_wm, R_ref_wm)
+
     coords = np.linspace(-1, 1, grid_size)
     wavefront = np.zeros((grid_size, grid_size))
     pupil_mask = np.zeros((grid_size, grid_size))
@@ -271,7 +370,8 @@ def compute_wavefront_map_2d(system: OpticalSystem,
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
-            opl = _compute_opl_for_ray(system, ray, wl)
+            opl = _compute_opl_to_ref_sphere(system, ray, wl,
+                                                ref_cx_wm, ref_cy_wm, ref_cz_wm, R_ref_wm)
             if opl == float('inf'):
                 continue
 

@@ -242,8 +242,8 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     # 10. Build system
     # 0x3C = Тип предмета: 0=дальний (∞), 1=ближний (конечный)
     obj_type_code = struct.unpack_from('<H', data, 0x3C)[0] if len(data) > 0x3D else 0
-    # 0x46 = Тип изображения: 0=ближний, 65535=дальний (∞)
-    img_type_code = struct.unpack_from('<H', data, 0x46)[0] if len(data) > 0x47 else 0
+    # 0x46 = Тип диафрагмы (stop type): 0='d' (диафрагма), 1='z' (зрачок-z), 65535='p' (зрачок)
+    stop_type_code = struct.unpack_from('<H', data, 0x46)[0] if len(data) > 0x47 else 0
     # Field value at 0x74: stored as radians for INFINITE object
     field_val = struct.unpack_from('<d', data, 0x74)[0] if len(data) > 0x7C else 0.0
     if 0 < abs(field_val) < 1.0:
@@ -334,6 +334,10 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     else:
         sys_obj.stop_surface = 1
     sys_obj.stop_offset = stop_offset
+
+    # Тип диафрагмы из 0x46: 0='d', 1='z', 65535='p'
+    _stop_type_map = {0: 'd', 1: 'z', 65535: 'p'}
+    sys_obj.stop_type = _stop_type_map.get(stop_type_code, 'd')
 
     # Вычислить BFD и установить толщину последней поверхности
     if sys_obj.surfaces:

@@ -18,18 +18,51 @@ def compute_wavefront_map(system: OpticalSystem,
                            grid_size: int = 64,
                            field_y: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Compute wavefront map on pupil.
+    Compute wavefront map on pupil using reference sphere.
+
+    The wavefront OPD is computed relative to a reference sphere centered
+    at the paraxial image point, not a flat z-plane. This gives physically
+    correct wavefront aberrations.
+
+    Args:
+        system: Optical system.
+        wl: Wavelength in micrometers.
+        grid_size: Size of the square pupil grid.
+        field_y: Field angle in degrees.
 
     Returns:
-    - wavefront: 2D array W(x,y) in wavelengths
-    - pupil_mask: 2D array (1 inside pupil, 0 outside)
+        Tuple of (wavefront, pupil_mask) where wavefront is in wavelengths
+        and pupil_mask is 1.0 inside the pupil, 0.0 outside.
     """
+    from optics_utils import EPSILON
+
     aperture = get_effective_aperture(system, default=10.0)
     parax = paraxial_trace(system)
     efl = parax.get('focal_length', 0)
     z_start, z_pupil = _compute_ray_start(system, parax)
 
-    # Chief ray (for reference)
+    # ===== Reference sphere parameters =====
+    z_pos = compute_z_positions(system)
+    last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    bfd = parax.get('back_focal_distance', 0)
+    parax_focus_z = last_surf_z + bfd if abs(bfd) > EPSILON else z_pos[-1]
+
+    # Reference sphere center at paraxial image point
+    if system.object_type == ObjectType.INFINITE and field_y != 0:
+        angle_rad = math.radians(field_y)
+        ref_cx = 0.0
+        ref_cy = efl * math.tan(angle_rad) if efl != 0 else 0.0
+    else:
+        ref_cx = 0.0
+        ref_cy = 0.0
+    ref_cz = parax_focus_z
+
+    # Reference sphere radius: distance from last surface to paraxial image
+    R_ref = abs(parax_focus_z - last_surf_z)
+    if R_ref < EPSILON:
+        R_ref = 1.0  # fallback for degenerate systems
+
+    # ===== Chief ray (for reference OPL) =====
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
         sin_a, cos_a = math.sin(angle), math.cos(angle)
@@ -41,10 +74,20 @@ def compute_wavefront_map(system: OpticalSystem,
 
     chief_result = trace_ray_through_system(system, chief_ray, wl)
 
-    # Use result.opl from trace engine (handles mirrors correctly)
-    chief_opl = chief_result.opl if chief_result.success else 0.0
+    # OPL of chief ray to reference sphere
+    n_air = 1.0
+    chief_opl_raw = chief_result.opl if chief_result.success else 0.0
+    chief_opl_to_ref = chief_opl_raw
+    if chief_result.success and chief_result.path:
+        chief_last = chief_result.path[-1]
+        dist_chief_to_center = math.sqrt(
+            (chief_last[0] - ref_cx) ** 2
+            + (chief_last[1] - ref_cy) ** 2
+            + (chief_last[2] - ref_cz) ** 2
+        )
+        chief_opl_to_ref = chief_opl_raw + n_air * (R_ref - dist_chief_to_center)
 
-    # Wavefront map
+    # ===== Wavefront map =====
     wavefront = np.zeros((grid_size, grid_size))
     pupil_mask = np.zeros((grid_size, grid_size))
 
@@ -79,9 +122,15 @@ def compute_wavefront_map(system: OpticalSystem,
             result = trace_ray_through_system(system, ray, wl)
 
             if result.success and len(result.path) >= 2:
-                # Use result.opl from trace engine
-                opl = result.opl
-                opd = opl - chief_opl
+                # OPL of this ray to reference sphere
+                last = result.path[-1]
+                dist_to_center = math.sqrt(
+                    (last[0] - ref_cx) ** 2
+                    + (last[1] - ref_cy) ** 2
+                    + (last[2] - ref_cz) ** 2
+                )
+                opl_to_ref = result.opl + n_air * (R_ref - dist_to_center)
+                opd = opl_to_ref - chief_opl_to_ref
                 wavefront[i, j] = opd / (wl * 1e-3)
 
     return wavefront, pupil_mask

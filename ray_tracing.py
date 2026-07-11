@@ -95,15 +95,12 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
             if disc < 1e-15:
                 disc = 1e-15
             sqrt_disc = math.sqrt(disc)
-            dz_dr = c * r / (sqrt_disc * (1.0 + sqrt_disc) / (c * r if abs(c * r) > 1e-15 else 1e-15)) if abs(c * r) > 1e-15 else 0.0
-            # Более аккуратно:
-            # dz/dr = c*r / sqrt(1-(1+k)*c²*r²)
             dz_dr = c * r / sqrt_disc
 
-        # Добавка от полинома
+        # Добавка от полинома: d/dr[A₄r⁴ + A₆r⁶ + ...] = 4A₄r³ + 6A₆r⁵ + ...
         for j, coeff in enumerate(aspheric_coeffs):
-            power = 2 * (j + 2) - 1  # 4->3, 6->5, ...
-            dz_dr += coeff * power * (r ** (power - 1)) if r > 1e-15 else 0.0
+            exp = 2 * (j + 2)  # степень r в самом члене: 4, 6, 8, ...
+            dz_dr += coeff * exp * (r ** (exp - 1)) if r > 1e-15 else 0.0
 
         # Нормаль: (-dz/dr * x/r, -dz/dr * y/r, 1), нормализованная
         if r > 1e-15:
@@ -185,11 +182,11 @@ def surface_normal_aspheric(x: float, y: float, z: float,
             disc = 1e-15
         dz_dr = c * r / math.sqrt(disc)
 
-    # dz/dr для полиномиальных членов
+    # dz/dr для полиномиальных членов: d/dr[A₄r⁴ + A₆r⁶ + ...] = 4A₄r³ + 6A₆r⁵ + ...
     for j, coeff in enumerate(aspheric_coeffs):
-        power = 2 * (j + 2) - 1  # r³, r⁵, ...
+        exp = 2 * (j + 2)  # степень r в самом члене: 4, 6, 8, ...
         if r > 1e-15:
-            dz_dr += coeff * power * (r ** (power - 1))
+            dz_dr += coeff * exp * (r ** (exp - 1))
 
     if r > 1e-15:
         nx = -dz_dr * x / r
@@ -531,16 +528,19 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
 
             if sys.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                stop_idx = getattr(sys, 'stop_surface', 0)
-                stop_off = getattr(sys, 'stop_offset', 0.0)
-                z_pupil = 0.0
-                for j in range(min(stop_idx, len(sys.surfaces))):
-                    z_pupil += sys.surfaces[j].thickness
-                z_pupil += stop_off
-                z_start = -1.0
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                # Use entrance pupil position from paraxial trace
+                from optics_engine import paraxial_trace as _pt
+                _parax = _pt(sys)
+                sP = _parax.get('sP', 0)
+                z_pupil = sP
+                z_start = -max(abs(z_pupil), 10.0) - 5.0
                 dz = z_pupil - z_start
-                y_at_start = y_start - dz * math.sin(angle) / math.cos(angle)
-                ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
+                if cos_a > 1e-10:
+                    y_at_start = y_start - dz * sin_a / cos_a
+                else:
+                    y_at_start = y_start
+                ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 from optics_engine import paraxial_trace
                 parax = paraxial_trace(sys)

@@ -10,6 +10,7 @@ from optics_engine import OpticalSystem, ObjectType, Wavelength, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
 from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
+from aberrations import _compute_ray_start, _aim_at_pupil
 
 
 def compute_wavefront_map(system: OpticalSystem, 
@@ -17,94 +18,72 @@ def compute_wavefront_map(system: OpticalSystem,
                            grid_size: int = 64,
                            field_y: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Вычислить карту волнового фронта на зрачке.
-    
-    Возвращает:
-    - wavefront: 2D массив W(x,y) в длинах волн (λ)
-    - pupil_mask: 2D массив (1 внутри зрачка, 0 снаружи)
+    Compute wavefront map on pupil.
+
+    Returns:
+    - wavefront: 2D array W(x,y) in wavelengths
+    - pupil_mask: 2D array (1 inside pupil, 0 outside)
     """
     aperture = get_effective_aperture(system, default=10.0)
-    efl = paraxial_trace(system).get('focal_length', 0)
-    
-    # Главный луч (для определения опорного фронта)
+    parax = paraxial_trace(system)
+    efl = parax.get('focal_length', 0)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+
+    # Chief ray (for reference)
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_s, cy_s = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+        chief_ray = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
     else:
-        chief_ray = Ray(x=0, y=field_y, z=-50, k=0, l=0, m=1)
-    
+        obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+        chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
+
     chief_result = trace_ray_through_system(system, chief_ray, wl)
-    
-    # Z-позиции
-    z_pos = compute_z_positions(system)
-    img_z = z_pos[-1]
-    
-    # OPL для главного луча (approximate)
-    chief_opl = 0.0
-    if chief_result.success and len(chief_result.path) >= 2:
-        for i in range(len(chief_result.path) - 1):
-            p1 = chief_result.path[i]
-            p2 = chief_result.path[i + 1]
-            dz = p2[2] - p1[2]
-            # OPL = n * distance
-            if i == 0:
-                n = 1.0
-            else:
-                n = compute_refractive_index(system.surfaces[min(i-1, len(system.surfaces)-1)].glass, wl)
-            dist = math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2)
-            chief_opl += n * dist
-    
-    # Карта волнового фронта
+
+    # Use result.opl from trace engine (handles mirrors correctly)
+    chief_opl = chief_result.opl if chief_result.success else 0.0
+
+    # Wavefront map
     wavefront = np.zeros((grid_size, grid_size))
     pupil_mask = np.zeros((grid_size, grid_size))
-    
+
     for i in range(grid_size):
         for j in range(grid_size):
-            # Нормированные зрачковые координаты [-1, 1]
             px = -1.0 + 2.0 * j / (grid_size - 1)
             py = -1.0 + 2.0 * i / (grid_size - 1)
-            
-            # Проверяем круговой зрачок
+
             r2 = px**2 + py**2
             if r2 > 1.0:
                 continue
-            
+
             pupil_mask[i, j] = 1.0
-            
-            # Трассируем луч
+
             y_start = py * aperture / 2
             x_start = px * aperture / 2
-            
+
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50, 
-                         k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start,
+                         k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                         k=x_start/50, l=(y_start-field_y)/50, m=1)
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                         k=x_start/d, l=(y_start-field_y)/d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
-            
+
             result = trace_ray_through_system(system, ray, wl)
-            
+
             if result.success and len(result.path) >= 2:
-                # Вычисляем OPL для этого луча
-                opl = 0.0
-                for k in range(len(result.path) - 1):
-                    p1 = result.path[k]
-                    p2 = result.path[k + 1]
-                    if k == 0:
-                        n = 1.0
-                    else:
-                        n = compute_refractive_index(
-                            system.surfaces[min(k-1, len(system.surfaces)-1)].glass, wl)
-                    dist = math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2)
-                    opl += n * dist
-                
-                # Волновая аберрация в длинах волны
+                # Use result.opl from trace engine
+                opl = result.opl
                 opd = opl - chief_opl
-                wavefront[i, j] = opd / (wl * 1e-3)  # λ в мм
-    
+                wavefront[i, j] = opd / (wl * 1e-3)
+
     return wavefront, pupil_mask
 
 

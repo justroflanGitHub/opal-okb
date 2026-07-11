@@ -11,6 +11,7 @@ from optics_engine import OpticalSystem, ObjectType, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
 from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
+from aberrations import _compute_ray_start, _aim_at_pupil
 
 
 # ── Zernike polynomial definitions (polar ρ, θ) ──────────────────────────
@@ -85,22 +86,13 @@ def _zernike_poly(n: int, m: int, rho: float, theta: float) -> float:
 
 
 def _compute_opl_for_ray(system: OpticalSystem, ray: Ray, wl: float) -> float:
-    """Compute optical path length for a ray through the system."""
+    """Compute optical path length for a ray through the system.
+    Uses result.opl from the trace engine (handles mirrors and refractive indices correctly).
+    """
     result = trace_ray_through_system(system, ray, wl)
     if not result.success or len(result.path) < 2:
         return float('inf')
-    opl = 0.0
-    for k in range(len(result.path) - 1):
-        p1 = result.path[k]
-        p2 = result.path[k + 1]
-        if k == 0:
-            n = 1.0
-        else:
-            idx = min(k - 1, len(system.surfaces) - 1)
-            n = compute_refractive_index(system.surfaces[idx].glass, wl)
-        dist = math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2 + (p2[2]-p1[2])**2)
-        opl += n * dist
-    return opl
+    return result.opl
 
 
 def compute_zernike_coefficients(system: OpticalSystem,
@@ -130,12 +122,18 @@ def compute_zernike_coefficients(system: OpticalSystem,
     # Collect valid ray data: (rho, theta, W)
     ray_data = []
 
+    parax_zk = paraxial_trace(system)
+    z_start_zk, z_pupil_zk = _compute_ray_start(system, parax_zk)
+
     # Chief ray OPL
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_s, cy_s = _aim_at_pupil(0, 0, z_start_zk, z_pupil_zk, sin_a, cos_a)
+        chief_ray = Ray(x=cx_s, y=cy_s, z=z_start_zk, k=0, l=math.sin(angle), m=math.cos(angle))
     else:
-        chief_ray = Ray(x=0, y=field_y, z=-50, k=0, l=0, m=1)
+        obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+        chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
     chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
 
@@ -159,11 +157,15 @@ def compute_zernike_coefficients(system: OpticalSystem,
 
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50,
-                          k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start_zk, z_pupil_zk, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start_zk,
+                          k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                          k=x_start / 50, l=(y_start - field_y) / 50, m=1)
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                          k=x_start / d, l=(y_start - field_y) / d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
@@ -223,12 +225,18 @@ def compute_wavefront_map_2d(system: OpticalSystem,
     """
     aperture = get_effective_aperture(system, default=10.0)
 
+    parax_wm = paraxial_trace(system)
+    z_start_wm, z_pupil_wm = _compute_ray_start(system, parax_wm)
+
     # Chief ray OPL
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_s, cy_s = _aim_at_pupil(0, 0, z_start_wm, z_pupil_wm, sin_a, cos_a)
+        chief_ray = Ray(x=cx_s, y=cy_s, z=z_start_wm, k=0, l=math.sin(angle), m=math.cos(angle))
     else:
-        chief_ray = Ray(x=0, y=field_y, z=-50, k=0, l=0, m=1)
+        obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+        chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
     chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
 
@@ -251,11 +259,15 @@ def compute_wavefront_map_2d(system: OpticalSystem,
 
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50,
-                          k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start_wm, z_pupil_wm, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start_wm,
+                          k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                          k=x_start / 50, l=(y_start - field_y) / 50, m=1)
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                          k=x_start / d, l=(y_start - field_y) / d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 

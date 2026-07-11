@@ -153,8 +153,8 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         angle = math.radians(field_y) if field_y != 0 else 0.0
         y = ray_y
         z = -50.0
-        k = math.sin(angle)
-        l = 0.0
+        k = 0.0
+        l = math.sin(angle)
         m = math.cos(angle)
     else:
         y = field_y
@@ -523,8 +523,8 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                 angle = math.radians(field_y_val) if field_y_val != 0 else 0.0
                 ray_y = y_start
                 ray_x = x_start
-                k = math.sin(angle)
-                l = 0.0
+                k = 0.0
+                l = math.sin(angle)
                 m = math.cos(angle)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
@@ -772,9 +772,9 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
         n2 = n_vals[i + 1]
         delta_n_inv = 1.0 / n2 - 1.0 / n1  # Δ(n⁻¹)
 
-        # Преломляющий инвариант: A = nu[i+1] - nu[i]  (nu = n*u)
-        A = nu[i + 1] - nu[i]
-        A_bar = nub[i + 1] - nub[i]
+        # Преломляющий инвариант Зейделя: A = n_i * (u_i + h/R) = nu_i + n_i*h/R
+        A = nu[i] + n_vals[i] * y[i] / R
+        A_bar = nub[i] + n_vals[i] * yb[i] / R
         h = y[i]
 
         # SI — сферическая аберрация

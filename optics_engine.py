@@ -153,8 +153,8 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         angle = math.radians(field_y) if field_y != 0 else 0.0
         y = ray_y
         z = -50.0
-        k = math.sin(angle)
-        l = 0.0
+        k = 0.0
+        l = math.sin(angle)
         m = math.cos(angle)
     else:
         y = field_y
@@ -523,8 +523,8 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                 angle = math.radians(field_y_val) if field_y_val != 0 else 0.0
                 ray_y = y_start
                 ray_x = x_start
-                k = math.sin(angle)
-                l = 0.0
+                k = 0.0
+                l = math.sin(angle)
                 m = math.cos(angle)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
@@ -772,9 +772,9 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
         n2 = n_vals[i + 1]
         delta_n_inv = 1.0 / n2 - 1.0 / n1  # Δ(n⁻¹)
 
-        # Преломляющий инвариант: A = nu[i+1] - nu[i]  (nu = n*u)
-        A = nu[i + 1] - nu[i]
-        A_bar = nub[i + 1] - nub[i]
+        # Преломляющий инвариант Зейделя: A = n_i * (u_i + h/R) = nu_i + n_i*h/R
+        A = nu[i] + n_vals[i] * y[i] / R
+        A_bar = nub[i] + n_vals[i] * yb[i] / R
         h = y[i]
 
         # SI — сферическая аберрация
@@ -786,8 +786,15 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
         # SIV — кривизна поля (Петцваль)
         SIV += (n2 - n1) / (R * n1 * n2)
         # SV — дисторсия
-        if abs(A) > 1e-15:
-            SV += (A_bar ** 3 / A) * h * delta_n_inv
+        # SV = (Ā³/A + 3Ā²) · h · Δ(n⁻¹)
+        # При A→0 член Ā³/A физически означает большую дисторсию 3-го порядка
+        # от данной поверхности. Это не численный артефакт — поверхность вблизи
+        # апертурной диафрагмы с A≈0 и Ā≠0 вносит доминирующий вклад в SV.
+        # Формула точна для 3-го порядка; при малых |A| высшие порядки могут
+        # компенсировать, но в Seidel сумме используется именно 3-й порядок.
+        # Защита от точного деления на ноль:
+        a_safe = A if abs(A) > 1e-15 else (1e-15 if A >= 0 else -1e-15)
+        SV += (A_bar ** 3 / a_safe) * h * delta_n_inv
         SV += 3.0 * A_bar * A_bar * h * delta_n_inv
 
     return {'SI': SI, 'SII': SII, 'SIII': SIII, 'SIV': SIV, 'SV': SV}

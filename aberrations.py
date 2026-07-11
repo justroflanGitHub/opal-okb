@@ -11,6 +11,31 @@ from glass_catalog import compute_refractive_index
 from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
+def _compute_ray_start(system, parax):
+    """Compute z_start and z_pupil for ray launching through entrance pupil."""
+    sP = parax.get('sP', 0) if parax else 0
+    # Entrance pupil relative to first surface vertex
+    z_pupil = sP  # mm from first surface
+    # Start well before the system
+    z_start = -max(abs(z_pupil), 10.0) - 5.0
+    return z_start, z_pupil
+
+
+def _aim_at_pupil(pupil_x, pupil_y, z_start, z_pupil, sin_a, cos_a):
+    """Back-project pupil coordinates to z_start plane.
+
+    Field tilt is in Y direction (l=sin_a, m=cos_a).
+    Returns (x_start, y_start) for ray at z_start.
+    """
+    dz = z_pupil - z_start
+    x_start = pupil_x  # no tilt in X
+    if cos_a > 1e-10:
+        y_start = pupil_y - dz * sin_a / cos_a
+    else:
+        y_start = pupil_y
+    return x_start, y_start
+
+
 def trace_aberration_fan(sys: OpticalSystem, wl: float,
                           num_rays: int = 20, field_y: float = 0.0
                           ) -> List[Dict]:
@@ -47,10 +72,15 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     if abs(ref_sphere_radius) < 1e-10:
         ref_sphere_radius = 1.0  # fallback
 
-    # 3. Трассируем главный луч (через центр зрачка) для OPL_chief
+    # 3. Вычисляем z_start через входной зрачок
+    z_start, z_pupil = _compute_ray_start(sys, parax)
+
+    # 4. Трассируем главный луч (через центр зрачка) для OPL_chief
     if sys.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_start, cy_start = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+        chief_ray = Ray(x=cx_start, y=cy_start, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
     else:
         obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
@@ -77,11 +107,14 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
         # Создаём луч
         if sys.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
-            ray = Ray(x=0, y=y_start, z=-50,
-                     k=math.sin(angle), l=0, m=math.cos(angle))
+            sin_a, cos_a = math.sin(angle), math.cos(angle)
+            rx_start, ry_start = _aim_at_pupil(0, y_start, z_start, z_pupil, sin_a, cos_a)
+            ray = Ray(x=rx_start, y=ry_start, z=z_start,
+                     k=0, l=math.sin(angle), m=math.cos(angle))
         else:
-            ray = Ray(x=0, y=field_y, z=-50,
-                     k=0, l=(y_start - field_y) / 50, m=1)
+            obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
+            ray = Ray(x=0, y=field_y, z=obj_z,
+                     k=0, l=(y_start - field_y) / abs(obj_z), m=1)
             norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
             ray.k /= norm; ray.l /= norm; ray.m /= norm
 
@@ -142,12 +175,18 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
     Трассировка сетки лучей на зрачке → координаты (dx, dy) на изображении.
     """
     aperture = get_effective_aperture(sys, default=10.0)
+    parax = paraxial_trace(sys)
+    z_start, z_pupil = _compute_ray_start(sys, parax)
 
     # Главный луч (для определения центра)
-    chief_ray = Ray(x=0, y=0, z=-50, k=0, l=0, m=1)
-    if sys.object_type == ObjectType.INFINITE and field_y != 0:
-        angle = math.radians(field_y)
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+    if sys.object_type == ObjectType.INFINITE:
+        angle = math.radians(field_y) if field_y != 0 else 0.0
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_s, cy_s = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+        chief_ray = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
+    else:
+        obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
+        chief_ray = Ray(x=0, y=0, z=obj_z, k=0, l=0, m=1)
 
     chief_result = trace_ray_through_system(sys, chief_ray, wl)
     if not chief_result.success or not chief_result.path:
@@ -172,11 +211,15 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
 
             if sys.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50,
-                         k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start,
+                         k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                         k=x_start/50, l=(y_start-field_y)/50, m=1)
+                obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                         k=x_start/d, l=(y_start-field_y)/d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
@@ -275,8 +318,8 @@ def compute_field_aberrations(system: OpticalSystem,
     - coma: кома (мм)
 
     Поле задано как угол в градусах; луч трассируется с наклоном
-    в x-z плоскости (k=sin(angle)). Поэтому координата изображения
-    по x = меридиональная, по y = сагиттальная.
+    в y-z плоскости (l=sin(angle)). Поэтому координата изображения
+    по y = меридиональная, по x = сагиттальная.
 
     Возвращает: [{field_y, distortion, astigmatism, z_m, z_s, coma}, ...]
     """
@@ -319,27 +362,12 @@ def compute_field_aberrations(system: OpticalSystem,
         sin_a, cos_a = math.sin(angle), math.cos(angle)
 
         # ===== 1. Главный луч (через центр входного зрачка) =====
-        # Поле в Y-Z плоскости (l=sin(angle), m=cos(angle))
-        # Старт с z чуть перед системой, чтобы луч попал на первую поверхность
-        stop_idx = getattr(system, 'stop_surface', 0)
-        stop_off = getattr(system, 'stop_offset', 0.0)
-        # z входного зрачка
-        z_pupil = 0.0
-        for j in range(min(stop_idx, len(system.surfaces))):
-            z_pupil += system.surfaces[j].thickness
-        z_pupil += stop_off
-        # Chief ray: приходит под углом, проходит через entrance pupil
-        # Start до первой поверхности так, чтобы луч прошёл через EP центр
-        # Direction: (0, sin(angle), cos(angle))
-        # EP at z = sP. Start at z = sP - dz, y = -dz*sin/cos
-        sP = parax.get('sP', z_pupil) if parax else z_pupil
-        # Простой способ: старт из (0, 0, -eps), направление (0, sin, cos)
-        # Луч пройдёт через y = (z - z_start) * tan(angle) на каждой z
-        # Но нужно проверить, что y на первой поверхности (z=0) < sd
-        z_start = -1.0  # чуть перед первой поверхностью
+        # Используем входной зрачок из параксиального расчёта
+        z_start, z_pupil = _compute_ray_start(system, parax)
         
         if system.object_type == ObjectType.INFINITE:
-            chief_ray = Ray(x=0, y=0, z=z_start, k=0, l=sin_a, m=cos_a)
+            cx_s, cy_s = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+            chief_ray = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=sin_a, m=cos_a)
         else:
             obj_z = -system.surfaces[0].thickness if system.surfaces else -50
             chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
@@ -369,9 +397,9 @@ def compute_field_aberrations(system: OpticalSystem,
             y_start = py * aperture / 2
 
             if system.object_type == ObjectType.INFINITE:
-                # Лучи с полевым углом + смещение по Y
-                # y at z=0: y_start_offset + dz_from_start * tan(angle)
-                ray = Ray(x=0, y=y_start, z=z_start, k=0, l=sin_a, m=cos_a)
+                # Лучи с полевым углом + смещение по Y — aim through entrance pupil
+                rx_s, ry_s = _aim_at_pupil(0, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
@@ -396,8 +424,9 @@ def compute_field_aberrations(system: OpticalSystem,
             x_start = px * aperture / 2
 
             if system.object_type == ObjectType.INFINITE:
-                # Сагиттальный луч: поле по Y, смещение по X
-                ray = Ray(x=x_start, y=0, z=z_start, k=0, l=sin_a, m=cos_a)
+                # Сагиттальный луч: поле по Y, смещение по X — aim through entrance pupil
+                rx_s, ry_s = _aim_at_pupil(x_start, 0, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
@@ -503,8 +532,10 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
         sin_a, cos_a = math.sin(angle), math.cos(angle)
 
         # ===== Главный луч (через центр зрачка) =====
+        z_start, z_pupil = _compute_ray_start(system, parax)
         if system.object_type == ObjectType.INFINITE:
-            chief_ray = Ray(x=0, y=0, z=-50, k=sin_a, l=0, m=cos_a)
+            cx_s, cy_s = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+            chief_ray = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=sin_a, m=cos_a)
         else:
             obj_z = -system.surfaces[0].thickness if system.surfaces else -50
             chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
@@ -518,29 +549,52 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
             continue
 
         chief_last = chief_result.path[-1]
-        chief_x_img = chief_last[0]  # меридиональная координата (x в x-z плоскости)
+        chief_y_img = chief_last[1]  # меридиональная координата (Y в y-z плоскости)
 
         # Параксиальная высота изображения
         if abs(efl) > 0 and system.object_type == ObjectType.INFINITE:
-            x_parax = efl * math.tan(angle)
+            y_parax = efl * math.tan(angle)
         else:
-            x_parax = field_y
+            y_parax = field_y
 
         # ===== Дисторсия =====
-        dist_abs = chief_x_img - x_parax
-        dist_rel = (dist_abs / x_parax * 100.0) if abs(x_parax) > 1e-10 else 0.0
+        dist_abs = chief_y_img - y_parax
+        dist_rel = (dist_abs / y_parax * 100.0) if abs(y_parax) > 1e-10 else 0.0
 
         # ===== Астигматические отрезки Z'm, Z's =====
         # Через меридиональный и сагиттальный веера
         num_fan = 15
 
-        # Меридиональный веер
+        # Меридиональный веер (в Y-Z плоскости, pupil в Y)
         merid_rays = []
+        for i in range(num_fan):
+            py = -1.0 + 2.0 * i / (num_fan - 1)
+            y_start = py * aperture / 2
+            if system.object_type == ObjectType.INFINITE:
+                rx_s, ry_s = _aim_at_pupil(0, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start, k=0, l=sin_a, m=cos_a)
+            else:
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=0, y=y_start + field_y, z=obj_z, k=0, l=y_start / d, m=1)
+                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
+                ray.k /= norm; ray.l /= norm; ray.m /= norm
+            res = trace_ray_through_system(system, ray, wl)
+            if res.success and len(res.path) >= 2:
+                last = res.path[-1]
+                prev = res.path[-2]
+                dz = last[2] - prev[2]
+                slope_y = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else 0
+                merid_rays.append({'y': last[1], 'z': last[2], 'slope_y': slope_y, 'pupil': py})
+
+        # Сагиттальный веер (в X-Z плоскости, pupil в X)
+        sag_rays = []
         for i in range(num_fan):
             px = -1.0 + 2.0 * i / (num_fan - 1)
             x_start = px * aperture / 2
             if system.object_type == ObjectType.INFINITE:
-                ray = Ray(x=x_start, y=0, z=-50, k=sin_a, l=0, m=cos_a)
+                rx_s, ry_s = _aim_at_pupil(x_start, 0, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
@@ -553,31 +607,10 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
                 prev = res.path[-2]
                 dz = last[2] - prev[2]
                 slope_x = (last[0] - prev[0]) / dz if abs(dz) > 1e-12 else 0
-                merid_rays.append({'x': last[0], 'z': last[2], 'slope_x': slope_x, 'pupil': px})
+                sag_rays.append({'x': last[0], 'z': last[2], 'slope_x': slope_x, 'pupil': px})
 
-        # Сагиттальный веер
-        sag_rays = []
-        for i in range(num_fan):
-            py = -1.0 + 2.0 * i / (num_fan - 1)
-            y_start = py * aperture / 2
-            if system.object_type == ObjectType.INFINITE:
-                ray = Ray(x=0, y=y_start, z=-50, k=sin_a, l=0, m=cos_a)
-            else:
-                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
-                d = abs(obj_z)
-                ray = Ray(x=0, y=y_start, z=obj_z, k=0, l=(y_start - field_y) / d, m=1)
-                norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
-                ray.k /= norm; ray.l /= norm; ray.m /= norm
-            res = trace_ray_through_system(system, ray, wl)
-            if res.success and len(res.path) >= 2:
-                last = res.path[-1]
-                prev = res.path[-2]
-                dz = last[2] - prev[2]
-                slope_y = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else 0
-                sag_rays.append({'y': last[1], 'z': last[2], 'slope_y': slope_y, 'pupil': py})
-
-        Zm = _find_focal_z(merid_rays, 'x', 'slope_x', img_z, efl) - img_z
-        Zs = _find_focal_z(sag_rays, 'y', 'slope_y', img_z, efl) - img_z
+        Zm = _find_focal_z(merid_rays, 'y', 'slope_y', img_z, efl) - img_z
+        Zs = _find_focal_z(sag_rays, 'x', 'slope_x', img_z, efl) - img_z
 
         # ===== Хроматизм увеличения =====
         lateral_color = 0.0
@@ -587,16 +620,16 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
 
             # Главный луч для другой длины волны
             if system.object_type == ObjectType.INFINITE:
-                chief2 = Ray(x=0, y=0, z=-50, k=sin_a, l=0, m=cos_a)
+                chief2 = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=sin_a, m=cos_a)
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 chief2 = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
             chief2_result = trace_ray_through_system(system, chief2, wl_other)
             if chief2_result.success and chief2_result.path:
-                chief2_x = chief2_result.path[-1][0]
-                lateral_color = chief2_x - chief_x_img
-                lateral_color_pct = (lateral_color / x_parax * 100.0) if abs(x_parax) > 1e-10 else 0.0
+                chief2_y = chief2_result.path[-1][1]
+                lateral_color = chief2_y - chief_y_img
+                lateral_color_pct = (lateral_color / y_parax * 100.0) if abs(y_parax) > 1e-10 else 0.0
             else:
                 lateral_color_pct = 0.0
         else:
@@ -630,6 +663,8 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
     грубый поиск.
     """
     aperture = get_effective_aperture(system, default=10.0)
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
 
     # Трассируем сетку лучей на зрачке - получаем позиции и направления
     # на выходе в плоскость изображения
@@ -648,11 +683,15 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
 
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50,
-                         k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start,
+                         k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                         k=x_start/50, l=(y_start-field_y)/50, m=1)
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                         k=x_start/d, l=(y_start-field_y)/d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
 
@@ -959,6 +998,8 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
     Возвращает: [(dx, dy), ...] относительно центроида.
     """
     aperture = get_effective_aperture(system, default=10.0)
+    parax_fc = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax_fc)
 
     # Z-позиции поверхностей
     z_pos = compute_z_positions(system)
@@ -977,11 +1018,15 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
             x_start = px * aperture / 2
             if system.object_type == ObjectType.INFINITE:
                 angle = math.radians(field_y) if field_y != 0 else 0.0
-                ray = Ray(x=x_start, y=y_start, z=-50,
-                         k=math.sin(angle), l=0, m=math.cos(angle))
+                sin_a, cos_a = math.sin(angle), math.cos(angle)
+                rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start, z_pupil, sin_a, cos_a)
+                ray = Ray(x=rx_s, y=ry_s, z=z_start,
+                         k=0, l=math.sin(angle), m=math.cos(angle))
             else:
-                ray = Ray(x=x_start, y=field_y, z=-50,
-                         k=x_start/50, l=(y_start-field_y)/50, m=1)
+                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+                d = abs(obj_z)
+                ray = Ray(x=x_start, y=field_y, z=obj_z,
+                         k=x_start/d, l=(y_start-field_y)/d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
             result = trace_ray_through_system(system, ray, wl)
@@ -1117,11 +1162,15 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     """
     aperture = get_effective_aperture(system, default=10.0)
     az = math.radians(azimuth_deg)
+    parax_of = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax_of)
 
     # Главный луч для определения центра
     if system.object_type == ObjectType.INFINITE:
         angle = math.radians(field_y) if field_y != 0 else 0.0
-        chief_ray = Ray(x=0, y=0, z=-50, k=math.sin(angle), l=0, m=math.cos(angle))
+        sin_a, cos_a = math.sin(angle), math.cos(angle)
+        cx_s, cy_s = _aim_at_pupil(0, 0, z_start, z_pupil, sin_a, cos_a)
+        chief_ray = Ray(x=cx_s, y=cy_s, z=z_start, k=0, l=math.sin(angle), m=math.cos(angle))
     else:
         obj_z = -system.surfaces[0].thickness if system.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
@@ -1146,8 +1195,10 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
 
         if system.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
-            ray = Ray(x=x_start, y=y_start, z=-50,
-                     k=math.sin(angle), l=0, m=math.cos(angle))
+            sin_a, cos_a = math.sin(angle), math.cos(angle)
+            rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start, z_pupil, sin_a, cos_a)
+            ray = Ray(x=rx_s, y=ry_s, z=z_start,
+                     k=0, l=math.sin(angle), m=math.cos(angle))
         else:
             obj_z = -system.surfaces[0].thickness if system.surfaces else -50
             d = abs(obj_z)
@@ -1186,6 +1237,8 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
     ]
     """
     aperture = get_effective_aperture(system, default=10.0)
+    parax_rc = paraxial_trace(system)
+    z_start_rc, z_pupil_rc = _compute_ray_start(system, parax_rc)
 
     # Три луча: верхний, нижний, главный
     # Верхний луч (pupil_y = +1)
@@ -1196,8 +1249,10 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
     def _make_ray(y_start, x_start=0.0):
         if system.object_type == ObjectType.INFINITE:
             angle = math.radians(field_y) if field_y != 0 else 0.0
-            return Ray(x=x_start, y=y_start, z=-50,
-                      k=math.sin(angle), l=0, m=math.cos(angle))
+            sin_a, cos_a = math.sin(angle), math.cos(angle)
+            rx_s, ry_s = _aim_at_pupil(x_start, y_start, z_start_rc, z_pupil_rc, sin_a, cos_a)
+            return Ray(x=rx_s, y=ry_s, z=z_start_rc,
+                      k=0, l=math.sin(angle), m=math.cos(angle))
         else:
             obj_z = -system.surfaces[0].thickness if system.surfaces else -50
             d = abs(obj_z)

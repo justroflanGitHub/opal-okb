@@ -6,7 +6,7 @@ import math
 from typing import List, Tuple, Optional
 from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, SurfaceType
 from glass_catalog import compute_refractive_index
-from optics_utils import get_effective_aperture
+from optics_utils import get_effective_aperture, make_field_ray, EPSILON, TINY, UNLIMITED_SD
 
 
 class Ray:
@@ -36,7 +36,7 @@ class TraceResult:
 def intersect_aspheric(ray: Ray, R: float, z_surf: float,
                         conic_k: float = 0.0,
                         aspheric_coeffs: list = None,
-                        max_iter: int = 20, tol: float = 1e-10) -> Optional[Tuple[float, float, float, float]]:
+                        max_iter: int = 20, tol: float = EPSILON) -> Optional[Tuple[float, float, float, float]]:
     """
     Пересечение луча с асферической поверхностью (итерационный метод Ньютона).
 
@@ -50,11 +50,11 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
         aspheric_coeffs = []
 
     # Если это чистая сфера — используем быстрый аналитический метод
-    if abs(conic_k) < 1e-15 and len(aspheric_coeffs) == 0:
+    if abs(conic_k) < TINY and len(aspheric_coeffs) == 0:
         return intersect_sphere(ray, R, z_surf)
 
     # c = 1/R; для плоскости c=0
-    c = 1.0 / R if abs(R) > 1e-10 else 0.0
+    c = 1.0 / R if abs(R) > EPSILON else 0.0
 
     # Начальное приближение: пересечение с базовой сферой (или плоскостью)
     init = intersect_sphere(ray, R, z_surf)
@@ -71,7 +71,7 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
 
         # Асферический sag
         z_asph = z_surf  # вершина
-        if abs(c) > 1e-15 and r_sq > 0:
+        if abs(c) > TINY and r_sq > 0:
             k1c_sq = (1.0 + conic_k) * c * c
             disc = 1.0 - k1c_sq * r_sq
             if disc < 0:
@@ -83,41 +83,38 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
             power = 2 * (j + 2)  # A4->r⁴, A6->r⁶, ...
             z_asph += coeff * (r2 ** (power // 2))
 
-        # Вектор от текущей точки до асферической поверхности
-        dz = z_asph - z
-
         # Нормаль к асферике в точке (x, y, z_asph)
         # dz/dr = d/dr [c·r²/(1+√(1-(1+k)·c²·r²)) + Σ Ai·r^(2i+2)]
         dz_dr = 0.0
-        if abs(c) > 1e-15 and r > 1e-15:
+        if abs(c) > TINY and r > TINY:
             k1c_sq = (1.0 + conic_k) * c * c
             disc = 1.0 - k1c_sq * r_sq
-            if disc < 1e-15:
-                disc = 1e-15
+            if disc < TINY:
+                disc = TINY
             sqrt_disc = math.sqrt(disc)
             dz_dr = c * r / sqrt_disc
 
         # Добавка от полинома: d/dr[A₄r⁴ + A₆r⁶ + ...] = 4A₄r³ + 6A₆r⁵ + ...
         for j, coeff in enumerate(aspheric_coeffs):
             exp = 2 * (j + 2)  # степень r в самом члене: 4, 6, 8, ...
-            dz_dr += coeff * exp * (r ** (exp - 1)) if r > 1e-15 else 0.0
+            dz_dr += coeff * exp * (r ** (exp - 1)) if r > TINY else 0.0
 
         # Нормаль: (-dz/dr * x/r, -dz/dr * y/r, 1), нормализованная
-        if r > 1e-15:
+        if r > TINY:
             nx = -dz_dr * x / r
             ny = -dz_dr * y / r
         else:
             nx, ny = 0.0, 0.0
         nz = 1.0
         n_len = math.sqrt(nx * nx + ny * ny + nz * nz)
-        if n_len > 1e-15:
+        if n_len > TINY:
             nx /= n_len; ny /= n_len; nz /= n_len
 
         # Коррекция: проецируем луч на асферику
         # ray direction: (k, l, m)
         # dot(normal, direction)
         dot_nd = nx * ray.k + ny * ray.l + nz * ray.m
-        if abs(dot_nd) < 1e-15:
+        if abs(dot_nd) < TINY:
             break
 
         # Корректирующее смещение вдоль луча
@@ -132,7 +129,7 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
         r_sq = x * x + y * y
         r = math.sqrt(r_sq) if r_sq > 0 else 0.0
         z_asph_new = z_surf
-        if abs(c) > 1e-15 and r_sq > 0:
+        if abs(c) > TINY and r_sq > 0:
             k1c_sq = (1.0 + conic_k) * c * c
             disc = 1.0 - k1c_sq * r_sq
             if disc < 0:
@@ -150,7 +147,7 @@ def intersect_aspheric(ray: Ray, R: float, z_surf: float,
             break
 
     t = math.sqrt((x - ray.x) ** 2 + (y - ray.y) ** 2 + (z - ray.z) ** 2)
-    if t < 1e-10:
+    if t < EPSILON:
         return None
 
     return (x, y, z, t)
@@ -166,36 +163,36 @@ def surface_normal_aspheric(x: float, y: float, z: float,
     if aspheric_coeffs is None:
         aspheric_coeffs = []
 
-    if abs(conic_k) < 1e-15 and len(aspheric_coeffs) == 0:
+    if abs(conic_k) < TINY and len(aspheric_coeffs) == 0:
         return surface_normal(x, y, z, R, z_surf)
 
-    c = 1.0 / R if abs(R) > 1e-10 else 0.0
+    c = 1.0 / R if abs(R) > EPSILON else 0.0
     r_sq = x * x + y * y
     r = math.sqrt(r_sq) if r_sq > 0 else 0.0
 
     # dz/dr для конической части
     dz_dr = 0.0
-    if abs(c) > 1e-15 and r > 1e-15:
+    if abs(c) > TINY and r > TINY:
         k1c_sq = (1.0 + conic_k) * c * c
         disc = 1.0 - k1c_sq * r_sq
-        if disc < 1e-15:
-            disc = 1e-15
+        if disc < TINY:
+            disc = TINY
         dz_dr = c * r / math.sqrt(disc)
 
     # dz/dr для полиномиальных членов: d/dr[A₄r⁴ + A₆r⁶ + ...] = 4A₄r³ + 6A₆r⁵ + ...
     for j, coeff in enumerate(aspheric_coeffs):
         exp = 2 * (j + 2)  # степень r в самом члене: 4, 6, 8, ...
-        if r > 1e-15:
+        if r > TINY:
             dz_dr += coeff * exp * (r ** (exp - 1))
 
-    if r > 1e-15:
+    if r > TINY:
         nx = -dz_dr * x / r
         ny = -dz_dr * y / r
     else:
         nx, ny = 0.0, 0.0
     nz = 1.0
     n_len = math.sqrt(nx * nx + ny * ny + nz * nz)
-    if n_len > 1e-15:
+    if n_len > TINY:
         return (nx / n_len, ny / n_len, nz / n_len)
     return (0.0, 0.0, 1.0)
 
@@ -207,9 +204,9 @@ def intersect_sphere(ray: Ray, R: float, z_surf: float) -> Optional[Tuple[float,
     R < 0: центр слева от вершины
     Возвращает (x, y, z, t) или None
     """
-    if abs(R) < 1e-10:
+    if abs(R) < EPSILON:
         # Плоская поверхность
-        if abs(ray.m) < 1e-15:
+        if abs(ray.m) < TINY:
             return None
         t = (z_surf - ray.z) / ray.m
         x = ray.x + t * ray.k
@@ -243,9 +240,9 @@ def intersect_sphere(ray: Ray, R: float, z_surf: float) -> Optional[Tuple[float,
         t = t2
     else:
         # Снаружи - берём ближайшее t>0
-        t = t1 if t1 > 1e-10 else t2
+        t = t1 if t1 > EPSILON else t2
 
-    if t < 1e-10:
+    if t < EPSILON:
         return None
 
     x = ray.x + t * ray.k
@@ -291,7 +288,7 @@ def surface_normal(x, y, z, R, z_surf):
     Единичная нормаль к сферической поверхности в точке (x, y, z).
     Направлена от центра кривизны к точке.
     """
-    if abs(R) < 1e-10:
+    if abs(R) < EPSILON:
         # Плоская: нормаль вдоль оси
         return (0.0, 0.0, 1.0)
 
@@ -300,9 +297,54 @@ def surface_normal(x, y, z, R, z_surf):
     ny = y - cy
     nz = z - cz
     norm = math.sqrt(nx**2 + ny**2 + nz**2)
-    if norm < 1e-15:
+    if norm < TINY:
         return (0.0, 0.0, 1.0)
     return (nx/norm, ny/norm, nz/norm)
+
+
+def _compute_semi_diameter(surface: Surface, aperture: float) -> float:
+    """Determine the effective semi-diameter of a surface.
+
+    Bogus semi-diameters (decoder artifacts) are detected when the value
+    is positive but much smaller than the aperture.  In that case
+    :data:`UNLIMITED_SD` is returned so the surface is treated as
+    unlimited during ray tracing.
+    """
+    if surface.semi_diameter > 0 and surface.semi_diameter < aperture / 10.0:
+        return UNLIMITED_SD  # bogus — treat as unlimited
+    if surface.semi_diameter > 0:
+        return abs(surface.semi_diameter)
+    return UNLIMITED_SD
+
+
+def _check_aperture_stop(current_ray: Ray, z_stop: float, z_surf: float,
+                          stop_radius: float, current_n: float
+                          ) -> Optional[Tuple[float, float, float, float]]:
+    """Check if the ray passes through the aperture stop plane.
+
+    Returns ``(sx, sy, z_stop, dt_stop)`` if the ray reaches the stop
+    plane and should be recorded, ``None`` if the stop is not between
+    the ray and the next surface.
+
+    Raises ``StopClippedError`` (via a sentinel return of
+    ``('CLIP', sx, sy, z_stop, dt_stop)``) when the ray is clipped.
+    """
+    # Sentinel: None means stop not in range
+    if z_stop is None:
+        return None
+    if not (z_stop > current_ray.z + EPSILON and z_stop < z_surf - EPSILON):
+        return None
+    if abs(current_ray.m) < TINY:
+        return None
+
+    dt_stop = (z_stop - current_ray.z) / current_ray.m
+    sx = current_ray.x + dt_stop * current_ray.k
+    sy = current_ray.y + dt_stop * current_ray.l
+    r_at_stop = math.sqrt(sx ** 2 + sy ** 2)
+
+    if stop_radius > 0 and r_at_stop > stop_radius:
+        return ('CLIP', sx, sy, z_stop, dt_stop)  # type: ignore
+    return (sx, sy, z_stop, dt_stop)
 
 
 def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) -> TraceResult:
@@ -345,28 +387,27 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         z_surf = z_positions[i]
         
         # Проверка диафрагмы: если она между лучом и следующей поверхностью
-        if z_stop is not None and z_stop > current_ray.z + 1e-10 and z_stop < z_surf - 1e-10:
-            if abs(current_ray.m) > 1e-15:
-                dt_stop = (z_stop - current_ray.z) / current_ray.m
-                sx = current_ray.x + dt_stop * current_ray.k
-                sy = current_ray.y + dt_stop * current_ray.l
-                r_at_stop = math.sqrt(sx**2 + sy**2)
-                if stop_radius > 0 and r_at_stop > stop_radius:
-                    result.success = False
-                    result.error = 'STOP'
-                    result.add_point(sx, sy, z_stop)
-                    result.opl += current_n * dt_stop
-                    return result
-                # Луч прошёл диафрагму — добавим точку
-                result.add_point(sx, sy, z_stop)
+        stop_result = _check_aperture_stop(current_ray, z_stop, z_surf,
+                                             stop_radius, current_n)
+        if stop_result is not None:
+            if stop_result[0] == 'CLIP':
+                _, sx, sy, sz, dt_stop = stop_result
+                result.success = False
+                result.error = 'STOP'
+                result.add_point(sx, sy, sz)
                 result.opl += current_n * dt_stop
-                current_ray.x = sx
-                current_ray.y = sy
-                current_ray.z = z_stop
-        R = s.radius if abs(s.radius) > 1e-10 else 0.0
+                return result
+            sx, sy, sz, dt_stop = stop_result
+            # Луч прошёл диафрагму — добавим точку
+            result.add_point(sx, sy, sz)
+            result.opl += current_n * dt_stop
+            current_ray.x = sx
+            current_ray.y = sy
+            current_ray.z = sz
+        R = s.radius if abs(s.radius) > EPSILON else 0.0
         
         # Пересечение с поверхностью
-        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > 1e-15 or len(s.aspheric_coeffs) > 0:
+        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > TINY or len(s.aspheric_coeffs) > 0:
             hit = intersect_aspheric(current_ray, R, z_surf,
                                      conic_k=s.conic_constant,
                                      aspheric_coeffs=s.aspheric_coeffs)
@@ -387,14 +428,8 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         hx, hy, hz, t = hit
         
         # Проверка полудиаметра
-        # Skip EDGE check for bogus semi_diameters (decoder artifacts):
-        # Real semi_diameters should be comparable to aperture, not tiny fractions.
-        # If semi_diameter > 0 but < aperture/10, it's likely a decoder artifact.
         aperture = getattr(sys, 'aperture_value', 0) or 20.0
-        if s.semi_diameter > 0 and s.semi_diameter < aperture / 10.0:
-            semi_d = 1e6  # bogus semi_diameter — treat as unlimited
-        else:
-            semi_d = abs(s.semi_diameter) if s.semi_diameter > 0 else 1e6
+        semi_d = _compute_semi_diameter(s, aperture)
         r_hit = math.sqrt(hx**2 + hy**2)
         if r_hit > semi_d:
             result.success = False
@@ -416,7 +451,7 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         current_ray.z = hz
         
         # Нормаль
-        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > 1e-15 or len(s.aspheric_coeffs) > 0:
+        if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > TINY or len(s.aspheric_coeffs) > 0:
             nx, ny, nz = surface_normal_aspheric(hx, hy, hz, R, z_surf,
                                                   conic_k=s.conic_constant,
                                                   aspheric_coeffs=s.aspheric_coeffs)
@@ -467,7 +502,7 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     # После последней поверхности — propagate до плоскости изображения
     if sys.surfaces:
         last = sys.surfaces[-1]
-        if last.thickness != 0 and abs(current_ray.m) > 1e-15:
+        if last.thickness != 0 and abs(current_ray.m) > TINY:
             img_z = z_positions[-1]
             dt = (img_z - current_ray.z) / current_ray.m
             ix = current_ray.x + dt * current_ray.k
@@ -527,20 +562,13 @@ def trace_fan(sys: OpticalSystem, num_rays: int = 7,
             y_start = py * aperture / 2
 
             if sys.object_type == ObjectType.INFINITE:
-                angle = math.radians(field_y) if field_y != 0 else 0.0
-                sin_a, cos_a = math.sin(angle), math.cos(angle)
                 # Use entrance pupil position from paraxial trace
                 from optics_engine import paraxial_trace as _pt
                 _parax = _pt(sys)
                 sP = _parax.get('sP', 0)
                 z_pupil = sP
                 z_start = -max(abs(z_pupil), 10.0) - 5.0
-                dz = z_pupil - z_start
-                if cos_a > 1e-10:
-                    y_at_start = y_start - dz * sin_a / cos_a
-                else:
-                    y_at_start = y_start
-                ray = Ray(x=0, y=y_at_start, z=z_start, k=0, l=sin_a, m=cos_a)
+                ray = make_field_ray(sys, 0, y_start, field_y, z_start, z_pupil)
             else:
                 from optics_engine import paraxial_trace
                 parax = paraxial_trace(sys)
@@ -624,7 +652,7 @@ def trace_grid_3d(sys: OpticalSystem, num_rings: int = 3, num_azimuths: int = 8,
                 # For on-axis (field_y=0): ray goes straight along z
                 # For off-axis: ray has tilt
                 dz = z_pupil - z_start
-                y_at_start = -dz * math.sin(angle) / math.cos(angle) if abs(math.cos(angle)) > 1e-10 else 0.0
+                y_at_start = -dz * math.sin(angle) / math.cos(angle) if abs(math.cos(angle)) > EPSILON else 0.0
                 ray = Ray(x=0, y=y_at_start, z=z_start,
                          k=math.sin(angle) if field_y != 0 else 0.0,
                          l=0.0,
@@ -651,21 +679,7 @@ def trace_grid_3d(sys: OpticalSystem, num_rings: int = 3, num_azimuths: int = 8,
             py = r * math.sin(az_angle)
             
             if is_infinite:
-                # Ray must pass through (px, py) at z_pupil
-                # Direction has tilt from field angle
-                # The ray starts at z_start, and at z_pupil it should be at (px, py)
-                # For field angle in Y direction: direction = (0, sin(angle), cos(angle))
-                # But we need the ray to hit (px, py) at z_pupil
-                # Start position: at z_start, the ray is at:
-                #   x = px (no x-field angle)
-                #   y = py - dz * sin(angle)/cos(angle)
-                dz = z_pupil - z_start
-                y_at_start = py - dz * math.sin(angle) / math.cos(angle) if abs(math.cos(angle)) > 1e-10 else py
-                
-                ray = Ray(x=px, y=y_at_start, z=z_start,
-                         k=0.0,
-                         l=math.sin(angle) if field_y != 0 else 0.0,
-                         m=math.cos(angle) if field_y != 0 else 1.0)
+                ray = make_field_ray(sys, px, py, field_y, z_start, z_pupil)
             else:
                 from optics_engine import paraxial_trace
                 parax = paraxial_trace(sys)

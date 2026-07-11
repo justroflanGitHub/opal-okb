@@ -12,7 +12,7 @@ from enum import Enum
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from glass_catalog import compute_refractive_index
-from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
+from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture, EPSILON, TINY, UNLIMITED_SD
 
 
 class SurfaceType(Enum):
@@ -95,7 +95,7 @@ class OpticalSystem:
     name: str = ""
     # Предмет
     object_type: ObjectType = ObjectType.INFINITE
-    image_type: ObjectType = ObjectType.FINITE   # Тип изображения: INFINITE=дальний, FINITE=ближний
+    image_type: ObjectType = ObjectType.FINITE   # TODO: wire into UI — Тип изображения: INFINITE=дальний, FINITE=ближний
     object_height: float = 0.0     # мм (для FINITE) или градусы (для INFINITE)
     object_distance: float = 0.0   # мм — расстояние от предмета до первой поверхности (для FINITE)
     # Поверхности
@@ -160,7 +160,7 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         y = field_y
         z = -system.surfaces[0].thickness if system.surfaces else -50
         k = 0.0
-        l = (ray_y - field_y) / abs(z) if abs(z) > 1e-10 else 0.0
+        l = (ray_y - field_y) / abs(z) if abs(z) > EPSILON else 0.0
         m = 1.0
         norm = math.sqrt(k**2 + l**2 + m**2)
         k /= norm; l /= norm; m /= norm
@@ -169,10 +169,10 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
     
     # Трассируем через поверхности, проверяя полудиаметр
     for i, s in enumerate(system.surfaces):
-        R = s.radius if abs(s.radius) > 1e-10 else 0.0
+        R = s.radius if abs(s.radius) > EPSILON else 0.0
         z_surf = z_pos[i]
         
-        if abs(m) < 1e-15:
+        if abs(m) < TINY:
             return True
         
         if R == 0:
@@ -189,8 +189,8 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
             sqrt_disc = math.sqrt(disc)
             t1 = (-b - sqrt_disc) / (2 * a)
             t2 = (-b + sqrt_disc) / (2 * a)
-            t = t1 if t1 > 1e-10 else t2
-            if t < 1e-10:
+            t = t1 if t1 > EPSILON else t2
+            if t < EPSILON:
                 return True
         
         y_new = y + t * l
@@ -198,7 +198,7 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         z_new = z + t * m
         
         # Проверка полудиаметра
-        sd = s.semi_diameter if s.semi_diameter > 0 else 1e6
+        sd = s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD
         r_hit = math.sqrt(x_new**2 + y_new**2)
         if r_hit > sd:
             return True
@@ -212,7 +212,7 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
             l_new = (l * n_before - y_new * phi) / n_after
             k_new = (k * n_before - x_new * phi) / n_after
             norm = math.sqrt(k_new**2 + l_new**2 + m**2)
-            if norm > 1e-15:
+            if norm > TINY:
                 k, l = k_new / norm, l_new / norm
         
         y, x, z = y_new, x_new, z_new
@@ -348,7 +348,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
 
     nu_last = C_mat
 
-    if abs(nu_last) > 1e-15:
+    if abs(nu_last) > TINY:
         efl = -1.0 / nu_last
         results['focal_length'] = efl
         results['effective_focal_length'] = efl
@@ -444,7 +444,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
 
     # Входной зрачок: расстояние от первой поверхности
     sP = 0.0
-    if abs(nub[0]) > 1e-15:
+    if abs(nub[0]) > TINY:
         sP = -yb[0] / nub[0]
     results['sP'] = sP
     results['entrance_pupil'] = sP
@@ -452,21 +452,21 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     # Выходной зрачок: расстояние от последней поверхности
     sP_prime = 0.0
     nu_exit = nub[ns - 1] if ns > 0 else 0.0
-    if abs(nu_exit) > 1e-15:
+    if abs(nu_exit) > TINY:
         sP_prime = -yb[ns] / nu_exit
     results['sP_prime'] = sP_prime
     results['exit_pupil'] = sP_prime
     results['pupil_location'] = sP_prime
 
     # ===== Обобщённое увеличение V =====
-    if sys.object_type == ObjectType.FINITE and abs(sys.object_height) > 1e-10:
+    if sys.object_type == ObjectType.FINITE and abs(sys.object_height) > EPSILON:
         # Для конечного предмета: V = f' / (s + f') where s = -obj_dist
-        if abs(nu_last) > 1e-15:
+        if abs(nu_last) > TINY:
             obj_dist = sys.surfaces[0].thickness if sys.surfaces else 0.0
-            if abs(obj_dist) > 1e-10:
+            if abs(obj_dist) > EPSILON:
                 efl = results.get('focal_length', 0)
                 s_val = -obj_dist
-                if abs(s_val + efl) > 1e-10:
+                if abs(s_val + efl) > EPSILON:
                     results['V'] = efl / (s_val + efl)
                     results['magnification'] = results['V']
     else:
@@ -535,7 +535,7 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                 l = (y_start - field_y_val) / d if d > 0 else 0.0
                 m = 1.0
                 norm = math.sqrt(k**2 + l**2 + m**2)
-                if norm > 1e-15:
+                if norm > TINY:
                     k /= norm; l /= norm; m /= norm
 
             success = True
@@ -546,10 +546,10 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
             x = ray_x
 
             for i, s in enumerate(system.surfaces):
-                R = s.radius if abs(s.radius) > 1e-10 else 0.0
+                R = s.radius if abs(s.radius) > EPSILON else 0.0
                 z_surf = z_pos[i]
 
-                if abs(m) < 1e-15:
+                if abs(m) < TINY:
                     success = False
                     break
 
@@ -568,8 +568,8 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                     sqrt_disc = math.sqrt(disc)
                     t1 = (-b_coef - sqrt_disc) / (2 * a_coef)
                     t2 = (-b_coef + sqrt_disc) / (2 * a_coef)
-                    t = t1 if t1 > 1e-10 else t2
-                    if t < 1e-10:
+                    t = t1 if t1 > EPSILON else t2
+                    if t < EPSILON:
                         success = False
                         break
 
@@ -578,7 +578,7 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                 z_new = z + t * m
 
                 # Проверка виньетирования
-                sd = s.semi_diameter if s.semi_diameter > 0 else 1e6
+                sd = s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD
                 r_hit = math.sqrt(x_new**2 + y_new**2)
                 if r_hit > sd:
                     success = False
@@ -592,7 +592,7 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
                     l_new = (l * n_before - y_new * phi) / n_after
                     k_new = (k * n_before - x_new * phi) / n_after
                     norm = math.sqrt(k_new**2 + l_new**2 + m**2)
-                    if norm > 1e-15:
+                    if norm > TINY:
                         k, l = k_new / norm, l_new / norm
 
                 y, x, z = y_new, x_new, z_new
@@ -617,7 +617,7 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
         # Задние апертуры — через f/# и поле
         Ax_prime = 0.0
         Ay_prime = 0.0
-        if abs(efl) > 1e-10 and fno > 0:
+        if abs(efl) > EPSILON and fno > 0:
             # Задняя апертура осевого пучка
             Ax_prime = efl / (2.0 * fno) if fno > 0 else 0
             Ay_prime = Ax_prime
@@ -793,7 +793,7 @@ def seidel_aberrations(sys: OpticalSystem, catalog: dict = None) -> dict:
         # Формула точна для 3-го порядка; при малых |A| высшие порядки могут
         # компенсировать, но в Seidel сумме используется именно 3-й порядок.
         # Защита от точного деления на ноль:
-        a_safe = A if abs(A) > 1e-15 else (1e-15 if A >= 0 else -1e-15)
+        a_safe = A if abs(A) > TINY else (TINY if A >= 0 else -TINY)
         SV += (A_bar ** 3 / a_safe) * h * delta_n_inv
         SV += 3.0 * A_bar * A_bar * h * delta_n_inv
 

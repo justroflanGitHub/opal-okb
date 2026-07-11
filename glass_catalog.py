@@ -97,10 +97,9 @@ def compute_refractive_index(glass_name: str, wavelength_um: float) -> float:
                     L = 1.0 / denom
                     return C0 + C1*lam**2 + C2*lam**4 + C3*L + C4*L**2 + C5*L**3
         except Exception:
-            pass
-        # Unknown glass - return 1.5 as fallback
-        return 1.5
-    
+            pass  # full catalog not available or lookup failed
+        return 1.5  # unknown glass fallback
+
     nd, vd, coeffs, lam_min, lam_max = entry
     
     if len(coeffs) <= 1:

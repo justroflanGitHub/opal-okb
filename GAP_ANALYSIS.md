@@ -136,3 +136,19 @@
 
 ### Фаза 3: LOW (формирование)
 - #13-20 (присоединение, библиотека, печать, экранирование и т.д.)
+
+---
+
+## 🐛 BUGS / TODO
+
+### REPROD.LBO — другой бинарный формат
+- **ОП-04/40**: n_override=2.0 (мусор), wl=F+D вместо e+G'+C, ОФ4КАЛИЙФТР парсится как одно стекло
+- REPROD.LBO имеет другую структуру RI/wl блоков чем LENS.LBO
+- Quick fix: валидация n_override (отбрасывать вне [1.3, 1.9])
+- Deep fix: реверс-инжиниринг формата REPROD.LBO через opal_api.dll
+- Поверхности 20-21 (после marker 1e20) — обрезаны (fix в decode_lbo_opj.py)
+
+### Архитектура
+- #6 analysis_gui.py — разбить 4022 строки на package widgets/
+- #7 MainWindow God Object — извлечь CalculationController, SystemController, FileDialogs
+- #8 Тесты несовместимы с pytest — конвертировать в pytest format

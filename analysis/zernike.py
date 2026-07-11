@@ -36,8 +36,33 @@ ZERNIKE_TERMS = [
 ]
 
 
+# ── Noll normalization ───────────────────────────────────────────────────
+# Each Zernike polynomial Z_n^m has RMS ≠ 1 over the unit disk.
+# The Noll normalization factor N_n^m scales each polynomial to unit RMS:
+#   N_n^m = sqrt(2(n+1))   for m ≠ 0
+#   N_n^m = sqrt(n+1)        for m = 0
+# Reference: R.J. Noll, "Zernike polynomials and atmospheric
+# turbulence", J. Opt. Soc. Am. 66, 207-211 (1976).
+
+
+def _noll_norm(n: int, m: int) -> float:
+    """Noll normalization factor for Z_n^m so that RMS = 1 over unit disk."""
+    if m == 0:
+        return math.sqrt(n + 1)
+    return math.sqrt(2 * (n + 1))
+
+
+def _zernike_poly_noll(n: int, m: int, rho: float, theta: float) -> float:
+    """Evaluate a Noll-normalized Zernike polynomial (unit RMS over unit disk)."""
+    return _noll_norm(n, m) * _zernike_poly(n, m, rho, theta)
+
+
 def _zernike_poly(n: int, m: int, rho: float, theta: float) -> float:
-    """Evaluate a single Zernike polynomial Z_n^m(ρ, θ)."""
+    """Evaluate a single (unnormalized) Zernike polynomial Z_n^m(ρ, θ).
+
+    Kept for backward compatibility. For unit-RMS (Noll) version use
+    _zernike_poly_noll().
+    """
     if n == 0 and m == 0:
         return 1.0
     elif n == 1 and m == 1:
@@ -195,7 +220,7 @@ def compute_zernike_coefficients(system: OpticalSystem,
     for k, (rho, theta, W) in enumerate(ray_data):
         W_vec[k] = W
         for t, (n, m, _) in enumerate(terms):
-            Z[k, t] = _zernike_poly(n, m, rho, theta)
+            Z[k, t] = _zernike_poly_noll(n, m, rho, theta)
 
     # Least squares: a = (Z^T Z)^-1 Z^T W
     try:

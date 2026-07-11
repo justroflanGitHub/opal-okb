@@ -4,6 +4,7 @@ OPAL-OKB - Анализ аберраций (Л1.4.6-Л1.4.7)
 Точечные диаграммы (Л1.6.1)
 """
 import math
+import numpy as np
 from typing import List, Tuple, Dict
 from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
@@ -154,12 +155,48 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     return results
 
 
+def _hexapolar_points(num_rings: int = 6) -> list[tuple[float, float]]:
+    """Generate hexapolar pupil sampling points.
+
+    Returns list of (px, py) normalized pupil coordinates.
+    Rings: 0=center, 1=6 points, 2=12, ..., n=6*n points.
+    Total points: 1 + 6*(1+2+...+n) = 1 + 3*n*(n+1).
+
+    For num_rings=6: 127 points.
+
+    Args:
+        num_rings: Number of hexapolar rings (default 6 → 127 points).
+
+    Returns:
+        List of (px, py) tuples in range [-1, 1].
+    """
+    points = [(0.0, 0.0)]  # center
+    for ring in range(1, num_rings + 1):
+        r = ring / num_rings
+        n_in_ring = 6 * ring
+        for i in range(n_in_ring):
+            angle = 2 * math.pi * i / n_in_ring
+            points.append((r * math.cos(angle), r * math.sin(angle)))
+    return points
+
+
 def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
-                          num_rays: int = 50, field_y: float = 0.0
+                          num_rays: int = 50, field_y: float = 0.0,
+                          sampling: str = "grid"
                           ) -> List[Tuple[float, float]]:
     """
     Точечная диаграмма (Л1.6.1).
     Трассировка сетки лучей на зрачке → координаты (dx, dy) на изображении.
+
+    Args:
+        sys: Оптическая система.
+        wl: Длина волны (мкм).
+        num_rays: Число лучей по стороне сетки (для 'grid') или
+                  число колец (для 'hexapolar', по умолчанию 6 → 127 лучей).
+        field_y: Угол поля (градусы).
+        sampling: 'grid' (квадратная сетка с круглой маской, по умолчанию)
+                  или 'hexapolar' (гексаполярная выборка — более равномерное
+                  покрытие зрачка, без алиасинга по осям).
     """
     aperture = get_effective_aperture(sys, default=10.0)
     parax = paraxial_trace(sys)
@@ -179,29 +216,32 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
     chief_y = chief_result.path[-1][1]
     chief_x = chief_result.path[-1][0]
 
+    # Построение списка зрачковых координат
+    if sampling == "hexapolar":
+        pupil_coords = _hexapolar_points(num_rings=num_rays if num_rays <= 20 else 6)
+    else:
+        pupil_coords = []
+        for i in range(num_rays):
+            for j in range(num_rays):
+                px = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
+                py = -1.0 + 2.0 * j / (num_rays - 1) if num_rays > 1 else 0.0
+                if px**2 + py**2 <= 1.0:
+                    pupil_coords.append((px, py))
+
     spots = []
-    for i in range(num_rays):
-        for j in range(num_rays):
-            # Зрачковые координаты (квадратная сетка)
-            px = -1.0 + 2.0 * i / (num_rays - 1)
-            py = -1.0 + 2.0 * j / (num_rays - 1)
+    for px, py in pupil_coords:
+        y_start = py * aperture / 2
+        x_start = px * aperture / 2
 
-            # Проверяем, что точка внутри круглого зрачка
-            if px**2 + py**2 > 1.0:
-                continue
+        ray = make_field_ray(sys, x_start, y_start, field_y, z_start, z_pupil)
 
-            y_start = py * aperture / 2
-            x_start = px * aperture / 2
+        result = trace_ray_through_system(sys, ray, wl)
 
-            ray = make_field_ray(sys, x_start, y_start, field_y, z_start, z_pupil)
-
-            result = trace_ray_through_system(sys, ray, wl)
-
-            if result.success and result.path:
-                last = result.path[-1]
-                dx = last[0] - chief_x
-                dy = last[1] - chief_y
-                spots.append((dx, dy))
+        if result.success and result.path:
+            last = result.path[-1]
+            dx = last[0] - chief_x
+            dy = last[1] - chief_y
+            spots.append((dx, dy))
 
     return spots
 
@@ -890,20 +930,15 @@ def compute_geometric_mtf(spots: List[Tuple[float, float]],
         for ix in range(N):
             psf[iy][ix] /= total
 
-    # FFT 2D (DFT, т.к. numpy может быть недоступен)
-    # Используем простую реализацию через строки + столбцы
-    # FFT PSF → OTF
-    otf = _fft2d(psf, N)
+    # FFT 2D — FFT PSF → OTF (numpy for performance)
+    otf = _fft2d(np.asarray(psf))
 
     # |OTF| = MTF; нормализация: MTF(0) = 1
-    mtf_2d = [[0.0] * N for _ in range(N)]
-    dc_val = math.sqrt(otf[0][0][0]**2 + otf[0][0][1]**2)
+    mtf_abs = np.abs(otf)
+    dc_val = mtf_abs[0, 0]
     if dc_val < TINY:
         dc_val = 1.0
-
-    for iy in range(N):
-        for ix in range(N):
-            mtf_2d[iy][ix] = math.sqrt(otf[iy][ix][0]**2 + otf[iy][ix][1]**2) / dc_val
+    mtf_2d = mtf_abs / dc_val
 
     # Разрешение в частотах: df = 1 / (N * pixel_size) лин/мм
     df = 1.0 / (N * pixel_size)
@@ -930,12 +965,12 @@ def compute_geometric_mtf(spots: List[Tuple[float, float]],
             continue
 
         # Тангенциальная: частота по оси x (горизонтальная)
-        # MTF_t = mtf_2d[0][k_int]  - срез по y=0
-        mtf_t = mtf_2d[0][k_int]
+        # MTF_t = mtf_2d[0, k_int]  - срез по y=0
+        mtf_t = float(mtf_2d[0, k_int])
 
         # Сагиттальная: частота по оси y (вертикальная)
-        # MTF_s = mtf_2d[k_int][0]  - срез по x=0
-        mtf_s = mtf_2d[k_int][0]
+        # MTF_s = mtf_2d[k_int, 0]  - срез по x=0
+        mtf_s = float(mtf_2d[k_int, 0])
 
         mtf_data.append((freq, max(0.0, mtf_t), max(0.0, mtf_s)))
 
@@ -998,50 +1033,14 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
     return [(dx - cx, dy - cy) for dx, dy in propagated]
 
 
-def _fft1d(x_real, N):
-    """1D FFT (Cooley-Tukey) для массива длины N (степень двойки)."""
-    # Возвращает список комплексных пар [(re, im), ...]
-    if N == 1:
-        return [(x_real[0], 0.0)]
-
-    # Bit-reversal permutation + iterative FFT
-    # Раскладываем на чётные и нечётные
-    even = [x_real[2 * i] for i in range(N // 2)]
-    odd = [x_real[2 * i + 1] for i in range(N // 2)]
-
-    E = _fft1d(even, N // 2)
-    O = _fft1d(odd, N // 2)
-
-    result = [(0.0, 0.0)] * N
-    for k in range(N // 2):
-        angle = -2.0 * math.pi * k / N
-        wr = math.cos(angle)
-        wi = math.sin(angle)
-        # O[k] * W
-        t_re = O[k][0] * wr - O[k][1] * wi
-        t_im = O[k][0] * wi + O[k][1] * wr
-        result[k] = (E[k][0] + t_re, E[k][1] + t_im)
-        result[k + N // 2] = (E[k][0] - t_re, E[k][1] - t_im)
-
-    return result
+def _fft1d(data):
+    """1D FFT wrapper. Uses numpy for performance."""
+    return np.fft.fft(data)
 
 
-def _fft2d(matrix, N):
-    """2D FFT: сначала строки, потом столбцы."""
-    # FFT по строкам
-    row_fft = []
-    for iy in range(N):
-        row_fft.append(_fft1d(matrix[iy], N))
-
-    # FFT по столбцам
-    result = [[(0.0, 0.0)] * N for _ in range(N)]
-    for ix in range(N):
-        col = [row_fft[iy][ix][0] for iy in range(N)]
-        col_fft = _fft1d(col, N)
-        for iy in range(N):
-            result[iy][ix] = col_fft[iy]
-
-    return result
+def _fft2d(data2d):
+    """2D FFT wrapper. Uses numpy for performance."""
+    return np.fft.fft2(data2d)
 
 
 def compute_isoplanatism(system, wl=0.58756, num_rays=20, field_y=0.0):

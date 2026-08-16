@@ -35,6 +35,7 @@ from aberrations import (
     compute_field_aberrations,
     compute_focus_curve,
     compute_chief_ray_characteristics,
+    compute_isoplanatism,
 )
 from advanced_analysis import (
     compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf,
@@ -54,6 +55,8 @@ from .widgets import (
     # Widget classes
     SpotDiagramWidget,
     AberrationGraphWidget,
+    IsoplanatismWidget,
+    AxialBeamWidget,
     MTFWidget,
     DistortionWidget,
     AstigmatismWidget,
@@ -117,6 +120,7 @@ class AnalysisPanel(QTabWidget):
 
         # Create plot widgets
         self.spot_diagram = SpotDiagramWidget()
+        self.axial = AxialBeamWidget()
         self.transverse = AberrationGraphWidget('transverse')
         self.longitudinal = AberrationGraphWidget('longitudinal')
         self.wavefront = AberrationGraphWidget('wavefront')
@@ -153,6 +157,7 @@ class AnalysisPanel(QTabWidget):
         tabs = [
             ("Параксиальные", parax_placeholder, 'parax'),
             ("Точечная диагр.", self.spot_diagram, 'spot'),
+            ("Осевой пучок", self.axial, 'axial'),
             ("Поперечные Δy'", self.transverse, 'transverse'),
             ("Продольные Δs'", self.longitudinal, 'longitudinal'),
             ("Волновые W", self.wavefront, 'wavefront'),
@@ -405,9 +410,10 @@ class AnalysisPanel(QTabWidget):
 
         for widget in [self.transverse, self.longitudinal, self.wavefront]:
             widget.fan_data = d.get('fan_data', {})
-            widget.isoplanatism_data = d.get('isoplanatism_data', {})
             widget.oblique_data = d.get('oblique_data')
             widget.update()
+        self.axial.apply_data(d.get('fan_data', {}), d.get('isoplanatism_data', {}),
+                              d.get('oblique_data'))
 
         self.mtf.geo_mtf = d.get('geo_mtf')
         self.mtf.diff_mtf = d.get('diff_mtf')
@@ -490,6 +496,21 @@ class AnalysisPanel(QTabWidget):
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
 
         fan_primary = d.get('fan_data', {}).get(wl, [])
+        iso_primary = d.get('isoplanatism_data', {}).get(wl, ([], []))
+        iso_by_pupil = dict(zip(iso_primary[0], iso_primary[1]))
+        rows_axial = []
+        step_axial = max(1, len(fan_primary) // 13)
+        for i in range(0, len(fan_primary), step_axial):
+            r = fan_primary[i]
+            if r['success']:
+                eta = iso_by_pupil.get(r['pupil_y'])
+                rows_axial.append([f"{r['pupil_y']:.4f}", f"{r['dy']*1000:.5f}",
+                                   f"{r['ds']:.5f}", f"{r['wave']:.5f}",
+                                   f"{eta*100:.5f}" if eta is not None else "—"])
+        self._set_table('axial', make_table(
+            ["Высота луча", "Δy' (мкм)", "Δs' (мм)", "W (λ)", "η (%)"],
+            rows_axial, [70, 75, 75, 70, 70]))
+
         for key, val_key in [('transverse', 'dy'), ('longitudinal', 'ds'), ('wavefront', 'wave')]:
             rows_fan = []
             step = max(1, len(fan_primary) // 13)
@@ -808,7 +829,7 @@ class AnalysisPanel(QTabWidget):
     # ------------------------------------------------------------------
 
     _PHASE2_WIDGETS = (
-        'spot_diagram', 'transverse', 'longitudinal', 'wavefront',
+        'spot_diagram', 'axial', 'transverse', 'longitudinal', 'wavefront',
         'mtf', 'distortion', 'astigmatism', 'coma',
         'focus_curve', 'psf_w', 'lsf_w', 'esf_w',
         'enc_w', 'ptf_w', 'heatmap_w', 'beam_geom',
@@ -817,7 +838,7 @@ class AnalysisPanel(QTabWidget):
         'bar_target_w',
     )
     _PHASE2_TABLES = (
-        'spot', 'transverse', 'longitudinal', 'wavefront', 'mtf',
+        'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
         'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
         'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
         'beam', 'chief', 'zernike', 'wfmap', 'wf_rms_field', 'bar_target',
@@ -871,8 +892,6 @@ class AnalysisPanel(QTabWidget):
             for key, widget in [('transverse', self.transverse), ('longitudinal', self.longitudinal), ('wavefront', self.wavefront)]:
                 widget.fan_data = all_fans
                 widget._wl_cache = wl_keys
-                if key == 'transverse' and isoplanatism:
-                    widget.isoplanatism_data = isoplanatism
                 if key == 'transverse':
                     widget.val_key = 'dy'; widget.scale = 1000
                 elif key == 'longitudinal':
@@ -880,6 +899,7 @@ class AnalysisPanel(QTabWidget):
                 else:
                     widget.val_key = 'wave'; widget.scale = 1
                 widget.update()
+            self.axial.apply_data(all_fans, isoplanatism)
         if 'geo_mtf' in data:
             self.mtf.geo_mtf = data['geo_mtf']
             self.mtf.diff_mtf = data.get('diff_mtf')
@@ -925,6 +945,7 @@ class AnalysisPanel(QTabWidget):
         self.wf_rms_field_w.set_data(sys)
         self.psf_3d_w.set_data(sys)
         self._update_spot_table(sys)
+        self._update_axial_table(sys)
         self._update_transverse_table(sys)
         self._update_longitudinal_table(sys)
         self._update_wavefront_table(sys)
@@ -970,6 +991,7 @@ class AnalysisPanel(QTabWidget):
         self.update_parax(parax, fno, epd, sys=sys)
         self.update_seidel(seidel_aberrations(sys))
         self.spot_diagram.set_data(sys)
+        self.axial.set_data(sys, azimuth_deg=azimuth)
         self.transverse.set_data(sys, azimuth_deg=azimuth)
         self.longitudinal.set_data(sys, azimuth_deg=azimuth)
         self.wavefront.set_data(sys, azimuth_deg=azimuth)
@@ -993,6 +1015,7 @@ class AnalysisPanel(QTabWidget):
         self.psf_3d_w.set_data(sys)
         self.bar_target_w.set_data(sys)
         self._update_spot_table(sys)
+        self._update_axial_table(sys)
         self._update_transverse_table(sys)
         self._update_longitudinal_table(sys)
         self._update_wavefront_table(sys)
@@ -1047,6 +1070,25 @@ class AnalysisPanel(QTabWidget):
         self._set_table('spot', make_table(
             ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X", "RMS_Y", "Yцэ", "Макс R, мм"],
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
+
+    def _update_axial_table(self, sys: OpticalSystem) -> None:
+        """Таблица осевого пучка: h, Δy', Δs', W, неизопланатизм η."""
+        wl = get_primary_wl(sys)
+        fan = trace_aberration_fan(sys, wl, num_rays=30)
+        iso_pupils, iso_vals = compute_isoplanatism(sys, wl=wl, num_rays=30)
+        iso_by_pupil = dict(zip(iso_pupils, iso_vals))
+        rows = []
+        step = max(1, len(fan) // 13)
+        for i in range(0, len(fan), step):
+            r = fan[i]
+            if r['success']:
+                eta = iso_by_pupil.get(r['pupil_y'])
+                rows.append([f"{r['pupil_y']:.4f}", f"{r['dy']*1000:.5f}",
+                             f"{r['ds']:.5f}", f"{r['wave']:.5f}",
+                             f"{eta*100:.5f}" if eta is not None else "—"])
+        self._set_table('axial', make_table(
+            ["Высота луча", "Δy' (мкм)", "Δs' (мм)", "W (λ)", "η (%)"],
+            rows, [70, 75, 75, 70, 70]))
 
     def _update_transverse_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)

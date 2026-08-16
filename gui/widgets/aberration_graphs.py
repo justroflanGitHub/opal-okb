@@ -3,6 +3,8 @@
 Widgets:
 
 * :class:`AberrationGraphWidget` — transverse / longitudinal / wavefront fans.
+* :class:`IsoplanatismWidget` — isoplanatism violation vs pupil coordinate.
+* :class:`AxialBeamWidget` — 2×2 axial-beam window: Δy', Δs', W, isoplanatism.
 * :class:`DistortionWidget` — distortion vs field.
 * :class:`AstigmatismWidget` — astigmatism and field curvature vs field.
 * :class:`ComaWidget` — coma vs field.
@@ -15,6 +17,7 @@ from typing import Any
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont
+from PyQt5.QtWidgets import QWidget, QGridLayout
 
 from optics_engine import OpticalSystem, Wavelength
 from aberrations import (
@@ -76,7 +79,6 @@ class AberrationGraphWidget(AberrationPlotWidget):
         super().__init__(parent)
         self.mode = mode  # 'transverse', 'longitudinal', 'wavefront'
         self.fan_data: dict[float, list] = {}
-        self.isoplanatism_data: dict[float, tuple] = {}
         self.oblique_data: Any = None
         self._azimuth_deg = 0.0
 
@@ -88,7 +90,6 @@ class AberrationGraphWidget(AberrationPlotWidget):
             self._azimuth_deg = azimuth_deg
         wavelengths = sys.wavelengths if sys.wavelengths else [Wavelength(0.58756)]
         self.fan_data = {}
-        self.isoplanatism_data = {}
         if abs(self._azimuth_deg) > 0.1:
             wl = wavelengths[0].value
             self.oblique_data = compute_oblique_fan(sys, wl=wl, num_rays=20,
@@ -98,9 +99,6 @@ class AberrationGraphWidget(AberrationPlotWidget):
             self.oblique_data = None
             for wl in wavelengths:
                 self.fan_data[wl.value] = trace_aberration_fan(sys, wl.value, num_rays=30)
-                if self.mode == 'transverse':
-                    self.isoplanatism_data[wl.value] = compute_isoplanatism(
-                        sys, wl=wl.value, num_rays=30)
         self.update()
 
     def paintEvent(self, event):
@@ -196,30 +194,6 @@ class AberrationGraphWidget(AberrationPlotWidget):
                         painter.drawLine(int(prev_point[0]), int(prev_point[1]), int(px), int(py))
                     prev_point = (px, py)
 
-            if self.mode == 'transverse' and self.isoplanatism_data:
-                iso_max = 0.0
-                for wl, (pupils_iso, iso_vals) in self.isoplanatism_data.items():
-                    if iso_vals:
-                        iso_max = max(iso_max, max(abs(v) for v in iso_vals))
-                if iso_max < 1e-12:
-                    iso_max = 1.0
-                for wl, (pupils_iso, iso_vals) in self.isoplanatism_data.items():
-                    if not pupils_iso:
-                        continue
-                    color = _wl_to_color(wl)
-                    dot_color = QColor(min(255, color.red() + 80),
-                                       min(255, color.green() + 80),
-                                       min(255, color.blue() + 80))
-                    painter.setPen(QPen(dot_color, 1.5, Qt.DotLine))
-                    prev_iso = None
-                    for pupil_h, iso_um in zip(pupils_iso, iso_vals):
-                        val_mm = iso_um / 1000.0
-                        ipx = cx + pupil_h * pw / 2.0
-                        ipy = cy - val_mm / val_max * ph / 2.0
-                        if prev_iso:
-                            painter.drawLine(int(prev_iso[0]), int(prev_iso[1]), int(ipx), int(ipy))
-                        prev_iso = (ipx, ipy)
-
         painter.setPen(QColor(200, 200, 220))
         painter.setFont(QFont("Consolas", 9))
         titles = {
@@ -230,8 +204,6 @@ class AberrationGraphWidget(AberrationPlotWidget):
         title = titles.get(self.mode, '')
         if self.oblique_data:
             title += f' [Азимут={self._azimuth_deg:.1f}°]'
-        elif self.mode == 'transverse' and self.isoplanatism_data:
-            title += ' + Неизопланатизм (пунктир)'
         painter.drawText(m + 5, top + 15, title)
 
         # Legend
@@ -278,6 +250,159 @@ class AberrationGraphWidget(AberrationPlotWidget):
         self.set_ranges(-1.0, 1.0, -val_max, val_max)
         self.paint_finalize(painter, self._plot_rect)
         painter.end()
+
+
+# ---------------------------------------------------------------------------
+#  Isoplanatism widget + 2×2 axial-beam window
+# ---------------------------------------------------------------------------
+
+class IsoplanatismWidget(AberrationPlotWidget):
+    """Isoplanatism violation η vs pupil coordinate (4th axial-beam graph).
+
+    η is dimensionless (0 = ideal isoplanatism); displayed in percent.
+    Data: ``iso_data`` maps wavelength (µm) → (pupil_heights, eta_values).
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.iso_data: dict[float, tuple[list, list]] = {}
+
+    def set_data(self, sys: OpticalSystem) -> None:
+        wavelengths = sys.wavelengths if sys.wavelengths else [Wavelength(0.58756)]
+        self.iso_data = {}
+        for wl in wavelengths:
+            self.iso_data[wl.value] = compute_isoplanatism(
+                sys, wl=wl.value, num_rays=30)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        m, top, pw, ph = self.paint_grid(painter, w, h, margin=50)
+
+        if not any(vals for _, vals in self.iso_data.values()):
+            painter.setPen(QColor(150, 150, 170))
+            painter.setFont(QFont("Consolas", 9))
+            painter.drawText(self.rect(), Qt.AlignCenter, "Нет данных")
+            self.paint_finalize(painter, self._plot_rect)
+            painter.end()
+            return
+
+        # Scale in percent; symmetric axis like the Δy' graph
+        val_max = max(
+            (max(abs(v) for v in vals) for _, vals in self.iso_data.values() if vals),
+            default=0.0,
+        )
+        val_max = max(val_max * 100.0, 1e-6)
+
+        painter.setPen(QPen(QColor(80, 80, 100), 1))
+        cx = m + pw / 2
+        cy = top + ph / 2
+        painter.drawLine(int(cx), top, int(cx), top + ph)
+        painter.drawLine(m, int(cy), m + pw, int(cy))
+
+        for wl in sorted(self.iso_data.keys()):
+            pupils, etas = self.iso_data[wl]
+            if not pupils:
+                continue
+            painter.setPen(QPen(_wl_to_color(wl), 2))
+            prev_point = None
+            for pupil_h, eta in zip(pupils, etas):
+                px = cx + pupil_h * pw / 2.0
+                py = cy - (eta * 100.0) / val_max * ph / 2.0
+                if prev_point:
+                    painter.drawLine(int(prev_point[0]), int(prev_point[1]), int(px), int(py))
+                prev_point = (px, py)
+
+        painter.setPen(QColor(200, 200, 220))
+        painter.setFont(QFont("Consolas", 9))
+        painter.drawText(m + 5, top + 15, 'Неизопланатизм η (%)')
+
+        if len(self.iso_data) > 1:
+            legend_x = m + pw - 120
+            legend_y_start = top + 12
+            legend_h = len(self.iso_data) * 16 + 6
+            painter.fillRect(int(legend_x - 4), int(legend_y_start - 10),
+                             124, int(legend_h), QColor(15, 15, 30, 200))
+            painter.setPen(QPen(QColor(60, 60, 80), 1))
+            painter.drawRect(int(legend_x - 4), int(legend_y_start - 10), 124, int(legend_h))
+            for idx, wl in enumerate(sorted(self.iso_data.keys())):
+                painter.setPen(QPen(_wl_to_color(wl), 3))
+                ly = legend_y_start + idx * 16
+                painter.drawLine(int(legend_x), int(ly), int(legend_x + 18), int(ly))
+                painter.setPen(QColor(200, 200, 220))
+                painter.setFont(QFont("Consolas", 8))
+                painter.drawText(int(legend_x + 22), int(ly + 4), _wl_label(wl))
+
+        painter.setPen(QColor(120, 120, 140))
+        painter.setFont(QFont("Consolas", 9))
+        painter.drawText(m + 5, top + ph + 25, f"±{val_max:.4f}%")
+
+        self.set_ranges(-1.0, 1.0, -val_max, val_max)
+        self.paint_finalize(painter, self._plot_rect)
+        painter.end()
+
+
+class AxialBeamWidget(QWidget):
+    """«Аберрации осевого пучка» — окно 2×2 (OPAL-PC экраны 035/037).
+
+    Quadrants: Δy' (transverse), Δs' (longitudinal), W (wavefront),
+    and isoplanatism η. Reuses :class:`AberrationGraphWidget` instances
+    for the first three; the fourth is :class:`IsoplanatismWidget`.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumSize(500, 400)
+        self.transverse = AberrationGraphWidget('transverse')
+        self.longitudinal = AberrationGraphWidget('longitudinal')
+        self.wavefront = AberrationGraphWidget('wavefront')
+        self.isoplanatism = IsoplanatismWidget()
+
+        layout = QGridLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        layout.addWidget(self.transverse, 0, 0)
+        layout.addWidget(self.longitudinal, 0, 1)
+        layout.addWidget(self.wavefront, 1, 0)
+        layout.addWidget(self.isoplanatism, 1, 1)
+
+    # -- data plumbing ----------------------------------------------------
+
+    @property
+    def _children(self) -> tuple:
+        return (self.transverse, self.longitudinal, self.wavefront, self.isoplanatism)
+
+    @property
+    def _pending(self) -> bool:
+        return self.transverse._pending
+
+    @_pending.setter
+    def _pending(self, flag: bool) -> None:
+        for child in self._children:
+            child._pending = flag
+
+    def update(self) -> None:
+        for child in self._children:
+            child.update()
+        super().update()
+
+    def set_data(self, sys: OpticalSystem, azimuth_deg: float | None = None) -> None:
+        """Compute fans + isoplanatism for all wavelengths and display."""
+        for child in (self.transverse, self.longitudinal, self.wavefront):
+            child.set_data(sys, azimuth_deg=azimuth_deg)
+        self.isoplanatism.set_data(sys)
+
+    def apply_data(self, fan_data: dict, iso_data: dict,
+                   oblique_data: Any = None) -> None:
+        """Apply precomputed fan / isoplanatism / oblique data."""
+        for child in (self.transverse, self.longitudinal, self.wavefront):
+            child.fan_data = fan_data or {}
+            child.oblique_data = oblique_data
+            child.update()
+        self.isoplanatism.iso_data = iso_data or {}
+        self.isoplanatism.update()
 
 
 # ---------------------------------------------------------------------------

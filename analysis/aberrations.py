@@ -13,6 +13,20 @@ from optics_utils import (compute_z_positions, get_primary_wl, get_effective_ape
                           make_field_ray, EPSILON, TINY)
 
 
+# ---------------------------------------------------------------------------
+#  Isoplanatism constants
+# ---------------------------------------------------------------------------
+
+# Малое поле ε (град) для разностного метода неизопланатизма.
+# Разность поперечных аберраций пучков поля ε и поля 0 линейна по ε,
+# поэтому конкретное значение слабо влияет на нормированный результат.
+DEFAULT_ISOPLANATISM_EPS_DEG = 0.5
+
+# Опорное поле (град) для нормировки, если у системы не задано ни одной
+# точки поля и object_height == 0.
+FALLBACK_ISOPLANATISM_REF_FIELD_DEG = 1.0
+
+
 def _compute_ray_start(system, parax):
     """Compute z_start and z_pupil for ray launching through entrance pupil."""
     sP = parax.get('sP', 0) if parax else 0
@@ -21,6 +35,46 @@ def _compute_ray_start(system, parax):
     # Start well before the system
     z_start = -max(abs(z_pupil), 10.0) - 5.0
     return z_start, z_pupil
+
+
+def _chief_image_height(system: OpticalSystem, wl: float, field_y: float,
+                        parax: dict = None) -> float | None:
+    """Trace the chief ray (through pupil centre) and return its image-plane Y.
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм).
+        field_y: Угол поля (град) для INFINITE или высота предмета (мм)
+            для FINITE.
+        parax: Параксиальный расчёт (кэш), optional.
+
+    Returns:
+        Высота главного луча на плоскости изображения (мм) или ``None``,
+        если луч не прошёл.
+    """
+    parax = parax if parax is not None else paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    chief_ray = make_field_ray(system, 0, 0, field_y, z_start, z_pupil)
+    result = trace_ray_through_system(system, chief_ray, wl)
+    if result.success and result.path:
+        return result.path[-1][1]
+    return None
+
+
+def _reference_field_deg(system: OpticalSystem,
+                         fallback: float = FALLBACK_ISOPLANATISM_REF_FIELD_DEG
+                         ) -> float:
+    """Рабочее поле системы (град) для нормировки неизопланатизма.
+
+    Порядок выбора: максимальная точка поля → object_height (для
+    INFINITE это угол в градусах) → ``fallback``.
+    """
+    fields = [fp.y for fp in system.field_points] if system.field_points else []
+    if fields:
+        return max(abs(f) for f in fields)
+    if system.object_height and system.object_height > 0:
+        return abs(system.object_height)
+    return fallback
 
 
 def _aim_at_pupil(pupil_x, pupil_y, z_start, z_pupil, sin_a, cos_a):
@@ -1043,48 +1097,90 @@ def _fft2d(data2d):
     return np.fft.fft2(data2d)
 
 
-def compute_isoplanatism(system, wl=0.58756, num_rays=20, field_y=0.0):
+# ── Неизопланатизм: малое смещение предмета для конечной разности ──────────
+ISO_FIELD_EPS_DEG = 0.5          # ε для систем дальнего типа (град.)
+ISO_FIELD_EPS_MM = 1.0           # ε для систем ближнего типа (мм предмета)
+ISO_FIELD_EPS_FRACTION = 0.05    # ε = 5% от макс. поля, если точки поля заданы
+ISO_MIN_RAYS = 3                 # минимум успешных лучей для расчёта η
+
+
+def _default_isoplanatism_eps(system: OpticalSystem) -> float:
+    """Малое смещение предмета ε для расчёта неизопланатизма.
+
+    Если заданы точки поля — 5% от максимального поля, иначе типовое
+    значение по типу предмета (0.5° дальний тип / 1 мм ближний тип).
     """
-    Вычислить неизопланатизм (нарушение изопланатизма).
+    fields = [fp.y for fp in (system.field_points or []) if abs(fp.y) > EPSILON]
+    if fields:
+        return max(fields) * ISO_FIELD_EPS_FRACTION
+    if system.object_type == ObjectType.INFINITE:
+        return ISO_FIELD_EPS_DEG
+    return ISO_FIELD_EPS_MM
 
-    Неизопланатизм = разность между поперечной аберрацией реального луча
-    и линейной аппроксимацией по полю.
 
-    Для осевого пучка: η = Δy'_real(h) - Δy'_paraxial(h)
-    где h - высота на зрачке.
-
-    Параксиальная аппроксимация строится по линейной регрессии Δy'(h).
-
-    Возвращает: (pupil_heights, isoplanatism_values_um)
+def compute_isoplanatism(system: OpticalSystem, wl: float = None,
+                         num_rays: int = 20, field_eps: float = None
+                         ) -> Tuple[List[float], List[float]]:
     """
-    fan = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=field_y)
+    Неизопланатизм осевого пучка (Л1.4, экраны OPAL-PC 035/037).
 
-    # Собираем успешные лучи
-    successful = [(r['pupil_y'], r['dy']) for r in fan if r['success']]
-    if len(successful) < 3:
+    Физика: η = lim(Δy'ε − Δy'₀)/ε — изменение поперечной аберрации
+    при малом смещении предмета. Практически конечная разность:
+
+        η(h) = [Δy'(h, ε) − Δy'(h, 0) − y'_ε] / y'_ε
+
+    где Δy'(h, ε) — координата луча на высоте h в зрачке при малом поле ε,
+    Δy'(h, 0) — та же координата для осевого пучка (сферическая аберрация
+    и линейный член сокращаются), y'_ε — высота изображения главного луча
+    для поля ε. Идеально изопланатическая система: η(h) ≡ 0.
+
+    Связь с Зейделем: доминирующий член η ∝ SII·h² (кома), т.е. η чётна
+    по h и растёт к краю зрачка как h².
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        num_rays: Число лучей в веере (на каждую пробу поля).
+        field_eps: Малое смещение поля ε; None → авто (см.
+            :func:`_default_isoplanatism_eps`).
+
+    Returns:
+        (pupil_heights, eta_values) — высоты в зрачке (-1..1) и
+        безразмерный неизопланатизм (0 = изопланатизм).
+    """
+    if wl is None:
+        wl = get_primary_wl(system)
+    if field_eps is None:
+        field_eps = _default_isoplanatism_eps(system)
+    field_eps = abs(field_eps)
+    if field_eps < EPSILON:
         return ([], [])
 
-    # Линейная аппроксимация: Δy'_paraxial(h) = a * h + b
-    # Используем все точки для линейной регрессии (least squares).
-    n = len(successful)
-    sum_h = sum(h for h, _ in successful)
-    sum_dy = sum(dy for _, dy in successful)
-    sum_h2 = sum(h * h for h, _ in successful)
-    sum_hdy = sum(h * dy for h, dy in successful)
+    # Веер для смещённого и осевого положения предмета — сетка зрачка
+    # одинакова, поэтому линейный (параксиальный) член сокращается точно.
+    fan_eps = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=field_eps)
+    fan_zero = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=0.0)
 
-    denom = n * sum_h2 - sum_h * sum_h
-    if abs(denom) < TINY:
+    by_pupil_eps = {r['pupil_y']: r['dy'] for r in fan_eps if r['success'] and r['dy'] is not None}
+    by_pupil_zero = {r['pupil_y']: r['dy'] for r in fan_zero if r['success'] and r['dy'] is not None}
+    common = [h for h in by_pupil_eps if h in by_pupil_zero]
+    if len(common) < ISO_MIN_RAYS:
         return ([], [])
 
-    a = (n * sum_hdy - sum_h * sum_dy) / denom
-    b = (sum_dy - a * sum_h) / n
+    # Высота изображения главного луча для поля ε: луч через центр зрачка
+    # (h = 0). В сетке веера h = 0 есть при нечётном num_rays; иначе —
+    # линейная интерполяция Δy'(h) по соседним лучам (dy нечётна + const).
+    pupil_sorted = sorted(by_pupil_eps.keys())
+    dy_eps_arr = np.array([by_pupil_eps[h] for h in pupil_sorted])
+    dy_zero_arr = np.array([by_pupil_zero[h] for h in pupil_sorted])
+    chief_shift = float(np.interp(0.0, pupil_sorted, dy_eps_arr - dy_zero_arr))
+    if abs(chief_shift) < EPSILON:
+        return ([], [])
 
-    # Неизопланатизм = отклонение от линейной аппроксимации
     pupils = []
-    iso_vals = []  # в мкм
-    for h, dy in successful:
-        dy_paraxial = a * h + b
-        eta = (dy - dy_paraxial) * 1000.0  # мм -> мкм
+    iso_vals = []
+    for h in common:
+        eta = (by_pupil_eps[h] - by_pupil_zero[h] - chief_shift) / chief_shift
         pupils.append(h)
         iso_vals.append(eta)
 

@@ -19,6 +19,8 @@ from .spot_diagram import (
 )
 from .aberration_graphs import (
     AberrationGraphWidget,
+    IsoplanatismWidget,
+    AxialBeamWidget,
     DistortionWidget,
     AstigmatismWidget,
     ComaWidget,
@@ -55,6 +57,8 @@ __all__ = [
     'FocusDiagramWidget',
     # Aberration graphs
     'AberrationGraphWidget',
+    'IsoplanatismWidget',
+    'AxialBeamWidget',
     'DistortionWidget',
     'AstigmatismWidget',
     'ComaWidget',

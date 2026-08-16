@@ -511,8 +511,8 @@ class AnalysisPanel(QTabWidget):
                                        wl_label=f"{get_primary_wl(sys):.4f} мкм")
         self.focus_diagrams.apply_data(
             d.get('focus_diag_data', {}), d.get('focus_diag_max_range', 1e-6))
-        self.psf_3d_w.x_coords = d.get('psf3d_x'); self.psf_3d_w.y_coords = d.get('psf3d_y')
-        self.psf_3d_w.Z = d.get('psf3d_Z'); self.psf_3d_w.update()
+        self.psf_3d_w.apply_data(d.get('psf3d_x'), d.get('psf3d_y'),
+                                 d.get('psf3d_Z'))
         self.bar_target_w.x_um = d.get('bar_x'); self.bar_target_w.ideal = d.get('bar_ideal')
         self.bar_target_w.blurred = d.get('bar_blurred'); self.bar_target_w.mtf_table = d.get('bar_mtf_table')
         self.bar_target_w.update()

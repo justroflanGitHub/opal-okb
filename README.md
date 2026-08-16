@@ -75,7 +75,7 @@ py main.py
 | 11 | Кома | По полю |
 | 12 | Фокусировка | MTF vs defocus |
 | 13 | PSF | Point Spread Function (2D) |
-| 14 | PSF 3D | PSF (3D изометрия) |
+| 14 | PSF 3D | PSF — вращаемая 3D-поверхность (matplotlib surface, вращение мышью) |
 | 15 | LSF | Line Spread Function |
 | 16 | ESF | Edge Spread Function |
 | 17 | ENC | Encircled Energy |

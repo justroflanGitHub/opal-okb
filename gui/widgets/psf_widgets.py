@@ -7,7 +7,7 @@ Widgets:
 * :class:`ENCWidget` — Encircled Energy curve.
 * :class:`PTFWidget` — Phase Transfer Function.
 * :class:`ESFWidget` — Edge Spread Function.
-* :class:`PSF3DWidget` — Pseudo-3D isometric PSF projection.
+* :class:`PSF3DWidget` — вращаемая 3D PSF (matplotlib surface).
 """
 
 from __future__ import annotations
@@ -24,6 +24,9 @@ from advanced_analysis import (
 from optics_utils import get_primary_wl
 
 from .base import AberrationPlotWidget
+from .mpl_widgets import (
+    MplCanvasWidget, MPL_BG_COLOR, MPL_GRID_COLOR, MPL_TEXT_COLOR,
+)
 
 
 class PSFWidget(AberrationPlotWidget):
@@ -390,8 +393,20 @@ class ESFWidget(AberrationPlotWidget):
         painter.end()
 
 
-class PSF3DWidget(AberrationPlotWidget):
-    """Pseudo-3D isometric PSF projection via QPainter."""
+class PSF3DWidget(MplCanvasWidget):
+    """Вращаемая 3D PSF — matplotlib surface (п. 5 GAP v2).
+
+    Истинная 3D-поверхность :meth:`~mpl_toolkits.mplot3d.axes3d.Axes3D.
+    plot_surface` с панелью навигации matplotlib: вращение перетаскиванием
+    мышью, зум, сохранение. Ранее — статичная псевдо-3D изометрия QPainter.
+    """
+
+    #: цветовая карта поверхности (интенсивность PSF)
+    PSF_3D_CMAP = 'viridis'
+    #: максимум сегментов сетки по каждой оси (быстрый рендер)
+    PSF_3D_MAX_RES = 64
+    #: стартовая ориентация камеры (высота/азимут, градусы)
+    PSF_3D_ELEV, PSF_3D_AZIM = 28, -60
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -408,66 +423,64 @@ class PSF3DWidget(AberrationPlotWidget):
             self.Z = None
         self.update()
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        m, top, pw, ph = self.paint_grid(painter, w, h, margin=50)
+    def apply_data(self, x_coords, y_coords, Z) -> None:
+        """Применить данные фонового расчёта (фаза 2 / precomputed)."""
+        self.x_coords, self.y_coords, self.Z = x_coords, y_coords, Z
+        self.update()
 
-        if self.Z is None or self.x_coords is None:
-            painter.setPen(QColor(150, 150, 170))
-            painter.setFont(QFont("Consolas", 9))
-            painter.drawText(self.rect(), Qt.AlignCenter, "Нет данных")
-            self.paint_finalize(painter, self._plot_rect)
-            painter.end()
+    # -- Rendering --------------------------------------------------------
+
+    def _render(self) -> None:
+        # Регистрирует проекцию '3d' (для старых matplotlib)
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+        if self._render_pending():
+            return
+        if self.Z is None or self.x_coords is None or self.y_coords is None:
+            self._render_no_data()
             return
 
         Z = self.Z
-        ny, nx = Z.shape
-        step = max(1, max(ny, nx) // 40)
+        step = max(1, max(Z.shape) // self.PSF_3D_MAX_RES)
+        X, Y = np.meshgrid(self.x_coords[::step], self.y_coords[::step])
         Zs = Z[::step, ::step]
-        ny_s, nx_s = Zs.shape
 
-        scale_xy = min(pw, ph) * 0.35 / max(nx_s, ny_s)
-        scale_z = ph * 0.4
-        angle_x = 0.7
-        angle_y = 0.7
+        ax = self._figure.add_subplot(projection='3d')
+        self._style_3d_axes(ax)
+        surf = ax.plot_surface(X, Y, Zs, cmap=self.PSF_3D_CMAP,
+                               linewidth=0, antialiased=True)
+        ax.view_init(elev=self.PSF_3D_ELEV, azim=self.PSF_3D_AZIM)
+        ax.set_xlabel('X, мкм')
+        ax.set_ylabel('Y, мкм')
+        ax.set_zlabel('I, отн. ед.')
+        ax.set_title('PSF 3D — поверхность вращается мышью')
 
-        def project(ix, iy, zv):
-            px = (ix - nx_s / 2) * scale_xy * angle_x - (iy - ny_s / 2) * scale_xy * angle_y
-            py = (ix - nx_s / 2) * scale_xy * 0.4 + (iy - ny_s / 2) * scale_xy * 0.4 - zv * scale_z
-            return (m + pw / 2 + px, top + ph * 0.7 + py)
+        cb = self._figure.colorbar(surf, ax=ax, shrink=0.55, pad=0.08)
+        cb.ax.tick_params(colors=MPL_TEXT_COLOR, labelsize=8)
+        cb.set_label('I, отн. ед.', color=MPL_TEXT_COLOR, fontsize=8)
 
-        for iy in range(ny_s - 1, -1, -1):
-            for ix in range(nx_s - 1, -1, -1):
-                z0 = Zs[iy, ix]
-                intensity = min(1.0, max(0.0, z0))
-                r = int(20 + 235 * intensity)
-                g = int(20 + 80 * intensity)
-                b = int(80 + 175 * intensity)
-                shade = 0.6 + 0.4 * (1.0 - iy / max(ny_s - 1, 1))
-                r = min(255, int(r * shade))
-                g = min(255, int(g * shade))
-                b = min(255, int(b * shade))
+    def _render_no_data(self) -> None:
+        """Заглушка «Нет данных» до первого расчёта."""
+        ax = self._figure.add_subplot(111)
+        ax.set_facecolor(MPL_BG_COLOR)
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.text(0.5, 0.5, 'Нет данных', ha='center', va='center',
+                color=MPL_TEXT_COLOR, fontsize=12, transform=ax.transAxes)
 
-                x0, y0 = project(ix, iy, z0)
-                x_base, y_base = project(ix, iy, 0)
-                if z0 > 0.01:
-                    painter.setPen(QPen(QColor(r // 2, g // 2, b // 2, 100), 1))
-                    painter.drawLine(int(x0), int(y0), int(x_base), int(y_base))
+    def _style_3d_axes(self, ax) -> None:
+        """Тёмная тема для 3D-осей: панели, сетка, подписи, тики."""
+        import matplotlib.colors
 
-                painter.setPen(Qt.NoPen)
-                painter.setBrush(QBrush(QColor(r, g, b)))
-                sz = max(2, int(3 * shade))
-                painter.drawEllipse(int(x0) - sz // 2, int(y0) - sz // 2, sz, sz)
-
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + 15, "PSF (3D изометрия)")
-        if self.x_coords is not None and len(self.x_coords) > 0:
-            x_span = (self.x_coords.max() - self.x_coords.min())
-            painter.drawText(m + 5, top + ph + 25,
-                             f"{x_span:.1f} мкм | max={Z.max():.4f}")
-
-        self.paint_finalize(painter, self._plot_rect)
-        painter.end()
+        pane = matplotlib.colors.to_rgba(MPL_BG_COLOR)
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+            try:
+                axis.set_pane_color(pane)
+                axis._axinfo['grid'].update(color=MPL_GRID_COLOR,
+                                            linewidth=0.6)
+            except (AttributeError, KeyError):
+                pass  # приватное API сетки — не критично
+            axis.label.set_color(MPL_TEXT_COLOR)
+            for tick in axis.get_ticklabels():
+                tick.set_color(MPL_TEXT_COLOR)
+        ax.set_facecolor(MPL_BG_COLOR)
+        ax.title.set_color(MPL_TEXT_COLOR)

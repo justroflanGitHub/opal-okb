@@ -1615,10 +1615,9 @@ class MainWindow(QMainWindow):
             if 'Волн' in self.analysis.tabText(i):
                 self.analysis.setCurrentIndex(i)
                 break
-        wf = self.analysis.wavefront_map_w
-        wf._mode_3d = not wf._mode_3d
-        wf.update()
-        mode = "3D" if wf._mode_3d else "2D"
+        enabled = not self.analysis.wavefront_3d_enabled
+        self.analysis.set_wavefront_3d(enabled)
+        mode = "3D" if enabled else "2D"
         self.statusBar().showMessage(f"Волновой фронт: {mode}")
 
     def _toggle_chromatic_rays(self):

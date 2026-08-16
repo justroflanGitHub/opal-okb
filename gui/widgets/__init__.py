@@ -36,6 +36,7 @@ from .psf_widgets import (
 )
 from .wavefront import (
     WavefrontMapWidget,
+    Wavefront3DWidget,
     ZernikeWidget,
     WfRmsFieldMplWidget,
 )
@@ -43,7 +44,7 @@ from .focus_curve import FocusCurveWidget
 from .chief_ray import ChiefRayWidget
 from .beam_geometry import BeamGeometryWidget
 from .bar_target import BarTargetWidget
-from .mpl_widgets import MplCanvasWidget
+from .mpl_widgets import MplCanvasWidget, MplSurface3DWidget
 
 __all__ = [
     # Base
@@ -74,6 +75,7 @@ __all__ = [
     'PSF3DWidget',
     # Wavefront
     'WavefrontMapWidget',
+    'Wavefront3DWidget',
     'ZernikeWidget',
     'WfRmsFieldMplWidget',
     # Other
@@ -83,4 +85,5 @@ __all__ = [
     'BarTargetWidget',
     # matplotlib infrastructure
     'MplCanvasWidget',
+    'MplSurface3DWidget',
 ]

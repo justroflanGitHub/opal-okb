@@ -2,7 +2,8 @@
 
 Widgets:
 
-* :class:`WavefrontMapWidget` — 2D / 3D wavefront surface map.
+* :class:`WavefrontMapWidget` — 2D wavefront surface map (уровни W).
+* :class:`Wavefront3DWidget` — вращаемый 3D волновой фронт (п. 10 GAP v2).
 * :class:`ZernikeWidget` — Zernike polynomial coefficient bar chart.
 * :class:`WfRmsFieldMplWidget` — RMS wavefront error vs field (matplotlib).
 """
@@ -14,7 +15,7 @@ import math
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import (
-    QPainter, QPen, QBrush, QColor, QFont, QPainterPath,
+    QPainter, QPen, QColor, QFont,
 )
 
 from optics_engine import OpticalSystem, ObjectType
@@ -27,7 +28,8 @@ from aberrations import compute_wavefront_rms_vs_field
 from optics_utils import get_primary_wl
 
 from .base import AberrationPlotWidget
-from .mpl_widgets import MplCanvasWidget, MPL_CURVE_COLOR, MPL_TEXT_COLOR
+from .mpl_widgets import (MplCanvasWidget, MplSurface3DWidget,
+                          MPL_CURVE_COLOR, MPL_TEXT_COLOR)
 
 # Единицы поля для подписи оси: дальний тип — градусы, ближний — мм предмета
 FIELD_UNIT_BY_TYPE = {
@@ -37,14 +39,17 @@ FIELD_UNIT_BY_TYPE = {
 
 
 class WavefrontMapWidget(AberrationPlotWidget):
-    """2D / 3D wavefront map with Red-White-Blue diverging colormap."""
+    """2D карта волнового фронта (уровни W на зрачке).
+
+    Расходящаяся карта цветов красный–белый–синий; 3D-представление
+    той же карты — :class:`Wavefront3DWidget` (п. 10 GAP v2).
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.wf_data = None
         self.coords = None
         self.mask = None
-        self._mode_3d = False
 
     def set_data(self, sys: OpticalSystem, defocus_offset: float = 0.0) -> None:
         wl = get_primary_wl(sys)
@@ -83,10 +88,7 @@ class WavefrontMapWidget(AberrationPlotWidget):
             painter.end()
             return
 
-        if self._mode_3d:
-            self._paint_3d(painter, m, top, pw, ph)
-        else:
-            self._paint_2d(painter, m, top, pw, ph, w, h)
+        self._paint_2d(painter, m, top, pw, ph, w, h)
 
         self.paint_finalize(painter, self._plot_rect)
         painter.end()
@@ -143,54 +145,52 @@ class WavefrontMapWidget(AberrationPlotWidget):
         painter.setFont(QFont("Consolas", 9))
         painter.drawText(m + 5, top + 15, "Карта волнового фронта (λ) [2D]")
 
-    def _paint_3d(self, painter, m, top, pw, ph):
-        gs = self.wf_data.shape[0]
-        valid = self.wf_data[self.mask > 0]
-        if valid.size == 0:
-            return
-        w_max = max(abs(valid.max()), abs(valid.min()), 1e-6)
+class Wavefront3DWidget(MplSurface3DWidget):
+    """Вращаемый 3D волновой фронт W(x, y) на зрачке (п. 10 GAP v2).
 
-        step = max(1, gs // 30)
-        Zs = self.wf_data[::step, ::step]
-        Ms = self.mask[::step, ::step]
-        ny_s, nx_s = Zs.shape
+    Та же карта W, что и в 2D-виде (:class:`WavefrontMapWidget`), —
+    единый расчёт :func:`zernike.compute_wavefront_map_2d`; расходящаяся
+    карта цветов (красный — W > 0), вне зрачка поверхность замаскирована.
+    """
 
-        scale_xy = min(pw, ph) * 0.35 / max(nx_s, ny_s)
-        scale_z = ph * 0.35
+    #: расходящаяся карта цветов волнового фронта
+    SURF_CMAP = 'RdBu_r'
 
-        def project(ix, iy, zv):
-            px = (ix - nx_s / 2) * scale_xy * 0.7 - (iy - ny_s / 2) * scale_xy * 0.7
-            py = (ix - nx_s / 2) * scale_xy * 0.35 + (iy - ny_s / 2) * scale_xy * 0.35 - zv * scale_z
-            return (m + pw / 2 + px, top + ph * 0.65 + py)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.wf_data = None
+        self.coords = None
+        self.mask = None
 
-        for iy in range(ny_s - 1, -1, -1):
-            for ix in range(nx_s - 1, -1, -1):
-                if Ms[iy, ix] < 0.5:
-                    continue
-                z0 = Zs[iy, ix] / w_max
-                r, g, b = self._rdylbu_colormap(z0)
-                shade = 0.5 + 0.5 * (1.0 - iy / max(ny_s - 1, 1))
-                r = min(255, int(r * shade))
-                g = min(255, int(g * shade))
-                b = min(255, int(b * shade))
+    def set_data(self, sys: OpticalSystem, defocus_offset: float = 0.0) -> None:
+        wl = get_primary_wl(sys)
+        try:
+            self.wf_data, self.coords, self.mask = compute_wavefront_map_2d(
+                sys, wl=wl, grid_size=48, defocus_offset=defocus_offset)
+        except Exception:
+            self.wf_data = None
+        self.update()
 
-                x0, y0 = project(ix, iy, z0)
-                x_base, y_base = project(ix, iy, 0)
+    def apply_data(self, wf_data, coords, mask) -> None:
+        """Применить данные фонового расчёта (фаза 2 / precomputed)."""
+        self.wf_data, self.coords, self.mask = wf_data, coords, mask
+        self.update()
 
-                if abs(z0) > 0.01:
-                    painter.setPen(QPen(QColor(r // 2, g // 2, b // 2, 80), 1))
-                    painter.drawLine(int(x0), int(y0), int(x_base), int(y_base))
+    # -- Hooks ------------------------------------------------------------
 
-                painter.setPen(Qt.NoPen)
-                painter.setBrush(QBrush(QColor(r, g, b)))
-                sz = max(2, int(3 * shade))
-                painter.drawEllipse(int(x0) - sz // 2, int(y0) - sz // 2, sz, sz)
+    def _surface_data(self):
+        if self.wf_data is None or self.mask is None or self.coords is None:
+            return None
+        return self.coords, self.coords, self.wf_data, self.mask
 
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + 15, "Карта волнового фронта (λ) [3D]")
-        painter.setPen(QColor(120, 120, 140))
-        painter.drawText(m + 5, top + ph + 25, f"PV={valid.max()-valid.min():.3f}λ | RMS={np.sqrt(np.mean(valid**2)):.3f}λ")
+    def _axis_labels(self):
+        return ('X зрачка (норм.)', 'Y зрачка (норм.)', 'W, λ')
+
+    def _title(self):
+        return 'Волновой фронт 3D — поверхность вращается мышью'
+
+    def _cbar_label(self):
+        return 'W, λ'
 
 
 class ZernikeWidget(AberrationPlotWidget):

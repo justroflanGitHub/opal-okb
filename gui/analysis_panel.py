@@ -16,7 +16,7 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QGroupBox, QFormLayout, QSplitter,
-    QDoubleSpinBox, QComboBox,
+    QDoubleSpinBox, QComboBox, QStackedWidget,
     QPushButton, QSizePolicy, QPlainTextEdit,
 )
 from PyQt5.QtCore import Qt
@@ -75,6 +75,7 @@ from .widgets import (
     ChiefRayWidget,
     ZernikeWidget,
     WavefrontMapWidget,
+    Wavefront3DWidget,
     ESFWidget,
     WfRmsFieldMplWidget,
     FocusDiagramWidget,
@@ -170,6 +171,12 @@ class AnalysisPanel(QTabWidget):
         self.chief_ray = ChiefRayWidget()
         self.zernike_w = ZernikeWidget()
         self.wavefront_map_w = WavefrontMapWidget()
+        # Волновой фронт: 2D карта уровней / вращаемая 3D-поверхность
+        # (п. 10 GAP v2) — общий расчёт, переключение без пересчёта
+        self.wavefront_3d_w = Wavefront3DWidget()
+        self.wavefront_stack = QStackedWidget()
+        self.wavefront_stack.addWidget(self.wavefront_map_w)
+        self.wavefront_stack.addWidget(self.wavefront_3d_w)
         self.esf_w = ESFWidget()
         # Вкладка «Цернике»: гистограммы коэффициентов + СКВ по полю (п. 2)
         self.wf_rms_field_w = WfRmsFieldMplWidget()
@@ -228,7 +235,7 @@ class AnalysisPanel(QTabWidget):
             ("Лучи (ход)", rays_placeholder, 'rays'),
             ("Цернике", self.zernike_page, 'zernike'),
             ("Цернике (глоб.)", zernike_global_placeholder, 'zernike_global'),
-            ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
+            ("Волн. фронт", self.wavefront_stack, 'wfmap'),
             ("Мира", self.bar_target_w, 'bar_target'),
             ("Зейдель", seidel_placeholder, 'seidel'),
         ]
@@ -541,6 +548,8 @@ class AnalysisPanel(QTabWidget):
         self.wavefront_map_w.wf_data = d.get('wf_data')
         self.wavefront_map_w.coords = d.get('wf_coords')
         self.wavefront_map_w.mask = d.get('wf_mask'); self.wavefront_map_w.update()
+        self.wavefront_3d_w.apply_data(d.get('wf_data'), d.get('wf_coords'),
+                                       d.get('wf_mask'))
         self.wf_rms_field_w.apply_data(d.get('wf_rms_field'),
                                        wl_label=f"{get_primary_wl(sys):.4f} мкм")
         self.focus_diagrams.apply_data(
@@ -913,7 +922,7 @@ class AnalysisPanel(QTabWidget):
         'mtf', 'distortion', 'astigmatism', 'coma',
         'focus_curve', 'psf_w', 'lsf_w', 'esf_w',
         'enc_w', 'ptf_w', 'heatmap_w', 'beam_geom',
-        'chief_ray', 'zernike_w', 'wavefront_map_w',
+        'chief_ray', 'zernike_w', 'wavefront_map_w', 'wavefront_3d_w',
         'wf_rms_field_w', 'focus_diagrams', 'psf_3d_w',
         'bar_target_w',
     )
@@ -1017,6 +1026,7 @@ class AnalysisPanel(QTabWidget):
             wf, coords, mask = data['wfmap']
             self.wavefront_map_w.wf_data = wf; self.wavefront_map_w.coords = coords
             self.wavefront_map_w.mask = mask; self.wavefront_map_w.update()
+            self.wavefront_3d_w.apply_data(wf, coords, mask)
         if data.get('focus_diagrams'):
             self.focus_diagrams.apply_data(
                 data['focus_diagrams'], data.get('focus_diag_max', 1e-6))
@@ -1095,6 +1105,10 @@ class AnalysisPanel(QTabWidget):
         self.chief_ray.set_data(sys)
         self.zernike_w.set_data(sys, defocus_offset=defocus)
         self.wavefront_map_w.set_data(sys, defocus_offset=defocus)
+        # 3D-вид — те же данные, без повторного расчёта карты
+        self.wavefront_3d_w.apply_data(self.wavefront_map_w.wf_data,
+                                       self.wavefront_map_w.coords,
+                                       self.wavefront_map_w.mask)
         self.wf_rms_field_w.set_data(sys)
         self.focus_diagrams.set_data(sys, focus_step_mm=self.get_focus_step())
         self.psf_3d_w.set_data(sys)
@@ -1631,11 +1645,26 @@ class AnalysisPanel(QTabWidget):
         except OSError as e:
             QMessageBox.warning(self, 'Экспорт', f'Ошибка записи:\n{e}')
 
+    def set_wavefront_3d(self, enabled: bool) -> None:
+        """Показать 3D-поверхность волнового фронта вместо 2D-карты."""
+        self.wavefront_stack.setCurrentIndex(1 if enabled else 0)
+
+    @property
+    def wavefront_3d_enabled(self) -> bool:
+        """Признак «показана 3D-поверхность волнового фронта»."""
+        return self.wavefront_stack.currentIndex() == 1
+
     def _update_wfmap_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         try:
-            wf, coords, mask = compute_wavefront_map_2d(sys, wl=wl, grid_size=48, defocus_offset=self.get_defocus_offset())
+            # карта уже рассчитана виджетом — переиспользуем (как Цернике)
+            wf = self.wavefront_map_w.wf_data
+            mask = self.wavefront_map_w.mask
+            if wf is None:
+                wf, coords, mask = compute_wavefront_map_2d(
+                    sys, wl=wl, grid_size=48,
+                    defocus_offset=self.get_defocus_offset())
             if wf is not None and mask is not None:
                 valid = wf[mask > 0]; valid = valid[np.isfinite(valid)]
                 if valid.size > 0:

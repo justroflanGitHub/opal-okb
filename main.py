@@ -29,7 +29,7 @@ from visualization import OpticalSystemView
 from visualization3d import Visualization3D
 from analysis_gui import AnalysisPanel
 from system_utils import reverse_system, scale_system, nearest_standard_radius, standardize_radii, get_radii_changes
-from io_utils import save_json, load_json, append_system, export_protocol, STANDARD_WAVELENGTHS
+from io_utils import save_json, load_json, append_system, export_protocol
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
 from optics_utils import get_primary_wl, copy_table_selection
@@ -785,36 +785,6 @@ class SystemParamsWidget(QWidget):
         self.wl_table.setItem(row, 0, QTableWidgetItem("0.54607"))
         self.wl_table.setItem(row, 1, QTableWidgetItem("1.0"))
         self.wl_table.setItem(row, 2, QTableWidgetItem("e"))
-
-    def _standard_wavelengths(self):
-        """Диалог выбора стандартной длины волны."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Стандартные длины волн")
-        dlg.setMinimumWidth(300)
-        dlg.setMinimumHeight(350)
-        layout = QVBoxLayout(dlg)
-        layout.addWidget(QLabel("Выберите длину волны:"))
-        lst = QListWidget()
-        for name, wl_val in STANDARD_WAVELENGTHS.items():
-            item = QListWidgetItem(f"{name} - {wl_val*1000:.2f} нм ({wl_val:.5f} мкм)")
-            item.setData(Qt.UserRole, (name, wl_val))
-            lst.addItem(item)
-        layout.addWidget(lst)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        layout.addWidget(buttons)
-        lst.itemDoubleClicked.connect(lambda: dlg.accept())
-        if dlg.exec_() == QDialog.Accepted:
-            sel = lst.selectedItems()
-            if sel:
-                name, wl_val = sel[0].data(Qt.UserRole)
-                row = self.wl_table.rowCount()
-                self.wl_table.insertRow(row)
-                self.wl_table.setItem(row, 0, QTableWidgetItem(str(wl_val)))
-                self.wl_table.setItem(row, 1, QTableWidgetItem("1.0"))
-                self.wl_table.setItem(row, 2, QTableWidgetItem(name))
 
     def _del_wavelength(self):
         rows = set(i.row() for i in self.wl_table.selectedItems())

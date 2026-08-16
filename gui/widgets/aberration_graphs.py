@@ -29,36 +29,22 @@ from aberrations import (
     normalize_azimuth_deg,
 )
 from optics_utils import get_primary_wl
+from utils.spectral_lines import SPECTRAL_LINES
 
-from .base import AberrationPlotWidget
+from .base import AberrationPlotWidget, wl_to_plot_color
 
 
 # ---------------------------------------------------------------------------
 #  Wavelength colour / label helpers (used by AberrationGraphWidget)
 # ---------------------------------------------------------------------------
 
-_WL_COLORS = [
-    (0.405, QColor(148, 0, 211)),    # h
-    (0.436, QColor(100, 0, 255)),    # g
-    (0.486, QColor(0, 80, 255)),     # F
-    (0.546, QColor(220, 200, 0)),    # e
-    (0.588, QColor(0, 200, 80)),     # d
-    (0.656, QColor(255, 60, 60)),    # C
-    (0.707, QColor(200, 0, 0)),      # r
-]
-
-
 def _wl_to_color(wl_um: float) -> QColor:
-    """Return colour for nearest standard spectral line."""
-    best = min(_WL_COLORS, key=lambda item: abs(item[0] - wl_um))
-    return best[1]
+    """Return colour for nearest standard spectral line (общая палитра)."""
+    return wl_to_plot_color(wl_um)
 
 
-_NAMED_WL = {
-    404.66: 'h', 435.83: 'g', 486.13: 'F',
-    546.07: 'e', 587.56: 'd', 656.27: 'C',
-    706.52: 'r',
-}
+# Подписи «λ=… нм (имя)» — проекция справочника стандартных линий (п. 11)
+_NAMED_WL = {line.wavelength_nm: line.name for line in SPECTRAL_LINES}
 
 
 def _wl_label(wl_um: float) -> str:

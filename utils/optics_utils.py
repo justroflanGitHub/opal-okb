@@ -74,23 +74,12 @@ def get_effective_aperture(system, default=20.0):
 # WAVELENGTH NAME LOOKUP
 # ============================================================
 
-# Full mapping: wavelength (μm) → spectral line name
-# Superset of both decode_lbo_opj.py and opj_reader.py dicts
-WL_NAMES = {
-    0.54607: 'e',
-    0.43405: "G'",
-    0.65627: 'C',
-    0.58756: 'd',
-    0.48613: 'F',
-    0.43584: 'g',
-    0.40466: 'h',
-    0.36501: 'i',
-    0.70652: 'r',
-    0.85211: 's',
-    0.64385: "C'",
-    0.47999: "F'",
-    0.58930: 'D',
-}
+# Full mapping: wavelength (μm) → spectral line name.
+# Проекция справочника стандартных линий (п. 11 GAP v2) — см.
+# utils/spectral_lines.py; здесь определяется только проекция.
+from .spectral_lines import wavelength_names  # noqa: E402  (раздел ниже)
+
+WL_NAMES = wavelength_names()
 
 
 def wl_name(wl, tol=0.0002):

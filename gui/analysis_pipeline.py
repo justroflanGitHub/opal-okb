@@ -36,6 +36,7 @@ from aberrations import (
     compute_focus_diagrams,
     compute_oblique_fan,
     compute_ray_coordinates,
+    is_oblique_section,
 )
 from advanced_analysis import (
     compute_psf,
@@ -109,7 +110,7 @@ def compute_all_analysis(
     d['isoplanatism_data'] = {}
     d['oblique_data'] = None
 
-    if abs(azimuth) > 0.1:
+    if is_oblique_section(azimuth):
         _safe('oblique_data', compute_oblique_fan, sys, wl=wl, num_rays=20,
               field_y=0.0, azimuth_deg=azimuth)
     else:

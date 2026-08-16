@@ -25,6 +25,8 @@ from aberrations import (
     compute_field_aberrations,
     compute_isoplanatism,
     compute_oblique_fan,
+    is_oblique_section,
+    normalize_azimuth_deg,
 )
 from optics_utils import get_primary_wl
 
@@ -83,14 +85,14 @@ class AberrationGraphWidget(AberrationPlotWidget):
         self._azimuth_deg = 0.0
 
     def set_azimuth(self, azimuth_deg: float) -> None:
-        self._azimuth_deg = azimuth_deg
+        self._azimuth_deg = normalize_azimuth_deg(azimuth_deg)
 
     def set_data(self, sys: OpticalSystem, azimuth_deg: float | None = None) -> None:
         if azimuth_deg is not None:
-            self._azimuth_deg = azimuth_deg
+            self._azimuth_deg = normalize_azimuth_deg(azimuth_deg)
         wavelengths = sys.wavelengths if sys.wavelengths else [Wavelength(0.58756)]
         self.fan_data = {}
-        if abs(self._azimuth_deg) > 0.1:
+        if is_oblique_section(self._azimuth_deg):
             wl = wavelengths[0].value
             self.oblique_data = compute_oblique_fan(sys, wl=wl, num_rays=20,
                                                       field_y=0.0,
@@ -118,13 +120,11 @@ class AberrationGraphWidget(AberrationPlotWidget):
         all_vals: list[float] = []
 
         if self.oblique_data:
+            # Косое сечение всегда показывает поперечные аберрации (мм)
             pupils, dy_mer, dy_sag = self.oblique_data
             for v in dy_mer + dy_sag:
                 if v is not None:
-                    if self.mode == 'transverse':
-                        all_vals.append(v / 1000.0)
-                    else:
-                        all_vals.append(v)
+                    all_vals.append(v / 1000.0)
         else:
             for wl, fan in self.fan_data.items():
                 for r in fan:
@@ -203,6 +203,8 @@ class AberrationGraphWidget(AberrationPlotWidget):
         }
         title = titles.get(self.mode, '')
         if self.oblique_data:
+            # проекции поперечных аберраций косого сечения (всегда в мм)
+            title = "Поперечные аберрации Δy', Δx' (мм)"
             title += f' [Азимут={self._azimuth_deg:.1f}°]'
         painter.drawText(m + 5, top + 15, title)
 

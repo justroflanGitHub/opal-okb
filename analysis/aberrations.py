@@ -1264,10 +1264,39 @@ def compute_isoplanatism(system: OpticalSystem, wl: float = None,
     return (pupils, iso_vals)
 
 
+# ── Косое сечение: произвольный азимутальный угол (0..360°) ────────────────
+
+AZIMUTH_FULL_TURN_DEG = 360.0    # полный оборот азимутального угла сечения
+OBLIQUE_AZIMUTH_TOL_DEG = 0.1    # ниже этого отклонения от 0°/360° сечение меридиональное
+
+
+def normalize_azimuth_deg(azimuth_deg: float) -> float:
+    """Приводит азимутальный угол сечения к диапазону [0, 360)°.
+
+    Отрицательные углы и углы больше полного оборота (например 370° или
+    -90°) переводятся в эквивалентный угол [0, 360)°.
+    """
+    az = math.fmod(azimuth_deg, AZIMUTH_FULL_TURN_DEG)
+    if az < 0.0:
+        az += AZIMUTH_FULL_TURN_DEG
+    return az
+
+
+def is_oblique_section(azimuth_deg: float) -> bool:
+    """True, если угол задаёт именно косое/сагиттальное сечение.
+
+    0° и 360° (с учётом допуска :data:`OBLIQUE_AZIMUTH_TOL_DEG`) —
+    меридиональное сечение → False.
+    """
+    az = normalize_azimuth_deg(azimuth_deg)
+    return OBLIQUE_AZIMUTH_TOL_DEG < az < AZIMUTH_FULL_TURN_DEG - OBLIQUE_AZIMUTH_TOL_DEG
+
+
 def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_deg=45.0):
     """
     Аберрации в косом сечении.
-    azimuth_deg=0 → меридиональное, =90 → сагиттальное, =45 → косое.
+    azimuth_deg=0 → меридиональное, =90 → сагиттальное, =45 → косое;
+    угол нормализуется к [0, 360)° (:func:`normalize_azimuth_deg`).
 
     Возвращает: (pupil_heights, dy_mer_um, dy_sag_um)
         pupil_heights: list of float (-1..1)
@@ -1275,6 +1304,7 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
         dy_sag_um: поперечная аберрация в сагиттальной плоскости (мкм)
     """
     aperture = get_effective_aperture(system, default=10.0)
+    azimuth_deg = normalize_azimuth_deg(azimuth_deg)
     az = math.radians(azimuth_deg)
     parax_of = paraxial_trace(system)
     z_start, z_pupil = _compute_ray_start(system, parax_of)

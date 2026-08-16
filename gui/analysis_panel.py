@@ -104,11 +104,15 @@ class AnalysisPanel(QTabWidget):
 
         settings_layout.addWidget(QLabel("Азимут (°):"))
         self.azimuth_spin = QDoubleSpinBox()
-        self.azimuth_spin.setRange(0.0, 90.0)
+        self.azimuth_spin.setRange(0.0, 360.0)
         self.azimuth_spin.setSingleStep(5.0)
         self.azimuth_spin.setDecimals(1)
+        self.azimuth_spin.setWrapping(True)
         self.azimuth_spin.setValue(0.0)
-        self.azimuth_spin.setToolTip("Азимутальный угол сечения: 0=меридиональное, 90=сагиттальное")
+        self.azimuth_spin.setToolTip(
+            "Азимутальный угол сечения пучка (0..360°):\n"
+            "0°/360° — меридиональное, 90° — сагиттальное,\n"
+            "произвольный угол — косое сечение")
         settings_layout.addWidget(self.azimuth_spin)
         settings_layout.addStretch()
 
@@ -436,7 +440,11 @@ class AnalysisPanel(QTabWidget):
         return self.defocus_spin.value() if hasattr(self, 'defocus_spin') else 0.0
 
     def get_azimuth(self) -> float:
-        return self.azimuth_spin.value() if hasattr(self, 'azimuth_spin') else 0.0
+        """Азимутальный угол сечения (°), нормализованный к [0, 360)."""
+        if not hasattr(self, 'azimuth_spin'):
+            return 0.0
+        from aberrations import normalize_azimuth_deg
+        return normalize_azimuth_deg(self.azimuth_spin.value())
 
     def get_focus_step(self) -> float:
         """Шаг фокусировки ΔS' (мм) для фокусировочных диаграмм."""

@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import copy
 import math
 from typing import Any
 
@@ -23,7 +22,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QHeaderView
 
-from optics_engine import OpticalSystem, paraxial_trace, seidel_aberrations
+from optics_engine import (
+    OpticalSystem, paraxial_trace, seidel_aberrations,
+    paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS,
+)
 from aberrations import (
     trace_aberration_fan,
     compute_spot_diagram,
@@ -50,7 +52,7 @@ from zernike import (
     compute_global_zernike,
     format_global_zernike_text,
 )
-from optics_utils import get_primary_wl, fmt_val
+from optics_utils import get_primary_wl, fmt_val, wl_name
 
 from .widgets import (
     # Table helpers
@@ -369,30 +371,23 @@ class AnalysisPanel(QTabWidget):
         self._update_seidel_table()
 
     def _update_parax_table(self) -> None:
-        from optics_engine import paraxial_trace as _paraxial_trace
         parax = self._parax_data
         if not parax:
             self._set_table('parax', make_table(
                 ["Параметр", "Значение"], [["—", "Нет данных"]], [120, 120]))
             return
 
+        # Параксиалы для каждой рабочей λ (п. 13 GAP v2) — один расчёт,
+        # без копий системы: paraxial_trace принимает λ напрямую.
         sys = getattr(self, '_parax_sys', None)
-        wl_labels = []
-        parax_by_wl = {}
-        if sys and sys.wavelengths:
-            for wl in sys.wavelengths:
-                label = wl.name if wl.name else f"{wl.value:.4f}"
-                try:
-                    sys_wl = copy.deepcopy(sys)
-                    sys_wl.wavelengths = [type(wl)(wl.value, 1.0, wl.name)]
-                    parax_by_wl[label] = _paraxial_trace(sys_wl)
-                    wl_labels.append(label)
-                except Exception:
-                    pass
-        if not wl_labels:
-            wl_labels = ['d']
-            parax_by_wl['d'] = parax
-        n_wl = len(wl_labels)
+        per_wl = (paraxial_trace_all_wavelengths(sys)
+                  if sys is not None else [parax])
+        if sys is not None and sys.wavelengths:
+            labels = [w.name if w.name else wl_name(w.value)
+                      for w in sys.wavelengths]
+        else:
+            labels = [wl_name(per_wl[0].get('wl', 0.58756))]
+        n_wl = len(labels)
 
         f_val = parax.get('focal_length', 0)
         common_rows = [
@@ -409,38 +404,15 @@ class AnalysisPanel(QTabWidget):
         table1 = make_table(["Кардинальные", "Значение"], common_rows, [90, 80])
         table1.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        per_wl_keys = [
-            ("s' (дптр)", 'back_focal_distance'),
-            ("s' (мм)", 'back_focal_distance'),
-            ("s'G (мм)", 'back_focal_distance'),
-            ("V", 'V'),
-            ("sP (мм)", 'sP'),
-            ("sP' (мм)", 'sP_prime'),
-        ]
-        wl_headers = ["Параметр"] + wl_labels
+        # Полный набор характеристик на каждую λ (набор строк — PARAXIAL_WL_ROWS)
+        wl_headers = ["Характеристика"] + labels
         wl_rows = []
-        for name, key in per_wl_keys:
-            vals = []
-            raw_vals = []
-            for wl in wl_labels:
-                p = parax_by_wl.get(wl, {})
-                v = p.get(key, 0)
-                if 'дптр' in name and v:
-                    v = 1000.0 / v if abs(v) > 1e-10 else 0
-                raw_vals.append(v)
-            if name == 'V' and len(raw_vals) > 1:
-                base = raw_vals[0]
-                for i, v in enumerate(raw_vals):
-                    if i == 0:
-                        vals.append(f"{v:.5f}" if v is not None else "—")
-                    else:
-                        vals.append(f"{v - base:+.5f}" if v is not None else "—")
-            else:
-                for v in raw_vals:
-                    vals.append(f"{v:.4f}" if v is not None else "—")
+        for name, key, fmt in PARAXIAL_WL_ROWS:
+            vals = [format(p.get(key, 0.0) or 0.0, fmt) for p in per_wl]
             wl_rows.append([name] + vals)
         table2 = make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
         table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self._parax_wl_table = table2
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(table1)

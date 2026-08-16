@@ -36,6 +36,8 @@ from domain.calculations import (
     apply_vignetting,
     refractive_index,
     paraxial_trace,
+    paraxial_trace_all_wavelengths,
+    PARAXIAL_WL_ROWS,
     compute_beam_geometry,
     seidel_aberrations,
 )
@@ -52,5 +54,6 @@ __all__ = [
     '_demo_mirror', '_demo_meniscus', '_demo_plano_convex',
     # Calculations
     'apply_vignetting', 'refractive_index', 'paraxial_trace',
+    'paraxial_trace_all_wavelengths', 'PARAXIAL_WL_ROWS',
     'compute_beam_geometry', 'seidel_aberrations',
 ]

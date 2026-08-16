@@ -22,7 +22,8 @@ from PyQt5.QtGui import QFont, QIcon, QColor
 from optics_engine import (
     OpticalSystem, Surface, Wavelength, FieldPoint,
     ObjectType, ApertureType, SurfaceType,
-    paraxial_trace, seidel_aberrations, create_demo_system,
+    paraxial_trace, paraxial_trace_all_wavelengths,
+    seidel_aberrations, create_demo_system,
     apply_vignetting
 )
 from visualization import OpticalSystemView
@@ -477,32 +478,16 @@ class ResultsPanel(QWidget):
             self.parax_wl_label.setVisible(False)
             return
 
-        import copy
-
-        # Базовое фокусное расстояние (первая λ)
-        base_f = None
-        base_bfd = None
+        # Параксиалы для каждой λ (п. 13 GAP v2) — общий расчёт без копий
+        # системы; первая λ — база для хроматических разностей.
+        per_wl = paraxial_trace_all_wavelengths(sys)
+        base_f = per_wl[0].get('focal_length', 0)
         rows_data = []
-
-        for wl in sys.wavelengths:
+        for wl, parax_wl in zip(sys.wavelengths, per_wl):
             wl_name = wl.name if wl.name else f"{wl.value:.3f}"
-            try:
-                sys_wl = copy.deepcopy(sys)
-                sys_wl.wavelengths = [wl]
-                parax_wl = paraxial_trace(sys_wl)
-                f_wl = parax_wl.get('focal_length', 0)
-                bfd_wl = parax_wl.get('back_focal_distance', 0)
-
-                if base_f is None:
-                    base_f = f_wl
-                    base_bfd = bfd_wl
-                    delta_f = 0.0
-                else:
-                    delta_f = f_wl - base_f
-
-                rows_data.append((wl_name, f_wl, bfd_wl, delta_f))
-            except Exception:
-                rows_data.append((wl_name, 0, 0, 0))
+            f_wl = parax_wl.get('focal_length', 0)
+            bfd_wl = parax_wl.get('back_focal_distance', 0)
+            rows_data.append((wl_name, f_wl, bfd_wl, f_wl - base_f))
 
         if not rows_data:
             self.parax_wl_table.setVisible(False)

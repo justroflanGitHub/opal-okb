@@ -123,10 +123,18 @@ def refractive_index(glass_name: str, wavelength_um: float, catalog: dict = None
     return compute_refractive_index(glass_name, wavelength_um)
 
 
-def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
+def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
+                   wl: float = None) -> dict:
     """
     Параксиальный расчёт оптической системы.
     Возвращает полный набор кардинальных отрезков и характеристик.
+
+    Args:
+        sys: Оптическая система.
+        catalog: Каталог стёкол (None — встроенный).
+        wl: Рабочая длина волны (мкм) для показателей преломления;
+            ``None`` — основная λ системы. Позволяет сосчитать
+            характеристики для любой λ без копии системы (п. 13 GAP v2).
 
     Note: sys.stop_type ('d', 'z', 'p') определяет тип диафрагмы, но
     текущий расчёт работает только с типом 'd' (апертурная диафрагма).
@@ -164,7 +172,8 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         'entrance_pupil_diameter': 0.0,  # D входного зрачка
     }
 
-    wl_primary = get_primary_wl(sys)
+    wl_used = float(wl) if wl is not None else get_primary_wl(sys)
+    results['wl'] = wl_used
     ns = len(sys.surfaces)
 
     # Показатели преломления для каждой среды (ns+1 сред)
@@ -176,7 +185,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
             # Зеркало: после отражения n меняет знак
             n_medium.append(-n_medium[-1])
         else:
-            n_medium.append(refractive_index(s.glass, wl_primary, catalog, getattr(s, 'n_override', None)))
+            n_medium.append(refractive_index(s.glass, wl_used, catalog, getattr(s, 'n_override', None)))
 
     # ===== Длина системы =====
     L = sum(s.thickness for s in sys.surfaces)
@@ -391,6 +400,47 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         results['magnification'] = -efl
 
     return results
+
+
+# Строки таблицы «параксиальные характеристики по λ» (п. 13 GAP v2):
+# (подпись, ключ результата paraxial_trace, формат вывода).
+# Единственный источник набора строк — используется GUI и тестами.
+PARAXIAL_WL_ROWS = (
+    ("f' (мм)", 'focal_length', '.4f'),
+    ("sF (мм)", 'sF', '.4f'),
+    ("sF' (мм)", 'sF_prime', '.4f'),
+    ("sH (мм)", 'sH', '.4f'),
+    ("sH' (мм)", 'sH_prime', '.4f'),
+    ("L (мм)", 'L', '.2f'),
+    ("sP (мм)", 'sP', '.4f'),
+    ("sP' (мм)", 'sP_prime', '.4f'),
+    ("V", 'V', '.5f'),
+    ("f/#", 'f_number', '.2f'),
+    ("D вх.зр. (мм)", 'entrance_pupil_diameter', '.2f'),
+)
+
+
+def paraxial_trace_all_wavelengths(sys: OpticalSystem,
+                                   catalog: dict = None) -> List[dict]:
+    """
+    Параксиальный расчёт для каждой рабочей λ системы (п. 13 GAP v2).
+
+    Прогоняет :func:`paraxial_trace` для каждой λ из ``sys.wavelengths``
+    с показателями преломления этой λ; первая λ — основная.
+    Если λ не заданы — один расчёт для основной λ.
+
+    Args:
+        sys: Оптическая система (не изменяется).
+        catalog: Каталог стёкол (None — встроенный).
+
+    Returns:
+        Список результатов paraxial_trace (по одному на λ); каждый
+        результат содержит ключ ``'wl'`` с использованной λ (мкм).
+    """
+    wls = [w.value for w in sys.wavelengths] if sys.wavelengths else []
+    if not wls:
+        wls = [get_primary_wl(sys)]
+    return [paraxial_trace(sys, catalog, wl) for wl in wls]
 
 
 def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:

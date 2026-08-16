@@ -36,6 +36,7 @@ from aberrations import (
     compute_focus_curve,
     compute_chief_ray_characteristics,
     compute_isoplanatism,
+    DEFAULT_FOCUS_STEP_MM,
 )
 from advanced_analysis import (
     compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf,
@@ -111,6 +112,17 @@ class AnalysisPanel(QTabWidget):
         settings_layout.addWidget(self.azimuth_spin)
         settings_layout.addStretch()
 
+        settings_layout.addWidget(QLabel("ΔS' (мм):"))
+        self.focus_step_spin = QDoubleSpinBox()
+        self.focus_step_spin.setRange(0.001, 10.0)
+        self.focus_step_spin.setSingleStep(0.01)
+        self.focus_step_spin.setDecimals(3)
+        self.focus_step_spin.setValue(DEFAULT_FOCUS_STEP_MM)
+        self.focus_step_spin.setToolTip(
+            "Шаг фокусировки ΔS' для фокусировочных диаграмм (defocus = 0, ±ΔS', ±2ΔS')")
+        settings_layout.addWidget(self.focus_step_spin)
+        settings_layout.addStretch()
+
         settings_layout.addWidget(QLabel("Хроматизм:"))
         self.chromatic_combo = QComboBox()
         self.chromatic_combo.addItems(["Абсолютный", "Разностный", "Спектр"])
@@ -166,6 +178,7 @@ class AnalysisPanel(QTabWidget):
         tabs = [
             ("Параксиальные", parax_placeholder, 'parax'),
             ("Точечная диагр.", self.spot_diagram, 'spot'),
+            ("Фокус.диагр.", self.focus_diagrams, 'focus_diag'),
             ("Осевой пучок", self.axial, 'axial'),
             ("Поперечные Δy'", self.transverse, 'transverse'),
             ("Продольные Δs'", self.longitudinal, 'longitudinal'),
@@ -182,7 +195,6 @@ class AnalysisPanel(QTabWidget):
             ("ENC", self.enc_w, 'enc'),
             ("PTF", self.ptf_w, 'ptf'),
             ("Топограмма", self.heatmap_w, 'heatmap'),
-            ("Фокус.диагр.", self.focus_diagrams, 'focus_diag'),
             ("Габариты", self.beam_geom, 'beam'),
             ("Гл. лучи", self.chief_ray, 'chief'),
             ("Цернике", self.zernike_page, 'zernike'),
@@ -426,6 +438,11 @@ class AnalysisPanel(QTabWidget):
     def get_azimuth(self) -> float:
         return self.azimuth_spin.value() if hasattr(self, 'azimuth_spin') else 0.0
 
+    def get_focus_step(self) -> float:
+        """Шаг фокусировки ΔS' (мм) для фокусировочных диаграмм."""
+        return (self.focus_step_spin.value()
+                if hasattr(self, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM)
+
     # ------------------------------------------------------------------
     #  Precomputed data application
     # ------------------------------------------------------------------
@@ -490,8 +507,8 @@ class AnalysisPanel(QTabWidget):
         self.wavefront_map_w.mask = d.get('wf_mask'); self.wavefront_map_w.update()
         self.wf_rms_field_w.apply_data(d.get('wf_rms_field'),
                                        wl_label=f"{get_primary_wl(sys):.4f} мкм")
-        self.focus_diagrams.spots_by_defocus = d.get('focus_diag_data', {})
-        self.focus_diagrams.max_range = d.get('focus_diag_max_range', 0.001); self.focus_diagrams.update()
+        self.focus_diagrams.apply_data(
+            d.get('focus_diag_data', {}), d.get('focus_diag_max_range', 1e-6))
         self.psf_3d_w.x_coords = d.get('psf3d_x'); self.psf_3d_w.y_coords = d.get('psf3d_y')
         self.psf_3d_w.Z = d.get('psf3d_Z'); self.psf_3d_w.update()
         self.bar_target_w.x_um = d.get('bar_x'); self.bar_target_w.ideal = d.get('bar_ideal')
@@ -975,8 +992,8 @@ class AnalysisPanel(QTabWidget):
             self.wavefront_map_w.wf_data = wf; self.wavefront_map_w.coords = coords
             self.wavefront_map_w.mask = mask; self.wavefront_map_w.update()
         if data.get('focus_diagrams'):
-            self.focus_diagrams.spots_by_defocus = data['focus_diagrams']
-            self.focus_diagrams.max_range = data.get('focus_diag_max', 1e-6); self.focus_diagrams.update()
+            self.focus_diagrams.apply_data(
+                data['focus_diagrams'], data.get('focus_diag_max', 1e-6))
         if data.get('bar_x') is not None:
             self.bar_target_w.x_um = data['bar_x']; self.bar_target_w.ideal = data['bar_ideal']
             self.bar_target_w.blurred = data['bar_blurred']; self.bar_target_w.mtf_table = data.get('bar_mtf_table')
@@ -1051,7 +1068,7 @@ class AnalysisPanel(QTabWidget):
         self.zernike_w.set_data(sys, defocus_offset=defocus)
         self.wavefront_map_w.set_data(sys, defocus_offset=defocus)
         self.wf_rms_field_w.set_data(sys)
-        self.focus_diagrams.set_data(sys)
+        self.focus_diagrams.set_data(sys, focus_step_mm=self.get_focus_step())
         self.psf_3d_w.set_data(sys)
         self.bar_target_w.set_data(sys)
         self._update_spot_table(sys)

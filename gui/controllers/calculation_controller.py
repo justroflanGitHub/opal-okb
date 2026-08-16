@@ -17,6 +17,7 @@ from optics_engine import (
     OpticalSystem, SurfaceType, paraxial_trace, seidel_aberrations,
 )
 from optics_utils import get_primary_wl
+from aberrations import DEFAULT_FOCUS_STEP_MM
 
 
 class CalculationController:
@@ -127,7 +128,8 @@ class CalculationController:
         if sync:
             defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
             azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
-            phase2_data = self.do_calc_phase2(sys, defocus, azimuth)
+            focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
+            phase2_data = self.do_calc_phase2(sys, defocus, azimuth, focus_step)
             self.update_after_calc(sys, phase1_data, phase2_data)
             return
 
@@ -148,9 +150,10 @@ class CalculationController:
 
         defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
         azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
+        focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
 
         self._calc_thread = QThread()
-        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth)
+        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth, focus_step)
         self._calc_worker.moveToThread(self._calc_thread)
         self._calc_thread.started.connect(self._calc_worker.run)
         self._calc_worker.finished.connect(
@@ -185,6 +188,7 @@ class CalculationController:
         sys: OpticalSystem,
         defocus: float,
         azimuth: float,
+        focus_step: float = DEFAULT_FOCUS_STEP_MM,
     ) -> Dict[str, Any]:
         """Phase 2: Heavy computations run in a worker thread.
 
@@ -195,6 +199,8 @@ class CalculationController:
             sys: The optical system to analyse.
             defocus: Defocus offset in mm (from analysis panel).
             azimuth: Azimuth angle in degrees (from analysis panel).
+            focus_step: Фокусировочный шаг ΔS' (мм) для фокусировочных
+                диаграмм (из настроек анализа).
 
         Returns:
             Dictionary of analysis results.
@@ -207,9 +213,10 @@ class CalculationController:
             compute_spot_diagram, compute_rms_spot,
             compute_spot_diagram_polychromatic, compute_polychromatic_rms,
             trace_aberration_fan, compute_field_aberrations,
-            compute_focus_curve, compute_spot_diagram_at_defocus,
+            compute_focus_curve,
             compute_rms_spot_xy, compute_geometric_mtf,
             compute_chief_ray_characteristics, compute_isoplanatism,
+            compute_focus_diagrams,
         )
         from diffraction_mtf import (
             compute_diffraction_mtf, compute_diffraction_limited_mtf,
@@ -229,7 +236,6 @@ class CalculationController:
         n_workers = min(8, max(2, os.cpu_count() or 4))
 
         results: Dict[str, Any] = {}
-        parax = paraxial_trace(sys)
 
         spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         results['spots_mono'] = spots_mono
@@ -378,24 +384,13 @@ class CalculationController:
                 except Exception:
                     results[key] = None
 
-        # Focus diagrams
-        ds = abs(parax.get('longitudinal_spherical', 0)) if parax.get('longitudinal_spherical') else 0.1
-        results['focus_diagrams'] = {}
-        all_spots = []
-        for label, df in [("номинал", 0), ("+DS'", ds), ("-DS'", -ds), ("+2DS'", 2 * ds), ("-2DS'", -2 * ds)]:
-            try:
-                spots = compute_spot_diagram_at_defocus(
-                    sys, wl=wl, num_rays=60, field_y=0.0, defocus_mm=df,
-                )
-                rms_info = compute_rms_spot_xy(spots)
-                results['focus_diagrams'][label] = (spots, rms_info, df)
-                all_spots.extend(spots)
-            except Exception:
-                pass
-        results['focus_diag_max'] = (
-            max((math.sqrt(dx**2 + dy**2) for dx, dy in all_spots), default=1e-6)
-            if all_spots else 1e-6
-        )
+        # Focus diagrams (шаг ΔS' из настроек анализа)
+        try:
+            results['focus_diagrams'], results['focus_diag_max'] = \
+                compute_focus_diagrams(sys, wl=wl, focus_step_mm=focus_step)
+        except Exception:
+            results['focus_diagrams'] = {}
+            results['focus_diag_max'] = 1e-6
 
         return results
 

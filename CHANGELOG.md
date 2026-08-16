@@ -4,6 +4,23 @@ All notable changes to OPAL-OKB will be documented in this file.
 
 ## [1.5.0] — 2026-08-16
 
+### Пункт 3 GAP v2: Фокусировочные диаграммы
+- **Общая функция `compute_focus_diagrams()`** (analysis/aberrations.py):
+  5 точечных диаграмм при defocus = 0, ±ΔS', ±2ΔS'; возвращает
+  {метка: (spots, rms_info, defocus)} + max_range для общего масштаба.
+  Заменила 3 дубликата (FocusDiagramWidget, calculation_controller,
+  analysis_pipeline) с тремя разными формулами ΔS'.
+- **ΔS' — в настройках анализа**: спин-бокс в панели анализа (0.001–10 мм,
+  default 0.1 = `DEFAULT_FOCUS_STEP_MM`), `get_focus_step()`;
+  прокинуто в `do_calc_phase2(sys, defocus, azimuth, focus_step)`.
+- **Отрисовка matplotlib 1×5**: FocusDiagramWidget переписан на
+  `MplCanvasWidget` — сабплоты sharex/sharey, equal aspect, общий масштаб
+  по всем 5 позициям, подписи Δz и RMS; панель навигации (зум/пан).
+- Вкладка «Фокус.диагр.» перемещена рядом с точечной диаграммой
+  (раздел геометрического изображения).
+- Тесты: `tests/test_focus_diagrams.py` (10) — позиции/дефокусции,
+  настройка, общий масштаб, roundtrip, сигнатура контроллера.
+
 ### Пункт 2 GAP v2: СКВ волновой аберрации по полю
 - **`compute_wavefront_rms_vs_field()` переписана**: для каждой точки поля
   пучок трассируется на гексаполярной сетке зрачка (`trace_wavefront_hexapolar`,

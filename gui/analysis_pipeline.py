@@ -30,10 +30,10 @@ from aberrations import (
     compute_field_aberrations,
     compute_focus_curve,
     compute_spot_heatmap,
-    compute_spot_diagram_at_defocus,
     compute_chief_ray_characteristics,
     compute_isoplanatism,
     compute_wavefront_rms_vs_field,
+    compute_focus_diagrams,
     compute_oblique_fan,
     compute_ray_coordinates,
 )
@@ -248,29 +248,12 @@ def compute_all_analysis(
     except Exception:
         pass
 
-    # Focus diagrams
+    # Focus diagrams (общая функция analysis.aberrations)
     d['focus_diag_data'] = {}
-    d['focus_diag_max_range'] = 0.001
+    d['focus_diag_max_range'] = 1e-6
     try:
-        parax = paraxial_trace(sys)
-        bfd = parax.get('back_focal_distance', 0)
-        if abs(bfd) < 1e-6:
-            efl = parax.get('focal_length', 50)
-            bfd = abs(efl) * 0.5
-        ds = abs(bfd) * 0.01
-        all_spots = []
-        for label, df in [("\u043d\u043e\u043c\u0438\u043d\u0430\u043b", 0.0),
-                          ("+DS'", +ds), ("-DS'", -ds),
-                          ("+2DS'", +2*ds), ("-2DS'", -2*ds)]:
-            spots = compute_spot_diagram_at_defocus(
-                sys, wl=wl, num_rays=60, field_y=0.0, defocus_mm=df)
-            rms_info = compute_rms_spot_xy(spots)
-            d['focus_diag_data'][label] = (spots, rms_info, df)
-            all_spots.extend(spots)
-        if all_spots:
-            d['focus_diag_max_range'] = max(
-                math.sqrt(dx**2 + dy**2) for dx, dy in all_spots)
-            d['focus_diag_max_range'] = max(d['focus_diag_max_range'], 1e-6)
+        (d['focus_diag_data'],
+         d['focus_diag_max_range']) = compute_focus_diagrams(sys, wl=wl)
     except Exception:
         pass
 

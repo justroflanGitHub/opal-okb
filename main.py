@@ -1260,9 +1260,13 @@ class MainWindow(QMainWindow):
         """Phase 1: Fast synchronous computations (< 0.5 s)."""
         return self._calc_controller.do_calc_phase1(sys)
 
-    def _do_calc_phase2(self, sys, defocus, azimuth):
+    def _do_calc_phase2(self, sys, defocus, azimuth,
+                        focus_step: float = None):
         """Phase 2: Heavy computations (fans, MTF, PSF, Zernike, etc.)."""
-        return self._calc_controller.do_calc_phase2(sys, defocus, azimuth)
+        from aberrations import DEFAULT_FOCUS_STEP_MM
+        return self._calc_controller.do_calc_phase2(
+            sys, defocus, azimuth,
+            DEFAULT_FOCUS_STEP_MM if focus_step is None else focus_step)
 
     def _on_calc_error(self, err):
         """Handle calculation error from worker thread."""

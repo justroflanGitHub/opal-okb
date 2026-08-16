@@ -14,5 +14,6 @@ from analysis.aberrations import (
     compute_spot_diagram_at_defocus,
     compute_isoplanatism, compute_oblique_fan,
     compute_ray_coordinates, compute_wavefront_rms_vs_field,
-    trace_wavefront_hexapolar,
+    trace_wavefront_hexapolar, compute_focus_diagrams,
+    DEFAULT_FOCUS_STEP_MM, FOCUS_DIAGRAM_DEFOCI,
 )

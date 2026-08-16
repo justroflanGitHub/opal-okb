@@ -1108,6 +1108,62 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
     return [(dx - cx, dy - cy) for dx, dy in propagated]
 
 
+# ── Фокусировочные диаграммы: 5 позиций плоскости установки ───────────────
+
+DEFAULT_FOCUS_STEP_MM = 0.1   # ΔS' — шаг фокусировки по умолчанию (настройка)
+FOCUS_DIAGRAM_NUM_RAYS = 60   # лучей сетки зрачка на позицию
+FOCUS_DIAGRAM_MIN_RANGE = 1e-6  # мин. радиус пятна для общего масштаба (мм)
+
+# Позиции плоскости установки: (метка, множитель ΔS')
+FOCUS_DIAGRAM_DEFOCI: Tuple[Tuple[str, float], ...] = (
+    ("номинал", 0.0),
+    ("+DS'", 1.0),
+    ("-DS'", -1.0),
+    ("+2DS'", 2.0),
+    ("-2DS'", -2.0),
+)
+
+
+def compute_focus_diagrams(system: OpticalSystem, wl: float = None,
+                           field_y: float = 0.0,
+                           focus_step_mm: float = DEFAULT_FOCUS_STEP_MM,
+                           num_rays: int = FOCUS_DIAGRAM_NUM_RAYS
+                           ) -> Tuple[Dict[str, tuple], float]:
+    """
+    Фокусировочные диаграммы: 5 точечных диаграмм при defocus =
+    0, ±ΔS', ±2ΔS' (ΔS' — шаг фокусировки из настроек анализа).
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        field_y: Поле (град/мм) — по умолчанию осевой пучок.
+        focus_step_mm: Шаг фокусировки ΔS' (мм).
+        num_rays: Лучей сетки зрачка на позицию.
+
+    Returns:
+        ``(diagrams, max_range)``: ``diagrams`` — {метка:
+        (spots, rms_info, defocus_mm)}, ``max_range`` — максимальный
+        радиус пятна по всем позициям (мм), для общего масштаба.
+    """
+    if wl is None:
+        wl = get_primary_wl(system)
+    step = abs(focus_step_mm)
+
+    diagrams: Dict[str, tuple] = {}
+    all_spots: List[Tuple[float, float]] = []
+    for label, factor in FOCUS_DIAGRAM_DEFOCI:
+        defocus_mm = factor * step
+        spots = compute_spot_diagram_at_defocus(
+            system, wl=wl, num_rays=num_rays, field_y=field_y,
+            defocus_mm=defocus_mm)
+        diagrams[label] = (spots, compute_rms_spot_xy(spots), defocus_mm)
+        all_spots.extend(spots)
+
+    max_range = max((math.sqrt(dx * dx + dy * dy) for dx, dy in all_spots),
+                    default=FOCUS_DIAGRAM_MIN_RANGE)
+    return diagrams, max(max_range, FOCUS_DIAGRAM_MIN_RANGE)
+
+
 def _fft1d(data):
     """1D FFT wrapper. Uses numpy for performance."""
     return np.fft.fft(data)

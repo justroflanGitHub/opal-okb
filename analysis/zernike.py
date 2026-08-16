@@ -384,18 +384,24 @@ def compute_wavefront_map_2d(system: OpticalSystem,
     return wavefront, coords, pupil_mask
 
 
+def _subtract_coeff_lists(a: List[Tuple[float, str]],
+                          b: List[Tuple[float, str]]) -> List[Tuple[float, str]]:
+    """Почленная разность двух списков коэффициентов ``[(coeff, name)]``: a − b."""
+    return [(ca - cb, name) for (ca, _), (cb, name) in zip(a, b)]
+
+
 def compute_zernike_chromatic(system, num_rays=64, max_order=4):
     """
-    Цернике для каждой длины волны + разности.
-    
+    Цернике для каждой рабочей длины волны + разности от первичной λ.
+
     Возвращает: {
-        wl_name: [(coeff, name), ...],
-        'delta_F-d': [(coeff, name), ...],
-        'delta_C-d': [(coeff, name), ...]
+        <имя λ>: [(coeff, name), ...],               # коэффициенты для каждой λ
+        'delta_<λ>−<λ перв>': [(coeff, name), ...],  # Z_nm(λ) − Z_nm(λ перв)
     }
+    Первичная λ — первая длина волны системы (``get_primary_wl``).
     """
     result = {}
-    
+
     # Собираем коэффициенты для каждой длины волны
     wl_coeffs = {}
     for wl_obj in system.wavelengths:
@@ -406,67 +412,24 @@ def compute_zernike_chromatic(system, num_rays=64, max_order=4):
         wl_coeffs[wl_name] = coeffs
         wl_coeffs[wl_obj.value] = coeffs  # ключ по значению тоже
         result[wl_name] = coeffs
-    
-    # Разности: F-d и C-d (если есть соответствующие длины волн)
-    # Ищем по именам и значениям
-    wl_by_name = {}
-    wl_by_value = {}
+
+    # Разности каждой не-первичной λ от первичной
+    primary_wl = get_primary_wl(system)
+    primary_name = None
     for wl_obj in system.wavelengths:
-        name = wl_obj.name if wl_obj.name else ""
-        wl_by_name[name] = wl_obj.value
-        wl_by_value[wl_obj.value] = name
-    
-    # Стандартные соответствия
-    f_names = ['F', "F'"]
-    c_names = ['C', "C'"]
-    d_names = ['d', 'D', 'e']
-    
-    f_wl = None
-    c_wl = None
-    d_wl = None
-    
-    # Ищем по именам
-    for name in f_names:
-        if name in wl_by_name:
-            f_wl = wl_by_name[name]
+        if abs(wl_obj.value - primary_wl) < 1e-9:
+            primary_name = (wl_obj.name if wl_obj.name
+                            else f"{wl_obj.value:.3f}")
             break
-    for name in c_names:
-        if name in wl_by_name:
-            c_wl = wl_by_name[name]
-            break
-    for name in d_names:
-        if name in wl_by_name:
-            d_wl = wl_by_name[name]
-            break
-    
-    # Если по именам не нашли — по значениям
-    if f_wl is None:
+    if primary_name is not None and primary_name in wl_coeffs:
+        primary_coeffs = wl_coeffs[primary_name]
         for wl_obj in system.wavelengths:
-            if abs(wl_obj.value - 0.48613) < 0.002:
-                f_wl = wl_obj.value
-                break
-    if c_wl is None:
-        for wl_obj in system.wavelengths:
-            if abs(wl_obj.value - 0.65627) < 0.002:
-                c_wl = wl_obj.value
-                break
-    if d_wl is None:
-        # Берём основную (первую) длину волны
-        d_wl = get_primary_wl(system)
-    
-    # Вычисляем разности
-    if f_wl is not None and f_wl in wl_coeffs and d_wl in wl_coeffs:
-        f_c = wl_coeffs[f_wl]
-        d_c = wl_coeffs[d_wl]
-        delta = [(fc - dc, name) for (fc, _), (dc, name) in zip(f_c, d_c)]
-        result['delta_F-d'] = delta
-    
-    if c_wl is not None and c_wl in wl_coeffs and d_wl in wl_coeffs:
-        c_c = wl_coeffs[c_wl]
-        d_c = wl_coeffs[d_wl]
-        delta = [(cc - dc, name) for (cc, _), (dc, name) in zip(c_c, d_c)]
-        result['delta_C-d'] = delta
-    
+            name = wl_obj.name if wl_obj.name else f"{wl_obj.value:.3f}"
+            if name == primary_name:
+                continue
+            result[f'delta_{name}−{primary_name}'] = _subtract_coeff_lists(
+                wl_coeffs[name], primary_coeffs)
+
     return result
 
 

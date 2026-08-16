@@ -135,6 +135,19 @@ class AnalysisPanel(QTabWidget):
         settings_layout.addWidget(self.chromatic_combo)
         settings_layout.addStretch()
 
+        self.zernike_chrom_btn = QPushButton("Цернике по λ")
+        self.zernike_chrom_btn.setCheckable(True)
+        self.zernike_chrom_btn.setStyleSheet(
+            "QPushButton { font-size: 10px; padding: 2px 6px; }"
+            "QPushButton:checked { background-color: #505080; }")
+        self.zernike_chrom_btn.setToolTip(
+            "Разложение Цернике для каждой рабочей λ (гистограмма + таблица\n"
+            "Z_nm(λ) с разностями от первичной λ)")
+        self.zernike_chrom_btn.toggled.connect(
+            self._on_zernike_chromatic_toggle)
+        settings_layout.addWidget(self.zernike_chrom_btn)
+        settings_layout.addStretch()
+
         # Create plot widgets
         self.spot_diagram = SpotDiagramWidget()
         self.axial = AxialBeamWidget()
@@ -789,34 +802,11 @@ class AnalysisPanel(QTabWidget):
         zernike_coeffs = d.get('zernike_coeffs', [])
         zernike_chromatic = d.get('zernike_chromatic')
         if zernike_chromatic and self.zernike_w._show_chromatic:
-            wl_keys = [k for k in zernike_chromatic if not k.startswith('delta_')]
-            if wl_keys:
-                headers = ["\u041f\u043e\u043b\u0438\u043d\u043e\u043c"] + wl_keys
-                rows_zk = []
-                for idx, (val, name) in enumerate(zernike_coeffs):
-                    row = [name]
-                    for key in wl_keys:
-                        if key in zernike_chromatic:
-                            for c, n in zernike_chromatic[key]:
-                                if n == name:
-                                    row.append(f"{c:+.6f}")
-                                    break
-                            else:
-                                row.append("\u2014")
-                        else:
-                            row.append("\u2014")
-                    rows_zk.append(row)
-                delta_headers = [k for k in ['delta_F-d', 'delta_C-d'] if k in zernike_chromatic]
-                for delta_key in delta_headers:
-                    for idx, (val, name) in enumerate(zernike_chromatic[delta_key]):
-                        if idx < len(rows_zk):
-                            rows_zk[idx].append(f"{val:+.6f}")
-                headers.extend(delta_headers)
-                self._zernike_table = make_table(
-                    headers, rows_zk, [80] + [70] * (len(headers) - 1))
-                self._refresh_zernike_tables()
-                self._build_wf_rms_table_precomputed(d)
-                return
+            self._zernike_table = self._build_zernike_chromatic_table(
+                zernike_coeffs, zernike_chromatic)
+            self._refresh_zernike_tables()
+            self._build_wf_rms_table_precomputed(d)
+            return
         rows_z = []
         for val, name in zernike_coeffs:
             rows_z.append([name, f"{val:+.6f}"])
@@ -1009,7 +999,7 @@ class AnalysisPanel(QTabWidget):
             self.chief_ray.chief_data = data['chief_data']; self.chief_ray.update()
         if 'zernike_coeffs' in data:
             self.zernike_w.coeffs = data['zernike_coeffs']
-            self.zernike_w.chromatic = data.get('zernike_chromatic'); self.zernike_w.update()
+            self.zernike_w.chromatic_data = data.get('zernike_chromatic'); self.zernike_w.update()
         if data.get('wfmap') is not None:
             wf, coords, mask = data['wfmap']
             self.wavefront_map_w.wf_data = wf; self.wavefront_map_w.coords = coords
@@ -1511,48 +1501,57 @@ class AnalysisPanel(QTabWidget):
             rays = []
         self._set_table('rays', self._build_gauge_rays_tables(sys, rays))
 
+    @staticmethod
+    def _build_zernike_chromatic_table(coeffs: list, chromatic: dict):
+        """Таблица Z_nm(λ): колонки для каждой λ + разности от первичной.
+
+        Единственная точка построения хроматической таблицы Цернике —
+        используется живым расчётом и фоновым пайплайном.
+        """
+        wl_keys = [k for k in chromatic if not k.startswith('delta_')]
+        delta_keys = [k for k in chromatic if k.startswith('delta_')]
+        by_name = {key: {n: c for c, n in chromatic[key]}
+                   for key in wl_keys + delta_keys}
+
+        headers = ["Полином"] + wl_keys + delta_keys
+        rows = []
+        for _, name in coeffs:
+            row = [name]
+            for key in wl_keys + delta_keys:
+                c = by_name.get(key, {}).get(name)
+                row.append(f"{c:+.6f}" if c is not None else "—")
+            rows.append(row)
+        return make_table(headers, rows, [80] + [70] * (len(headers) - 1))
+
+    def _on_zernike_chromatic_toggle(self, checked: bool) -> None:
+        """Кнопка «Цернике по λ»: гистограмма + таблица Z_nm(λ)."""
+        self.zernike_w._show_chromatic = checked
+        self.zernike_w.update()
+        sys = getattr(self, '_parax_sys', None)
+        if sys is not None and sys.surfaces:
+            self._update_zernike_table(sys)
+
     def _update_zernike_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys); defocus = self.get_defocus_offset()
         try:
-            coeffs = compute_zernike_coefficients(sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
+            coeffs = self.zernike_w.coeffs or compute_zernike_coefficients(
+                sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
             chromatic = None
             if len(sys.wavelengths) > 1:
-                try:
-                    chromatic = compute_zernike_chromatic(sys, num_rays=32, max_order=4)
-                except Exception:
-                    pass
+                chromatic = self.zernike_w.chromatic_data
+                if chromatic is None:
+                    try:
+                        chromatic = compute_zernike_chromatic(
+                            sys, num_rays=32, max_order=4)
+                    except Exception:
+                        chromatic = None
             if chromatic and self.zernike_w._show_chromatic:
-                wl_keys = [k for k in chromatic if not k.startswith('delta_')]
-                if wl_keys:
-                    headers = ["Полином"] + wl_keys
-                    rows = []
-                    for idx, (val, name) in enumerate(coeffs):
-                        row = [name]
-                        for key in wl_keys:
-                            if key in chromatic:
-                                for c, n in chromatic[key]:
-                                    if n == name:
-                                        row.append(f"{c:+.6f}"); break
-                                else:
-                                    row.append("—")
-                            else:
-                                row.append("—")
-                        rows.append(row)
-                    for delta_key in ['delta_F-d', 'delta_C-d']:
-                        if delta_key in chromatic:
-                            for idx, (val, name) in enumerate(chromatic[delta_key]):
-                                if idx < len(rows):
-                                    rows[idx].append(f"{val:+.6f}")
-                    if any(k in chromatic for k in ['delta_F-d', 'delta_C-d']):
-                        delta_headers = [k for k in ['delta_F-d', 'delta_C-d'] if k in chromatic]
-                        headers.extend(delta_headers)
-                    self._zernike_table = make_table(headers, rows, [80] + [70] * (len(headers) - 1))
-                    self._refresh_zernike_tables()
-                    return
-            rows = []
-            for val, name in coeffs:
-                rows.append([name, f"{val:+.6f}"])
-            self._zernike_table = make_table(["Полином", "Коэфф. (λ)"], rows, [120, 90])
+                self._zernike_table = self._build_zernike_chromatic_table(
+                    coeffs, chromatic)
+            else:
+                rows = [[name, f"{val:+.6f}"] for val, name in coeffs]
+                self._zernike_table = make_table(
+                    ["Полином", "Коэфф. (λ)"], rows, [120, 90])
             self._refresh_zernike_tables()
         except Exception:
             self._zernike_table = None

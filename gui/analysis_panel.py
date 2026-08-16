@@ -72,7 +72,7 @@ from .widgets import (
     ZernikeWidget,
     WavefrontMapWidget,
     ESFWidget,
-    WavefrontRmsVsFieldWidget,
+    WfRmsFieldMplWidget,
     FocusDiagramWidget,
     PSF3DWidget,
     BarTargetWidget,
@@ -139,12 +139,21 @@ class AnalysisPanel(QTabWidget):
         self.zernike_w = ZernikeWidget()
         self.wavefront_map_w = WavefrontMapWidget()
         self.esf_w = ESFWidget()
-        self.wf_rms_field_w = WavefrontRmsVsFieldWidget()
+        # Вкладка «Цернике»: гистограммы коэффициентов + СКВ по полю (п. 2)
+        self.wf_rms_field_w = WfRmsFieldMplWidget()
+        self.zernike_page = QSplitter(Qt.Vertical)
+        self.zernike_page.addWidget(self.zernike_w)
+        self.zernike_page.addWidget(self.wf_rms_field_w)
+        self.zernike_page.setStretchFactor(0, 3)
+        self.zernike_page.setStretchFactor(1, 2)
         self.focus_diagrams = FocusDiagramWidget()
         self.psf_3d_w = PSF3DWidget()
         self.bar_target_w = BarTargetWidget()
 
         self._table_containers: dict[str, QWidget] = {}
+        # Таблицы вкладки «Цернике»: коэффициенты + СКВ по полю (stacked)
+        self._zernike_table = None
+        self._wf_rms_table = None
         self._parax_data = {}
         self._seidel_data = {}
         self._fno = 0
@@ -176,9 +185,8 @@ class AnalysisPanel(QTabWidget):
             ("Фокус.диагр.", self.focus_diagrams, 'focus_diag'),
             ("Габариты", self.beam_geom, 'beam'),
             ("Гл. лучи", self.chief_ray, 'chief'),
-            ("Цернике", self.zernike_w, 'zernike'),
+            ("Цернике", self.zernike_page, 'zernike'),
             ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
-            ("СКВ по полю", self.wf_rms_field_w, 'wf_rms_field'),
             ("Мира", self.bar_target_w, 'bar_target'),
             ("Зейдель", seidel_placeholder, 'seidel'),
         ]
@@ -265,12 +273,36 @@ class AnalysisPanel(QTabWidget):
                 splitter.setStretchFactor(1, 0)
 
     def _set_table(self, key: str, table) -> None:
-        """Replace the table widget in a container."""
+        """Replace the table widget in a container.
+
+        ``table`` — один виджет или их список (тогда таблицы stacked
+        вертикально, например Цернике + СКВ по полю на одной вкладке).
+        """
         container = self._table_containers[key]
         layout = container.layout()
         clear_layout(layout)
-        if table:
-            layout.addWidget(table)
+        tables = table if isinstance(table, (list, tuple)) else [table]
+        tables = [t for t in tables if t is not None]
+        if not tables:
+            return
+        if len(tables) == 1:
+            layout.addWidget(tables[0])
+            return
+        stack = QWidget()
+        stack_layout = QVBoxLayout(stack)
+        stack_layout.setContentsMargins(0, 0, 0, 0)
+        stack_layout.setSpacing(4)
+        for t in tables:
+            stack_layout.addWidget(t)
+        layout.addWidget(stack)
+
+    def _refresh_zernike_tables(self) -> None:
+        """Обновить stacked-таблицы вкладки «Цернике».
+
+        Вкладка содержит две таблицы: коэффициенты Цернике и СКВ
+        волновой аберрации по полю (обновляются независимо).
+        """
+        self._set_table('zernike', [self._zernike_table, self._wf_rms_table])
 
     # ------------------------------------------------------------------
     #  Parax / Seidel
@@ -456,7 +488,8 @@ class AnalysisPanel(QTabWidget):
         self.wavefront_map_w.wf_data = d.get('wf_data')
         self.wavefront_map_w.coords = d.get('wf_coords')
         self.wavefront_map_w.mask = d.get('wf_mask'); self.wavefront_map_w.update()
-        self.wf_rms_field_w.field_data = d.get('wf_rms_field'); self.wf_rms_field_w.update()
+        self.wf_rms_field_w.apply_data(d.get('wf_rms_field'),
+                                       wl_label=f"{get_primary_wl(sys):.4f} мкм")
         self.focus_diagrams.spots_by_defocus = d.get('focus_diag_data', {})
         self.focus_diagrams.max_range = d.get('focus_diag_max_range', 0.001); self.focus_diagrams.update()
         self.psf_3d_w.x_coords = d.get('psf3d_x'); self.psf_3d_w.y_coords = d.get('psf3d_y')
@@ -741,15 +774,18 @@ class AnalysisPanel(QTabWidget):
                         if idx < len(rows_zk):
                             rows_zk[idx].append(f"{val:+.6f}")
                 headers.extend(delta_headers)
-                self._set_table('zernike', make_table(
-                    headers, rows_zk, [80] + [70] * (len(headers) - 1)))
+                self._zernike_table = make_table(
+                    headers, rows_zk, [80] + [70] * (len(headers) - 1))
+                self._refresh_zernike_tables()
+                self._build_wf_rms_table_precomputed(d)
                 return
         rows_z = []
         for val, name in zernike_coeffs:
             rows_z.append([name, f"{val:+.6f}"])
-        self._set_table('zernike', make_table(
+        self._zernike_table = make_table(
             ["\u041f\u043e\u043b\u0438\u043d\u043e\u043c", "\u041a\u043e\u044d\u0444\u0444. (\u03bb)"],
-            rows_z, [120, 90]))
+            rows_z, [120, 90])
+        self._refresh_zernike_tables()
 
         wf_data = d.get('wf_data'); wf_mask = d.get('wf_mask')
         rows_wf = [["\u03bb \u043f\u0435\u0440\u0432.", f"{wl:.4f} \u043c\u043a\u043c"]]
@@ -797,19 +833,23 @@ class AnalysisPanel(QTabWidget):
         self._set_table('psf3d', make_table(
             ["\u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440", "\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435"], rows_p3, [100, 120]))
 
+        self._build_wf_rms_table_precomputed(d)
+
+    def _build_wf_rms_table_precomputed(self, d: dict) -> None:
+        """\u0422\u0430\u0431\u043b\u0438\u0446\u0430 \u0421\u041a\u0412 \u043f\u043e \u043f\u043e\u043b\u044e \u0438\u0437 \u0437\u0430\u0440\u0430\u043d\u0435\u0435 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445 (\u0444\u0430\u0437\u0430 2)."""
         wf_rms = d.get('wf_rms_field')
+        unit = self.wf_rms_field_w.field_unit
         if wf_rms and wf_rms[0]:
-            field_vals, rms_full, rms_no_def, rms_no_tilt = wf_rms
-            rows_wr = []
-            for f, r_f, r_d, r_t in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-                rows_wr.append([f"{f:.2f}\u00b0", fmt_val(r_f), fmt_val(r_d), fmt_val(r_t)])
-            self._set_table('wf_rms_field', make_table(
-                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 (\u03bb)", "\u0421\u041a\u0412-\u0434\u0435\u0444", "\u0421\u041a\u0412-\u0442\u0438\u043b\u044c\u0442"],
-                rows_wr, [55, 75, 75, 75]))
+            field_vals, rms_vals = wf_rms
+            rows_wr = [[f"{f:.2f}{unit}", fmt_val(r)]
+                       for f, r in zip(field_vals, rms_vals)]
+            self._wf_rms_table = make_table(
+                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"], rows_wr, [60, 90])
         else:
-            self._set_table('wf_rms_field', make_table(
-                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 (\u03bb)"],
-                [["\u2014", "\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445"]], [60, 100]))
+            self._wf_rms_table = make_table(
+                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"],
+                [["\u2014", "\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445"]], [60, 90])
+        self._refresh_zernike_tables()
 
         bar_mtf = d.get('bar_mtf_table')
         if bar_mtf:
@@ -841,7 +881,7 @@ class AnalysisPanel(QTabWidget):
         'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
         'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
         'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
-        'beam', 'chief', 'zernike', 'wfmap', 'wf_rms_field', 'bar_target',
+        'beam', 'chief', 'zernike', 'wfmap', 'bar_target',
     )
 
     def apply_phase1(self, sys: OpticalSystem, data: dict) -> None:
@@ -1345,14 +1385,17 @@ class AnalysisPanel(QTabWidget):
                     if any(k in chromatic for k in ['delta_F-d', 'delta_C-d']):
                         delta_headers = [k for k in ['delta_F-d', 'delta_C-d'] if k in chromatic]
                         headers.extend(delta_headers)
-                    self._set_table('zernike', make_table(headers, rows, [80] + [70] * (len(headers) - 1)))
+                    self._zernike_table = make_table(headers, rows, [80] + [70] * (len(headers) - 1))
+                    self._refresh_zernike_tables()
                     return
             rows = []
             for val, name in coeffs:
                 rows.append([name, f"{val:+.6f}"])
-            self._set_table('zernike', make_table(["Полином", "Коэфф. (λ)"], rows, [120, 90]))
+            self._zernike_table = make_table(["Полином", "Коэфф. (λ)"], rows, [120, 90])
+            self._refresh_zernike_tables()
         except Exception:
-            self._set_table('zernike', None)
+            self._zernike_table = None
+            self._refresh_zernike_tables()
 
     def _update_wfmap_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
@@ -1416,14 +1459,19 @@ class AnalysisPanel(QTabWidget):
         self._set_table('psf3d', make_table(["Параметр", "Значение"], rows, [100, 120]))
 
     def _update_wf_rms_field_table(self, sys: OpticalSystem) -> None:
+        """Таблица СКВ волновой аберрации по полю (вкладка «Цернике»)."""
         data = self.wf_rms_field_w.field_data
+        unit = self.wf_rms_field_w.field_unit
         if not data or not data[0]:
-            self._set_table('wf_rms_field', make_table(["Поле", "СКВ (λ)"], [["—", "Нет данных"]], [60, 100])); return
-        field_vals, rms_full, rms_no_def, rms_no_tilt = data
-        rows = []
-        for f, r_full, r_def, r_tilt in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-            rows.append([f"{f:.2f}°", fmt_val(r_full), fmt_val(r_def), fmt_val(r_tilt)])
-        self._set_table('wf_rms_field', make_table(["Поле", "СКВ (λ)", "СКВ-деф", "СКВ-тильт"], rows, [55, 75, 75, 75]))
+            self._wf_rms_table = make_table(
+                ["Поле", "СКВ W (λ)"], [["—", "Нет данных"]], [60, 90])
+        else:
+            field_vals, rms_vals = data
+            rows = [[f"{f:.2f}{unit}", fmt_val(r)]
+                    for f, r in zip(field_vals, rms_vals)]
+            self._wf_rms_table = make_table(
+                ["Поле", "СКВ W (λ)"], rows, [60, 90])
+        self._refresh_zernike_tables()
 
     def _update_bar_target_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)

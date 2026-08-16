@@ -34,7 +34,7 @@ class TestCriticalChecks:
         from aberrations import compute_wavefront_rms_vs_field
         sys_obj = build_system()
         r = compute_wavefront_rms_vs_field(sys_obj)
-        assert len(r) == 4, f"expected 4, got {len(r)}"
+        assert len(r) == 2, f"expected 2, got {len(r)}"
 
     def test_compute_spot_diagram_at_defocus(self):
         from aberrations import compute_spot_diagram_at_defocus

@@ -4,10 +4,12 @@ Widgets:
 
 * :class:`WavefrontMapWidget` — 2D / 3D wavefront surface map.
 * :class:`ZernikeWidget` — Zernike polynomial coefficient bar chart.
-* :class:`WavefrontRmsVsFieldWidget` — RMS wavefront error vs field.
+* :class:`WfRmsFieldMplWidget` — RMS wavefront error vs field (matplotlib).
 """
 
 from __future__ import annotations
+
+import math
 
 import numpy as np
 from PyQt5.QtCore import Qt
@@ -15,7 +17,7 @@ from PyQt5.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath,
 )
 
-from optics_engine import OpticalSystem
+from optics_engine import OpticalSystem, ObjectType
 from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
@@ -25,6 +27,13 @@ from aberrations import compute_wavefront_rms_vs_field
 from optics_utils import get_primary_wl
 
 from .base import AberrationPlotWidget
+from .mpl_widgets import MplCanvasWidget, MPL_CURVE_COLOR, MPL_TEXT_COLOR
+
+# Единицы поля для подписи оси: дальний тип — градусы, ближний — мм предмета
+FIELD_UNIT_BY_TYPE = {
+    ObjectType.INFINITE: '°',
+    ObjectType.FINITE: 'мм',
+}
 
 
 class WavefrontMapWidget(AberrationPlotWidget):
@@ -348,94 +357,60 @@ class ZernikeWidget(AberrationPlotWidget):
         painter.drawText(m + 5, top + ph + 35, f"Шкала: ±{val_max:.3f} λ")
 
 
-class WavefrontRmsVsFieldWidget(AberrationPlotWidget):
-    """RMS wavefront error vs field angle."""
+class WfRmsFieldMplWidget(MplCanvasWidget):
+    """СКВ волновой аберрации W_RMS vs поле (matplotlib, все точки поля).
+
+    График строится :func:`aberrations.compute_wavefront_rms_vs_field`
+    на гексаполярной сетке зрачка; основная λ системы.
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.field_data = None
+        self.field_unit = '°'
+        self.wl_label = ''
 
     def set_data(self, sys: OpticalSystem) -> None:
+        """Расчёт СКВ по всем точкам поля системы (основная λ)."""
         wl = get_primary_wl(sys)
-        self.field_data = compute_wavefront_rms_vs_field(sys, wl=wl)
-        self.update()
+        try:
+            self.field_data = compute_wavefront_rms_vs_field(sys, wl=wl)
+        except Exception:
+            self.field_data = None
+        self.field_unit = FIELD_UNIT_BY_TYPE.get(sys.object_type, '°')
+        self.wl_label = f"{wl:.4f} мкм"
+        self.redraw()
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        m, top, pw, ph = self.paint_grid(painter, w, h, margin=50)
+    def apply_data(self, field_data, field_unit: str = '°',
+                   wl_label: str = '') -> None:
+        """Подставить заранее рассчитанные данные (фаза 2)."""
+        self.field_data = field_data
+        self.field_unit = field_unit
+        self.wl_label = wl_label
+        self.redraw()
 
+    def _render(self) -> None:
+        if self._render_pending():
+            return
+        ax = self.figure.add_subplot(111)
+        self._style_axes(ax)
         if not self.field_data or not self.field_data[0]:
-            painter.setPen(QColor(150, 150, 170))
-            painter.setFont(QFont("Consolas", 9))
-            painter.drawText(self.rect(), Qt.AlignCenter, "Нет данных")
-            self.paint_finalize(painter, self._plot_rect)
-            painter.end()
+            ax.set_xticks([]); ax.set_yticks([])
+            ax.text(0.5, 0.5, 'Нет данных', ha='center', va='center',
+                    color=MPL_TEXT_COLOR, transform=ax.transAxes)
             return
-
-        field_vals, rms_full, rms_no_def, rms_no_tilt = self.field_data
-
-        all_vals = [v for v in rms_full + rms_no_def + rms_no_tilt
-                    if not (v != v)]
-        if not all_vals:
-            self.paint_finalize(painter, self._plot_rect)
-            painter.end()
-            return
-
-        val_max = max(abs(v) for v in all_vals)
-        val_max = max(val_max, 1e-6)
-        field_max = max(abs(f) for f in field_vals) if field_vals else 1.0
-        field_max = max(field_max, 1e-6)
-
-        painter.setPen(QPen(QColor(80, 80, 100), 1))
-        painter.drawLine(m, top, m, top + ph)
-        painter.drawLine(m, top + ph, m + pw, top + ph)
-
-        curves = [
-            (rms_full, QColor(60, 130, 255), "Полное СКВ", 2.0, Qt.SolidLine),
-            (rms_no_def, QColor(60, 220, 100), "За вычетом дефокуса", 2.0, Qt.SolidLine),
-            (rms_no_tilt, QColor(255, 80, 80), "За вычетом наклона", 2.0, Qt.SolidLine),
-        ]
-
-        for data, color, label, width, style in curves:
-            painter.setPen(QPen(color, width, style))
-            prev = None
-            for i, (f, v) in enumerate(zip(field_vals, data)):
-                if v != v:
-                    prev = None
-                    continue
-                px = m + f / field_max * pw
-                py = top + ph - v / val_max * ph
-                if prev:
-                    painter.drawLine(int(prev[0]), int(prev[1]), int(px), int(py))
-                prev = (px, py)
-
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + 15, "СКВ волновой аберрации по полю")
-
-        legend_x = m + pw - 180
-        legend_y = top + 25
-        painter.fillRect(int(legend_x - 4), int(legend_y - 14),
-                         184, 52, QColor(15, 15, 30, 200))
-        painter.setPen(QPen(QColor(60, 60, 80), 1))
-        painter.drawRect(int(legend_x - 4), int(legend_y - 14), 184, 52)
-        for idx, (_, color, label, _, _) in enumerate(curves):
-            ly = legend_y + idx * 16
-            painter.setPen(QPen(color, 3))
-            painter.drawLine(int(legend_x), int(ly), int(legend_x + 18), int(ly))
-            painter.setPen(QColor(200, 200, 220))
-            painter.setFont(QFont("Consolas", 8))
-            painter.drawText(int(legend_x + 22), int(ly + 4), label)
-
-        painter.setPen(QColor(120, 120, 140))
-        painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + pw + 3, top + 5, f"{val_max:.4f} λ")
-        painter.drawText(m + pw + 3, top + ph, "0")
-        painter.drawText(m, top + ph + 20, "0")
-        painter.drawText(m + pw - 20, top + ph + 20, f"{field_max:.1f}°")
-
-        self.set_ranges(-1.0, 1.0, -val_max, val_max)
-        self.paint_finalize(painter, self._plot_rect)
-        painter.end()
+        fields, rms = self.field_data
+        pts = [(f, r) for f, r in zip(fields, rms) if math.isfinite(r)]
+        if pts:
+            xs, ys = zip(*pts)
+            ax.plot(xs, ys, marker='o', markersize=4, linewidth=1.8,
+                    color=MPL_CURVE_COLOR)
+        ax.set_xlabel(f'Поле ({self.field_unit})')
+        ax.set_ylabel('СКВ W (λ)')
+        title = 'СКВ волновой аберрации по полю'
+        if self.wl_label:
+            title += f' — {self.wl_label}'
+        ax.set_title(title, fontsize=9)
+        ax.set_xlim(left=0.0)
+        if pts:
+            ax.set_ylim(bottom=0.0)

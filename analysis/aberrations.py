@@ -92,6 +92,65 @@ def _aim_at_pupil(pupil_x, pupil_y, z_start, z_pupil, sin_a, cos_a):
     return x_start, y_start
 
 
+# ── Волновая аберрация через OPL до опорной сферы (общая логика) ──────────
+
+IMAGE_SPACE_REFRACTIVE_INDEX = 1.0  # среда за последней поверхностью — воздух
+
+
+def _paraxial_focus_z(system: OpticalSystem) -> float:
+    """Z-координата параксиального фокуса (плоскость Гаусса), мм.
+
+    BFD откладывается от вершины последней поверхности; при нулевом BFD
+    используется плоскость изображения.
+    """
+    parax = paraxial_trace(system)
+    z_pos = compute_z_positions(system)
+    bfd = parax.get('back_focal_distance', 0)
+    last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    return last_surf_z + bfd if bfd != 0 else z_pos[-1]
+
+
+def _field_chief_ray(system: OpticalSystem, field_y: float,
+                     z_start: float, z_pupil: float) -> Ray:
+    """Главный луч поля ``field_y`` через центр входного зрачка.
+
+    Для систем дальнего типа (INFINITE) — прицеливание в центр входного
+    зрачка; для ближнего типа (FINITE) — из осевой точки предмета на
+    высоте field_y.
+    """
+    if system.object_type == ObjectType.INFINITE:
+        return make_field_ray(system, 0, 0, field_y, z_start, z_pupil)
+    obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+    return Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
+
+
+def _chief_reference_opl(system: OpticalSystem, wl: float, field_y: float,
+                         z_start: float, z_pupil: float,
+                         focus_z: float) -> float:
+    """OPL главного луча до опорной сферы в параксиальном фокусе, мм.
+
+    Ноль отсчёта волновой аберрации. При неудачной трассировке — 0.0.
+    """
+    res = trace_ray_through_system(
+        system, _field_chief_ray(system, field_y, z_start, z_pupil), wl)
+    opl = res.opl if res.success else 0.0
+    if res.success and len(res.path) >= 2:
+        # OPL от последней поверхности до опорной сферы (n = 1, воздух)
+        opl += IMAGE_SPACE_REFRACTIVE_INDEX * (focus_z - res.path[-1][2])
+    return opl
+
+
+def _ray_wavefront(result, chief_opl: float, focus_z: float,
+                   wl: float) -> float:
+    """Волновая аберрация луча (λ): разность OPL до опорной сферы
+    относительно главного луча, делённая на длину волны."""
+    if wl <= 0:
+        return 0.0
+    dz_to_ref = focus_z - result.path[-1][2]
+    opl_full = result.opl + IMAGE_SPACE_REFRACTIVE_INDEX * dz_to_ref
+    return (opl_full - chief_opl) / wl
+
+
 def trace_aberration_fan(sys: OpticalSystem, wl: float,
                           num_rays: int = 20, field_y: float = 0.0
                           ) -> List[Dict]:
@@ -108,47 +167,14 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     """
     aperture = get_effective_aperture(sys, default=10.0)
 
-    # Найдём фокальную плоскость через параксиальный расчёт
+    # Параксиальный расчёт: фокус (опорная сфера) и входной зрачок
     parax = paraxial_trace(sys)
-    bfd = parax.get('back_focal_distance', 0)
-    efl = parax.get('focal_length', 0)
-
-    # Z-позиции
-    z_pos = compute_z_positions(sys)
-
-    img_z = z_pos[-1]
-
-    # ===== Вычисляем волновую аберрацию через OPL =====
-    # 1. Определяем параксиальный фокус
-    last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
-    parax_focus_z = last_surf_z + bfd if bfd != 0 else img_z
-
-    # 2. Радиус reference sphere
-    ref_sphere_radius = parax_focus_z - last_surf_z
-    if abs(ref_sphere_radius) < EPSILON:
-        ref_sphere_radius = 1.0  # fallback
-
-    # 3. Вычисляем z_start через входной зрачок
+    parax_focus_z = _paraxial_focus_z(sys)
     z_start, z_pupil = _compute_ray_start(sys, parax)
 
-    # 4. Трассируем главный луч (через центр зрачка) для OPL_chief
-    if sys.object_type == ObjectType.INFINITE:
-        chief_ray = make_field_ray(sys, 0, 0, field_y, z_start, z_pupil)
-    else:
-        obj_z = -sys.surfaces[0].thickness if sys.surfaces else -50
-        chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
-
-    # Для осевого пучка (field_y=0) главный луч идёт вдоль оси
-    chief_trace = trace_ray_through_system(sys, chief_ray, wl)
-    opl_chief = chief_trace.opl if chief_trace.success else 0.0
-
-    # Если главный луч успешен, добавим OPL от последней поверхности до reference sphere
-    if chief_trace.success and len(chief_trace.path) >= 2:
-        chief_last = chief_trace.path[-1]
-        # OPL от img_z до reference sphere
-        dz_to_ref = parax_focus_z - chief_last[2]
-        # Среда после последней поверхности - воздух
-        opl_chief += 1.0 * dz_to_ref  # n_air = 1
+    # OPL главного луча до опорной сферы — ноль отсчёта W
+    opl_chief = _chief_reference_opl(sys, wl, field_y, z_start, z_pupil,
+                                     parax_focus_z)
 
     results = []
 
@@ -178,13 +204,8 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
             else:
                 ds = 0
 
-            # Волновая аберрация через OPL:
-            # W = (OPL_луча_до_reference_sphere - OPL_главного_до_reference_sphere) / λ
-            # OPL до reference sphere = result.opl + n_air * dist(ref_sphere_intersection)
-            # Для простоты: propagate до parax_focus_z по прямой
-            dz_to_focus = parax_focus_z - last[2]
-            opl_full = result.opl + 1.0 * dz_to_focus  # n_air = 1
-            wave = (opl_full - opl_chief) / wl if wl > 0 else 0.0
+            # Волновая аберрация через OPL до опорной сферы (см. _ray_wavefront)
+            wave = _ray_wavefront(result, opl_chief, parax_focus_z, wl)
 
             results.append({
                 'pupil_y': pupil_y,
@@ -1203,11 +1224,7 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     z_start, z_pupil = _compute_ray_start(system, parax_of)
 
     # Главный луч для определения центра
-    if system.object_type == ObjectType.INFINITE:
-        chief_ray = make_field_ray(system, 0, 0, field_y, z_start, z_pupil)
-    else:
-        obj_z = -system.surfaces[0].thickness if system.surfaces else -50
-        chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
+    chief_ray = _field_chief_ray(system, field_y, z_start, z_pupil)
 
     chief_result = trace_ray_through_system(system, chief_ray, wl)
     if not chief_result.success or not chief_result.path:
@@ -1339,78 +1356,104 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
     return results
 
 
-def compute_wavefront_rms_vs_field(system, wl=0.58756, num_rays=50, num_fields=10):
+# ── СКВ волновой аберрации по полю (гексаполярная сетка зрачка) ───────────
+
+WF_RMS_HEXAPOLAR_RINGS = 4      # колец гексаполярной сетки зрачка (61 точка)
+WF_RMS_MIN_POINTS = 10          # минимум успешных лучей для СКВ
+WF_RMS_FALLBACK_MAX_FIELD = 5.0  # поле (град/мм), если точки поля не заданы
+
+
+def trace_wavefront_hexapolar(system: OpticalSystem, wl: float = None,
+                              field_y: float = 0.0,
+                              num_rings: int = WF_RMS_HEXAPOLAR_RINGS
+                              ) -> List[Tuple[float, float, float]]:
     """
-    СКВ волновой аберрации по полю.
+    Волновая аберрация W на гексаполярной сетке зрачка.
 
-    Для каждой точки поля (0..max_field):
-    1. Трассировать лучи
-    2. Вычислить W (OPL-based)
-    3. RMS = sqrt(mean(W2))
+    Лучи пускаются через гексаполярную сетку входного зрачка
+    (:func:`_hexapolar_points`); W = разность OPL луча и главного луча
+    до опорной сферы в параксиальном фокусе (та же физика, что ``wave``
+    в :func:`trace_aberration_fan`).
 
-    Также: RMS за вычетом дефокуса, за вычетом наклона.
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        field_y: Угол поля (град) для INFINITE или высота предмета (мм)
+            для FINITE.
+        num_rings: Число колец гексаполярной сетки (4 → 61 точка).
 
-    Возвращает: (field_y_values, rms_wavelengths, rms_no_defocus, rms_no_tilt)
-        rms_wavelengths: полное СКВ в длинах волн
-        rms_no_defocus: СКВ после вычета наилучшего дефокуса (W2 = W - a*(2h2-1))
-        rms_no_tilt: СКВ после вычета наилучшего наклона (W3 = W - b*h)
+    Returns:
+        Список ``(px, py, W)``: нормированные координаты зрачка (-1..1)
+        и волновая аберрация в длинах волн.
     """
-    # Определяем диапазон поля
-    if system.field_points:
-        max_field = max(fp.y for fp in system.field_points)
-    else:
-        max_field = 0.0
+    if wl is None:
+        wl = get_primary_wl(system)
+    aperture = get_effective_aperture(system, default=10.0)
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    focus_z = _paraxial_focus_z(system)
+    chief_opl = _chief_reference_opl(system, wl, field_y, z_start, z_pupil,
+                                     focus_z)
 
-    if max_field <= 0:
-        max_field = 5.0  # градусов по умолчанию
+    points = []
+    for px, py in _hexapolar_points(num_rings=num_rings):
+        ray = make_field_ray(system, px * aperture / 2, py * aperture / 2,
+                             field_y, z_start, z_pupil)
+        result = trace_ray_through_system(system, ray, wl)
+        if result.success and result.path:
+            points.append((px, py,
+                           _ray_wavefront(result, chief_opl, focus_z, wl)))
+    return points
 
-    field_values = [max_field * i / max(num_fields - 1, 1) for i in range(num_fields)]
 
-    rms_full = []
-    rms_no_def = []
-    rms_no_tilt = []
+def compute_wavefront_rms_vs_field(system: OpticalSystem, wl: float = None,
+                                   num_rings: int = WF_RMS_HEXAPOLAR_RINGS,
+                                   num_fields: int = 5
+                                   ) -> Tuple[List[float], List[float]]:
+    """
+    СКВ волновой аберрации W по полю (все точки поля).
 
-    for field_y in field_values:
-        fan = trace_aberration_fan(system, wl, num_rays=num_rays, field_y=field_y)
+    Для каждой точки поля трассирует пучок на гексаполярной сетке зрачка
+    (:func:`trace_wavefront_hexapolar`) и вычисляет СКВ —
+    среднеквадратическое отклонение W от среднего по зрачку:
 
-        # Собираем W и зрачковые координаты
-        pts = [(r['pupil_y'], r['wave']) for r in fan if r['success']]
-        if len(pts) < 3:
-            rms_full.append(float('nan'))
-            rms_no_def.append(float('nan'))
-            rms_no_tilt.append(float('nan'))
+        W_RMS = sqrt(mean((W_i − W̄)²))
+
+    Поля: все точки поля системы (поле 0 добавляется); если точки поля
+    не заданы — ``num_fields`` равномерных значений 0..F_max
+    (WF_RMS_FALLBACK_MAX_FIELD).
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы (монохроматически).
+        num_rings: Число колец гексаполярной сетки зрачка.
+        num_fields: Число точек поля, если поле системы не задано.
+
+    Returns:
+        ``(field_values, rms_values)`` — поле (град для дальнего типа /
+        мм предмета для ближнего) и СКВ в длинах волн; NaN, если лучей
+        в точке поля слишком мало.
+    """
+    if wl is None:
+        wl = get_primary_wl(system)
+
+    fields = sorted({0.0} | {float(fp.y) for fp in (system.field_points or [])
+                             if abs(fp.y) > EPSILON})
+    if len(fields) < 2:
+        max_field = fields[0] if fields and fields[0] > 0 else WF_RMS_FALLBACK_MAX_FIELD
+        fields = [max_field * i / max(num_fields - 1, 1)
+                  for i in range(num_fields)]
+
+    rms_values = []
+    for field_y in fields:
+        pupil_w = trace_wavefront_hexapolar(system, wl=wl, field_y=field_y,
+                                            num_rings=num_rings)
+        ws = [w for _, _, w in pupil_w]
+        if len(ws) < WF_RMS_MIN_POINTS:
+            rms_values.append(float('nan'))
             continue
+        mean_w = sum(ws) / len(ws)
+        rms_values.append(
+            math.sqrt(sum((w - mean_w) ** 2 for w in ws) / len(ws)))
 
-        hs = [h for h, _ in pts]
-        ws = [w for _, w in pts]
-        n = len(ws)
-
-        # Полное СКВ
-        mean_w2 = sum(w * w for w in ws) / n
-        rms_full.append(math.sqrt(mean_w2))
-
-        # За вычетом дефокуса: W' = W - a*(2*h2 - 1)
-        # Минимизируем sum(W')2 по a
-        # a = sum(W_i * f_i) / sum(f_i2),  f_i = 2*h_i2 - 1
-        fs = [2 * h * h - 1 for h in hs]
-        sum_wf = sum(w * f for w, f in zip(ws, fs))
-        sum_f2 = sum(f * f for f in fs)
-        if abs(sum_f2) > TINY:
-            a_def = sum_wf / sum_f2
-        else:
-            a_def = 0.0
-        ws_no_def = [w - a_def * f for w, f in zip(ws, fs)]
-        rms_no_def.append(math.sqrt(sum(w * w for w in ws_no_def) / n))
-
-        # За вычетом наклона (тильта): W'' = W - b*h
-        # b = sum(W_i * h_i) / sum(h_i2)
-        sum_wh = sum(w * h for w, h in zip(ws, hs))
-        sum_h2 = sum(h * h for h in hs)
-        if abs(sum_h2) > TINY:
-            b_tilt = sum_wh / sum_h2
-        else:
-            b_tilt = 0.0
-        ws_no_tilt = [w - b_tilt * h for w, h in zip(ws, hs)]
-        rms_no_tilt.append(math.sqrt(sum(w * w for w in ws_no_tilt) / n))
-
-    return (field_values, rms_full, rms_no_def, rms_no_tilt)
+    return (fields, rms_values)

@@ -44,6 +44,7 @@ from aberrations import (
 from advanced_analysis import (
     compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf,
     compute_bar_target_mtf_table,
+    TEST_OBJECT_KINDS, compute_test_object_image,
 )
 from zernike import (
     compute_zernike_coefficients,
@@ -83,6 +84,7 @@ from .widgets import (
     FocusDiagramWidget,
     PSF3DWidget,
     BarTargetWidget,
+    TestObjectWidget,
 )
 from .analysis_pipeline import compute_all_analysis
 
@@ -180,6 +182,8 @@ class AnalysisPanel(QTabWidget):
         self.wavefront_stack.addWidget(self.wavefront_map_w)
         self.wavefront_stack.addWidget(self.wavefront_3d_w)
         self.esf_w = ESFWidget()
+        # Симуляция изображения тест-объекта (п. 14 GAP v2) — рядом с ESF
+        self.test_object_w = TestObjectWidget()
         # Вкладка «Цернике»: гистограммы коэффициентов + СКВ по полю (п. 2)
         self.wf_rms_field_w = WfRmsFieldMplWidget()
         self.zernike_page = QSplitter(Qt.Vertical)
@@ -229,6 +233,7 @@ class AnalysisPanel(QTabWidget):
             ("PSF 3D", self.psf_3d_w, 'psf3d'),
             ("LSF", self.lsf_w, 'lsf'),
             ("ESF", self.esf_w, 'esf'),
+            ("Изображение", self.test_object_w, 'test_object'),
             ("ENC", self.enc_w, 'enc'),
             ("PTF", self.ptf_w, 'ptf'),
             ("Топограмма", self.heatmap_w, 'heatmap'),
@@ -896,7 +901,7 @@ class AnalysisPanel(QTabWidget):
         'enc_w', 'ptf_w', 'heatmap_w', 'beam_geom',
         'chief_ray', 'zernike_w', 'wavefront_map_w', 'wavefront_3d_w',
         'wf_rms_field_w', 'focus_diagrams', 'psf_3d_w',
-        'bar_target_w',
+        'bar_target_w', 'test_object_w',
     )
     _PHASE2_TABLES = (
         'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
@@ -1009,6 +1014,9 @@ class AnalysisPanel(QTabWidget):
         self.heatmap_w.set_data(sys)
         self.wf_rms_field_w.set_data(sys)
         self.psf_3d_w.set_data(sys)
+        # Тест-объект (п. 14): пересчёт по текущим параметрам виджета
+        self.test_object_w.set_data(sys,
+                                    defocus_offset=self.get_defocus_offset())
         self._update_spot_table(sys)
         self._update_axial_table(sys)
         self._update_transverse_table(sys)
@@ -1070,6 +1078,7 @@ class AnalysisPanel(QTabWidget):
         self.psf_w.set_data(sys)
         self.lsf_w.set_data(sys)
         self.esf_w.set_data(sys, defocus_offset=defocus)
+        self.test_object_w.set_data(sys, defocus_offset=defocus)
         self.enc_w.set_data(sys)
         self.ptf_w.set_data(sys)
         self.heatmap_w.set_data(sys)

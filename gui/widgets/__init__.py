@@ -44,6 +44,7 @@ from .focus_curve import FocusCurveWidget
 from .chief_ray import ChiefRayWidget
 from .beam_geometry import BeamGeometryWidget
 from .bar_target import BarTargetWidget
+from .test_object import TestObjectWidget
 from .mpl_widgets import MplCanvasWidget, MplSurface3DWidget
 
 __all__ = [
@@ -83,6 +84,7 @@ __all__ = [
     'ChiefRayWidget',
     'BeamGeometryWidget',
     'BarTargetWidget',
+    'TestObjectWidget',
     # matplotlib infrastructure
     'MplCanvasWidget',
     'MplSurface3DWidget',

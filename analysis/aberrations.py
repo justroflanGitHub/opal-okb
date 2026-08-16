@@ -1292,6 +1292,27 @@ def is_oblique_section(azimuth_deg: float) -> bool:
     return OBLIQUE_AZIMUTH_TOL_DEG < az < AZIMUTH_FULL_TURN_DEG - OBLIQUE_AZIMUTH_TOL_DEG
 
 
+def _pupil_field_ray(system, x_start: float, y_start: float, field_y: float,
+                     z_start: float, z_pupil: float) -> 'Ray':
+    """Луч из точки предмета через точку ``(x_start, y_start)`` входного зрачка.
+
+    Общая логика построения луча по зрачковой координате для дальнего
+    (INFINITE — ``make_field_ray``) и ближнего (FINITE — из точки предмета)
+    типа предмета.
+    """
+    if system.object_type == ObjectType.INFINITE:
+        return make_field_ray(system, x_start, y_start, field_y, z_start, z_pupil)
+    obj_z = -system.surfaces[0].thickness if system.surfaces else -50.0
+    d = abs(obj_z)
+    ray = Ray(x=x_start, y=y_start, z=obj_z,
+              k=x_start / d, l=(y_start - field_y) / d, m=1)
+    norm = math.sqrt(ray.k ** 2 + ray.l ** 2 + ray.m ** 2)
+    ray.k /= norm
+    ray.l /= norm
+    ray.m /= norm
+    return ray
+
+
 def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_deg=45.0):
     """
     Аберрации в косом сечении.
@@ -1330,15 +1351,8 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
         y_start = h * math.cos(az) * aperture / 2  # меридиональная компонента
         x_start = h * math.sin(az) * aperture / 2  # сагиттальная компонента
 
-        if system.object_type == ObjectType.INFINITE:
-            ray = make_field_ray(system, x_start, y_start, field_y, z_start, z_pupil)
-        else:
-            obj_z = -system.surfaces[0].thickness if system.surfaces else -50
-            d = abs(obj_z)
-            ray = Ray(x=x_start, y=y_start, z=obj_z,
-                     k=x_start/d, l=(y_start - field_y)/d, m=1)
-            norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
-            ray.k /= norm; ray.l /= norm; ray.m /= norm
+        ray = _pupil_field_ray(system, x_start, y_start, field_y,
+                               z_start, z_pupil)
 
         result = trace_ray_through_system(system, ray, wl)
 
@@ -1357,9 +1371,83 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     return (pupil_heights, dy_mer_um, dy_sag_um)
 
 
+# ── Габаритные лучи: таблицы хода лучей ────────────────────────────────────
+
+# Габаритные лучи пучка: (ключ, подпись, короткая подпись, координата зрачка)
+GAUGE_RAYS: Tuple[Tuple[str, str, str, Tuple[float, float]], ...] = (
+    ('upper',    'Верхний меридиональный', 'Верх', (0.0, 1.0)),
+    ('lower',    'Нижний меридиональный', 'Низ', (0.0, -1.0)),
+    ('chief',    'Главный', 'Глав', (0.0, 0.0)),
+    ('sag_plus', 'Сагиттальный +1', 'Саг+', (1.0, 0.0)),
+    ('sag_minus', 'Сагиттальный −1', 'Саг−', (-1.0, 0.0)),
+)
+
+
+def compute_gauge_rays(system, wl: float = None, field_y: float = 0.0
+                       ) -> List[Dict[str, object]]:
+    """Габаритные лучи: координаты, углы и длины хода.
+
+    Трассирует все лучи из :data:`GAUGE_RAYS` и для каждого возвращает
+    точки на пути (старт, поверхности, плоскость изображения), направления
+    сегментов, геометрические длины сегментов, полную длину хода и
+    оптическую длину пути (OPL).
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        field_y: Угол поля (град) / высота предмета (мм).
+
+    Returns:
+        Список словарей (порядок как в :data:`GAUGE_RAYS`)::
+
+            {'key': str, 'label': str, 'short': str, 'pupil': (px, py),
+             'success': bool, 'error': str | None,
+             'points': [(x, y, z), ...],          # len = N
+             'directions': [(k, l, m), ...],      # направление сегмента i, len = N-1
+             'segment_lengths': [d, ...],         # |points[i+1] − points[i]|, len = N-1
+             'path_length': float,                # Σ d (мм)
+             'opl': float}                        # OPL (мм)
+    """
+    if wl is None:
+        wl = get_primary_wl(system)
+    aperture = get_effective_aperture(system, default=10.0)
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+
+    out: List[Dict[str, object]] = []
+    for key, label, short, (px, py) in GAUGE_RAYS:
+        x_start, y_start = px * aperture / 2, py * aperture / 2
+        ray = _pupil_field_ray(system, x_start, y_start, field_y,
+                               z_start, z_pupil)
+        result = trace_ray_through_system(system, ray, wl)
+
+        points = list(result.path)
+        directions: List[Tuple[float, float, float]] = []
+        segment_lengths: List[float] = []
+        for p0, p1 in zip(points, points[1:]):
+            dx, dy, dz = (p1[j] - p0[j] for j in range(3))
+            d = math.sqrt(dx * dx + dy * dy + dz * dz)
+            segment_lengths.append(d)
+            if d > EPSILON:
+                directions.append((dx / d, dy / d, dz / d))
+            else:
+                directions.append((0.0, 0.0, 1.0))
+
+        out.append({'key': key, 'label': label, 'short': short,
+                    'pupil': (px, py),
+                    'success': result.success, 'error': result.error,
+                    'points': points, 'directions': directions,
+                    'segment_lengths': segment_lengths,
+                    'path_length': sum(segment_lengths),
+                    'opl': result.opl})
+    return out
+
+
 def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
     """
-    Координаты габаритных лучей на каждой поверхности.
+    Координаты габаритных лучей на каждой поверхности (верхний, нижний,
+    главный). Строится на :func:`compute_gauge_rays` (5 лучей), беря три
+    меридиональных.
 
     Возвращает: list of dicts:
     [
@@ -1369,74 +1457,26 @@ def compute_ray_coordinates(system, wl=0.58756, field_y=0.0):
         ...
     ]
     """
-    aperture = get_effective_aperture(system, default=10.0)
-    parax_rc = paraxial_trace(system)
-    z_start_rc, z_pupil_rc = _compute_ray_start(system, parax_rc)
+    rays = {r['key']: r
+            for r in compute_gauge_rays(system, wl=wl, field_y=field_y)}
 
-    # Три луча: верхний, нижний, главный
-    # Верхний луч (pupil_y = +1)
-    y_up = aperture / 2
-    # Нижний луч (pupil_y = -1)
-    y_low = -aperture / 2
-
-    def _make_ray(y_start, x_start=0.0):
-        return make_field_ray(system, x_start, y_start, field_y, z_start_rc, z_pupil_rc)
-
-    # Трассируем три луча
-    upper_result = trace_ray_through_system(system, _make_ray(y_up), wl)
-    lower_result = trace_ray_through_system(system, _make_ray(y_low), wl)
-    chief_result = trace_ray_through_system(system, _make_ray(0.0), wl)
-
-    # Определяем количество поверхностей + стартовая точка
-    n_surfs = len(system.surfaces)
-    # path содержит n_surfs+1 точку (начальная + на каждой поверхности)
-    # Если есть толщина после последней поверхности, path может содержать ещё одну точку
-
-    # Z-позиции поверхностей
-    z_pos = compute_z_positions(system)
+    n_points = max(len(rays[k]['points'])
+                   for k in ('upper', 'lower', 'chief'))
 
     results = []
-
-    # Для каждой поверхности (включая плоскость изображения)
-    max_points = max(
-        len(upper_result.path) if upper_result.success else 0,
-        len(lower_result.path) if lower_result.success else 0,
-        len(chief_result.path) if chief_result.success else 0,
-    )
-
-    for i in range(max_points):
+    for i in range(n_points):
         entry = {'surface': i}
-
-        if upper_result.success and i < len(upper_result.path):
-            p = upper_result.path[i]
-            entry['x_upper'] = p[0]
-            entry['y_upper'] = p[1]
-            entry['z_upper'] = p[2]
-        else:
-            entry['x_upper'] = None
-            entry['y_upper'] = None
-            entry['z_upper'] = None
-
-        if lower_result.success and i < len(lower_result.path):
-            p = lower_result.path[i]
-            entry['x_lower'] = p[0]
-            entry['y_lower'] = p[1]
-            entry['z_lower'] = p[2]
-        else:
-            entry['x_lower'] = None
-            entry['y_lower'] = None
-            entry['z_lower'] = None
-
-        if chief_result.success and i < len(chief_result.path):
-            p = chief_result.path[i]
-            entry['x_chief'] = p[0]
-            entry['y_chief'] = p[1]
-            entry['z_chief'] = p[2]
-        else:
-            entry['x_chief'] = None
-            entry['y_chief'] = None
-            entry['z_chief'] = None
-
+        for key in ('upper', 'lower', 'chief'):
+            r = rays[key]
+            if r['success'] and i < len(r['points']):
+                p = r['points'][i]
+                entry[f'x_{key}'] = p[0]
+                entry[f'y_{key}'] = p[1]
+                entry[f'z_{key}'] = p[2]
+            else:
+                entry[f'x_{key}'] = None
+                entry[f'y_{key}'] = None
+                entry[f'z_{key}'] = None
         results.append(entry)
 
     return results

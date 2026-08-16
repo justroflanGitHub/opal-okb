@@ -1567,49 +1567,42 @@ class MainWindow(QMainWindow):
 
 
     def _show_ray_table(self):
-        """Показать таблицу координат габаритных лучей (#7)."""
-        from aberrations import compute_ray_coordinates
+        """Показать таблицы габаритных лучей (#7).
+
+        Те же таблицы, что на вкладке «Лучи (ход)» панели анализа
+        (единая точка построения — ``_build_gauge_rays_tables``).
+        """
+        from aberrations import compute_gauge_rays
         sys = self.current_system
-        wl = get_primary_wl(sys)
         try:
-            coords = compute_ray_coordinates(sys, wl=wl, field_y=0.0)
+            rays = compute_gauge_rays(sys, wl=get_primary_wl(sys), field_y=0.0)
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка трассировки: {e}")
             return
-        if not coords:
+        if not rays:
             QMessageBox.information(self, "Таблица", "Нет данных")
             return
 
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QScrollArea, QWidget
         dlg = QDialog(self)
-        dlg.setWindowTitle("Координаты габаритных лучей")
-        dlg.setMinimumSize(800, 400)
+        dlg.setWindowTitle("Габаритные лучи: координаты и ход")
+        dlg.setMinimumSize(900, 500)
         layout = QVBoxLayout(dlg)
 
-        headers = ["Пов.", "X верх", "Y верх", "Z верх",
-                    "X низ", "Y низ", "Z низ",
-                    "X гл.", "Y гл.", "Z гл."]
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setRowCount(len(coords))
-        table.setAlternatingRowColors(True)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setFont(QFont("Consolas", 9))
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        tables = self.analysis._build_gauge_rays_tables(sys, rays)
+        if len(tables) == 1:
+            layout.addWidget(tables[0])
+        else:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            inner = QWidget()
+            inner_layout = QVBoxLayout(inner)
+            inner_layout.setContentsMargins(0, 0, 0, 0)
+            for t in tables:
+                inner_layout.addWidget(t)
+            scroll.setWidget(inner)
+            layout.addWidget(scroll)
 
-        for i, entry in enumerate(coords):
-            table.setItem(i, 0, QTableWidgetItem(str(entry['surface'])))
-            for j, key in enumerate(['x_upper', 'y_upper', 'z_upper',
-                                      'x_lower', 'y_lower', 'z_lower',
-                                      'x_chief', 'y_chief', 'z_chief']):
-                val = entry.get(key)
-                text = f"{val:.4f}" if val is not None else "-"
-                item = QTableWidgetItem(text)
-                item.setTextAlignment(Qt.AlignCenter)
-                table.setItem(i, j + 1, item)
-
-        layout.addWidget(table)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         buttons.rejected.connect(dlg.reject)
         layout.addWidget(buttons)

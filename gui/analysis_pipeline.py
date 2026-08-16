@@ -36,6 +36,7 @@ from aberrations import (
     compute_focus_diagrams,
     compute_oblique_fan,
     compute_ray_coordinates,
+    compute_gauge_rays,
     is_oblique_section,
 )
 from advanced_analysis import (
@@ -219,6 +220,10 @@ def compute_all_analysis(
     # Chief ray
     _safe('chief_data', compute_chief_ray_characteristics, sys)
     d.setdefault('chief_data', [])
+
+    # Gauge rays (координаты / высоты / углы / длины хода)
+    _safe('gauge_rays', compute_gauge_rays, sys, wl=wl)
+    d.setdefault('gauge_rays', [])
 
     # Zernike
     d['zernike_coeffs'] = []

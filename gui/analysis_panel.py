@@ -36,6 +36,7 @@ from aberrations import (
     compute_focus_curve,
     compute_chief_ray_characteristics,
     compute_isoplanatism,
+    compute_gauge_rays,
     DEFAULT_FOCUS_STEP_MM,
 )
 from advanced_analysis import (
@@ -178,6 +179,7 @@ class AnalysisPanel(QTabWidget):
 
         parax_placeholder = QWidget()
         seidel_placeholder = QWidget()
+        rays_placeholder = QWidget()
 
         tabs = [
             ("Параксиальные", parax_placeholder, 'parax'),
@@ -201,6 +203,7 @@ class AnalysisPanel(QTabWidget):
             ("Топограмма", self.heatmap_w, 'heatmap'),
             ("Габариты", self.beam_geom, 'beam'),
             ("Гл. лучи", self.chief_ray, 'chief'),
+            ("Лучи (ход)", rays_placeholder, 'rays'),
             ("Цернике", self.zernike_page, 'zernike'),
             ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
             ("Мира", self.bar_target_w, 'bar_target'),
@@ -211,7 +214,7 @@ class AnalysisPanel(QTabWidget):
         self._toggle_btns = []
 
         for title, plot_widget, key in tabs:
-            if key in ('parax', 'seidel'):
+            if key in ('parax', 'seidel', 'rays'):
                 container = QWidget()
                 container.setLayout(QVBoxLayout(container))
                 container.layout().setContentsMargins(0, 0, 0, 0)
@@ -775,6 +778,14 @@ class AnalysisPanel(QTabWidget):
              "Z'm", "Z's", "\u0425\u0440.\u0443\u0432\u0435\u043b."],
             rows_chief, [45, 60, 55, 60, 60, 60]))
 
+        gauge_rays = d.get('gauge_rays')
+        if gauge_rays is None:
+            try:
+                gauge_rays = compute_gauge_rays(sys, wl=wl)
+            except Exception:
+                gauge_rays = []
+        self._set_table('rays', self._build_gauge_rays_tables(sys, gauge_rays))
+
         zernike_coeffs = d.get('zernike_coeffs', [])
         zernike_chromatic = d.get('zernike_chromatic')
         if zernike_chromatic and self.zernike_w._show_chromatic:
@@ -908,7 +919,7 @@ class AnalysisPanel(QTabWidget):
         'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
         'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
         'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
-        'beam', 'chief', 'zernike', 'wfmap', 'bar_target',
+        'beam', 'chief', 'rays', 'zernike', 'wfmap', 'bar_target',
     )
 
     def apply_phase1(self, sys: OpticalSystem, data: dict) -> None:
@@ -1031,6 +1042,7 @@ class AnalysisPanel(QTabWidget):
         self._update_heatmap_table(sys)
         self._update_beam_table(sys)
         self._update_chief_table(sys)
+        self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
@@ -1101,6 +1113,7 @@ class AnalysisPanel(QTabWidget):
         self._update_heatmap_table(sys)
         self._update_beam_table(sys)
         self._update_chief_table(sys)
+        self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
@@ -1379,6 +1392,124 @@ class AnalysisPanel(QTabWidget):
         self._set_table('chief', make_table(
             ["Поле", "Дист.абс", "Дист.%", "Z'm", "Z's", "Хр.увел."],
             rows, [45, 60, 55, 60, 60, 60]))
+
+    # ------------------------------------------------------------------
+    #  Габаритные лучи (пункт 7): координаты / высоты, углы, длины хода
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _gauge_point_labels(sys: OpticalSystem, points: list) -> list[str]:
+        """Подписи точек пути луча: Старт / Пов N / Диафр. / Изобр.
+
+        Поверхности нумеруются последовательно по порядку встречи (точка
+        попадания лежит на самой поверхности, а не в вершине). Точка в
+        плоскости диафрагмы (вставляется трассировкой после прохождения
+        поверхности диафрагмы) помечается «Диафр.»; последняя точка в
+        плоской плоскости изображения — «Изобр.».
+        """
+        from optics_utils import compute_z_positions
+        z_pos = compute_z_positions(sys)
+        stop_idx = getattr(sys, 'stop_surface', -1)
+        z_stop = (z_pos[stop_idx] + getattr(sys, 'stop_offset', 0.0)
+                  if 0 <= stop_idx < len(z_pos) else None)
+        labels = []
+        surf_no = 0
+        n = len(points)
+        for j, (_, _, z) in enumerate(points):
+            if j == 0:
+                labels.append('Старт')
+                continue
+            if j == n - 1 and abs(z - z_pos[-1]) < 1e-6:
+                labels.append('Изобр.')
+                continue
+            if (z_stop is not None and abs(z - z_stop) < 1e-6
+                    and surf_no > stop_idx):
+                labels.append('Диафр.')
+                continue
+            surf_no += 1
+            labels.append(f'Пов {surf_no}')
+        return labels
+
+    def _build_gauge_rays_tables(self, sys: OpticalSystem,
+                                 rays: list) -> list:
+        """Таблицы габаритных лучей (для вкладки «Лучи (ход)»).
+
+        Строит три таблицы: координаты (x, y, z) на каждой поверхности;
+        высоты / углы сегментов / длины сегментов; сводка хода лучей.
+        """
+        if not rays:
+            return [make_table(["Статус"], [["Нет данных"]], [200])]
+
+        n_points = max(len(r['points']) for r in rays)
+        # Подписи точек — по самому длинному пути (у лучей, идущих точно
+        # через вершину поверхности диафрагмы, точки диафрагмы нет)
+        longest = max(rays, key=lambda r: len(r['points']))
+        labels = self._gauge_point_labels(sys, longest['points'])
+
+        # ── Таблица 1: координаты (x, y, z) на каждой поверхности ──
+        coord_headers = ['Точка']
+        for r in rays:
+            coord_headers += [f"{r['short']} x", f"{r['short']} y", f"{r['short']} z"]
+        coord_rows = []
+        for i in range(n_points):
+            row = [labels[i] if i < len(labels) else f'№{i}']
+            for r in rays:
+                if r['success'] and i < len(r['points']):
+                    p = r['points'][i]
+                    row += [f"{p[0]:.4f}", f"{p[1]:.4f}", f"{p[2]:.4f}"]
+                else:
+                    row += ['—', '—', '—']
+            coord_rows.append(row)
+        table_coords = make_table(coord_headers, coord_rows,
+                                  [50] + [46] * (len(coord_headers) - 1))
+
+        # ── Таблица 2: высоты на поверхностях, углы и длины сегментов ──
+        param_headers = ['Точка']
+        for r in rays:
+            param_headers += [f"{r['short']} h", f"{r['short']} ν°", f"{r['short']} d"]
+        param_rows = []
+        for i in range(n_points):
+            row = [labels[i] if i < len(labels) else f'№{i}']
+            for r in rays:
+                if r['success'] and i < len(r['points']):
+                    h = r['points'][i][1]
+                    row.append(f"{h:.4f}")
+                    if i < len(r['directions']):
+                        k, l, m = r['directions'][i]
+                        nu = math.degrees(math.atan2(math.hypot(k, l), m))
+                        row.append(f"{nu:.4f}")
+                        row.append(f"{r['segment_lengths'][i]:.4f}")
+                    else:
+                        row += ['—', '—']
+                else:
+                    row += ['—', '—', '—']
+            param_rows.append(row)
+        table_params = make_table(param_headers, param_rows,
+                                  [50] + [42] * (len(param_headers) - 1))
+
+        # ── Таблица 3: сводка габаритных лучей ──
+        summary_rows = []
+        for r in rays:
+            px, py = r['pupil']
+            status = 'OK' if r['success'] else (r['error'] or 'ошибка')
+            summary_rows.append([
+                r['label'], f"({px:+.0f}, {py:+.0f})",
+                f"{r['path_length']:.4f}" if r['success'] else '—',
+                f"{r['opl']:.4f}" if r['success'] else '—',
+                status])
+        table_summary = make_table(
+            ["Луч", "Зрачок (px, py)", "Длина хода, мм", "OPL, мм", "Статус"],
+            summary_rows, [150, 90, 90, 80, 60])
+
+        return [table_coords, table_params, table_summary]
+
+    def _update_gauge_rays_table(self, sys: OpticalSystem) -> None:
+        """Вкладка «Лучи (ход)»: построить таблицы (живой расчёт)."""
+        try:
+            rays = compute_gauge_rays(sys)
+        except Exception:
+            rays = []
+        self._set_table('rays', self._build_gauge_rays_tables(sys, rays))
 
     def _update_zernike_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys); defocus = self.get_defocus_offset()

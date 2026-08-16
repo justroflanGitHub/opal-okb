@@ -53,6 +53,7 @@ from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
     compute_zernike_chromatic,
+    compute_global_zernike,
 )
 from optics_utils import get_primary_wl
 
@@ -238,6 +239,9 @@ def compute_all_analysis(
             d['zernike_chromatic'] = compute_zernike_chromatic(sys, num_rays=32, max_order=4)
         except Exception:
             pass
+
+    # Глобальное разложение Цернике (поле × λ, гексаполярная сетка зрачка)
+    _safe('zernike_global', compute_global_zernike, sys)
 
     # Wavefront map
     d['wf_data'] = None; d['wf_coords'] = None; d['wf_mask'] = None

@@ -6,8 +6,10 @@ OPAL-OKB - Анализ аберраций (Л1.4.6-Л1.4.7)
 import math
 import numpy as np
 from typing import List, Tuple, Dict
-from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, FieldPoint, paraxial_trace
-from ray_tracing import Ray, trace_ray_through_system
+from optics_engine import (OpticalSystem, Surface, SurfaceType, ObjectType,
+                           Wavelength, FieldPoint, paraxial_trace)
+from ray_tracing import (Ray, trace_ray_through_system, refract,
+                         surface_normal, surface_normal_aspheric)
 from glass_catalog import compute_refractive_index
 from optics_utils import (compute_z_positions, get_primary_wl, get_effective_aperture,
                           make_field_ray, EPSILON, TINY)
@@ -110,6 +112,121 @@ def _paraxial_focus_z(system: OpticalSystem) -> float:
     return last_surf_z + bfd if bfd != 0 else z_pos[-1]
 
 
+def _reference_sphere(system: OpticalSystem, field_y: float = 0.0,
+                      parax: dict = None) -> Tuple[Tuple[float, float, float],
+                                                   float]:
+    """Опорная сфера поля ``field_y``: центр и радиус, мм.
+
+    Центр — параксиальное изображение точки поля (для дальнего типа
+    со смещением f'·tan(угол)), радиус — расстояние от центра до
+    вершины последней поверхности. Единственная реализация для
+    волновой аберрации (веер, гексаполярная сетка, Цернике, карта W).
+
+    Returns:
+        ``((cx, cy, cz), R)``.
+    """
+    parax = parax if parax is not None else paraxial_trace(system)
+    z_pos = compute_z_positions(system)
+    last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    bfd = parax.get('back_focal_distance', 0)
+    cz = last_surf_z + bfd if bfd != 0 else z_pos[-1]
+    cx = 0.0
+    cy = 0.0
+    if system.object_type == ObjectType.INFINITE and field_y != 0:
+        efl = parax.get('focal_length', 0)
+        cy = efl * math.tan(math.radians(field_y)) if efl else 0.0
+    R = abs(cz - last_surf_z)
+    if R < EPSILON:
+        R = 1.0
+    return (cx, cy, cz), R
+
+
+def _air_exit_direction(system: OpticalSystem, result,
+                        wl: float) -> Tuple[float, float, float] | None:
+    """Единичное направление луча в воздухе за последней поверхностью.
+
+    Если трассировка дошла до плоскости изображения — направление
+    берётся из последнего сегмента пути (воздух). Если путь оборвался
+    на самой последней поверхности (нулевое расстояние до плоскости
+    изображения) — направление получается преломлением/отражением на
+    ней по Снеллиусу.
+
+    Returns:
+        ``(k, l, m)`` или ``None``, если направление определить не
+        удалось (полный внутренний промах).
+    """
+    path = result.path
+    if len(path) < 2:
+        return None
+    p0, p1 = path[-2], path[-1]
+    dx, dy, dz = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+    norm = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if norm < TINY:
+        return None
+    k, l, m = dx / norm, dy / norm, dz / norm
+
+    z_pos = compute_z_positions(system)
+    # Путь дошёл до плоскости изображения — последний сегмент в воздухе
+    if abs(p1[2] - z_pos[-1]) < EPSILON:
+        return (k, l, m)
+
+    # Путь оборвался на последней поверхности: преломить направление
+    if not system.surfaces:
+        return (k, l, m)
+    surf = system.surfaces[-1]
+    z_surf = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    if surf.surface_type in (SurfaceType.CONIC, SurfaceType.ASPHERIC) \
+            or surf.aspheric_coeffs or surf.deformation_coeffs:
+        nx, ny, nz = surface_normal_aspheric(
+            p1[0], p1[1], p1[2], surf.radius, z_surf,
+            conic_k=surf.conic_constant,
+            aspheric_coeffs=surf.aspheric_coeffs or None)
+    else:
+        nx, ny, nz = surface_normal(p1[0], p1[1], p1[2],
+                                    surf.radius, z_surf)
+    if surf.is_reflective:
+        # Отражение: d' = d − 2(d·n)n
+        dot = k * nx + l * ny + m * nz
+        return (k - 2 * dot * nx, l - 2 * dot * ny, m - 2 * dot * nz)
+    glass_before = system.surfaces[-2].glass if len(system.surfaces) > 1 else ''
+    n1 = compute_refractive_index(glass_before, wl)
+    n2 = compute_refractive_index(surf.glass, wl)
+    return refract(k, l, m, nx, ny, nz, n1, n2)
+
+
+def _opl_to_reference_sphere(
+        opl: float, point: Tuple[float, float, float],
+        direction: Tuple[float, float, float],
+        center: Tuple[float, float, float], R_ref: float,
+        n_air: float = IMAGE_SPACE_REFRACTIVE_INDEX) -> float | None:
+    """OPL от точки пути до опорной сферы ВДОЛЬ направления луча.
+
+    Решает ``|P + L·d − C| = R_ref``; ``L`` может быть отрицательным
+    (сфера позади конца пути — отход назад в воздухе). Берётся
+    ближнее пересечение сфероида с прямой.
+
+    Returns:
+        ``opl + n_air·L`` (мм) или ``None``, если прямая не
+        пересекает сферу.
+    """
+    k, l, m = direction
+    dx = point[0] - center[0]
+    dy = point[1] - center[1]
+    dz = point[2] - center[2]
+    b = 2.0 * (k * dx + l * dy + m * dz)
+    c = dx * dx + dy * dy + dz * dz - R_ref * R_ref
+    disc = b * b - 4.0 * c
+    if disc < 0.0:
+        return None
+    sq = math.sqrt(disc)
+    # Ближнее к точке пересечение прямой со сферой (ближняя сторона
+    # сферы — где сходящийся волновой фронт её встречает)
+    l_a = (-b + sq) / 2.0
+    l_b = (-b - sq) / 2.0
+    L = l_a if abs(l_a) <= abs(l_b) else l_b
+    return opl + n_air * L
+
+
 def _field_chief_ray(system: OpticalSystem, field_y: float,
                      z_start: float, z_pupil: float) -> Ray:
     """Главный луч поля ``field_y`` через центр входного зрачка.
@@ -126,29 +243,42 @@ def _field_chief_ray(system: OpticalSystem, field_y: float,
 
 def _chief_reference_opl(system: OpticalSystem, wl: float, field_y: float,
                          z_start: float, z_pupil: float,
-                         focus_z: float) -> float:
-    """OPL главного луча до опорной сферы в параксиальном фокусе, мм.
+                         center: Tuple[float, float, float],
+                         r_ref: float) -> float:
+    """OPL главного луча до опорной сферы поля, мм.
 
     Ноль отсчёта волновой аберрации. При неудачной трассировке — 0.0.
     """
     res = trace_ray_through_system(
         system, _field_chief_ray(system, field_y, z_start, z_pupil), wl)
-    opl = res.opl if res.success else 0.0
-    if res.success and len(res.path) >= 2:
-        # OPL от последней поверхности до опорной сферы (n = 1, воздух)
-        opl += IMAGE_SPACE_REFRACTIVE_INDEX * (focus_z - res.path[-1][2])
-    return opl
+    if not res.success or len(res.path) < 2:
+        return 0.0
+    direction = _air_exit_direction(system, res, wl)
+    opl = _opl_to_reference_sphere(res.opl, res.path[-1], direction,
+                                   center, r_ref)
+    if opl is not None:
+        return opl
+    # Запасной вариант — замыкание вдоль оси до плоскости центра сферы
+    return res.opl + IMAGE_SPACE_REFRACTIVE_INDEX * (center[2] - res.path[-1][2])
 
 
-def _ray_wavefront(result, chief_opl: float, focus_z: float,
+def _ray_wavefront(system: OpticalSystem, result, chief_opl: float,
+                   center: Tuple[float, float, float], r_ref: float,
                    wl: float) -> float:
     """Волновая аберрация луча (λ): разность OPL до опорной сферы
-    относительно главного луча, делённая на длину волны."""
+    относительно главного луча, делённая на длину волны.
+
+    OPL в мм, λ в мкм — перевод через ``wl·1e-3``.
+    """
     if wl <= 0:
         return 0.0
-    dz_to_ref = focus_z - result.path[-1][2]
-    opl_full = result.opl + IMAGE_SPACE_REFRACTIVE_INDEX * dz_to_ref
-    return (opl_full - chief_opl) / wl
+    direction = _air_exit_direction(system, result, wl)
+    opl = _opl_to_reference_sphere(result.opl, result.path[-1], direction,
+                                   center, r_ref)
+    if opl is None:
+        opl = (result.opl
+               + IMAGE_SPACE_REFRACTIVE_INDEX * (center[2] - result.path[-1][2]))
+    return (opl - chief_opl) / (wl * 1e-3)
 
 
 def trace_aberration_fan(sys: OpticalSystem, wl: float,
@@ -167,14 +297,14 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     """
     aperture = get_effective_aperture(sys, default=10.0)
 
-    # Параксиальный расчёт: фокус (опорная сфера) и входной зрачок
+    # Параксиальный расчёт: опорная сфера и входной зрачок
     parax = paraxial_trace(sys)
-    parax_focus_z = _paraxial_focus_z(sys)
+    ref_center, ref_r = _reference_sphere(sys, field_y, parax)
     z_start, z_pupil = _compute_ray_start(sys, parax)
 
     # OPL главного луча до опорной сферы — ноль отсчёта W
     opl_chief = _chief_reference_opl(sys, wl, field_y, z_start, z_pupil,
-                                     parax_focus_z)
+                                     ref_center, ref_r)
 
     results = []
 
@@ -205,7 +335,8 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
                 ds = 0
 
             # Волновая аберрация через OPL до опорной сферы (см. _ray_wavefront)
-            wave = _ray_wavefront(result, opl_chief, parax_focus_z, wl)
+            wave = _ray_wavefront(sys, result, opl_chief, ref_center,
+                                  ref_r, wl)
 
             results.append({
                 'pupil_y': pupil_y,
@@ -1489,6 +1620,24 @@ WF_RMS_MIN_POINTS = 10          # минимум успешных лучей д�
 WF_RMS_FALLBACK_MAX_FIELD = 5.0  # поле (град/мм), если точки поля не заданы
 
 
+def analysis_field_points(system: OpticalSystem, num_fields: int = 5
+                          ) -> List[float]:
+    """Точки поля для анализа по полю.
+
+    Все точки поля системы (поле 0 добавляется всегда); если точки поля
+    не заданы — ``num_fields`` равномерных значений 0..F_max
+    (:data:`WF_RMS_FALLBACK_MAX_FIELD`).
+    """
+    fields = sorted({0.0} | {float(fp.y) for fp in (system.field_points or [])
+                             if abs(fp.y) > EPSILON})
+    if len(fields) < 2:
+        max_field = (fields[0] if fields and fields[0] > 0
+                     else WF_RMS_FALLBACK_MAX_FIELD)
+        fields = [max_field * i / max(num_fields - 1, 1)
+                  for i in range(num_fields)]
+    return fields
+
+
 def trace_wavefront_hexapolar(system: OpticalSystem, wl: float = None,
                               field_y: float = 0.0,
                               num_rings: int = WF_RMS_HEXAPOLAR_RINGS
@@ -1517,9 +1666,9 @@ def trace_wavefront_hexapolar(system: OpticalSystem, wl: float = None,
     aperture = get_effective_aperture(system, default=10.0)
     parax = paraxial_trace(system)
     z_start, z_pupil = _compute_ray_start(system, parax)
-    focus_z = _paraxial_focus_z(system)
+    ref_center, ref_r = _reference_sphere(system, field_y, parax)
     chief_opl = _chief_reference_opl(system, wl, field_y, z_start, z_pupil,
-                                     focus_z)
+                                     ref_center, ref_r)
 
     points = []
     for px, py in _hexapolar_points(num_rings=num_rings):
@@ -1528,7 +1677,8 @@ def trace_wavefront_hexapolar(system: OpticalSystem, wl: float = None,
         result = trace_ray_through_system(system, ray, wl)
         if result.success and result.path:
             points.append((px, py,
-                           _ray_wavefront(result, chief_opl, focus_z, wl)))
+                           _ray_wavefront(system, result, chief_opl,
+                                          ref_center, ref_r, wl)))
     return points
 
 
@@ -1563,12 +1713,7 @@ def compute_wavefront_rms_vs_field(system: OpticalSystem, wl: float = None,
     if wl is None:
         wl = get_primary_wl(system)
 
-    fields = sorted({0.0} | {float(fp.y) for fp in (system.field_points or [])
-                             if abs(fp.y) > EPSILON})
-    if len(fields) < 2:
-        max_field = fields[0] if fields and fields[0] > 0 else WF_RMS_FALLBACK_MAX_FIELD
-        fields = [max_field * i / max(num_fields - 1, 1)
-                  for i in range(num_fields)]
+    fields = analysis_field_points(system, num_fields=num_fields)
 
     rms_values = []
     for field_y in fields:

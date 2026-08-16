@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import (
     QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QGroupBox, QFormLayout, QSplitter,
     QDoubleSpinBox, QComboBox,
-    QPushButton, QSizePolicy,
+    QPushButton, QSizePolicy, QPlainTextEdit,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -47,6 +47,8 @@ from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
     compute_zernike_chromatic,
+    compute_global_zernike,
+    format_global_zernike_text,
 )
 from optics_utils import get_primary_wl, fmt_val
 
@@ -193,6 +195,13 @@ class AnalysisPanel(QTabWidget):
         parax_placeholder = QWidget()
         seidel_placeholder = QWidget()
         rays_placeholder = QWidget()
+        zernike_global_placeholder = QWidget()
+
+        # Текстовое окно глобального разложения Цернике (поле × λ)
+        self.zernike_global_text = QPlainTextEdit()
+        self.zernike_global_text.setReadOnly(True)
+        self.zernike_global_text.setFont(QFont("Consolas", 9))
+        self.zernike_global_text.setPlainText('Нет данных')
 
         tabs = [
             ("Параксиальные", parax_placeholder, 'parax'),
@@ -218,6 +227,7 @@ class AnalysisPanel(QTabWidget):
             ("Гл. лучи", self.chief_ray, 'chief'),
             ("Лучи (ход)", rays_placeholder, 'rays'),
             ("Цернике", self.zernike_page, 'zernike'),
+            ("Цернике (глоб.)", zernike_global_placeholder, 'zernike_global'),
             ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
             ("Мира", self.bar_target_w, 'bar_target'),
             ("Зейдель", seidel_placeholder, 'seidel'),
@@ -227,7 +237,7 @@ class AnalysisPanel(QTabWidget):
         self._toggle_btns = []
 
         for title, plot_widget, key in tabs:
-            if key in ('parax', 'seidel', 'rays'):
+            if key in ('parax', 'seidel', 'rays', 'zernike_global'):
                 container = QWidget()
                 container.setLayout(QVBoxLayout(container))
                 container.layout().setContentsMargins(0, 0, 0, 0)
@@ -799,6 +809,8 @@ class AnalysisPanel(QTabWidget):
                 gauge_rays = []
         self._set_table('rays', self._build_gauge_rays_tables(sys, gauge_rays))
 
+        self._update_zernike_global(sys, d.get('zernike_global'))
+
         zernike_coeffs = d.get('zernike_coeffs', [])
         zernike_chromatic = d.get('zernike_chromatic')
         if zernike_chromatic and self.zernike_w._show_chromatic:
@@ -909,7 +921,8 @@ class AnalysisPanel(QTabWidget):
         'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
         'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
         'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
-        'beam', 'chief', 'rays', 'zernike', 'wfmap', 'bar_target',
+        'beam', 'chief', 'rays', 'zernike', 'zernike_global', 'wfmap',
+        'bar_target',
     )
 
     def apply_phase1(self, sys: OpticalSystem, data: dict) -> None:
@@ -1034,6 +1047,7 @@ class AnalysisPanel(QTabWidget):
         self._update_chief_table(sys)
         self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
+        self._update_zernike_global(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
         self._update_focus_diag_table(sys)
@@ -1105,6 +1119,7 @@ class AnalysisPanel(QTabWidget):
         self._update_chief_table(sys)
         self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
+        self._update_zernike_global(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
         self._update_focus_diag_table(sys)
@@ -1556,6 +1571,65 @@ class AnalysisPanel(QTabWidget):
         except Exception:
             self._zernike_table = None
             self._refresh_zernike_tables()
+
+    # ------------------------------------------------------------------
+    #  Глобальное разложение Цернике (пункт 9): текст + экспорт
+    # ------------------------------------------------------------------
+
+    def _wl_names(self, sys: OpticalSystem) -> dict:
+        """Метки λ системы: значение → имя (или само значение строкой)."""
+        return {w.value: (w.name or f"{w.value:.4f}")
+                for w in (sys.wavelengths or [])}
+
+    def _update_zernike_global(self, sys: OpticalSystem,
+                               result: dict = None) -> None:
+        """Вкладка «Цернике (глоб.)»: текстовая таблица поле × λ."""
+        if result is None:
+            try:
+                result = compute_global_zernike(sys)
+            except Exception:
+                result = None
+        text = (format_global_zernike_text(result,
+                                            wl_names=self._wl_names(sys))
+                if result else 'Нет данных')
+        self.zernike_global_text.setPlainText(text)
+
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(2)
+        bar = QHBoxLayout()
+        export_btn = QPushButton("Экспорт .txt")
+        export_btn.setStyleSheet(
+            "QPushButton { font-size: 10px; padding: 2px 6px; }")
+        export_btn.setToolTip("Сохранить таблицу глобального разложения "
+                              "Цернике в текстовый файл")
+        export_btn.clicked.connect(self._export_zernike_global)
+        bar.addWidget(export_btn)
+        bar.addStretch()
+        page_layout.addLayout(bar)
+        page_layout.addWidget(self.zernike_global_text)
+        self._set_table('zernike_global', page)
+
+    def _export_zernike_global(self) -> None:
+        """Экспорт текста глобального разложения Цернике в файл."""
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        text = self.zernike_global_text.toPlainText()
+        if not text or text == 'Нет данных':
+            QMessageBox.information(self, 'Экспорт', 'Нет данных для экспорта')
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Экспорт глобального разложения Цернике',
+            'zernike_global.txt', 'Текст (*.txt);;Все файлы (*)')
+        if not path:
+            return
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(text)
+            QMessageBox.information(self, 'Экспорт',
+                                    f'Сохранено: {path}')
+        except OSError as e:
+            QMessageBox.warning(self, 'Экспорт', f'Ошибка записи:\n{e}')
 
     def _update_wfmap_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)

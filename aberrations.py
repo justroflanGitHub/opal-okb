@@ -5,7 +5,8 @@ Re-exports everything so that existing imports like
 """
 from analysis.aberrations import *  # noqa: F401, F403
 from analysis.aberrations import (
-    _compute_ray_start, _aim_at_pupil, _field_chief_ray,
+    _compute_ray_start, _aim_at_pupil, _field_chief_ray, _hexapolar_points,
+    _reference_sphere, _air_exit_direction, _opl_to_reference_sphere,
     trace_aberration_fan, compute_spot_diagram, compute_rms_spot,
     compute_rms_spot_xy, compute_field_aberrations,
     compute_chief_ray_characteristics, compute_focus_curve,

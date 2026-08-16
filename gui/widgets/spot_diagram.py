@@ -11,7 +11,7 @@ Widgets:
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 from PyQt5.QtCore import Qt, QRectF
@@ -51,20 +51,25 @@ class SpotDiagramWidget(AberrationPlotWidget):
         self.spots_mono: list[tuple[float, float]] = []
         self.spots_poly: list[tuple[float, float, int]] = []
         self.rms: float = 0.0
+        self.rms_xy: Dict = {}
         self.poly_rms: float = 0.0
+        self.poly_rms_xy: Dict = {}
         self.polychromatic: bool = True
 
     def set_data(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         self.spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         self.rms = compute_rms_spot(self.spots_mono)
+        self.rms_xy = compute_rms_spot_xy(self.spots_mono)
         self._wl_cache = [w.value for w in sys.wavelengths]
         if len(sys.wavelengths) > 1:
             self.spots_poly = compute_spot_diagram_polychromatic(sys, num_rays=40, field_y=0.0)
             self.poly_rms = compute_polychromatic_rms(sys, num_rays=40, field_y=0.0)
+            self.poly_rms_xy = compute_rms_spot_xy([(dx, dy) for dx, dy, _ in self.spots_poly])
         else:
             self.spots_poly = [(dx, dy, 0) for dx, dy in self.spots_mono]
             self.poly_rms = self.rms
+            self.poly_rms_xy = self.rms_xy
         self.update()
 
     def paintEvent(self, event):
@@ -120,9 +125,11 @@ class SpotDiagramWidget(AberrationPlotWidget):
 
         # RMS readout
         cur_rms = self.poly_rms if self.polychromatic else self.rms
+        cur_xy = self.poly_rms_xy if self.polychromatic else self.rms_xy
         painter.setPen(QColor(200, 200, 220))
         painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + ph + 25, f"RMS: {cur_rms:.4f} мм | {len(spots)} лучей")
+        painter.drawText(m + 5, top + ph + 25,
+                         self._rms_label(cur_rms, cur_xy, len(spots)))
         title = "Точечная диаграмма (полихром.)" if self.polychromatic else "Точечная диаграмма"
         painter.drawText(m + 5, top + 15, title)
 
@@ -135,6 +142,16 @@ class SpotDiagramWidget(AberrationPlotWidget):
         if not hasattr(self, '_wl_cache'):
             return [0.588]
         return self._wl_cache
+
+    @staticmethod
+    def _rms_label(rms: float, rms_xy: Dict, num_rays: int) -> str:
+        """Подпись RMS под графиком пятна: общий RMS, раздельные X/Y,
+        энергетический центр Y (Yцэ) и число лучей."""
+        return (f"RMS: {rms:.4f} мм | "
+                f"RMS_X: {rms_xy.get('rms_x', 0.0):.4f} | "
+                f"RMS_Y: {rms_xy.get('rms_y', 0.0):.4f} | "
+                f"Yцэ: {rms_xy.get('centroid_y', 0.0):.4f} мм | "
+                f"{num_rays} лучей")
 
 
 class HeatmapWidget(AberrationPlotWidget):

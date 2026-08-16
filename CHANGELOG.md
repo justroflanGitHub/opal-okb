@@ -4,6 +4,21 @@ All notable changes to OPAL-OKB will be documented in this file.
 
 ## [1.5.0] — 2026-08-16
 
+### Пункт 4 GAP v2: СКВ пятна раздельно X/Y + центроид
+- **Подпись графика точечной диаграммы**: общий RMS + `RMS_X`, `RMS_Y`
+  (раздельные СКВ, сагиттальная/меридиональная) + `Yцэ` — энергетический
+  центр (центроид) по Y; формирование строки — общий метод
+  `SpotDiagramWidget._rms_label()`.
+- `SpotDiagramWidget`: атрибуты `rms_xy` / `poly_rms_xy`
+  (`compute_rms_spot_xy()` в `set_data()`; при одной λ poly = mono).
+- Проводка во все пути данных: `do_calc_phase2` → `results['rms_xy']`,
+  `apply_phase2` / `apply_precomputed` (`spot_rms_xy` из пайплайна) → виджет.
+- Таблица СКВ пятна: колонкам RMS_X / RMS_Y / Yцэ добавлены единицы (мм),
+  оба пути построения (`_update_spot_table`, `_build_tables_precomputed`).
+- Тесты: `tests/test_spot_rms_xy.py` (11) — детерминированные значения,
+  инвариантность к сдвигу, теорема Пифагора, подпись, таблица, фаза 2,
+  apply_precomputed.
+
 ### Пункт 3 GAP v2: Фокусировочные диаграммы
 - **Общая функция `compute_focus_diagrams()`** (analysis/aberrations.py):
   5 точечных диаграмм при defocus = 0, ±ΔS', ±2ΔS'; возвращает

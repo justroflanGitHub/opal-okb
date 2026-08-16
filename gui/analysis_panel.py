@@ -452,9 +452,11 @@ class AnalysisPanel(QTabWidget):
         d = data
         self.spot_diagram.spots_mono = d.get('spot_mono', [])
         self.spot_diagram.rms = d.get('spot_rms', 0)
+        self.spot_diagram.rms_xy = d.get('spot_rms_xy', {})
         self.spot_diagram._wl_cache = d.get('wl_list', [0.588])
         self.spot_diagram.spots_poly = d.get('spot_poly', [])
         self.spot_diagram.poly_rms = d.get('poly_rms', 0)
+        self.spot_diagram.poly_rms_xy = d.get('poly_rms_xy', {})
         self.spot_diagram.update()
 
         for widget in [self.transverse, self.longitudinal, self.wavefront]:
@@ -542,7 +544,7 @@ class AnalysisPanel(QTabWidget):
                          f"{poly_rms_xy.get('centroid_y', 0):.4f}", f"{poly_max:.4f}"])
         self._set_table('spot', make_table(
             ["\u041f\u043e\u043b\u0435", "\u03bb, \u043c\u043a\u043c", "\u041b\u0443\u0447\u0435\u0439", "RMS, \u043c\u043c",
-             "RMS_X", "RMS_Y", "Y\u0446\u044d", "\u041c\u0430\u043a\u0441 R, \u043c\u043c"],
+             "RMS_X, \u043c\u043c", "RMS_Y, \u043c\u043c", "Y\u0446\u044d, \u043c\u043c", "\u041c\u0430\u043a\u0441 R, \u043c\u043c"],
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
 
         fan_primary = d.get('fan_data', {}).get(wl, [])
@@ -938,9 +940,11 @@ class AnalysisPanel(QTabWidget):
         if 'spots_mono' in data:
             self.spot_diagram.spots_mono = data['spots_mono']
             self.spot_diagram.rms = data['rms']
+            self.spot_diagram.rms_xy = data.get('rms_xy', {})
             self.spot_diagram._wl_cache = [w.value for w in sys.wavelengths]
             self.spot_diagram.spots_poly = data.get('spots_poly', [])
             self.spot_diagram.poly_rms = data.get('poly_rms', data['rms'])
+            self.spot_diagram.poly_rms_xy = data.get('poly_rms_xy', {})
             self.spot_diagram.update()
         if 'fan_data' in data:
             all_fans = data['fan_data']
@@ -1125,7 +1129,8 @@ class AnalysisPanel(QTabWidget):
                          f"{poly_rms_xy['rms_y']:.4f}", f"{poly_rms_xy['centroid_y']:.4f}",
                          f"{poly_max:.4f}"])
         self._set_table('spot', make_table(
-            ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X", "RMS_Y", "Yцэ", "Макс R, мм"],
+            ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X, мм", "RMS_Y, мм",
+             "Yцэ, мм", "Макс R, мм"],
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
 
     def _update_axial_table(self, sys: OpticalSystem) -> None:

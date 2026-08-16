@@ -240,6 +240,7 @@ class CalculationController:
         spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         results['spots_mono'] = spots_mono
         results['rms'] = compute_rms_spot(spots_mono)
+        results['rms_xy'] = compute_rms_spot_xy(spots_mono)
 
         # Polychromatic
         if len(sys.wavelengths) > 1:
@@ -253,7 +254,7 @@ class CalculationController:
         else:
             results['spots_poly'] = [(dx, dy, 0) for dx, dy in spots_mono]
             results['poly_rms'] = results['rms']
-            results['poly_rms_xy'] = {}
+            results['poly_rms_xy'] = results['rms_xy']
             results['poly_max'] = 0
 
         # -- Parallel tasks --

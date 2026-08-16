@@ -32,7 +32,7 @@ from system_utils import reverse_system, scale_system, nearest_standard_radius, 
 from io_utils import save_json, load_json, append_system, export_protocol
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
-from optics_utils import get_primary_wl, copy_table_selection
+from optics_utils import get_primary_wl, get_effective_aperture, copy_table_selection
 
 from gui.controllers.calculation_controller import CalculationController
 from gui.controllers.system_controller import SystemController
@@ -41,6 +41,20 @@ from gui.dialogs.spectral_dialog import SpectralDialog
 from gui.dialogs.field_dialog import FieldPointsDialog
 from gui.dialogs.fit_dialog import FitDialog
 from gui.dialogs.achromat_dialog import AchromatDialog
+
+
+#: Способы задания апертуры осевого пучка (п. 12 GAP v2):
+#: подпись в UI ↔ тип апертуры. Пересчёт между способами —
+#: domain/aperture.py (через параксиальные характеристики).
+APERTURE_METHODS = (
+    ("Входной зрачок D (мм)", ApertureType.ENTRANCE_PUPIL),
+    ("Передняя апертура: угол (°)", ApertureType.FRONT_ANGLE),
+    ("Задняя апертура: угол (°)", ApertureType.REAR_ANGLE),
+    ("Задняя апертура: NA'", ApertureType.REAR_NA),
+    ("Высота на диафрагме (мм)", ApertureType.STOP_HEIGHT),
+    ("F/#", ApertureType.F_NUMBER),
+    ("NA", ApertureType.NUMERICAL_APERTURE),
+)
 
 
 class SurfaceTable(QTableWidget):
@@ -444,7 +458,7 @@ class ResultsPanel(QWidget):
         epd = parax.get('entrance_pupil_diameter', 0)
         if fno == 0:
             efl = parax.get('focal_length', 0)
-            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            epd = get_effective_aperture(sys, default=efl / 4.0)
             fno = efl / epd if epd > 0 else 0
         self._fno = fno
         self._epd = epd
@@ -675,35 +689,24 @@ class SystemParamsWidget(QWidget):
         stop_layout.addStretch()
         layout.addWidget(stop_group)
 
-        # === Апертуры ===
-        ap_group = QGroupBox("Апертуры")
+        # === Апертура (п. 12 GAP v2: способ задания + значение) ===
+        ap_group = QGroupBox("Апертура")
         ap_grid = QGridLayout(ap_group)
-        ap_grid.addWidget(QLabel("Передняя апертура:"), 0, 0)
-        self.front_ap_spin = QDoubleSpinBox()
-        self.front_ap_spin.setRange(0, 1000)
-        self.front_ap_spin.setDecimals(6)
-        self.front_ap_combo = QComboBox()
-        self.front_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
-        ap_grid.addWidget(self.front_ap_spin, 0, 1)
-        ap_grid.addWidget(self.front_ap_combo, 0, 2)
-
-        ap_grid.addWidget(QLabel("Задняя апертура:"), 1, 0)
-        self.rear_ap_spin = QDoubleSpinBox()
-        self.rear_ap_spin.setRange(0, 1000)
-        self.rear_ap_spin.setDecimals(6)
-        self.rear_ap_combo = QComboBox()
-        self.rear_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
-        ap_grid.addWidget(self.rear_ap_spin, 1, 1)
-        ap_grid.addWidget(self.rear_ap_combo, 1, 2)
+        ap_grid.addWidget(QLabel("Способ задания:"), 0, 0)
+        self.ap_method_combo = QComboBox()
+        self.ap_method_combo.addItems([label for label, _ in APERTURE_METHODS])
+        self.ap_method_combo.setToolTip(
+            "Пересчёт между способами — через параксиальные характеристики\n"
+            "(f', положение зрачков, увеличение диафрагмы)")
+        self.ap_value_spin = QDoubleSpinBox()
+        self.ap_value_spin.setRange(0, 10000)
+        self.ap_value_spin.setDecimals(6)
+        self.ap_value_spin.setValue(20.0)
+        ap_grid.addWidget(self.ap_method_combo, 0, 1)
+        ap_grid.addWidget(self.ap_value_spin, 0, 2)
         layout.addWidget(ap_group)
 
         # === Скрытые виджеты для совместимости ===
-        self.aperture_type_combo = QComboBox()  # legacy compat
-        self.aperture_type_combo.addItems(["Входной зрачок D (мм)", "Числовая апертура NA", "F/#"])
-        self.aperture_spin = QDoubleSpinBox()
-        self.aperture_spin.setRange(0, 10000)
-        self.aperture_spin.setDecimals(4)
-        self.aperture_spin.setValue(20.0)
         self.obscuration_spin = QDoubleSpinBox()
         self.obscuration_spin.setRange(0, 50)
         self.obscuration_spin.setDecimals(1)
@@ -728,9 +731,35 @@ class SystemParamsWidget(QWidget):
         self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
         self.img_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         self.img_height_spin.valueChanged.connect(self._update_gmms_label)
-        # Связь передней апертуры с aperture_type_combo/aperture_spin для совместимости
-        self.front_ap_spin.valueChanged.connect(self._sync_aperture)
-        self.front_ap_combo.currentIndexChanged.connect(self._sync_aperture)
+
+    def aperture_from_ui(self):
+        """Активный способ задания апертуры и значение (п. 12 GAP v2).
+
+        Единственная точка чтения апертуры из UI — контроллеры вызывают
+        этот метод, а не читают виджеты напрямую.
+
+        Returns:
+            Кортеж ``(ApertureType, значение в единицах способа)``.
+        """
+        idx = self.ap_method_combo.currentIndex()
+        if 0 <= idx < len(APERTURE_METHODS):
+            ap_type = APERTURE_METHODS[idx][1]
+        else:
+            ap_type = ApertureType.ENTRANCE_PUPIL
+        return ap_type, self.ap_value_spin.value()
+
+    def set_aperture(self, ap_type, value):
+        """Показать способ задания апертуры и значение (загрузка системы).
+
+        Args:
+            ap_type: Способ задания (:class:`ApertureType`).
+            value: Значение в единицах способа.
+        """
+        for i, (_, t) in enumerate(APERTURE_METHODS):
+            if t == ap_type:
+                self.ap_method_combo.setCurrentIndex(i)
+                break
+        self.ap_value_spin.setValue(value if value and value > 0 else 0.0)
 
     def _on_type_changed(self, side: str, idx: int):
         """Auto-set мера/отрезок при смене типа предмета/изображения.
@@ -748,17 +777,6 @@ class SystemParamsWidget(QWidget):
             self.back_shift_combo.setCurrentIndex(1 if is_far else 0)
             self.img_height_spin.setSuffix('' if is_far else ' мм')
         self._update_gmms_label()
-
-    def _sync_aperture(self):
-        """Синхронизировать переднюю апертуру с legacy aperture_spin/aperture_type_combo."""
-        idx = self.front_ap_combo.currentIndex()
-        val = self.front_ap_spin.value()
-        # 0=Y height (D/2), 1=NA, 2=F/#
-        self.aperture_type_combo.setCurrentIndex(idx)
-        if idx == 0:  # Y → D
-            self.aperture_spin.setValue(val * 2 if val > 0 else 20.0)
-        else:
-            self.aperture_spin.setValue(val)
 
     def _update_gmms_label(self, val=None):
         """Обновить отображение поля в формате Г.ММСС."""
@@ -802,19 +820,8 @@ class SystemParamsWidget(QWidget):
         self._on_type_changed('obj', self.obj_type_combo.currentIndex())
         self._on_type_changed('img', self.img_type_combo.currentIndex())
 
-        # Апертура: автоматически выбрать тип и значение
-        if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
-            self.front_ap_combo.setCurrentIndex(0)  # Y height
-            self.front_ap_spin.setValue(sys.aperture_value / 2.0)  # D → D/2
-        elif sys.aperture_type == ApertureType.NUMERICAL_APERTURE:
-            self.front_ap_combo.setCurrentIndex(1)  # NA
-            self.front_ap_spin.setValue(sys.aperture_value)
-        elif sys.aperture_type == ApertureType.F_NUMBER:
-            self.front_ap_combo.setCurrentIndex(2)  # F/#
-            self.front_ap_spin.setValue(sys.aperture_value)
-        # Legacy sync
-        self.aperture_type_combo.setCurrentIndex(sys.aperture_type.value)
-        self.aperture_spin.setValue(sys.aperture_value)
+        # Апертура (п. 12): способ задания + значение
+        self.set_aperture(sys.aperture_type, sys.aperture_value)
 
         # Диафрагма
         self.stop_nd_spin.setValue(sys.stop_surface)

@@ -15,6 +15,7 @@ from domain.models import (
     GlassCatalogEntry, _std_wavelengths,
 )
 from glass_catalog import compute_refractive_index
+from domain.aperture import aperture_to_epd
 from optics_utils import (
     compute_z_positions, get_primary_wl, get_effective_aperture,
     EPSILON, TINY, UNLIMITED_SD,
@@ -271,18 +272,6 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         sH = (D_mat - 1.0) / C_mat
         results['sH'] = sH
 
-        # f/# и входной зрачок
-        epd = sys.aperture_value if sys.aperture_value > 0 else abs(efl) / 4.0
-        if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
-            results['entrance_pupil_diameter'] = epd
-        elif sys.aperture_type == ApertureType.F_NUMBER:
-            results['entrance_pupil_diameter'] = abs(efl) / epd if epd > 0 else 0.0
-        elif sys.aperture_type == ApertureType.NUMERICAL_APERTURE:
-            results['entrance_pupil_diameter'] = 2.0 * abs(efl) * epd  # D = 2*f'*NA
-
-        f_number = abs(efl) / results['entrance_pupil_diameter'] if results['entrance_pupil_diameter'] > 0 else 0.0
-        results['f_number'] = f_number
-
     # ===== Положение зрачков (sP, sP') =====
     stop_idx = max(0, min(sys.stop_surface - 1, ns - 1))  # 0-based
     stop_off = getattr(sys, 'stop_offset', 0.0)  # смещение диафрагмы от stop_surface (мм)
@@ -357,6 +346,32 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     results['sP_prime'] = sP_prime
     results['exit_pupil'] = sP_prime
     results['pupil_location'] = sP_prime
+
+    # ===== Увеличения изображения диафрагмы (пересчёт апертур, п. 12) =====
+    # Трассирован луч через центр диафрагмы: y = 0 на диафрагме,
+    # nu = 1 (приведённый угол). По инварианту Лагранжа для сопряжённых
+    # плоскостей «диафрагма → зрачок» увеличение = 1/nu этого луча
+    # в плоскости зрачка.
+    nu_exit = nub[ns - 1] if ns > 0 else 0.0
+    m_entrance = 1.0 / nub[0] if abs(nub[0]) > TINY else None
+    m_exit = 1.0 / nu_exit if abs(nu_exit) > TINY else None
+    results['entrance_pupil_magnification'] = m_entrance
+    results['exit_pupil_magnification'] = m_exit
+    if m_entrance and m_exit and abs(m_entrance) > TINY:
+        results['pupil_magnification'] = m_exit / m_entrance
+
+    # ===== f/# и входной зрачок (п. 12 GAP v2) =====
+    # Любой способ задания апертуры (углы, NA', высота на диафрагме,
+    # D, F/#, NA) приводится к диаметру входного зрачка — после
+    # положения зрачков, на которые опираются пересчёты.
+    efl = results.get('focal_length', 0.0)
+    if abs(efl) > TINY:
+        epd = aperture_to_epd(sys, sys.aperture_value, sys.aperture_type,
+                              parax=results)
+        if not epd or epd <= TINY:
+            epd = abs(efl) / 4.0
+        results['entrance_pupil_diameter'] = epd
+        results['f_number'] = abs(efl) / epd if epd > 0 else 0.0
 
     # ===== Обобщённое увеличение V =====
     if sys.object_type == ObjectType.FINITE and abs(sys.object_height) > EPSILON:

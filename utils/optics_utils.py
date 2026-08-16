@@ -57,17 +57,27 @@ def get_primary_wl(system):
 def get_effective_aperture(system, default=20.0):
     """
     Return aperture diameter (D in mm).
-    Falls back to `default` if aperture_value <= 0.
-    
+
+    Любой способ задания апертуры (п. 12 GAP v2: передний/задний угол,
+    NA', высота на диафрагме, F/#, NA) приводится к диаметру входного
+    зрачка через параксиальные характеристики; falls back to `default`
+    if aperture_value <= 0 or the conversion is not applicable.
+
     Callers should pass the same default they used before refactoring:
     - aberrations.py, advanced_analysis.py, diffraction_mtf.py, zernike.py: default=10.0
     - visualization.py, visualization3d.py, ray_tracing.py: default=20.0
     - optics_engine.py: uses its own efl/4.0 logic (not this function)
     """
     ap = system.aperture_value
-    if ap and ap > 0:
+    if not ap or ap <= 0:
+        return default
+    from domain.models import ApertureType  # отложенно: без цикла импортов
+    if getattr(system, 'aperture_type', ApertureType.ENTRANCE_PUPIL) \
+            == ApertureType.ENTRANCE_PUPIL:
         return ap
-    return default
+    from domain.aperture import aperture_to_epd
+    epd = aperture_to_epd(system, ap, system.aperture_type)
+    return epd if epd and epd > 0 else default
 
 
 # ============================================================

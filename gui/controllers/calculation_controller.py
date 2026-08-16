@@ -16,7 +16,7 @@ from PyQt5.QtCore import QThread
 from optics_engine import (
     OpticalSystem, SurfaceType, paraxial_trace, seidel_aberrations,
 )
-from optics_utils import get_primary_wl
+from optics_utils import get_primary_wl, get_effective_aperture
 from aberrations import DEFAULT_FOCUS_STEP_MM
 
 
@@ -475,17 +475,8 @@ class CalculationController:
         sys.image_type = ObjectType.INFINITE if sp.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = sp.obj_height_spin.value()
 
-        ap_idx = sp.front_ap_combo.currentIndex()
-        ap_val = sp.front_ap_spin.value()
-        if ap_idx == 0:  # Y height (D/2)
-            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
-            sys.aperture_value = ap_val * 2
-        elif ap_idx == 1:  # NA
-            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
-            sys.aperture_value = ap_val
-        else:  # F/#
-            sys.aperture_type = ApertureType.F_NUMBER
-            sys.aperture_value = ap_val
+        # Апертура: способ задания + значение из UI (п. 12 GAP v2)
+        sys.aperture_type, sys.aperture_value = sp.aperture_from_ui()
 
         sys.obscuration_ratio = sp.obscuration_spin.value() / 100.0
         sys.beam_mode = "real" if sp.beam_mode_combo.currentIndex() == 0 else "given"
@@ -526,7 +517,7 @@ class CalculationController:
         epd = parax.get('entrance_pupil_diameter', 0)
         if fno == 0:
             efl = parax.get('focal_length', 0)
-            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            epd = get_effective_aperture(sys, default=efl / 4.0)
             fno = efl / epd if epd > 0 else 0
         self.mw.results._fno = fno
         self.mw.results._epd = epd

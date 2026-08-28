@@ -62,6 +62,8 @@ def compute_all_analysis(
     sys: OpticalSystem,
     defocus: float = 0.0,
     azimuth: float = 0.0,
+    beam_semi_mode: str = 'given',
+    beam_sharp_edge: bool = True,
 ) -> dict[str, Any]:
     """Compute all analysis data.  Thread-safe (no GUI operations).
 
@@ -69,6 +71,10 @@ def compute_all_analysis(
         sys: The optical system to analyse.
         defocus: Defocus offset in millimetres.
         azimuth: Azimuthal angle in degrees (0 = meridional, 90 = sagittal).
+        beam_semi_mode: Режим габаритов пучков — 'given' | 'real'
+            (BEAM_SEMI_MODES, п. 15 GAP v2).
+        beam_sharp_edge: Флаг «острый край» (виньетирование без
+            скругления кромки).
 
     Returns:
         Dictionary with all precomputed results for widgets and tables.
@@ -215,7 +221,8 @@ def compute_all_analysis(
         pass
 
     # Beam geometry
-    _safe('beam_data', compute_beam_geometry, sys)
+    _safe('beam_data', compute_beam_geometry, sys,
+          semi_mode=beam_semi_mode, sharp_edge=beam_sharp_edge)
     d.setdefault('beam_data', [])
 
     # Chief ray

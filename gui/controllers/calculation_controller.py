@@ -129,7 +129,10 @@ class CalculationController:
             defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
             azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
             focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
-            phase2_data = self.do_calc_phase2(sys, defocus, azimuth, focus_step)
+            beam_semi_mode = self.mw.analysis.get_beam_semi_mode() if hasattr(self.mw.analysis, 'get_beam_semi_mode') else 'given'
+            beam_sharp_edge = self.mw.analysis.get_beam_sharp_edge() if hasattr(self.mw.analysis, 'get_beam_sharp_edge') else True
+            phase2_data = self.do_calc_phase2(sys, defocus, azimuth, focus_step,
+                                              beam_semi_mode, beam_sharp_edge)
             self.update_after_calc(sys, phase1_data, phase2_data)
             return
 
@@ -151,9 +154,12 @@ class CalculationController:
         defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
         azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
         focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
+        beam_semi_mode = self.mw.analysis.get_beam_semi_mode() if hasattr(self.mw.analysis, 'get_beam_semi_mode') else 'given'
+        beam_sharp_edge = self.mw.analysis.get_beam_sharp_edge() if hasattr(self.mw.analysis, 'get_beam_sharp_edge') else True
 
         self._calc_thread = QThread()
-        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth, focus_step)
+        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth, focus_step,
+                                   beam_semi_mode, beam_sharp_edge)
         self._calc_worker.moveToThread(self._calc_thread)
         self._calc_thread.started.connect(self._calc_worker.run)
         self._calc_worker.finished.connect(
@@ -189,6 +195,8 @@ class CalculationController:
         defocus: float,
         azimuth: float,
         focus_step: float = DEFAULT_FOCUS_STEP_MM,
+        beam_semi_mode: str = 'given',
+        beam_sharp_edge: bool = True,
     ) -> Dict[str, Any]:
         """Phase 2: Heavy computations run in a worker thread.
 
@@ -201,6 +209,10 @@ class CalculationController:
             azimuth: Azimuth angle in degrees (from analysis panel).
             focus_step: Фокусировочный шаг ΔS' (мм) для фокусировочных
                 диаграмм (из настроек анализа).
+            beam_semi_mode: Режим габаритов пучков — 'given' | 'real'
+                (BEAM_SEMI_MODES, п. 15 GAP v2).
+            beam_sharp_edge: Флаг «острый край» (виньетирование без
+                скругления кромки).
 
         Returns:
             Dictionary of analysis results.
@@ -319,7 +331,8 @@ class CalculationController:
                 return None
 
         def _task_beam():
-            return compute_beam_geometry(sys)
+            return compute_beam_geometry(sys, semi_mode=beam_semi_mode,
+                                         sharp_edge=beam_sharp_edge)
 
         def _task_chief():
             return compute_chief_ray_characteristics(sys)

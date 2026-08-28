@@ -40,6 +40,9 @@ from domain.calculations import (
     PARAXIAL_WL_ROWS,
     compute_beam_geometry,
     seidel_aberrations,
+    BEAM_SEMI_MODES,
+    effective_semi_diameter,
+    real_beam_aperture,
 )
 
 __all__ = [
@@ -56,4 +59,5 @@ __all__ = [
     'apply_vignetting', 'refractive_index', 'paraxial_trace',
     'paraxial_trace_all_wavelengths', 'PARAXIAL_WL_ROWS',
     'compute_beam_geometry', 'seidel_aberrations',
+    'BEAM_SEMI_MODES', 'effective_semi_diameter', 'real_beam_aperture',
 ]

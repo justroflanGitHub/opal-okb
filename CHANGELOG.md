@@ -2,6 +2,32 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.7.0] — 2026-08-29
+
+### Пункт 15 GAP v2: габариты пучков с виньетированием
+- **domain/calculations.py**:
+  - **compute_beam_geometry(system, wl, semi_mode, sharp_edge)** — расчёт габаритов
+    осевого и внеосевых пучков для каждой точки поля: трассировка габаритного луча
+    (_trace_beam_ray), апертура пучка, виньетирование по полю.
+  - **pply_vignetting(system, field_y, ray_y, ...)** — проверка прохождения луча
+    через световые проёмы поверхностей (бисекция, VIGNETTING_BISECT_STEPS = 20).
+  - **
+eal_beam_aperture()** — диаметр наибольшего осевого пучка, проходящего по
+    фактическим полудиаметрам поверхностей (режим «Реальные»).
+  - **effective_semi_diameter()** — действующий полудиаметр с учётом кромки:
+    «острый край» или скругление 5% полудиаметра (EDGE_ROUND_FRACTION).
+  - **BEAM_SEMI_MODES** — режимы «Заданные» (по апертуре системы) / «Реальные»
+    (по фактическим полудиаметрам).
+- **gui/analysis_panel.py**: комбобокс «Габариты пучков» (режим given/real) и
+  чекбокс «Острый край» (виньетирование без скругления кромки) в панели анализа.
+- **gui/widgets/beam_geometry.py**: set_data() принимает режим и флаг кромки;
+  pply_data() — применение готового результата фонового расчёта без повтора.
+- **gui/analysis_pipeline.py**, **gui/controllers/calculation_controller.py**:
+  параметры eam_semi_mode/eam_sharp_edge пробрасываются в фоновый расчёт
+  (phase2), результат eam_data применяется через pply_data().
+- **optics_engine.py**: реэкспорт pply_vignetting для главного окна.
+- Тесты: 598 passed, 6 skipped.
+
 ## [1.6.0] — 2026-08-16
 
 ### Пункт 14 GAP v2: Симуляция изображения тест-объектов

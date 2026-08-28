@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
     QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QGroupBox, QFormLayout, QSplitter,
     QDoubleSpinBox, QComboBox, QStackedWidget,
-    QPushButton, QSizePolicy, QPlainTextEdit,
+    QPushButton, QSizePolicy, QPlainTextEdit, QCheckBox,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
@@ -25,6 +25,7 @@ from PyQt5.QtWidgets import QHeaderView
 from optics_engine import (
     OpticalSystem, paraxial_trace, seidel_aberrations,
     paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS,
+    BEAM_SEMI_MODES,
 )
 from aberrations import (
     trace_aberration_fan,
@@ -140,6 +141,24 @@ class AnalysisPanel(QTabWidget):
         self.chromatic_combo.addItems(["Абсолютный", "Разностный", "Спектр"])
         self.chromatic_combo.setToolTip("Режим отображения хроматизма в таблицах")
         settings_layout.addWidget(self.chromatic_combo)
+        settings_layout.addStretch()
+
+        # Режим расчёта габаритов пучков (п. 15 GAP v2)
+        settings_layout.addWidget(QLabel("Габариты пучков:"))
+        self.beam_mode_combo = QComboBox()
+        for key, label in BEAM_SEMI_MODES:
+            self.beam_mode_combo.addItem(label, key)
+        self.beam_mode_combo.setToolTip(
+            "Режим расчёта габаритов пучков (вкладка «Габариты»):\n"
+            "«Заданные» — по заданной апертуре системы,\n"
+            "«Реальные» — по фактическим полудиаметрам поверхностей")
+        settings_layout.addWidget(self.beam_mode_combo)
+        self.sharp_edge_chk = QCheckBox("Острый край")
+        self.sharp_edge_chk.setChecked(True)
+        self.sharp_edge_chk.setToolTip(
+            "Виньетирование по острому краю (без скругления кромки);\n"
+            "снят — световой проём меньше на 5% полудиаметра")
+        settings_layout.addWidget(self.sharp_edge_chk)
         settings_layout.addStretch()
 
         self.zernike_chrom_btn = QPushButton("Цернике по λ")
@@ -461,6 +480,17 @@ class AnalysisPanel(QTabWidget):
         return (self.focus_step_spin.value()
                 if hasattr(self, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM)
 
+    def get_beam_semi_mode(self) -> str:
+        """Режим габаритов пучков: 'given' | 'real' (BEAM_SEMI_MODES)."""
+        if not hasattr(self, 'beam_mode_combo'):
+            return 'given'
+        return self.beam_mode_combo.currentData() or 'given'
+
+    def get_beam_sharp_edge(self) -> bool:
+        """Флаг «острый край» (виньетирование без скругления кромки)."""
+        return (self.sharp_edge_chk.isChecked()
+                if hasattr(self, 'sharp_edge_chk') else True)
+
     # ------------------------------------------------------------------
     #  Precomputed data application
     # ------------------------------------------------------------------
@@ -518,7 +548,7 @@ class AnalysisPanel(QTabWidget):
         self.heatmap_w.num_points = d.get('heatmap_num_points', 0)
         self.heatmap_w.update()
 
-        self.beam_geom.beam_data = d.get('beam_data'); self.beam_geom.update()
+        self.beam_geom.apply_data(d.get('beam_data'))
         self.chief_ray.chief_data = d.get('chief_data'); self.chief_ray.update()
         self.zernike_w.coeffs = d.get('zernike_coeffs', [])
         self.zernike_w.chromatic_data = d.get('zernike_chromatic'); self.zernike_w.update()
@@ -993,7 +1023,7 @@ class AnalysisPanel(QTabWidget):
         if data.get('ptf_data') is not None:
             self.ptf_w.ptf_data = data['ptf_data']; self.ptf_w.update()
         if 'beam_data' in data:
-            self.beam_geom.beam_data = data['beam_data']; self.beam_geom.update()
+            self.beam_geom.apply_data(data['beam_data'])
         if 'chief_data' in data:
             self.chief_ray.chief_data = data['chief_data']; self.chief_ray.update()
         if 'zernike_coeffs' in data:
@@ -1082,7 +1112,8 @@ class AnalysisPanel(QTabWidget):
         self.enc_w.set_data(sys)
         self.ptf_w.set_data(sys)
         self.heatmap_w.set_data(sys)
-        self.beam_geom.set_data(sys)
+        self.beam_geom.set_data(sys, semi_mode=self.get_beam_semi_mode(),
+                                sharp_edge=self.get_beam_sharp_edge())
         self.chief_ray.set_data(sys)
         self.zernike_w.set_data(sys, defocus_offset=defocus)
         self.wavefront_map_w.set_data(sys, defocus_offset=defocus)
@@ -1372,7 +1403,9 @@ class AnalysisPanel(QTabWidget):
 
     def _update_beam_table(self, sys: OpticalSystem) -> None:
         from optics_engine import compute_beam_geometry
-        beam_data = compute_beam_geometry(sys)
+        beam_data = compute_beam_geometry(
+            sys, semi_mode=self.get_beam_semi_mode(),
+            sharp_edge=self.get_beam_sharp_edge())
         rows = []
         for bd in beam_data:
             rows.append([f"{bd['field_y']:.4f}", f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",

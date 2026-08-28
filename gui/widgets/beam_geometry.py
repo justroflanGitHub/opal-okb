@@ -13,7 +13,6 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 
 from optics_engine import OpticalSystem, compute_beam_geometry
-from optics_utils import get_effective_aperture
 
 from .base import AberrationPlotWidget
 
@@ -21,12 +20,32 @@ from .base import AberrationPlotWidget
 class BeamGeometryWidget(AberrationPlotWidget):
     """Entrance-pupil beam contours for different field angles."""
 
+    #: Диаметр пучка, которым ограничен масштаб отрисовки (мм);
+    #: из последнего расчёта габаритов (учитывает режим «реальные»).
+    _DEFAULT_APERTURE_MM = 10.0
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.beam_data: list[dict] | None = None
+        self.beam_aperture: float | None = None
 
-    def set_data(self, sys: OpticalSystem) -> None:
-        self.beam_data = compute_beam_geometry(sys)
+    def set_data(self, sys: OpticalSystem, semi_mode: str = 'given',
+                 sharp_edge: bool = True) -> None:
+        """Посчитать габариты пучков и перерисовать контуры зрачка.
+
+        ``semi_mode``/``sharp_edge`` — режим габаритов и флаг острой
+        кромки (п. 15 GAP v2), см. :func:`compute_beam_geometry`.
+        """
+        self.apply_data(compute_beam_geometry(
+            sys, semi_mode=semi_mode, sharp_edge=sharp_edge))
+
+    def apply_data(self, beam_data: list[dict] | None) -> None:
+        """Применить готовый результат (фоновый расчёт без повтора)."""
+        self.beam_data = beam_data
+        if beam_data:
+            self.beam_aperture = 2.0 * beam_data[0].get('Ay', 0.0) or None
+        else:
+            self.beam_aperture = None
         self.update()
 
     def paintEvent(self, event):
@@ -43,11 +62,11 @@ class BeamGeometryWidget(AberrationPlotWidget):
             painter.end()
             return
 
-        aperture = 0.0
-        if hasattr(self, '_sys_ref'):
-            aperture = get_effective_aperture(self._sys_ref, default=10.0)
-        if aperture <= 0:
-            aperture = 10.0
+        # Диаметр пучка из последнего расчёта (режим «реальные» даёт
+        # фактический габарит); раньше бралась заданная апертура системы.
+        aperture = self.beam_aperture
+        if not aperture or aperture <= 0:
+            aperture = self._DEFAULT_APERTURE_MM
 
         colors = [QColor(0, 200, 80), QColor(80, 180, 255), QColor(255, 160, 40),
                   QColor(255, 80, 80), QColor(200, 80, 255)]

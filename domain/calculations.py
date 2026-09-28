@@ -423,6 +423,11 @@ PARAXIAL_WL_ROWS = (
     ("D вх.зр. (мм)", 'entrance_pupil_diameter', '.2f'),
 )
 
+# Ключи PARAXIAL_WL_ROWS с положениями зрачков (п. 16 GAP v2): эти
+# строки переключаются в диоптрии (D = 1000/мм, OPAL-PC Л1.4.4),
+# подпись «(мм)» заменяется на выбранную единицу.
+PUPIL_POSITION_KEYS = ('sP', 'sP_prime')
+
 
 def paraxial_trace_all_wavelengths(sys: OpticalSystem,
                                    catalog: dict = None) -> List[dict]:

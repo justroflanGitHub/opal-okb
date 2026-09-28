@@ -38,6 +38,7 @@ from domain.calculations import (
     paraxial_trace,
     paraxial_trace_all_wavelengths,
     PARAXIAL_WL_ROWS,
+    PUPIL_POSITION_KEYS,
     compute_beam_geometry,
     seidel_aberrations,
     BEAM_SEMI_MODES,
@@ -57,7 +58,7 @@ __all__ = [
     '_demo_mirror', '_demo_meniscus', '_demo_plano_convex',
     # Calculations
     'apply_vignetting', 'refractive_index', 'paraxial_trace',
-    'paraxial_trace_all_wavelengths', 'PARAXIAL_WL_ROWS',
+    'paraxial_trace_all_wavelengths', 'PARAXIAL_WL_ROWS', 'PUPIL_POSITION_KEYS',
     'compute_beam_geometry', 'seidel_aberrations',
     'BEAM_SEMI_MODES', 'effective_semi_diameter', 'real_beam_aperture',
 ]

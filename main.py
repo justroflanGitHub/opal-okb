@@ -33,7 +33,11 @@ from system_utils import reverse_system, scale_system, nearest_standard_radius, 
 from io_utils import save_json, load_json, append_system, export_protocol
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
-from optics_utils import get_primary_wl, get_effective_aperture, copy_table_selection
+from optics_utils import (
+    get_primary_wl, get_effective_aperture, copy_table_selection,
+    get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
+    PUPIL_UNIT_CHOICES, format_pupil_position, INFINITY_TEXT,
+)
 
 from gui.controllers.calculation_controller import CalculationController
 from gui.controllers.system_controller import SystemController
@@ -303,13 +307,18 @@ class ResultsPanel(QWidget):
         self.parax_table.setMinimumWidth(250)
         # No max width - let it expand
 
-        # Единицы зрачков
+        # Единицы зрачков: общее состояние в utils (п. 16), комбобокс —
+        # только представление; смена синхронизируется с панелью анализа
         pupil_unit_layout = QHBoxLayout()
         pupil_unit_layout.addWidget(QLabel("Единицы зрачков:"))
         self.pupil_unit_combo = QComboBox()
-        self.pupil_unit_combo.addItems(["мм", "дптр"])
-        self.pupil_unit_combo.setToolTip("Единицы для sP и sP'")
+        self.pupil_unit_combo.addItems(list(PUPIL_UNIT_CHOICES))
+        self.pupil_unit_combo.setToolTip(
+            "Единицы для sP и sP' (1 дптр = 1/м):\n"
+            "одно состояние с панелью анализа (OPAL-PC Л1.4.4)")
+        self.pupil_unit_combo.setCurrentText(get_pupil_unit())
         self.pupil_unit_combo.currentIndexChanged.connect(self._on_pupil_unit_changed)
+        add_pupil_unit_observer(self._on_pupil_unit_state_changed)
         pupil_unit_layout.addWidget(self.pupil_unit_combo)
         pupil_unit_layout.addStretch()
         self._parax_result = {}
@@ -376,7 +385,14 @@ class ResultsPanel(QWidget):
         layout.addStretch()
 
     def _on_pupil_unit_changed(self, index):
-        """Переключение единиц зрачков мм/дптр."""
+        """Переключение единиц зрачков мм/дптр: записать в общее состояние."""
+        set_pupil_unit(self.pupil_unit_combo.currentText())
+
+    def _on_pupil_unit_state_changed(self, unit):
+        """Наблюдатель общего состояния: синхронизировать комбобокс и таблицу."""
+        self.pupil_unit_combo.blockSignals(True)
+        self.pupil_unit_combo.setCurrentText(unit)
+        self.pupil_unit_combo.blockSignals(False)
         self._update_parax_display()
 
     def _update_parax_display(self):
@@ -397,18 +413,16 @@ class ResultsPanel(QWidget):
             ("f/#", f"{self._fno:.2f}"),
             ("D вх.зрачка", f"{self._epd:.2f} мм"),
         ]
-        # sP и sP' - с учётом единиц
-        sP = parax.get('sP', 0)
-        sP_prime = parax.get('sP_prime', 0)
-        if self.pupil_unit_combo.currentText() == "дптр":
-            n = 1.0
-            sP_str = f"{1000.0/n/sP:.4f} дптр" if abs(sP) > 1e-10 else "∞"
-            sPp_str = f"{1000.0/n/sP_prime:.4f} дптр" if abs(sP_prime) > 1e-10 else "∞"
-        else:
-            sP_str = f"{sP:.4f} мм"
-            sPp_str = f"{sP_prime:.4f} мм"
-        rows.append(("sP (вх. зрачок)", sP_str))
-        rows.append(("sP' (вых. зрачок)", sPp_str))
+        # sP и sP' — в выбранных единицах зрачков (п. 16; дптр = 1000/мм);
+        # ∞ (зрачок «на бесконечности») — без единицы
+        unit = get_pupil_unit()
+
+        def _sP_text(value_mm: float) -> str:
+            text = format_pupil_position(value_mm, unit)
+            return text if text == INFINITY_TEXT else f"{text} {unit}"
+
+        rows.append(("sP (вх. зрачок)", _sP_text(parax.get('sP', 0))))
+        rows.append(("sP' (вых. зрачок)", _sP_text(parax.get('sP_prime', 0))))
 
         self.parax_table.setRowCount(len(rows))
         for i, (name, val) in enumerate(rows):

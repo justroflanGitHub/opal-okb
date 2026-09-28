@@ -19,7 +19,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont
 from PyQt5.QtWidgets import QWidget, QGridLayout
 
-from optics_engine import OpticalSystem, Wavelength
+from optics_engine import OpticalSystem, Wavelength, paraxial_trace
 from aberrations import (
     trace_aberration_fan,
     compute_field_aberrations,
@@ -28,7 +28,13 @@ from aberrations import (
     is_oblique_section,
     normalize_azimuth_deg,
 )
-from optics_utils import get_primary_wl
+from optics_utils import (
+    get_primary_wl,
+    FIELD_UNIT_DEG,
+    field_native_unit,
+    field_values_display,
+    format_field,
+)
 from utils.spectral_lines import SPECTRAL_LINES
 
 from .base import AberrationPlotWidget, wl_to_plot_color
@@ -54,6 +60,41 @@ def _wl_label(wl_um: float) -> str:
         if abs(nm - std_nm) < 1.0:
             return f"λ={std_nm:.1f} нм ({name})"
     return f"λ={nm:.1f} нм"
+
+
+# ---------------------------------------------------------------------------
+#  Field display context (п. 16 GAP v2): ось поля в мм/дптр
+# ---------------------------------------------------------------------------
+
+class FieldDisplayMixin:
+    """Контекст отображения оси поля: f' и родная единица системы.
+
+    Графики «по полю» (дисторсия, астигматизм, кома, габариты, СКВ
+    волнового фронта) держат f' и родную единицу поля (° для дальнего
+    типа, мм для ближнего). При единице зрачков «дптр» ось переводится
+    в диоптрии tan-конверсией через f' (utils, п. 16). Контекст
+    заполняется в ``set_data(sys)`` либо панелью анализа при
+    применении фонового расчёта.
+    """
+
+    #: f' системы (мм); 0 — не известен, конверсия поля не выполняется
+    efl_mm: float = 0.0
+    #: родная единица поля системы (до переключателя зрачков)
+    field_native_unit: str = FIELD_UNIT_DEG
+
+    def set_field_context(self, sys: OpticalSystem) -> None:
+        """Запомнить родную единицу поля и f' системы."""
+        self.field_native_unit = field_native_unit(sys)
+        self.efl_mm = paraxial_trace(sys).get('focal_length', 0) or 0.0
+
+    def field_axis(self, values) -> tuple[list, str]:
+        """Значения оси поля в единицах отображения + единица."""
+        return field_values_display(values, self.efl_mm, self.field_native_unit)
+
+    def field_scale_label(self, value: float, ndigits: int = 1) -> str:
+        """Подпись масштаба оси поля: «±5.0°» / «±50.0 дптр»."""
+        return '±' + format_field(value, self.efl_mm, self.field_native_unit,
+                                  ndigits, with_unit=True)
 
 
 # ---------------------------------------------------------------------------
@@ -397,7 +438,7 @@ class AxialBeamWidget(QWidget):
 #  Field aberration widgets
 # ---------------------------------------------------------------------------
 
-class DistortionWidget(AberrationPlotWidget):
+class DistortionWidget(FieldDisplayMixin, AberrationPlotWidget):
     """Distortion vs field graph."""
 
     def __init__(self, parent=None):
@@ -407,6 +448,7 @@ class DistortionWidget(AberrationPlotWidget):
     def set_data(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
+        self.set_field_context(sys)
         self.update()
 
     def paintEvent(self, event):
@@ -427,7 +469,9 @@ class DistortionWidget(AberrationPlotWidget):
         if not valid:
             painter.end(); return
 
-        field_max = max(abs(d['field_y']) for d in valid) or 1
+        # ось поля в единицах отображения (мм/дптр, п. 16)
+        disp, _unit = self.field_axis([d['field_y'] for d in valid])
+        field_max = max(abs(v) for v in disp) or 1
         dist_max = max(abs(d['distortion']) for d in valid) or 0.01
         dist_max = max(dist_max, 0.001)
 
@@ -439,8 +483,8 @@ class DistortionWidget(AberrationPlotWidget):
 
         painter.setPen(QPen(QColor(255, 120, 40), 2))
         prev = None
-        for d in sorted(valid, key=lambda x: x['field_y']):
-            px = m + (d['field_y'] / field_max) * pw / 2.0 + pw / 2
+        for f, d in sorted(zip(disp, valid), key=lambda p: p[1]['field_y']):
+            px = m + (f / field_max) * pw / 2.0 + pw / 2
             py = cy - (d['distortion'] / dist_max) * ph / 2.0
             if prev:
                 painter.drawLine(int(prev[0]), int(prev[1]), int(px), int(py))
@@ -449,13 +493,14 @@ class DistortionWidget(AberrationPlotWidget):
         painter.setPen(QColor(200, 200, 220))
         painter.setFont(QFont("Consolas", 9))
         painter.drawText(m + 5, top + 15, "Дисторсия (%)")
-        painter.drawText(m + 5, top + ph + 25, f"±{field_max:.1f}° / ±{dist_max:.3f}%")
+        painter.drawText(m + 5, top + ph + 25,
+                         f"{self.field_scale_label(field_max)} / ±{dist_max:.3f}%")
 
         self.paint_finalize(painter, self._plot_rect)
         painter.end()
 
 
-class AstigmatismWidget(AberrationPlotWidget):
+class AstigmatismWidget(FieldDisplayMixin, AberrationPlotWidget):
     """Field curvature and astigmatism: Z'm, Z's vs field."""
 
     def __init__(self, parent=None):
@@ -465,6 +510,7 @@ class AstigmatismWidget(AberrationPlotWidget):
     def set_data(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
+        self.set_field_context(sys)
         self.update()
 
     def paintEvent(self, event):
@@ -485,7 +531,9 @@ class AstigmatismWidget(AberrationPlotWidget):
         if not valid:
             painter.end(); return
 
-        field_max = max(abs(d['field_y']) for d in valid) or 1
+        # ось поля в единицах отображения (мм/дптр, п. 16)
+        disp, _unit = self.field_axis([d['field_y'] for d in valid])
+        field_max = max(abs(v) for v in disp) or 1
         all_z = [d['z_m'] for d in valid] + [d['z_s'] for d in valid]
         z_max = max(abs(v) for v in all_z) or 0.01
         z_max = max(z_max, 0.001)
@@ -496,12 +544,13 @@ class AstigmatismWidget(AberrationPlotWidget):
         painter.drawLine(m, int(cy), m + pw, int(cy))
         painter.drawLine(int(cx), top, int(cx), top + ph)
 
-        sorted_data = sorted(valid, key=lambda x: x['field_y'])
+        # tan-конверсия монотонна — порядок точек сохраняется
+        sorted_data = sorted(zip(disp, valid), key=lambda p: p[1]['field_y'])
 
         painter.setPen(QPen(QColor(0, 200, 80), 2))
         prev = None
-        for d in sorted_data:
-            px = m + (d['field_y'] / field_max) * pw / 2.0 + pw / 2
+        for f, d in sorted_data:
+            px = m + (f / field_max) * pw / 2.0 + pw / 2
             py = cy - (d['z_m'] / z_max) * ph / 2.0
             if prev:
                 painter.drawLine(int(prev[0]), int(prev[1]), int(px), int(py))
@@ -509,8 +558,8 @@ class AstigmatismWidget(AberrationPlotWidget):
 
         painter.setPen(QPen(QColor(80, 160, 255), 2))
         prev = None
-        for d in sorted_data:
-            px = m + (d['field_y'] / field_max) * pw / 2.0 + pw / 2
+        for f, d in sorted_data:
+            px = m + (f / field_max) * pw / 2.0 + pw / 2
             py = cy - (d['z_s'] / z_max) * ph / 2.0
             if prev:
                 painter.drawLine(int(prev[0]), int(prev[1]), int(px), int(py))
@@ -524,13 +573,14 @@ class AstigmatismWidget(AberrationPlotWidget):
         painter.setPen(QColor(80, 160, 255))
         painter.drawText(m + pw - 100, top + 28, "Z's сагит.")
         painter.setPen(QColor(120, 120, 140))
-        painter.drawText(m + 5, top + ph + 25, f"±{field_max:.1f}° / ±{z_max:.4f} мм")
+        painter.drawText(m + 5, top + ph + 25,
+                         f"{self.field_scale_label(field_max)} / ±{z_max:.4f} мм")
 
         self.paint_finalize(painter, self._plot_rect)
         painter.end()
 
 
-class ComaWidget(AberrationPlotWidget):
+class ComaWidget(FieldDisplayMixin, AberrationPlotWidget):
     """Coma vs field graph."""
 
     def __init__(self, parent=None):
@@ -540,6 +590,7 @@ class ComaWidget(AberrationPlotWidget):
     def set_data(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         self.field_data = compute_field_aberrations(sys, wl=wl)
+        self.set_field_context(sys)
         self.update()
 
     def paintEvent(self, event):
@@ -560,7 +611,9 @@ class ComaWidget(AberrationPlotWidget):
         if not valid:
             painter.end(); return
 
-        field_max = max(abs(d['field_y']) for d in valid) or 1
+        # ось поля в единицах отображения (мм/дптр, п. 16)
+        disp, _unit = self.field_axis([d['field_y'] for d in valid])
+        field_max = max(abs(v) for v in disp) or 1
         coma_max = max(abs(d['coma']) for d in valid) or 0.001
         coma_max = max(coma_max, 1e-5)
 
@@ -572,8 +625,8 @@ class ComaWidget(AberrationPlotWidget):
 
         painter.setPen(QPen(QColor(200, 80, 255), 2))
         prev = None
-        for d in sorted(valid, key=lambda x: x['field_y']):
-            px = m + (d['field_y'] / field_max) * pw / 2.0 + pw / 2
+        for f, d in sorted(zip(disp, valid), key=lambda p: p[1]['field_y']):
+            px = m + (f / field_max) * pw / 2.0 + pw / 2
             py = cy - (d['coma'] / coma_max) * ph / 2.0
             if prev:
                 painter.drawLine(int(prev[0]), int(prev[1]), int(px), int(py))
@@ -583,7 +636,8 @@ class ComaWidget(AberrationPlotWidget):
         painter.setFont(QFont("Consolas", 9))
         painter.drawText(m + 5, top + 15, "Кома (мм)")
         painter.setPen(QColor(120, 120, 140))
-        painter.drawText(m + 5, top + ph + 25, f"±{field_max:.1f}° / ±{coma_max:.5f} мм")
+        painter.drawText(m + 5, top + ph + 25,
+                         f"{self.field_scale_label(field_max)} / ±{coma_max:.5f} мм")
 
         self.paint_finalize(painter, self._plot_rect)
         painter.end()

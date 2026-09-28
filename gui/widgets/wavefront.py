@@ -18,7 +18,7 @@ from PyQt5.QtGui import (
     QPainter, QPen, QColor, QFont,
 )
 
-from optics_engine import OpticalSystem, ObjectType
+from optics_engine import OpticalSystem
 from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
@@ -30,12 +30,7 @@ from optics_utils import get_primary_wl
 from .base import AberrationPlotWidget
 from .mpl_widgets import (MplCanvasWidget, MplSurface3DWidget,
                           MPL_CURVE_COLOR, MPL_TEXT_COLOR)
-
-# Единицы поля для подписи оси: дальний тип — градусы, ближний — мм предмета
-FIELD_UNIT_BY_TYPE = {
-    ObjectType.INFINITE: '°',
-    ObjectType.FINITE: 'мм',
-}
+from .aberration_graphs import FieldDisplayMixin
 
 
 class WavefrontMapWidget(AberrationPlotWidget):
@@ -357,17 +352,17 @@ class ZernikeWidget(AberrationPlotWidget):
         painter.drawText(m + 5, top + ph + 35, f"Шкала: ±{val_max:.3f} λ")
 
 
-class WfRmsFieldMplWidget(MplCanvasWidget):
+class WfRmsFieldMplWidget(FieldDisplayMixin, MplCanvasWidget):
     """СКВ волновой аберрации W_RMS vs поле (matplotlib, все точки поля).
 
     График строится :func:`aberrations.compute_wavefront_rms_vs_field`
-    на гексаполярной сетке зрачка; основная λ системы.
+    на гексаполярной сетке зрачка; основная λ системы. Ось поля —
+    в единицах отображения (мм/дптр, п. 16 GAP v2).
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.field_data = None
-        self.field_unit = '°'
         self.wl_label = ''
 
     def set_data(self, sys: OpticalSystem) -> None:
@@ -377,15 +372,17 @@ class WfRmsFieldMplWidget(MplCanvasWidget):
             self.field_data = compute_wavefront_rms_vs_field(sys, wl=wl)
         except Exception:
             self.field_data = None
-        self.field_unit = FIELD_UNIT_BY_TYPE.get(sys.object_type, '°')
+        self.set_field_context(sys)
         self.wl_label = f"{wl:.4f} мкм"
         self.redraw()
 
-    def apply_data(self, field_data, field_unit: str = '°',
-                   wl_label: str = '') -> None:
-        """Подставить заранее рассчитанные данные (фаза 2)."""
+    def apply_data(self, field_data, wl_label: str = '') -> None:
+        """Подставить заранее рассчитанные данные (фаза 2).
+
+        Единица поля (f' и родная единица) — контекст панели анализа
+        (:meth:`set_field_context`), данные остаются в родных единицах.
+        """
         self.field_data = field_data
-        self.field_unit = field_unit
         self.wl_label = wl_label
         self.redraw()
 
@@ -400,12 +397,14 @@ class WfRmsFieldMplWidget(MplCanvasWidget):
                     color=MPL_TEXT_COLOR, transform=ax.transAxes)
             return
         fields, rms = self.field_data
-        pts = [(f, r) for f, r in zip(fields, rms) if math.isfinite(r)]
+        # ось поля в единицах отображения (° → дптр по переключателю)
+        disp, unit = self.field_axis(fields)
+        pts = [(f, r) for f, r in zip(disp, rms) if math.isfinite(r)]
         if pts:
             xs, ys = zip(*pts)
             ax.plot(xs, ys, marker='o', markersize=4, linewidth=1.8,
                     color=MPL_CURVE_COLOR)
-        ax.set_xlabel(f'Поле ({self.field_unit})')
+        ax.set_xlabel(f'Поле ({unit})')
         ax.set_ylabel('СКВ W (λ)')
         title = 'СКВ волновой аберрации по полю'
         if self.wl_label:

@@ -13,11 +13,13 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QPainterPath
 
 from optics_engine import OpticalSystem, compute_beam_geometry
+from optics_utils import format_field
 
 from .base import AberrationPlotWidget
+from .aberration_graphs import FieldDisplayMixin
 
 
-class BeamGeometryWidget(AberrationPlotWidget):
+class BeamGeometryWidget(FieldDisplayMixin, AberrationPlotWidget):
     """Entrance-pupil beam contours for different field angles."""
 
     #: Диаметр пучка, которым ограничен масштаб отрисовки (мм);
@@ -36,6 +38,7 @@ class BeamGeometryWidget(AberrationPlotWidget):
         ``semi_mode``/``sharp_edge`` — режим габаритов и флаг острой
         кромки (п. 15 GAP v2), см. :func:`compute_beam_geometry`.
         """
+        self.set_field_context(sys)
         self.apply_data(compute_beam_geometry(
             sys, semi_mode=semi_mode, sharp_edge=sharp_edge))
 
@@ -114,7 +117,11 @@ class BeamGeometryWidget(AberrationPlotWidget):
 
             painter.setPen(color)
             painter.setFont(QFont("Consolas", 8))
-            painter.drawText(int(cx + r_sag + 5), int(cy - idx * 14), f"{bd['field_y']:.1f}°")
+            # подпись пучка — в единицах поля отображения (мм/дптр, п. 16)
+            painter.drawText(
+                int(cx + r_sag + 5), int(cy - idx * 14),
+                format_field(bd['field_y'], self.efl_mm,
+                             self.field_native_unit, ndigits=1, with_unit=True))
 
         painter.setPen(QPen(QColor(80, 80, 100), 1))
         painter.drawLine(int(cx), top, int(cx), top + ph)

@@ -24,7 +24,7 @@ from PyQt5.QtWidgets import QHeaderView
 
 from optics_engine import (
     OpticalSystem, paraxial_trace, seidel_aberrations,
-    paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS,
+    paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS, PUPIL_POSITION_KEYS,
     BEAM_SEMI_MODES,
 )
 from aberrations import (
@@ -54,7 +54,12 @@ from zernike import (
     compute_global_zernike,
     format_global_zernike_text,
 )
-from optics_utils import get_primary_wl, fmt_val, wl_name
+from optics_utils import (
+    get_primary_wl, fmt_val, wl_name,
+    get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
+    PUPIL_UNIT_CHOICES, format_pupil_position,
+    field_native_unit, field_unit_display, format_field,
+)
 
 from .widgets import (
     # Table helpers
@@ -160,6 +165,24 @@ class AnalysisPanel(QTabWidget):
             "снят — световой проём меньше на 5% полудиаметра")
         settings_layout.addWidget(self.sharp_edge_chk)
         settings_layout.addStretch()
+
+        # Единицы зрачков мм/дптр (п. 16 GAP v2, OPAL-PC Л1.4.4):
+        # положения зрачков sP/sP' (D = 1000/мм) и оси поля (tan через f')
+        settings_layout.addWidget(QLabel("Зрачки:"))
+        self.pupil_unit_combo = QComboBox()
+        self.pupil_unit_combo.addItems(list(PUPIL_UNIT_CHOICES))
+        self.pupil_unit_combo.setToolTip(
+            "Единицы зрачков (OPAL-PC Л1.4.4):\n"
+            "положения зрачков sP/sP' и оси поля — мм или дптр\n"
+            "(1 дптр = 1/м; поле: D = 1000·tg ω / f')")
+        self.pupil_unit_combo.setCurrentText(get_pupil_unit())
+        self.pupil_unit_combo.currentIndexChanged.connect(
+            self._on_pupil_unit_changed)
+        settings_layout.addWidget(self.pupil_unit_combo)
+        settings_layout.addStretch()
+        # состояние единиц — общее (utils); наблюдатель синхронизирует
+        # комбобокс и перестраивает зависимые таблицы/графики
+        add_pupil_unit_observer(self._on_pupil_unit_state_changed)
 
         self.zernike_chrom_btn = QPushButton("Цернике по λ")
         self.zernike_chrom_btn.setCheckable(True)
@@ -431,9 +454,17 @@ class AnalysisPanel(QTabWidget):
         # Полный набор характеристик на каждую λ (набор строк — PARAXIAL_WL_ROWS)
         wl_headers = ["Характеристика"] + labels
         wl_rows = []
+        unit = get_pupil_unit()
         for name, key, fmt in PARAXIAL_WL_ROWS:
-            vals = [format(p.get(key, 0.0) or 0.0, fmt) for p in per_wl]
-            wl_rows.append([name] + vals)
+            if key in PUPIL_POSITION_KEYS:
+                # положения зрачков — в выбранных единицах мм/дптр (п. 16)
+                title = name.partition(' (')[0]
+                vals = [format_pupil_position(p.get(key, 0.0) or 0.0, unit)
+                        for p in per_wl]
+                wl_rows.append([f"{title} ({unit})"] + vals)
+            else:
+                vals = [format(p.get(key, 0.0) or 0.0, fmt) for p in per_wl]
+                wl_rows.append([name] + vals)
         table2 = make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
         table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self._parax_wl_table = table2
@@ -491,6 +522,76 @@ class AnalysisPanel(QTabWidget):
         return (self.sharp_edge_chk.isChecked()
                 if hasattr(self, 'sharp_edge_chk') else True)
 
+    def get_pupil_unit(self) -> str:
+        """Единицы зрачков ('мм' | 'дптр') — общее состояние (п. 16)."""
+        return get_pupil_unit()
+
+    # ------------------------------------------------------------------
+    #  Единицы зрачков: смена состояния и перестройка отображения
+    # ------------------------------------------------------------------
+
+    def _on_pupil_unit_changed(self, index: int) -> None:
+        """Комбобокс панели: записать выбранную единицу в общее состояние."""
+        set_pupil_unit(self.pupil_unit_combo.currentText())
+
+    def _on_pupil_unit_state_changed(self, unit: str) -> None:
+        """Наблюдатель общего состояния: синхронизировать и перестроить."""
+        self.pupil_unit_combo.blockSignals(True)
+        self.pupil_unit_combo.setCurrentText(unit)
+        self.pupil_unit_combo.blockSignals(False)
+        self._update_parax_table()
+        sys = getattr(self, '_parax_sys', None)
+        if sys is not None and sys.surfaces:
+            self._refresh_field_tables(sys)
+            for widget in (self.distortion, self.astigmatism, self.coma,
+                           self.beam_geom):
+                widget.update()
+            self.wf_rms_field_w.redraw()
+
+    def _refresh_field_tables(self, sys: OpticalSystem) -> None:
+        """Перестроить таблицы с полем из уже рассчитанных данных виджетов
+        (без повторной трассировки при смене единиц зрачков)."""
+        self._update_distortion_table(sys, self.distortion.field_data)
+        self._update_astigmatism_table(sys, self.astigmatism.field_data)
+        self._update_coma_table(sys, self.coma.field_data)
+        self._update_beam_table(sys, self.beam_geom.beam_data)
+        self._update_chief_table(sys, self.chief_ray.chief_data)
+        self._update_wf_rms_field_table(sys)
+
+    # ------------------------------------------------------------------
+    #  Контекст поля: f' и родная единица (п. 16)
+    # ------------------------------------------------------------------
+
+    def _efl_mm(self, sys: OpticalSystem) -> float:
+        """Фокусное расстояние системы (мм) — из параксиального расчёта."""
+        cached_sys, cached_efl = getattr(self, '_efl_cache', (None, 0.0))
+        if cached_sys is sys:
+            return cached_efl
+        efl = (self._parax_data or {}).get('focal_length', 0)
+        if not efl:
+            efl = paraxial_trace(sys).get('focal_length', 0)
+        self._efl_cache = (sys, efl or 0.0)
+        return efl or 0.0
+
+    def _push_field_context(self, sys: OpticalSystem) -> None:
+        """Раздать виджетам с осями поля f' и родную единицу системы."""
+        efl = self._efl_mm(sys)
+        native = field_native_unit(sys)
+        for widget in (self.distortion, self.astigmatism, self.coma,
+                       self.beam_geom, self.wf_rms_field_w):
+            widget.efl_mm = efl
+            widget.field_native_unit = native
+
+    def _field_cell(self, sys: OpticalSystem, field_y: float,
+                    ndigits: int = 4) -> str:
+        """Ячейка таблицы со значением поля в единицах отображения."""
+        return format_field(field_y, self._efl_mm(sys),
+                            field_native_unit(sys), ndigits)
+
+    def _field_unit_label(self, sys: OpticalSystem) -> str:
+        """Единица поля для заголовков таблиц («°»/«мм»/«дптр»)."""
+        return field_unit_display(field_native_unit(sys), self._efl_mm(sys))
+
     # ------------------------------------------------------------------
     #  Precomputed data application
     # ------------------------------------------------------------------
@@ -498,6 +599,8 @@ class AnalysisPanel(QTabWidget):
     def apply_precomputed(self, sys: OpticalSystem, data: dict) -> None:
         """Apply precomputed analysis data to all widgets (GUI thread)."""
         d = data
+        # контекст поля (f', родная единица) — до применения данных (п. 16)
+        self._push_field_context(sys)
         self.spot_diagram.spots_mono = d.get('spot_mono', [])
         self.spot_diagram.rms = d.get('spot_rms', 0)
         self.spot_diagram.rms_xy = d.get('spot_rms_xy', {})
@@ -657,27 +760,29 @@ class AnalysisPanel(QTabWidget):
             rows_mtf, [45, 48, 48, 48, 48, 48, 45]))
 
         field_data = d.get('field_data', [])
+        unit = self._field_unit_label(sys)
         rows_dist = []; rows_astig = []; rows_coma = []
         for dd in field_data:
             fy = dd['field_y']
+            fy_txt = self._field_cell(sys, fy)
             if dd.get('distortion') is not None:
                 dist_pct = dd['distortion']
                 dist_mm = fy * dist_pct / 100.0 if abs(fy) > 1e-10 else 0.0
-                rows_dist.append([f"{fy:.4f}", f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
+                rows_dist.append([fy_txt, f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
             if dd.get('z_m') is not None:
                 dz = dd['z_m'] - dd['z_s']
-                rows_astig.append([f"{fy:.4f}", f"{dd['z_m']:.5f}", f"{dd['z_s']:.5f}", f"{dz:.5f}"])
+                rows_astig.append([fy_txt, f"{dd['z_m']:.5f}", f"{dd['z_s']:.5f}", f"{dz:.5f}"])
             if dd.get('coma') is not None:
                 coma_y = dd['coma'] * 1000
-                rows_coma.append([f"{fy:.4f}", "0.0000", f"{coma_y:.5f}"])
+                rows_coma.append([fy_txt, "0.0000", f"{coma_y:.5f}"])
         self._set_table('distortion', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "\u0414\u0438\u0441\u0442. %", "\u0414\u0438\u0441\u0442. (\u043c\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "\u0414\u0438\u0441\u0442. %", "\u0414\u0438\u0441\u0442. (\u043c\u043c)"],
             rows_dist, [75, 70, 75]))
         self._set_table('astigmatism', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "Z'm (\u043c\u043c)", "Z's (\u043c\u043c)", "\u0394Z (\u043c\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "Z'm (\u043c\u043c)", "Z's (\u043c\u043c)", "\u0394Z (\u043c\u043c)"],
             rows_astig, [70, 65, 65, 65]))
         self._set_table('coma', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "\u041a\u043e\u043c\u0430 X (\u043c\u043a\u043c)", "\u041a\u043e\u043c\u0430 Y (\u043c\u043a\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "\u041a\u043e\u043c\u0430 X (\u043c\u043a\u043c)", "\u041a\u043e\u043c\u0430 Y (\u043c\u043a\u043c)"],
             rows_coma, [75, 75, 75]))
 
         curve = d.get('focus_curve')
@@ -798,24 +903,26 @@ class AnalysisPanel(QTabWidget):
         beam_data = d.get('beam_data', [])
         rows_beam = []
         for bd in beam_data:
-            rows_beam.append([f"{bd['field_y']:.4f}", f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
+            rows_beam.append([self._field_cell(sys, bd['field_y']),
+                              f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
                               f"{bd['vignetting_upper']:.4f}", f"{bd['vignetting_lower']:.4f}",
                               f"{bd['relative_illumination']:.4f}"])
         self._set_table('beam', make_table(
-            ["\u041f\u043e\u043b\u0435", "Ay", "Ay'", "\u0412\u0438\u043d\u044c\u0435\u0442.\u2191",
+            [f"\u041f\u043e\u043b\u0435 ({unit})", "Ay", "Ay'", "\u0412\u0438\u043d\u044c\u0435\u0442.\u2191",
              "\u0412\u0438\u043d\u044c\u0435\u0442.\u2193", "\u0421\u0432\u0435\u0442\u043e\u0440\u0430\u0441\u043f\u0440."],
-            rows_beam, [45, 50, 50, 55, 55, 60]))
+            rows_beam, [55, 50, 50, 55, 55, 60]))
 
         chief_data = d.get('chief_data', [])
         rows_chief = []
         for cd in chief_data:
-            rows_chief.append([f"{cd['field_y']:.4f}", f"{cd['distortion_abs']:.6f}",
+            rows_chief.append([self._field_cell(sys, cd['field_y']),
+                               f"{cd['distortion_abs']:.6f}",
                                f"{cd['distortion_rel']:.6f}", f"{cd['Zm']:.6f}",
                                f"{cd['Zs']:.6f}", f"{cd['lateral_color']:.6f}"])
         self._set_table('chief', make_table(
-            ["\u041f\u043e\u043b\u0435", "\u0414\u0438\u0441\u0442.\u0430\u0431\u0441", "\u0414\u0438\u0441\u0442.%",
+            [f"\u041f\u043e\u043b\u0435 ({unit})", "\u0414\u0438\u0441\u0442.\u0430\u0431\u0441", "\u0414\u0438\u0441\u0442.%",
              "Z'm", "Z's", "\u0425\u0440.\u0443\u0432\u0435\u043b."],
-            rows_chief, [45, 60, 55, 60, 60, 60]))
+            rows_chief, [55, 60, 55, 60, 60, 60]))
 
         gauge_rays = d.get('gauge_rays')
         if gauge_rays is None:
@@ -892,15 +999,20 @@ class AnalysisPanel(QTabWidget):
         self._build_wf_rms_table_precomputed(d)
 
     def _build_wf_rms_table_precomputed(self, d: dict) -> None:
-        """\u0422\u0430\u0431\u043b\u0438\u0446\u0430 \u0421\u041a\u0412 \u043f\u043e \u043f\u043e\u043b\u044e \u0438\u0437 \u0437\u0430\u0440\u0430\u043d\u0435\u0435 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445 (\u0444\u0430\u0437\u0430 2)."""
+        """\u0422\u0430\u0431\u043b\u0438\u0446\u0430 \u0421\u041a\u0412 \u043f\u043e \u043f\u043e\u043b\u044e \u0438\u0437 \u0437\u0430\u0440\u0430\u043d\u0435\u0435 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445 (\u0444\u0430\u0437\u0430 2).
+
+        \u041a\u043e\u043b\u043e\u043d\u043a\u0430 \u043f\u043e\u043b\u044f \u2014 \u0432 \u0435\u0434\u0438\u043d\u0438\u0446\u0430\u0445 \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f (\u00b0 / \u043c\u043c / \u0434\u043f\u0442\u0440, \u043f. 16);
+        \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442 (f', \u0440\u043e\u0434\u043d\u0430\u044f \u0435\u0434\u0438\u043d\u0438\u0446\u0430) \u0443\u0436\u0435 \u0437\u0430\u0434\u0430\u043d \u0432\u0438\u0434\u0436\u0435\u0442\u0443 \u043f\u0430\u043d\u0435\u043b\u044c\u044e.
+        """
         wf_rms = d.get('wf_rms_field')
-        unit = self.wf_rms_field_w.field_unit
+        w = self.wf_rms_field_w
         if wf_rms and wf_rms[0]:
             field_vals, rms_vals = wf_rms
-            rows_wr = [[f"{f:.2f}{unit}", fmt_val(r)]
+            rows_wr = [[format_field(f, w.efl_mm, w.field_native_unit,
+                                     ndigits=2, with_unit=True), fmt_val(r)]
                        for f, r in zip(field_vals, rms_vals)]
             self._wf_rms_table = make_table(
-                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"], rows_wr, [60, 90])
+                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"], rows_wr, [70, 90])
         else:
             self._wf_rms_table = make_table(
                 ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"],
@@ -975,6 +1087,8 @@ class AnalysisPanel(QTabWidget):
             self.analyze(sys)
             return
         wl = get_primary_wl(sys)
+        # контекст поля (f', родная единица) — до применения данных (п. 16)
+        self._push_field_context(sys)
         if 'spots_mono' in data:
             self.spot_diagram.spots_mono = data['spots_mono']
             self.spot_diagram.rms = data['rms']
@@ -1262,36 +1376,50 @@ class AnalysisPanel(QTabWidget):
             ["Частота", "Г.мер.", "Г.саг.", "Д.мер.", "Д.саг.", "Безаб.", "Полихр."],
             rows, [45, 48, 48, 48, 48, 48, 45]))
 
-    def _update_distortion_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_distortion_table(self, sys: OpticalSystem,
+                                 data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['distortion'] is not None:
                 fy = d['field_y']; dist_pct = d['distortion']
                 dist_mm = fy * dist_pct / 100.0 if abs(fy) > 1e-10 else 0.0
-                rows.append([f"{fy:.4f}", f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
-        self._set_table('distortion', make_table(["Поле Y (мм)", "Дист. %", "Дист. (мм)"], rows, [75, 70, 75]))
+                rows.append([self._field_cell(sys, fy), f"{dist_pct:.5f}",
+                             f"{dist_mm:.5f}"])
+        self._set_table('distortion', make_table(
+            [f"Поле Y ({unit})", "Дист. %", "Дист. (мм)"], rows, [75, 70, 75]))
 
-    def _update_astigmatism_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_astigmatism_table(self, sys: OpticalSystem,
+                                  data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['z_m'] is not None:
                 dz = d['z_m'] - d['z_s']
-                rows.append([f"{d['field_y']:.4f}", f"{d['z_m']:.5f}", f"{d['z_s']:.5f}", f"{dz:.5f}"])
-        self._set_table('astigmatism', make_table(["Поле Y (мм)", "Z'm (мм)", "Z's (мм)", "ΔZ (мм)"], rows, [70, 65, 65, 65]))
+                rows.append([self._field_cell(sys, d['field_y']),
+                             f"{d['z_m']:.5f}", f"{d['z_s']:.5f}", f"{dz:.5f}"])
+        self._set_table('astigmatism', make_table(
+            [f"Поле Y ({unit})", "Z'm (мм)", "Z's (мм)", "ΔZ (мм)"],
+            rows, [70, 65, 65, 65]))
 
-    def _update_coma_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_coma_table(self, sys: OpticalSystem,
+                           data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['coma'] is not None:
                 coma_y = d['coma'] * 1000
-                rows.append([f"{d['field_y']:.4f}", "0.0000", f"{coma_y:.5f}"])
-        self._set_table('coma', make_table(["Поле Y (мм)", "Кома X (мкм)", "Кома Y (мкм)"], rows, [75, 75, 75]))
+                rows.append([self._field_cell(sys, d['field_y']),
+                             "0.0000", f"{coma_y:.5f}"])
+        self._set_table('coma', make_table(
+            [f"Поле Y ({unit})", "Кома X (мкм)", "Кома Y (мкм)"],
+            rows, [75, 75, 75]))
 
     def _update_focus_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
@@ -1401,30 +1529,38 @@ class AnalysisPanel(QTabWidget):
             rows.append(["Статус", "Нет данных"])
         self._set_table('heatmap', make_table(["Параметр", "Значение"], rows, [130, 130]))
 
-    def _update_beam_table(self, sys: OpticalSystem) -> None:
-        from optics_engine import compute_beam_geometry
-        beam_data = compute_beam_geometry(
-            sys, semi_mode=self.get_beam_semi_mode(),
-            sharp_edge=self.get_beam_sharp_edge())
+    def _update_beam_table(self, sys: OpticalSystem,
+                           beam_data: list | None = None) -> None:
+        if beam_data is None:
+            from optics_engine import compute_beam_geometry
+            beam_data = compute_beam_geometry(
+                sys, semi_mode=self.get_beam_semi_mode(),
+                sharp_edge=self.get_beam_sharp_edge())
+        unit = self._field_unit_label(sys)
         rows = []
         for bd in beam_data:
-            rows.append([f"{bd['field_y']:.4f}", f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
+            rows.append([self._field_cell(sys, bd['field_y']),
+                         f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
                          f"{bd['vignetting_upper']:.4f}", f"{bd['vignetting_lower']:.4f}",
                          f"{bd['relative_illumination']:.4f}"])
         self._set_table('beam', make_table(
-            ["Поле", "Ay", "Ay'", "Виньет.↑", "Виньет.↓", "Светораспр."],
-            rows, [45, 50, 50, 55, 55, 60]))
+            [f"Поле ({unit})", "Ay", "Ay'", "Виньет.↑", "Виньет.↓", "Светораспр."],
+            rows, [55, 50, 50, 55, 55, 60]))
 
-    def _update_chief_table(self, sys: OpticalSystem) -> None:
-        chief_data = compute_chief_ray_characteristics(sys)
+    def _update_chief_table(self, sys: OpticalSystem,
+                            chief_data: list | None = None) -> None:
+        if chief_data is None:
+            chief_data = compute_chief_ray_characteristics(sys)
+        unit = self._field_unit_label(sys)
         rows = []
         for cd in chief_data:
-            rows.append([f"{cd['field_y']:.4f}", f"{cd['distortion_abs']:.6f}",
+            rows.append([self._field_cell(sys, cd['field_y']),
+                         f"{cd['distortion_abs']:.6f}",
                          f"{cd['distortion_rel']:.6f}", f"{cd['Zm']:.6f}",
                          f"{cd['Zs']:.6f}", f"{cd['lateral_color']:.6f}"])
         self._set_table('chief', make_table(
-            ["Поле", "Дист.абс", "Дист.%", "Z'm", "Z's", "Хр.увел."],
-            rows, [45, 60, 55, 60, 60, 60]))
+            [f"Поле ({unit})", "Дист.абс", "Дист.%", "Z'm", "Z's", "Хр.увел."],
+            rows, [55, 60, 55, 60, 60, 60]))
 
     # ------------------------------------------------------------------
     #  Габаритные лучи (пункт 7): координаты / высоты, углы, длины хода
@@ -1736,18 +1872,22 @@ class AnalysisPanel(QTabWidget):
         self._set_table('psf3d', make_table(["Параметр", "Значение"], rows, [100, 120]))
 
     def _update_wf_rms_field_table(self, sys: OpticalSystem) -> None:
-        """Таблица СКВ волновой аберрации по полю (вкладка «Цернике»)."""
-        data = self.wf_rms_field_w.field_data
-        unit = self.wf_rms_field_w.field_unit
+        """Таблица СКВ волновой аберрации по полю (вкладка «Цернике»).
+
+        Колонка поля — в единицах отображения (° / мм / дптр, п. 16).
+        """
+        w = self.wf_rms_field_w
+        data = w.field_data
         if not data or not data[0]:
             self._wf_rms_table = make_table(
                 ["Поле", "СКВ W (λ)"], [["—", "Нет данных"]], [60, 90])
         else:
             field_vals, rms_vals = data
-            rows = [[f"{f:.2f}{unit}", fmt_val(r)]
+            rows = [[format_field(f, w.efl_mm, w.field_native_unit,
+                                  ndigits=2, with_unit=True), fmt_val(r)]
                     for f, r in zip(field_vals, rms_vals)]
             self._wf_rms_table = make_table(
-                ["Поле", "СКВ W (λ)"], rows, [60, 90])
+                ["Поле", "СКВ W (λ)"], rows, [70, 90])
         self._refresh_zernike_tables()
 
     def _update_bar_target_table(self, sys: OpticalSystem) -> None:

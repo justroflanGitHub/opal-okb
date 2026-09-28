@@ -6,7 +6,9 @@ Each function here was extracted from duplicated inline code.
 See REFACTORING.md for details.
 """
 
+import inspect
 import math
+import weakref
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,6 +23,227 @@ EPSILON = 1e-10       # general "near zero" for float comparisons
 TINY = 1e-15          # very small, for division guards
 UNLIMITED_SD = 1e6    # placeholder for unlimited semi-diameter
 DEFAULT_RAY_Z = -50.0  # default ray start z (should be overridden by entrance pupil)
+
+
+# ============================================================
+# PUPIL UNITS: мм / дптр (п. 16 GAP v2)
+# ============================================================
+
+#: 1 дптр = 1/м → перевод мм-величины (положение зрачка, радиус) в дптр:
+#: D = 1000/мм. Физика по OPAL-PC Л1.4.4: «единицы измерения положения
+#: зрачков … (дптр/мм)» — диоптрия есть величина, обратная расстоянию в м.
+DIOPTRE_PER_M = 1000.0
+
+PUPIL_UNIT_MM = 'мм'
+PUPIL_UNIT_DIOPTRE = 'дптр'
+#: единственное место со списком единиц зрачка (комбобоксы, тесты)
+PUPIL_UNIT_CHOICES = (PUPIL_UNIT_MM, PUPIL_UNIT_DIOPTRE)
+
+#: единица поля системы: дальний тип (INFINITE) — градусы,
+#: ближний тип (FINITE) — мм предмета
+FIELD_UNIT_DEG = '°'
+FIELD_UNIT_MM = PUPIL_UNIT_MM
+
+#: подпись бесконечного значения (зрачок в «бесконечности» → 0 дптр)
+INFINITY_TEXT = '∞'
+
+# Выбранная единица зрачков — единственное состояние (single source of
+# truth, п. 16): комбобоксы панели анализа и панели результатов только
+# синхронизируются с ним через наблюдателей.
+_pupil_unit = PUPIL_UNIT_MM
+_pupil_unit_observers: list = []
+
+
+def get_pupil_unit() -> str:
+    """Текущая единица зрачков: ``PUPIL_UNIT_MM`` или ``PUPIL_UNIT_DIOPTRE``."""
+    return _pupil_unit
+
+
+def set_pupil_unit(unit: str) -> None:
+    """Установить единицу зрачков и оповестить наблюдателей.
+
+    Наблюдатели (комбобоксы панелей) синхронизируются с состоянием и
+    перерисовывают зависимые таблицы/графики. Повторная установка той же
+    единицы — no-op (нет циклов оповещения).
+
+    Raises:
+        ValueError: ``unit`` не входит в ``PUPIL_UNIT_CHOICES``.
+    """
+    global _pupil_unit
+    if unit not in PUPIL_UNIT_CHOICES:
+        raise ValueError(
+            f"неизвестная единица зрачков {unit!r}; "
+            f"допустимо: {', '.join(PUPIL_UNIT_CHOICES)}")
+    if unit == _pupil_unit:
+        return
+    _pupil_unit = unit
+    for ref in list(_pupil_unit_observers):
+        callback = _resolve_pupil_unit_observer(ref)
+        if callback is None:
+            _pupil_unit_observers.remove(ref)
+            continue
+        try:
+            callback(unit)
+        except RuntimeError:
+            # C++-объект Qt-виджета уже удалён (Python-обёртка жива) —
+            # мёртвый наблюдатель выбываем из реестра, а не роняет смену
+            _pupil_unit_observers.remove(ref)
+
+
+def _observer_ref(callback):
+    """Ссылка на наблюдателя: слабая для методов, сильная для функций.
+
+    Слабая ссылка на метод не удерживает владельца (панель): собранный
+    GC виджет исчезает из реестра сам, подписку не нужно снимать явно.
+    """
+    if inspect.ismethod(callback):
+        return weakref.WeakMethod(callback)
+    return callback
+
+
+def _resolve_pupil_unit_observer(ref):
+    """Живой вызываемый наблюдатель или ``None`` (ссылка мертва)."""
+    if isinstance(ref, weakref.WeakMethod):
+        return ref()
+    return ref
+
+
+def add_pupil_unit_observer(callback) -> None:
+    """Подписать ``callback(unit)`` на смену единицы зрачков."""
+    ref = _observer_ref(callback)
+    if ref not in _pupil_unit_observers:
+        _pupil_unit_observers.append(ref)
+
+
+def remove_pupil_unit_observer(callback) -> None:
+    """Отписать наблюдателя (обратимо к :func:`add_pupil_unit_observer`)."""
+    ref = _observer_ref(callback)
+    while ref in _pupil_unit_observers:
+        _pupil_unit_observers.remove(ref)
+
+
+def pupil_unit_is_dioptre() -> bool:
+    """``True``, если выбраны диоптрии."""
+    return _pupil_unit == PUPIL_UNIT_DIOPTRE
+
+
+# ------------------------------------------------------------
+# Конверсия мм ↔ дптр (обратные длины: положения зрачков, радиусы)
+# ------------------------------------------------------------
+
+def mm_to_dioptre(value_mm: float) -> float:
+    """Перевести мм-величину в диоптрии: ``D = 1000 / мм``.
+
+    Применимо к обратным длинам — положению зрачка (sP), радиусу
+    кривизны и т.п. Ноль переводится в ±∞ с сохранением знака
+    (зрачок «на бесконечности» — 0 дптр).
+
+    Raises:
+        ValueError: ``value_mm`` — NaN или ±∞.
+    """
+    if not math.isfinite(value_mm):
+        raise ValueError(f"ожидалось конечное значение, получено {value_mm!r}")
+    if abs(value_mm) < EPSILON:
+        return math.copysign(math.inf, value_mm)
+    return DIOPTRE_PER_M / value_mm
+
+
+def dioptre_to_mm(value_dpt: float) -> float:
+    """Перевести диоптрии в мм: ``мм = 1000 / D`` (обратное к
+    :func:`mm_to_dioptre`; 0 дптр → ±∞)."""
+    if not math.isfinite(value_dpt):
+        raise ValueError(f"ожидалось конечное значение, получено {value_dpt!r}")
+    if abs(value_dpt) < EPSILON:
+        return math.copysign(math.inf, value_dpt)
+    return DIOPTRE_PER_M / value_dpt
+
+
+# ------------------------------------------------------------
+# Конверсия поля: градусы ↔ дптр (tan-конверсия через f')
+# ------------------------------------------------------------
+
+def field_deg_to_dioptre(field_deg: float, focal_length_mm: float) -> float:
+    """Перевести угол поля (градусы) в диоптрии: ``D = 1000·tan θ / f'``.
+
+    tan-конверсия через фокусное расстояние: величина изображения
+    y' = f'·tan θ, отнесённая к f' в диоптриях (OPAL-PC: поле дальнего
+    типа задаётся в дптр от выходного зрачка).
+
+    Raises:
+        ValueError: ``focal_length_mm`` ≈ 0 (конверсия не определена).
+    """
+    if abs(focal_length_mm) < EPSILON:
+        raise ValueError("tan-конверсия поля определена только при f' ≠ 0")
+    return (DIOPTRE_PER_M * math.tan(math.radians(field_deg))
+            / focal_length_mm)
+
+
+def field_dioptre_to_deg(value_dpt: float, focal_length_mm: float) -> float:
+    """Перевести поле в диоптриях в градусы (обратное к
+    :func:`field_deg_to_dioptre`)."""
+    if abs(focal_length_mm) < EPSILON:
+        raise ValueError("tan-конверсия поля определена только при f' ≠ 0")
+    return math.degrees(
+        math.atan(value_dpt * focal_length_mm / DIOPTRE_PER_M))
+
+
+def field_native_unit(system) -> str:
+    """Единица поля системы без учёта переключателя: ``FIELD_UNIT_DEG``
+    для дальнего типа (INFINITE), ``FIELD_UNIT_MM`` — для ближнего."""
+    from optics_engine import ObjectType  # отложенно: без цикла импортов
+    if getattr(system, 'object_type', ObjectType.INFINITE) == ObjectType.INFINITE:
+        return FIELD_UNIT_DEG
+    return FIELD_UNIT_MM
+
+
+# ------------------------------------------------------------
+# Отображение: значения, подписи осей и заголовки таблиц
+# ------------------------------------------------------------
+
+def field_unit_display(native_unit: str, efl_mm: float) -> str:
+    """Единица поля для отображения по текущему переключателю зрачков.
+
+    Градусы переводятся в дптры (tan-конверсия), когда выбраны диоптрии
+    и известно f' ≠ 0; поле ближнего типа (мм) и неизвестное f'
+    остаются в родных единицах.
+    """
+    if (pupil_unit_is_dioptre() and native_unit == FIELD_UNIT_DEG
+            and efl_mm and abs(efl_mm) > EPSILON):
+        return PUPIL_UNIT_DIOPTRE
+    return native_unit
+
+
+def format_pupil_position(value_mm: float, unit: str, ndigits: int = 4) -> str:
+    """Положение зрачка в выбранных единицах: ``'12.3456'`` (мм),
+    ``'81.3008'`` (дптр) или ``INFINITY_TEXT`` для нуля в дптрах."""
+    value = mm_to_dioptre(value_mm) if unit == PUPIL_UNIT_DIOPTRE else value_mm
+    if not math.isfinite(value):
+        return INFINITY_TEXT
+    return f"{value:.{ndigits}f}"
+
+
+def format_field(value: float, efl_mm: float, native_unit: str,
+                 ndigits: int = 4, with_unit: bool = False) -> str:
+    """Значение поля в единицах отображения (см. :func:`field_unit_display`).
+
+    ``with_unit=True`` дописывает единицу: ``'5.00°'`` / ``'50.00 дптр'``.
+    """
+    unit = field_unit_display(native_unit, efl_mm)
+    if unit == PUPIL_UNIT_DIOPTRE:
+        value = field_deg_to_dioptre(value, efl_mm)
+    text = f"{value:.{ndigits}f}"
+    if with_unit:
+        text += unit if unit == FIELD_UNIT_DEG else f" {unit}"
+    return text
+
+
+def field_values_display(values, efl_mm: float,
+                         native_unit: str) -> tuple[list, str]:
+    """Список значений поля в единицах отображения + единица (оси графиков)."""
+    unit = field_unit_display(native_unit, efl_mm)
+    if unit == PUPIL_UNIT_DIOPTRE:
+        return [field_deg_to_dioptre(v, efl_mm) for v in values], unit
+    return list(values), unit
 
 
 # ============================================================

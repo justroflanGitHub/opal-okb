@@ -360,8 +360,55 @@ def fmt_val(v, ndigits=5):
     Returns em-dash for NaN.
     """
     if v != v:  # NaN check
-        return '\u2014'
+        return '—'
     return f"{v:.{ndigits}f}"
+
+
+# ============================================================
+# COORD-BREAK TABLE CELLS: наклон/децентрировка (п. 17 GAP v2)
+# ============================================================
+
+#: Разделитель значений в ячейках «Наклон αx,αy,αz (°)» и «Децентр x,y (мм)»
+#: таблицы конструктивных параметров (запятая; пробелы вокруг игнорируются).
+COORD_CELL_SEPARATOR = ','
+
+#: Количество значений в ячейке наклона (αx, αy, αz) и децентра (x, y).
+COORD_CELL_TILT_COUNT = 3
+COORD_CELL_DECENTER_COUNT = 2
+
+
+def format_coord_cell(values) -> str:
+    """Ячейка «наклон/децентр»: компактный список через запятую.
+
+    Все значения ~0 → ``'0'`` (как колонка k); иначе значения через
+    :data:`COORD_CELL_SEPARATOR` без хвостовых нулей (5, -2, 0.5).
+
+    Parameters
+    ----------
+    values: iterable of float — углы (°) или смещения (мм).
+    """
+    vals = [float(v) for v in values]
+    if all(abs(v) <= EPSILON for v in vals):
+        return '0'
+    return COORD_CELL_SEPARATOR.join(
+        f"{v:.4f}".rstrip('0').rstrip('.') or '0' for v in vals)
+
+
+def parse_coord_cell(text: str, count: int) -> tuple:
+    """Разобрать ячейку «наклон/децентр» в кортеж из ``count`` чисел.
+
+    Понятны форматы ``'5, -2, 0'``, ``'5;-2;0'``, ``'5'`` (недостающие
+    значения — нули); лишние значения игнорируются.  ``'0'`` → все нули.
+
+    Raises:
+        ValueError: в тексте есть нечисловое значение.
+    """
+    parts = [p for p in text.replace(';', COORD_CELL_SEPARATOR)
+             .split(COORD_CELL_SEPARATOR) if p.strip()]
+    if not parts:
+        return (0.0,) * count
+    values = tuple(float(p.strip()) for p in parts[:count])
+    return values + (0.0,) * (count - len(values))
 
 
 # ============================================================

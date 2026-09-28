@@ -55,9 +55,10 @@ class Surface:
     hologram_coeffs: List[float] = field(default_factory=list)
     # Override refractive index (if set, used instead of glass_catalog)
     n_override: dict = field(default_factory=dict)  # {wl_value: n}
-    # Coordinate break / tilt / decenter
+    # Coordinate break / tilt / decenter (п. 17; преобразования — domain/spatial.py)
     tilt_x: float = 0.0       # tilt around X axis (degrees)
     tilt_y: float = 0.0       # tilt around Y axis (degrees)
+    tilt_z: float = 0.0       # tilt around Z axis (degrees)
     decenter_x: float = 0.0   # lateral shift in X (mm)
     decenter_y: float = 0.0   # lateral shift in Y (mm)
 

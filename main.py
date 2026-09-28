@@ -37,6 +37,7 @@ from optics_utils import (
     get_primary_wl, get_effective_aperture, copy_table_selection,
     get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
     PUPIL_UNIT_CHOICES, format_pupil_position, INFINITY_TEXT,
+    format_coord_cell,
 )
 
 from gui.controllers.calculation_controller import CalculationController
@@ -67,7 +68,10 @@ class SurfaceTable(QTableWidget):
 
     # Базовые заголовки (до n-колонок и после)
     BASE_BEFORE = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла"]
-    BASE_AFTER = ["Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
+    # Наклон/децентр (п. 17): «X,Y,Z (°)» / «X,Y (мм)» — формат ячеек
+    # utils/optics_utils.py (format_coord_cell/parse_coord_cell)
+    BASE_AFTER = ["Высоты\nD/2 (мм)", "Тип", "k (конич.)",
+                  "Наклон\nX,Y,Z (°)", "Децентр\nX,Y (мм)", "Стоп"]
 
     def __init__(self, parent=None):
         super().__init__(0, len(self.BASE_BEFORE) + 1 + len(self.BASE_AFTER), parent)
@@ -99,7 +103,9 @@ class SurfaceTable(QTableWidget):
             'sd': 4 + n,
             'type': 4 + n + 1,
             'k': 4 + n + 2,
-            'stop': 4 + n + 3,
+            'tilt': 4 + n + 3,
+            'dec': 4 + n + 4,
+            'stop': 4 + n + 5,
         }
 
     def load_system(self, sys: OpticalSystem):
@@ -148,6 +154,12 @@ class SurfaceTable(QTableWidget):
             k_text = f"{s.conic_constant:.4f}" if abs(s.conic_constant) > 1e-10 else "0"
             self.setItem(i, cols['k'], QTableWidgetItem(k_text))
 
+            # Наклон/децентрировка (п. 17; формат — utils/optics_utils)
+            self.setItem(i, cols['tilt'], QTableWidgetItem(
+                format_coord_cell((s.tilt_x, s.tilt_y, getattr(s, 'tilt_z', 0.0)))))
+            self.setItem(i, cols['dec'], QTableWidgetItem(
+                format_coord_cell((s.decenter_x, s.decenter_y))))
+
             # Стоп-чекбокс
             stop_item = QTableWidgetItem()
             stop_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -159,7 +171,7 @@ class SurfaceTable(QTableWidget):
             self.setItem(i, cols['stop'], stop_item)
 
             # Выравнивание
-            for key in ['no', 'r', 'd', 'sd', 'k']:
+            for key in ['no', 'r', 'd', 'sd', 'k', 'tilt', 'dec']:
                 item = self.item(i, cols[key])
                 if item:
                     item.setTextAlignment(Qt.AlignCenter)

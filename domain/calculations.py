@@ -148,7 +148,9 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
     ordinary surfaces in the paraxial approximation.  Full tilt
     support in paraxial optics requires ABCD matrix rotation which
     is not implemented here.  The paraxial results are therefore
-    approximate for systems with tilted/decentered elements.
+    approximate for systems with tilted/decentered elements
+    (точная трассировка таких поверхностей — analysis/ray_tracing.py
+    через локальную СК domain/spatial.py, п. 17).
     """
     if not sys.surfaces:
         return {}

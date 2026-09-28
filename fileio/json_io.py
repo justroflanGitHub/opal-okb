@@ -46,6 +46,12 @@ def save_json(system: OpticalSystem, path: str):
                 "glass": s.glass,
                 "semi_diameter": s.semi_diameter,
                 "surface_type": s.surface_type.name,
+                # Наклон/децентрировка (п. 17; degrees / мм)
+                "tilt_x": s.tilt_x,
+                "tilt_y": s.tilt_y,
+                "tilt_z": s.tilt_z,
+                "decenter_x": s.decenter_x,
+                "decenter_y": s.decenter_y,
             }
             for s in system.surfaces
         ],
@@ -100,6 +106,12 @@ def load_json(path: str) -> OpticalSystem:
             glass=glass_name,
             semi_diameter=sd.get("semi_diameter", 0.0),
             surface_type=stype,
+            # Наклон/децентрировка (п. 17; старые файлы без полей → нули)
+            tilt_x=sd.get("tilt_x", 0.0),
+            tilt_y=sd.get("tilt_y", 0.0),
+            tilt_z=sd.get("tilt_z", 0.0),
+            decenter_x=sd.get("decenter_x", 0.0),
+            decenter_y=sd.get("decenter_y", 0.0),
         )
         # Поддержка зеркал
         if glass_name.upper() in ("ЗЕРКАЛО", "MIRROR"):

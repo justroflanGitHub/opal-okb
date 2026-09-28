@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 from PyQt5.QtCore import QThread
 
 from optics_engine import (
-    OpticalSystem, SurfaceType, paraxial_trace, seidel_aberrations,
+    OpticalSystem, paraxial_trace, seidel_aberrations,
 )
 from optics_utils import get_primary_wl, get_effective_aperture
 from aberrations import DEFAULT_FOCUS_STEP_MM
@@ -61,44 +61,10 @@ class CalculationController:
             self.mw.statusBar().showMessage("Нет поверхностей")
             return
 
-        # Update surfaces from table
-        n_wl = max(1, len(sys.wavelengths))
-        sd_col = 4 + n_wl     # D/2
-        k_col = 4 + n_wl + 2  # k
-        for i in range(min(self.mw.surface_table.rowCount(), len(sys.surfaces))):
-            r_item = self.mw.surface_table.item(i, 1)
-            d_item = self.mw.surface_table.item(i, 2)
-            g_item = self.mw.surface_table.item(i, 3)
-            sd_item = self.mw.surface_table.item(i, sd_col)
-
-            if r_item:
-                txt = r_item.text().strip()
-                sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
-            if d_item:
-                txt = d_item.text().strip()
-                sys.surfaces[i].thickness = float(txt) if txt else 0.0
-            if g_item:
-                glass = g_item.text().strip()
-                sys.surfaces[i].glass = glass
-                if glass.upper() in ("ЗЕРКАЛО", "MIRROR"):
-                    sys.surfaces[i].is_reflective = True
-                else:
-                    sys.surfaces[i].is_reflective = False
-            if sd_item:
-                txt = sd_item.text().strip()
-                sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.mw.surface_table.item(i, k_col)
-            if k_item:
-                txt = k_item.text().strip()
-                try:
-                    k_val = float(txt)
-                    sys.surfaces[i].conic_constant = k_val
-                    if abs(k_val) > 1e-10:
-                        sys.surfaces[i].surface_type = SurfaceType.CONIC
-                    elif sys.surfaces[i].surface_type == SurfaceType.CONIC:
-                        sys.surfaces[i].surface_type = SurfaceType.SPHERE
-                except ValueError:
-                    pass
+        # Update surfaces from table (единая реализация — system_controller:
+        # R, d, стекло, D/2, k, наклон/децентр)
+        from gui.controllers.system_controller import read_surface_table
+        read_surface_table(self.mw.surface_table, sys.surfaces)
 
         # System-level parameters from UI
         self._collect_system_params(sys)

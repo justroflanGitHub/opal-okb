@@ -9,4 +9,6 @@ from utils.optics_utils import (
     compute_z_positions, get_primary_wl, get_effective_aperture,
     WL_NAMES, wl_name,
     copy_table_selection, fmt_val, make_field_ray,
+    format_coord_cell, parse_coord_cell,
+    COORD_CELL_SEPARATOR, COORD_CELL_TILT_COUNT, COORD_CELL_DECENTER_COUNT,
 )

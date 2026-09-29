@@ -30,12 +30,14 @@ from aberrations import (
     compute_field_aberrations,
     compute_focus_curve,
     compute_spot_heatmap,
-    compute_spot_diagram_at_defocus,
     compute_chief_ray_characteristics,
     compute_isoplanatism,
     compute_wavefront_rms_vs_field,
+    compute_focus_diagrams,
     compute_oblique_fan,
     compute_ray_coordinates,
+    compute_gauge_rays,
+    is_oblique_section,
 )
 from advanced_analysis import (
     compute_psf,
@@ -51,6 +53,7 @@ from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
     compute_zernike_chromatic,
+    compute_global_zernike,
 )
 from optics_utils import get_primary_wl
 
@@ -59,6 +62,8 @@ def compute_all_analysis(
     sys: OpticalSystem,
     defocus: float = 0.0,
     azimuth: float = 0.0,
+    beam_semi_mode: str = 'given',
+    beam_sharp_edge: bool = True,
 ) -> dict[str, Any]:
     """Compute all analysis data.  Thread-safe (no GUI operations).
 
@@ -66,6 +71,10 @@ def compute_all_analysis(
         sys: The optical system to analyse.
         defocus: Defocus offset in millimetres.
         azimuth: Azimuthal angle in degrees (0 = meridional, 90 = sagittal).
+        beam_semi_mode: Режим габаритов пучков — 'given' | 'real'
+            (BEAM_SEMI_MODES, п. 15 GAP v2).
+        beam_sharp_edge: Флаг «острый край» (виньетирование без
+            скругления кромки).
 
     Returns:
         Dictionary with all precomputed results for widgets and tables.
@@ -109,7 +118,7 @@ def compute_all_analysis(
     d['isoplanatism_data'] = {}
     d['oblique_data'] = None
 
-    if abs(azimuth) > 0.1:
+    if is_oblique_section(azimuth):
         _safe('oblique_data', compute_oblique_fan, sys, wl=wl, num_rays=20,
               field_y=0.0, azimuth_deg=azimuth)
     else:
@@ -212,12 +221,17 @@ def compute_all_analysis(
         pass
 
     # Beam geometry
-    _safe('beam_data', compute_beam_geometry, sys)
+    _safe('beam_data', compute_beam_geometry, sys,
+          semi_mode=beam_semi_mode, sharp_edge=beam_sharp_edge)
     d.setdefault('beam_data', [])
 
     # Chief ray
     _safe('chief_data', compute_chief_ray_characteristics, sys)
     d.setdefault('chief_data', [])
+
+    # Gauge rays (координаты / высоты / углы / длины хода)
+    _safe('gauge_rays', compute_gauge_rays, sys, wl=wl)
+    d.setdefault('gauge_rays', [])
 
     # Zernike
     d['zernike_coeffs'] = []
@@ -232,6 +246,9 @@ def compute_all_analysis(
             d['zernike_chromatic'] = compute_zernike_chromatic(sys, num_rays=32, max_order=4)
         except Exception:
             pass
+
+    # Глобальное разложение Цернике (поле × λ, гексаполярная сетка зрачка)
+    _safe('zernike_global', compute_global_zernike, sys)
 
     # Wavefront map
     d['wf_data'] = None; d['wf_coords'] = None; d['wf_mask'] = None
@@ -248,29 +265,12 @@ def compute_all_analysis(
     except Exception:
         pass
 
-    # Focus diagrams
+    # Focus diagrams (общая функция analysis.aberrations)
     d['focus_diag_data'] = {}
-    d['focus_diag_max_range'] = 0.001
+    d['focus_diag_max_range'] = 1e-6
     try:
-        parax = paraxial_trace(sys)
-        bfd = parax.get('back_focal_distance', 0)
-        if abs(bfd) < 1e-6:
-            efl = parax.get('focal_length', 50)
-            bfd = abs(efl) * 0.5
-        ds = abs(bfd) * 0.01
-        all_spots = []
-        for label, df in [("\u043d\u043e\u043c\u0438\u043d\u0430\u043b", 0.0),
-                          ("+DS'", +ds), ("-DS'", -ds),
-                          ("+2DS'", +2*ds), ("-2DS'", -2*ds)]:
-            spots = compute_spot_diagram_at_defocus(
-                sys, wl=wl, num_rays=60, field_y=0.0, defocus_mm=df)
-            rms_info = compute_rms_spot_xy(spots)
-            d['focus_diag_data'][label] = (spots, rms_info, df)
-            all_spots.extend(spots)
-        if all_spots:
-            d['focus_diag_max_range'] = max(
-                math.sqrt(dx**2 + dy**2) for dx, dy in all_spots)
-            d['focus_diag_max_range'] = max(d['focus_diag_max_range'], 1e-6)
+        (d['focus_diag_data'],
+         d['focus_diag_max_range']) = compute_focus_diagrams(sys, wl=wl)
     except Exception:
         pass
 

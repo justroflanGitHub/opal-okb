@@ -7,7 +7,7 @@ Widgets:
 * :class:`ENCWidget` — Encircled Energy curve.
 * :class:`PTFWidget` — Phase Transfer Function.
 * :class:`ESFWidget` — Edge Spread Function.
-* :class:`PSF3DWidget` — Pseudo-3D isometric PSF projection.
+* :class:`PSF3DWidget` — вращаемая 3D PSF (matplotlib surface).
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from advanced_analysis import (
 from optics_utils import get_primary_wl
 
 from .base import AberrationPlotWidget
+from .mpl_widgets import MplSurface3DWidget
 
 
 class PSFWidget(AberrationPlotWidget):
@@ -390,8 +391,14 @@ class ESFWidget(AberrationPlotWidget):
         painter.end()
 
 
-class PSF3DWidget(AberrationPlotWidget):
-    """Pseudo-3D isometric PSF projection via QPainter."""
+class PSF3DWidget(MplSurface3DWidget):
+    """Вращаемая 3D PSF — matplotlib surface (п. 5 GAP v2).
+
+    Истинная 3D-поверхность :meth:`~mpl_toolkits.mplot3d.axes3d.Axes3D.
+    plot_surface` с панелью навигации matplotlib: вращение перетаскиванием
+    мышью, зум, сохранение. Ранее — статичная псевдо-3D изометрия QPainter.
+    Рендер общий с 3D волновым фронтом (:class:`MplSurface3DWidget`).
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -408,66 +415,23 @@ class PSF3DWidget(AberrationPlotWidget):
             self.Z = None
         self.update()
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        m, top, pw, ph = self.paint_grid(painter, w, h, margin=50)
+    def apply_data(self, x_coords, y_coords, Z) -> None:
+        """Применить данные фонового расчёта (фаза 2 / precomputed)."""
+        self.x_coords, self.y_coords, self.Z = x_coords, y_coords, Z
+        self.update()
 
-        if self.Z is None or self.x_coords is None:
-            painter.setPen(QColor(150, 150, 170))
-            painter.setFont(QFont("Consolas", 9))
-            painter.drawText(self.rect(), Qt.AlignCenter, "Нет данных")
-            self.paint_finalize(painter, self._plot_rect)
-            painter.end()
-            return
+    # -- Hooks ------------------------------------------------------------
 
-        Z = self.Z
-        ny, nx = Z.shape
-        step = max(1, max(ny, nx) // 40)
-        Zs = Z[::step, ::step]
-        ny_s, nx_s = Zs.shape
+    def _surface_data(self):
+        if self.Z is None or self.x_coords is None or self.y_coords is None:
+            return None
+        return self.x_coords, self.y_coords, self.Z
 
-        scale_xy = min(pw, ph) * 0.35 / max(nx_s, ny_s)
-        scale_z = ph * 0.4
-        angle_x = 0.7
-        angle_y = 0.7
+    def _axis_labels(self):
+        return ('X, мкм', 'Y, мкм', 'I, отн. ед.')
 
-        def project(ix, iy, zv):
-            px = (ix - nx_s / 2) * scale_xy * angle_x - (iy - ny_s / 2) * scale_xy * angle_y
-            py = (ix - nx_s / 2) * scale_xy * 0.4 + (iy - ny_s / 2) * scale_xy * 0.4 - zv * scale_z
-            return (m + pw / 2 + px, top + ph * 0.7 + py)
+    def _title(self):
+        return 'PSF 3D — поверхность вращается мышью'
 
-        for iy in range(ny_s - 1, -1, -1):
-            for ix in range(nx_s - 1, -1, -1):
-                z0 = Zs[iy, ix]
-                intensity = min(1.0, max(0.0, z0))
-                r = int(20 + 235 * intensity)
-                g = int(20 + 80 * intensity)
-                b = int(80 + 175 * intensity)
-                shade = 0.6 + 0.4 * (1.0 - iy / max(ny_s - 1, 1))
-                r = min(255, int(r * shade))
-                g = min(255, int(g * shade))
-                b = min(255, int(b * shade))
-
-                x0, y0 = project(ix, iy, z0)
-                x_base, y_base = project(ix, iy, 0)
-                if z0 > 0.01:
-                    painter.setPen(QPen(QColor(r // 2, g // 2, b // 2, 100), 1))
-                    painter.drawLine(int(x0), int(y0), int(x_base), int(y_base))
-
-                painter.setPen(Qt.NoPen)
-                painter.setBrush(QBrush(QColor(r, g, b)))
-                sz = max(2, int(3 * shade))
-                painter.drawEllipse(int(x0) - sz // 2, int(y0) - sz // 2, sz, sz)
-
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + 15, "PSF (3D изометрия)")
-        if self.x_coords is not None and len(self.x_coords) > 0:
-            x_span = (self.x_coords.max() - self.x_coords.min())
-            painter.drawText(m + 5, top + ph + 25,
-                             f"{x_span:.1f} мкм | max={Z.max():.4f}")
-
-        self.paint_finalize(painter, self._plot_rect)
-        painter.end()
+    def _cbar_label(self):
+        return 'I, отн. ед.'

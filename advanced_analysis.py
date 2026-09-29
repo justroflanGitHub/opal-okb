@@ -8,4 +8,6 @@ from analysis.advanced import (
     compute_psf, compute_lsf, compute_enc, compute_ptf,
     compute_psf_3d, compute_bar_target_image,
     compute_bar_target_mtf_table, compute_esf,
+    TEST_OBJECT_KINDS, MIRA_DEFAULT_GROUPS,
+    make_test_object, convolve_fft, compute_test_object_image,
 )

@@ -1,21 +1,71 @@
 """Dialog for editing spectral lines (wavelengths) of an optical system.
 
 Provides a table editor where the user can add, remove, pick standard
-wavelengths, or reset to the default set (e, G', C).
+wavelengths, or reset to the default set (e, G', C). Standard lines come
+from the shared catalog (utils/spectral_lines.py, п. 11 GAP v2).
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QHBoxLayout, QHeaderView,
-    QLabel, QLineEdit, QMessageBox, QPushButton, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget,
+    QLabel, QLineEdit, QListWidget, QListWidgetItem, QMessageBox,
+    QPushButton, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 from optics_engine import OpticalSystem, Wavelength
-from io_utils import STANDARD_WAVELENGTHS
+from utils.spectral_lines import SPECTRAL_LINES, format_spectral_line
+
+
+class StandardLineDialog(QDialog):
+    """Выбор стандартной спектральной линии из справочника (п. 11 GAP v2).
+
+    Список линий (обозначение, λ, элемент, цвет) с двойным щелчком для
+    выбора; используется и главным окном, и :class:`SpectralDialog`.
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Стандартные длины волн")
+        self.setMinimumWidth(300)
+        self.setMinimumHeight(350)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Выберите спектральную линию:"))
+        self.line_list = QListWidget()
+        for line in SPECTRAL_LINES:
+            item = QListWidgetItem(format_spectral_line(line))
+            item.setData(Qt.UserRole, (line.name, line.wavelength_um))
+            self.line_list.addItem(item)
+        layout.addWidget(self.line_list)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.line_list.itemDoubleClicked.connect(lambda _item: self.accept())
+
+    def selected_line(self) -> Optional[Tuple[str, float]]:
+        """Выбранная линия: ``(обозначение, λ в мкм)`` или ``None``."""
+        item = self.line_list.currentItem()
+        if item is None:
+            return None
+        return item.data(Qt.UserRole)
+
+
+def pick_standard_line(parent: Optional[QWidget] = None) -> Optional[Tuple[str, float]]:
+    """Модальный выбор стандартной линии из справочника.
+
+    Args:
+        parent: родительское окно.
+
+    Returns:
+        ``(обозначение, λ в мкм)`` или ``None``, если выбор отменён.
+    """
+    dlg = StandardLineDialog(parent)
+    if dlg.exec_() != QDialog.Accepted:
+        return None
+    return dlg.selected_line()
 
 
 class SpectralDialog(QDialog):
@@ -103,30 +153,16 @@ class SpectralDialog(QDialog):
             self.wl_table.removeRow(self.wl_table.currentRow())
 
     def _on_standard(self) -> None:
-        """Open a sub-dialog to pick a standard spectral line."""
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Стандартные длины волн")
-        dlg.setMinimumWidth(250)
-        dl = QVBoxLayout(dlg)
-        from PyQt5.QtWidgets import QListWidget
-        lst = QListWidget()
-        for name, val in sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1]):
-            lst.addItem(f"{name} — {val:.5f} мкм")
-        dl.addWidget(lst)
-        b = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        b.accepted.connect(dlg.accept)
-        b.rejected.connect(dlg.reject)
-        dl.addWidget(b)
-        if dlg.exec_():
-            idx = lst.currentRow()
-            if idx >= 0:
-                items = sorted(STANDARD_WAVELENGTHS.items(), key=lambda x: x[1])
-                name, val = items[idx]
-                r = self.wl_table.rowCount()
-                self.wl_table.insertRow(r)
-                self.wl_table.setItem(r, 0, QTableWidgetItem(f"{val:.4f}"))
-                self.wl_table.setItem(r, 1, QTableWidgetItem("1.0"))
-                self.wl_table.setItem(r, 2, QTableWidgetItem(name))
+        """Open a sub-dialog to pick a standard spectral line (справочник)."""
+        picked = pick_standard_line(self)
+        if picked is None:
+            return
+        name, val = picked
+        r = self.wl_table.rowCount()
+        self.wl_table.insertRow(r)
+        self.wl_table.setItem(r, 0, QTableWidgetItem(f"{val:.4f}"))
+        self.wl_table.setItem(r, 1, QTableWidgetItem("1.0"))
+        self.wl_table.setItem(r, 2, QTableWidgetItem(name))
 
     def _on_default(self) -> None:
         """Reset to the default triplet (e, G', C)."""

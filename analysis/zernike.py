@@ -11,7 +11,8 @@ from optics_engine import OpticalSystem, ObjectType, paraxial_trace
 from ray_tracing import Ray, trace_ray_through_system
 from glass_catalog import compute_refractive_index
 from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
-from aberrations import _compute_ray_start, _aim_at_pupil
+from aberrations import (_compute_ray_start, _aim_at_pupil, _reference_sphere,
+                         _air_exit_direction, _opl_to_reference_sphere)
 
 
 # ── Zernike polynomial definitions (polar ρ, θ) ──────────────────────────
@@ -123,11 +124,10 @@ def _compute_opl_for_ray(system: OpticalSystem, ray: Ray, wl: float) -> float:
 def _compute_opl_to_ref_sphere(system: OpticalSystem, ray: Ray, wl: float,
                                  ref_cx: float, ref_cy: float, ref_cz: float,
                                  R_ref: float, n_air: float = 1.0) -> float:
-    """Compute OPL from ray start to the reference sphere.
+    """OPL от старта луча до опорной сферы, мм.
 
-    Traces the ray through the system, then adds the air path from
-    the last surface point to the reference sphere surface:
-        OPL_to_ref = result.opl + n_air * (R_ref - dist_last_to_center)
+    Трассирует луч и замыкает его на опорную сферу ВДОЛЬ направления
+    луча в воздухе (общая логика :func:`aberrations._opl_to_reference_sphere`).
 
     Args:
         system: Optical system.
@@ -143,13 +143,49 @@ def _compute_opl_to_ref_sphere(system: OpticalSystem, ray: Ray, wl: float,
     result = trace_ray_through_system(system, ray, wl)
     if not result.success or len(result.path) < 2:
         return float('inf')
-    last = result.path[-1]
-    dist_to_center = math.sqrt(
-        (last[0] - ref_cx) ** 2
-        + (last[1] - ref_cy) ** 2
-        + (last[2] - ref_cz) ** 2
-    )
-    return result.opl + n_air * (R_ref - dist_to_center)
+    direction = _air_exit_direction(system, result, wl)
+    opl = _opl_to_reference_sphere(result.opl, result.path[-1], direction,
+                                   (ref_cx, ref_cy, ref_cz), R_ref,
+                                   n_air=n_air)
+    return float('inf') if opl is None else opl
+
+
+def fit_zernike_coefficients(points: List[Tuple[float, float, float]],
+                             max_order: int = 4) -> List[Tuple[float, str]]:
+    """МНК-подгонка коэффициентов Цернике по точкам зрачка.
+
+    Единственная реализация подгонки (используется квадратурной сеткой
+    ``compute_zernike_coefficients`` и гексаполярной сеткой зрачка в
+    глобальном разложении ``compute_global_zernike``).
+
+    Args:
+        points: Список ``(px, py, W)`` — нормированные координаты зрачка
+            (−1..1) и волновая аберрация в длинах волн.
+        max_order: Максимальный порядок полиномов.
+
+    Returns:
+        Список ``(coeff, name)`` по :data:`ZERNIKE_TERMS`; нули, если
+        точек меньше, чем членов разложения.
+    """
+    terms = [(n, m, name) for n, m, name in ZERNIKE_TERMS if n <= max_order]
+    if len(points) < len(terms):
+        return [(0.0, name) for _, _, name in terms]
+
+    Z = np.zeros((len(points), len(terms)))
+    W_vec = np.zeros(len(points))
+    for k, (px, py, W) in enumerate(points):
+        W_vec[k] = W
+        rho = math.sqrt(px * px + py * py)
+        theta = math.atan2(py, px)
+        for t, (n, m, _) in enumerate(terms):
+            Z[k, t] = _zernike_poly_noll(n, m, rho, theta)
+
+    try:
+        coeffs, _, _, _ = np.linalg.lstsq(Z, W_vec, rcond=None)
+    except np.linalg.LinAlgError:
+        coeffs = np.zeros(len(terms))
+
+    return [(float(c), name) for c, (_, _, name) in zip(coeffs, terms)]
 
 
 def compute_zernike_coefficients(system: OpticalSystem,
@@ -173,14 +209,13 @@ def compute_zernike_coefficients(system: OpticalSystem,
     """
     aperture = get_effective_aperture(system, default=10.0)
 
-    # Build list of terms up to max_order
-    terms = [(n, m, name) for n, m, name in ZERNIKE_TERMS if n <= max_order]
-
-    # Collect valid ray data: (rho, theta, W)
+    # Collect valid ray data: (px, py, W)
     ray_data = []
 
     parax_zk = paraxial_trace(system)
     z_start_zk, z_pupil_zk = _compute_ray_start(system, parax_zk)
+    (ref_cx, ref_cy, ref_cz), R_ref = _reference_sphere(system, field_y,
+                                                        parax_zk)
 
     # Chief ray OPL
     if system.object_type == ObjectType.INFINITE:
@@ -193,24 +228,8 @@ def compute_zernike_coefficients(system: OpticalSystem,
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
     # ===== Reference sphere parameters =====
-    z_pos = compute_z_positions(system)
-    last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
-    bfd = parax_zk.get('back_focal_distance', 0)
-    from optics_utils import EPSILON
-    parax_focus_z = last_surf_z + bfd if abs(bfd) > EPSILON else z_pos[-1]
-    efl_zk = parax_zk.get('focal_length', 0)
-
-    if system.object_type == ObjectType.INFINITE and field_y != 0:
-        angle_rad = math.radians(field_y)
-        ref_cx = 0.0
-        ref_cy = efl_zk * math.tan(angle_rad) if efl_zk != 0 else 0.0
-    else:
-        ref_cx = 0.0
-        ref_cy = 0.0
-    ref_cz = parax_focus_z
-    R_ref = abs(parax_focus_z - last_surf_z)
-    if R_ref < EPSILON:
-        R_ref = 1.0
+    (ref_cx, ref_cy, ref_cz), R_ref = _reference_sphere(system, field_y,
+                                                        parax_zk)
 
     chief_opl = _compute_opl_to_ref_sphere(system, chief_ray, wl,
                                              ref_cx, ref_cy, ref_cz, R_ref)
@@ -222,9 +241,6 @@ def compute_zernike_coefficients(system: OpticalSystem,
             r2 = px**2 + py**2
             if r2 > 1.0:
                 continue
-
-            rho = math.sqrt(r2)
-            theta = math.atan2(py, px)
 
             y_start = py * aperture / 2
             x_start = px * aperture / 2
@@ -255,34 +271,9 @@ def compute_zernike_coefficients(system: OpticalSystem,
             opd = opl - chief_opl
             W = opd / (wl * 1e-3)  # in wavelengths
 
-            ray_data.append((rho, theta, W))
+            ray_data.append((px, py, W))
 
-    if len(ray_data) < len(terms):
-        # Not enough data points, return zeros
-        return [(0.0, name) for _, _, name in terms]
-
-    # Build matrix for least squares: W = Z @ a
-    num_pts = len(ray_data)
-    num_terms = len(terms)
-    Z = np.zeros((num_pts, num_terms))
-    W_vec = np.zeros(num_pts)
-
-    for k, (rho, theta, W) in enumerate(ray_data):
-        W_vec[k] = W
-        for t, (n, m, _) in enumerate(terms):
-            Z[k, t] = _zernike_poly_noll(n, m, rho, theta)
-
-    # Least squares: a = (Z^T Z)^-1 Z^T W
-    try:
-        coeffs, _, _, _ = np.linalg.lstsq(Z, W_vec, rcond=None)
-    except np.linalg.LinAlgError:
-        coeffs = np.zeros(num_terms)
-
-    result = []
-    for t, (n, m, name) in enumerate(terms):
-        result.append((float(coeffs[t]), name))
-
-    return result
+    return fit_zernike_coefficients(ray_data, max_order=max_order)
 
 
 def compute_wavefront_map_2d(system: OpticalSystem,
@@ -302,6 +293,8 @@ def compute_wavefront_map_2d(system: OpticalSystem,
 
     parax_wm = paraxial_trace(system)
     z_start_wm, z_pupil_wm = _compute_ray_start(system, parax_wm)
+    (ref_cx_wm, ref_cy_wm, ref_cz_wm), R_ref_wm = _reference_sphere(
+        system, field_y, parax_wm)
 
     # Chief ray OPL
     if system.object_type == ObjectType.INFINITE:
@@ -313,29 +306,8 @@ def compute_wavefront_map_2d(system: OpticalSystem,
         obj_z = -system.surfaces[0].thickness if system.surfaces else -50
         chief_ray = Ray(x=0, y=field_y, z=obj_z, k=0, l=0, m=1)
 
-    chief_opl = _compute_opl_for_ray(system, chief_ray, wl)
-
     # ===== Reference sphere parameters =====
-    z_pos_wm = compute_z_positions(system)
-    last_surf_z_wm = z_pos_wm[-2] if len(z_pos_wm) > 1 else z_pos_wm[-1]
-    bfd_wm = parax_wm.get('back_focal_distance', 0)
-    from optics_utils import EPSILON
-    parax_focus_z_wm = last_surf_z_wm + bfd_wm if abs(bfd_wm) > EPSILON else z_pos_wm[-1]
-    efl_wm = parax_wm.get('focal_length', 0)
-
-    if system.object_type == ObjectType.INFINITE and field_y != 0:
-        angle_rad_wm = math.radians(field_y)
-        ref_cx_wm = 0.0
-        ref_cy_wm = efl_wm * math.tan(angle_rad_wm) if efl_wm != 0 else 0.0
-    else:
-        ref_cx_wm = 0.0
-        ref_cy_wm = 0.0
-    ref_cz_wm = parax_focus_z_wm
-    R_ref_wm = abs(parax_focus_z_wm - last_surf_z_wm)
-    if R_ref_wm < EPSILON:
-        R_ref_wm = 1.0
-
-    # Recompute chief OPL to reference sphere
+    # Chief OPL to reference sphere — ноль отсчёта W
     chief_opl = _compute_opl_to_ref_sphere(system, chief_ray, wl,
                                              ref_cx_wm, ref_cy_wm, ref_cz_wm, R_ref_wm)
 
@@ -384,18 +356,24 @@ def compute_wavefront_map_2d(system: OpticalSystem,
     return wavefront, coords, pupil_mask
 
 
+def _subtract_coeff_lists(a: List[Tuple[float, str]],
+                          b: List[Tuple[float, str]]) -> List[Tuple[float, str]]:
+    """Почленная разность двух списков коэффициентов ``[(coeff, name)]``: a − b."""
+    return [(ca - cb, name) for (ca, _), (cb, name) in zip(a, b)]
+
+
 def compute_zernike_chromatic(system, num_rays=64, max_order=4):
     """
-    Цернике для каждой длины волны + разности.
-    
+    Цернике для каждой рабочей длины волны + разности от первичной λ.
+
     Возвращает: {
-        wl_name: [(coeff, name), ...],
-        'delta_F-d': [(coeff, name), ...],
-        'delta_C-d': [(coeff, name), ...]
+        <имя λ>: [(coeff, name), ...],               # коэффициенты для каждой λ
+        'delta_<λ>−<λ перв>': [(coeff, name), ...],  # Z_nm(λ) − Z_nm(λ перв)
     }
+    Первичная λ — первая длина волны системы (``get_primary_wl``).
     """
     result = {}
-    
+
     # Собираем коэффициенты для каждой длины волны
     wl_coeffs = {}
     for wl_obj in system.wavelengths:
@@ -406,68 +384,110 @@ def compute_zernike_chromatic(system, num_rays=64, max_order=4):
         wl_coeffs[wl_name] = coeffs
         wl_coeffs[wl_obj.value] = coeffs  # ключ по значению тоже
         result[wl_name] = coeffs
-    
-    # Разности: F-d и C-d (если есть соответствующие длины волн)
-    # Ищем по именам и значениям
-    wl_by_name = {}
-    wl_by_value = {}
+
+    # Разности каждой не-первичной λ от первичной
+    primary_wl = get_primary_wl(system)
+    primary_name = None
     for wl_obj in system.wavelengths:
-        name = wl_obj.name if wl_obj.name else ""
-        wl_by_name[name] = wl_obj.value
-        wl_by_value[wl_obj.value] = name
-    
-    # Стандартные соответствия
-    f_names = ['F', "F'"]
-    c_names = ['C', "C'"]
-    d_names = ['d', 'D', 'e']
-    
-    f_wl = None
-    c_wl = None
-    d_wl = None
-    
-    # Ищем по именам
-    for name in f_names:
-        if name in wl_by_name:
-            f_wl = wl_by_name[name]
+        if abs(wl_obj.value - primary_wl) < 1e-9:
+            primary_name = (wl_obj.name if wl_obj.name
+                            else f"{wl_obj.value:.3f}")
             break
-    for name in c_names:
-        if name in wl_by_name:
-            c_wl = wl_by_name[name]
-            break
-    for name in d_names:
-        if name in wl_by_name:
-            d_wl = wl_by_name[name]
-            break
-    
-    # Если по именам не нашли — по значениям
-    if f_wl is None:
+    if primary_name is not None and primary_name in wl_coeffs:
+        primary_coeffs = wl_coeffs[primary_name]
         for wl_obj in system.wavelengths:
-            if abs(wl_obj.value - 0.48613) < 0.002:
-                f_wl = wl_obj.value
-                break
-    if c_wl is None:
-        for wl_obj in system.wavelengths:
-            if abs(wl_obj.value - 0.65627) < 0.002:
-                c_wl = wl_obj.value
-                break
-    if d_wl is None:
-        # Берём основную (первую) длину волны
-        d_wl = get_primary_wl(system)
-    
-    # Вычисляем разности
-    if f_wl is not None and f_wl in wl_coeffs and d_wl in wl_coeffs:
-        f_c = wl_coeffs[f_wl]
-        d_c = wl_coeffs[d_wl]
-        delta = [(fc - dc, name) for (fc, _), (dc, name) in zip(f_c, d_c)]
-        result['delta_F-d'] = delta
-    
-    if c_wl is not None and c_wl in wl_coeffs and d_wl in wl_coeffs:
-        c_c = wl_coeffs[c_wl]
-        d_c = wl_coeffs[d_wl]
-        delta = [(cc - dc, name) for (cc, _), (dc, name) in zip(c_c, d_c)]
-        result['delta_C-d'] = delta
-    
+            name = wl_obj.name if wl_obj.name else f"{wl_obj.value:.3f}"
+            if name == primary_name:
+                continue
+            result[f'delta_{name}−{primary_name}'] = _subtract_coeff_lists(
+                wl_coeffs[name], primary_coeffs)
+
     return result
+
+
+# ── Глобальное разложение: поле × λ × зрачок ──────────────────────────────
+
+GLOBAL_ZERNIKE_MAX_ORDER = 4    # порядок полиномов Цернике
+GLOBAL_TEXT_COEFF_FMT = '{:+8.4f}'   # формат коэффициентов в текстовой таблице
+GLOBAL_TEXT_LABEL_W = 18             # ширина колонки метки (поле, λ)
+
+
+def compute_global_zernike(system: OpticalSystem,
+                           num_rings: int = 4,
+                           max_order: int = GLOBAL_ZERNIKE_MAX_ORDER,
+                           num_fields: int = 5) -> Dict:
+    """Глобальное разложение Цернике: Z_nm для каждой (точка поля × λ).
+
+    Для каждой комбинации трассируется пучок на гексаполярной сетке
+    зрачка (:func:`aberrations.trace_wavefront_hexapolar`, пункт 2) и
+    коэффициенты подгоняются МНК
+    (:func:`fit_zernike_coefficients`).
+
+    Args:
+        system: Оптическая система.
+        num_rings: Кольца гексаполярной сетки зрачка (4 → 61 точка).
+        max_order: Максимальный порядок полиномов Цернике.
+        num_fields: Число точек поля, если поле системы не задано.
+
+    Returns:
+        ``{'fields': [поле, ...], 'wavelengths': [λ, ...],
+        'coeffs': {(field, wl): [(coeff, name), ...]}}``
+    """
+    from aberrations import (analysis_field_points,
+                             trace_wavefront_hexapolar)
+    fields = analysis_field_points(system, num_fields=num_fields)
+    wavelengths = ([w.value for w in system.wavelengths]
+                   if system.wavelengths else [get_primary_wl(system)])
+
+    coeffs: Dict[Tuple[float, float], List[Tuple[float, str]]] = {}
+    for field_y in fields:
+        for wl in wavelengths:
+            points = trace_wavefront_hexapolar(system, wl=wl,
+                                               field_y=field_y,
+                                               num_rings=num_rings)
+            coeffs[(field_y, wl)] = fit_zernike_coefficients(
+                points, max_order=max_order)
+    return {'fields': fields, 'wavelengths': wavelengths, 'coeffs': coeffs}
+
+
+def format_global_zernike_text(result: Dict,
+                               wl_names: Dict[float, str] = None) -> str:
+    """Текстовая таблица глобального разложения Цернике.
+
+    Строки — комбинации (поле, λ), колонки — полиномы Z_nm; ширина
+    фиксированная (моноширинный шрифт).
+    """
+    if not result or not result.get('coeffs'):
+        return 'Нет данных'
+    wl_names = wl_names or {}
+
+    def _wl_label(wl: float) -> str:
+        name = wl_names.get(wl, '')
+        return f"{name} {wl:.3f}" if name else f"{wl:.3f}"
+
+    terms = [name for _, name in result['coeffs'][
+        tuple(result['coeffs'].keys())[0]]]
+    short = [n.split()[0] for n in terms]
+
+    lines = ['Глобальное разложение Цернике: поле × λ',
+             f"Число комбинаций: {len(result['coeffs'])}",
+             '']
+    header = ('Поле'.rjust(GLOBAL_TEXT_LABEL_W - 6)
+              + 'λ, мкм'.rjust(GLOBAL_TEXT_LABEL_W - 4)
+              + ''.join(c.rjust(9) for c in short))
+    lines.append(header)
+    lines.append('-' * len(header))
+    for field_y in result['fields']:
+        for wl in result['wavelengths']:
+            key = (field_y, wl)
+            if key not in result['coeffs']:
+                continue
+            row = (f"{field_y:>{GLOBAL_TEXT_LABEL_W - 6}.3f}"
+                   f"{_wl_label(wl):>{GLOBAL_TEXT_LABEL_W - 4}.{GLOBAL_TEXT_LABEL_W}}"
+                   + ''.join(GLOBAL_TEXT_COEFF_FMT.format(c)
+                             for c, _ in result['coeffs'][key]))
+            lines.append(row)
+    return '\n'.join(lines)
 
 
 if __name__ == "__main__":

@@ -4,13 +4,14 @@ Widgets:
 
 * :class:`SpotDiagramWidget` — polychromatic spot diagram.
 * :class:`HeatmapWidget` — scatter density heatmap.
-* :class:`FocusDiagramWidget` — five spot diagrams at different defocus positions.
+* :class:`FocusDiagramWidget` — five spot diagrams at different defocus
+  positions (matplotlib, общий масштаб, шаг ΔS' из настроек анализа).
 """
 
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 from PyQt5.QtCore import Qt, QRectF
@@ -28,6 +29,9 @@ from aberrations import (
     compute_rms_spot_xy,
     compute_spot_heatmap,
     compute_spot_diagram_at_defocus,
+    compute_focus_diagrams,
+    DEFAULT_FOCUS_STEP_MM,
+    FOCUS_DIAGRAM_DEFOCI,
 )
 from optics_utils import get_primary_wl
 
@@ -36,6 +40,7 @@ from .base import (
     InteractivePlot,
     wl_to_plot_color,
 )
+from .mpl_widgets import MplCanvasWidget, MPL_CURVE_COLOR, MPL_TEXT_COLOR
 
 
 class SpotDiagramWidget(AberrationPlotWidget):
@@ -46,20 +51,25 @@ class SpotDiagramWidget(AberrationPlotWidget):
         self.spots_mono: list[tuple[float, float]] = []
         self.spots_poly: list[tuple[float, float, int]] = []
         self.rms: float = 0.0
+        self.rms_xy: Dict = {}
         self.poly_rms: float = 0.0
+        self.poly_rms_xy: Dict = {}
         self.polychromatic: bool = True
 
     def set_data(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         self.spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         self.rms = compute_rms_spot(self.spots_mono)
+        self.rms_xy = compute_rms_spot_xy(self.spots_mono)
         self._wl_cache = [w.value for w in sys.wavelengths]
         if len(sys.wavelengths) > 1:
             self.spots_poly = compute_spot_diagram_polychromatic(sys, num_rays=40, field_y=0.0)
             self.poly_rms = compute_polychromatic_rms(sys, num_rays=40, field_y=0.0)
+            self.poly_rms_xy = compute_rms_spot_xy([(dx, dy) for dx, dy, _ in self.spots_poly])
         else:
             self.spots_poly = [(dx, dy, 0) for dx, dy in self.spots_mono]
             self.poly_rms = self.rms
+            self.poly_rms_xy = self.rms_xy
         self.update()
 
     def paintEvent(self, event):
@@ -115,9 +125,11 @@ class SpotDiagramWidget(AberrationPlotWidget):
 
         # RMS readout
         cur_rms = self.poly_rms if self.polychromatic else self.rms
+        cur_xy = self.poly_rms_xy if self.polychromatic else self.rms_xy
         painter.setPen(QColor(200, 200, 220))
         painter.setFont(QFont("Consolas", 9))
-        painter.drawText(m + 5, top + ph + 25, f"RMS: {cur_rms:.4f} мм | {len(spots)} лучей")
+        painter.drawText(m + 5, top + ph + 25,
+                         self._rms_label(cur_rms, cur_xy, len(spots)))
         title = "Точечная диаграмма (полихром.)" if self.polychromatic else "Точечная диаграмма"
         painter.drawText(m + 5, top + 15, title)
 
@@ -130,6 +142,16 @@ class SpotDiagramWidget(AberrationPlotWidget):
         if not hasattr(self, '_wl_cache'):
             return [0.588]
         return self._wl_cache
+
+    @staticmethod
+    def _rms_label(rms: float, rms_xy: Dict, num_rays: int) -> str:
+        """Подпись RMS под графиком пятна: общий RMS, раздельные X/Y,
+        энергетический центр Y (Yцэ) и число лучей."""
+        return (f"RMS: {rms:.4f} мм | "
+                f"RMS_X: {rms_xy.get('rms_x', 0.0):.4f} | "
+                f"RMS_Y: {rms_xy.get('rms_y', 0.0):.4f} | "
+                f"Yцэ: {rms_xy.get('centroid_y', 0.0):.4f} мм | "
+                f"{num_rays} лучей")
 
 
 class HeatmapWidget(AberrationPlotWidget):
@@ -263,136 +285,73 @@ class HeatmapWidget(AberrationPlotWidget):
         super().keyPressEvent(event)
 
 
-class FocusDiagramWidget(QWidget, InteractivePlot):
-    """Five spot diagrams at different image-plane positions."""
+class FocusDiagramWidget(MplCanvasWidget):
+    """Фокусировочные диаграммы: 5 spot-диаграмм при defocus = 0, ±ΔS', ±2ΔS'.
+
+    matplotlib 1×5 subplots с общим масштабом (одинаковые пределы осей,
+    equal aspect); ΔS' — шаг фокусировки из настроек анализа панели
+    (по умолчанию DEFAULT_FOCUS_STEP_MM = 0.1 мм).
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumSize(500, 300)
         self.spots_by_defocus: dict[str, tuple] = {}
-        self.max_range = 0.001
-        self._pending = False
-        self._init_interactive()
+        self.max_range: float = 1e-6
+        self.focus_step_mm: float = DEFAULT_FOCUS_STEP_MM
 
-    def mouseMoveEvent(self, event):
-        self._interactive_mouseMoveEvent(event)
+    def set_data(self, sys: OpticalSystem,
+                 focus_step_mm: float = None) -> None:
+        """Расчёт 5 позиций фокуса (шаг ΔS' из настроек, мм)."""
+        if focus_step_mm is not None:
+            self.focus_step_mm = abs(focus_step_mm)
+        try:
+            self.spots_by_defocus, self.max_range = compute_focus_diagrams(
+                sys, focus_step_mm=self.focus_step_mm)
+        except Exception:
+            self.spots_by_defocus, self.max_range = {}, 1e-6
+        self.redraw()
 
-    def leaveEvent(self, event):
-        self._interactive_leaveEvent(event)
+    def apply_data(self, diagrams: dict, max_range: float = None) -> None:
+        """Подставить заранее рассчитанные данные (фаза 2)."""
+        self.spots_by_defocus = diagrams or {}
+        self.max_range = max_range if max_range else 1e-6
+        self.redraw()
 
-    def wheelEvent(self, event):
-        self._interactive_wheelEvent(event)
-
-    def mousePressEvent(self, event):
-        self._interactive_mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self._interactive_mouseReleaseEvent(event)
-
-    def mouseDoubleClickEvent(self, event):
-        self._interactive_mouseDoubleClickEvent(event)
-
-    def set_data(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        parax = paraxial_trace(sys)
-        bfd = parax.get('back_focal_distance', 0)
-        if abs(bfd) < 1e-6:
-            efl = parax.get('focal_length', 50)
-            bfd = abs(efl) * 0.5
-        ds = abs(bfd) * 0.01
-
-        defoci = [
-            ("номинал", 0.0),
-            ("+DS'", +ds),
-            ("-DS'", -ds),
-            ("+2DS'", +2*ds),
-            ("-2DS'", -2*ds),
-        ]
-
-        self.spots_by_defocus = {}
-        all_spots = []
-        for label, df in defoci:
-            spots = compute_spot_diagram_at_defocus(sys, wl=wl, num_rays=60,
-                                                     field_y=0.0, defocus_mm=df)
-            rms_info = compute_rms_spot_xy(spots)
-            self.spots_by_defocus[label] = (spots, rms_info, df)
-            all_spots.extend(spots)
-
-        if all_spots:
-            self.max_range = max(math.sqrt(dx**2 + dy**2) for dx, dy in all_spots)
-            self.max_range = max(self.max_range, 1e-6)
-        self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        w, h = self.width(), self.height()
-        painter.fillRect(self.rect(), QColor(10, 10, 25))
-
-        if not self.spots_by_defocus:
-            painter.setPen(QColor(150, 150, 170))
-            painter.setFont(QFont("Consolas", 9))
-            painter.drawText(self.rect(), Qt.AlignCenter, "Нет данных")
-            self.paint_finalize(painter, self._plot_rect)
-            painter.end()
+    def _render(self) -> None:
+        if self._render_pending():
+            return
+        labels = [label for label, _ in FOCUS_DIAGRAM_DEFOCI
+                  if label in self.spots_by_defocus]
+        if not labels:
+            ax = self.figure.add_subplot(111)
+            self._style_axes(ax)
+            ax.set_xticks([]); ax.set_yticks([])
+            ax.text(0.5, 0.5, 'Нет данных', ha='center', va='center',
+                    color=MPL_TEXT_COLOR, transform=ax.transAxes)
             return
 
-        labels_order = ["номинал", "+DS'", "-DS'", "+2DS'", "-2DS'"]
-        n = len(labels_order)
-        margin = 10
-        top_margin = 25
-        bot_margin = 35
-        cell_w = (w - 2 * margin) / n
-        cell_h = h - top_margin - bot_margin
-
-        for idx, label in enumerate(labels_order):
-            if label not in self.spots_by_defocus:
-                continue
+        axes = self.figure.subplots(1, len(labels), sharex=True, sharey=True)
+        if len(labels) == 1:
+            axes = [axes]
+        for ax, label in zip(axes, labels):
             spots, rms_info, df = self.spots_by_defocus[label]
-
-            ox = margin + idx * cell_w
-            oy = top_margin
-            cw = cell_w - 4
-            ch = cell_h
-
-            painter.setPen(QPen(QColor(60, 60, 80), 1))
-            painter.drawRect(int(ox), int(oy), int(cw), int(ch))
-
-            cx = ox + cw / 2
-            cy = oy + ch / 2
-            scale = min(cw, ch) / (2.2 * self.max_range)
-
-            painter.setPen(QPen(QColor(50, 50, 70), 1))
-            painter.drawLine(int(cx), int(oy), int(cx), int(oy + ch))
-            painter.drawLine(int(ox), int(cy), int(ox + cw), int(cy))
-
-            painter.setPen(Qt.NoPen)
-            color = QColor(0, 255, 120, 160)
-            painter.setBrush(QBrush(color))
-            for dx, dy in spots:
-                px = cx + dx * scale
-                py = cy - dy * scale
-                painter.drawEllipse(int(px) - 1, int(py) - 1, 2, 2)
-
-            painter.setPen(QColor(200, 200, 220))
-            painter.setFont(QFont("Consolas", 8))
-            painter.drawText(int(ox), int(oy - 2), int(cw), 20,
-                             Qt.AlignCenter, label)
-
-            painter.setPen(QColor(150, 200, 150))
-            painter.setFont(QFont("Consolas", 7))
-            rms_val = rms_info['rms_total']
-            painter.drawText(int(ox), int(oy + ch + 2), int(cw), 15,
-                             Qt.AlignCenter, f"RMS={rms_val:.4f}")
-
-            painter.setPen(QColor(120, 120, 150))
-            painter.drawText(int(ox), int(oy + ch + 14), int(cw), 15,
-                             Qt.AlignCenter, f"Δz={df:+.3f}")
-
-        painter.setPen(QColor(200, 200, 220))
-        painter.setFont(QFont("Consolas", 10))
-        painter.drawText(margin, 15, "Фокусировочные диаграммы (5 позиций)")
-
-        self.paint_finalize(painter, self._plot_rect)
-        painter.end()
+            self._style_axes(ax)
+            if spots:
+                xs = [dx for dx, _ in spots]
+                ys = [dy for _, dy in spots]
+                ax.scatter(xs, ys, s=4, color=MPL_CURVE_COLOR, alpha=0.8,
+                           linewidths=0)
+            ax.set_title(f"{label}  Δz={df:+.3f} мм", fontsize=8)
+            ax.set_xlabel(f"RMS={rms_info['rms_total']:.4f} мм",
+                          fontsize=8)
+            r = 1.1 * self.max_range
+            ax.set_xlim(-r, r)
+            ax.set_ylim(-r, r)
+            ax.set_aspect('equal')
+        axes[0].set_ylabel('Y, мм', fontsize=8)
+        for ax in axes:
+            ax.label_outer()
+        self.figure.suptitle(
+            f"Фокусировочные диаграммы (ΔS'={self.focus_step_mm:.3f} мм)",
+            color=MPL_TEXT_COLOR, fontsize=10)
+        self.figure.tight_layout()

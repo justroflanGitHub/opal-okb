@@ -8,60 +8,93 @@ import numpy as np
 from typing import Dict, List, Tuple
 
 from optics_engine import OpticalSystem, ObjectType, paraxial_trace
-from optics_utils import get_effective_aperture
+from optics_utils import get_effective_aperture, get_primary_wl
 from diffraction_mtf import compute_wavefront_map
+
+# Параксиальный дефокус: W_df = 0.5·Δz·NA²·ρ²/λ — коэффициент 1/2 формулы
+PARAXIAL_DEFOCUS_FACTOR = 0.5
+
+
+def _pupil_grid_r2(num_rays: int) -> np.ndarray:
+    """Квадрат нормированного радиуса зрачка ρ² = px² + py² на сетке
+    num_rays×num_rays (та же сетка, что в compute_wavefront_map:
+    строки — py, столбцы — px, координаты от −1 до 1)."""
+    axis = -1.0 + 2.0 * np.arange(num_rays) / (num_rays - 1) if num_rays > 1 \
+        else np.array([0.0])
+    py, px = np.meshgrid(axis, axis, indexing='ij')
+    return px ** 2 + py ** 2
 
 
 def compute_psf(system: OpticalSystem,
                 wl: float = 0.58756,
                 num_rays: int = 128,
-                field_y: float = 0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                field_y: float = 0.0,
+                defocus_mm: float = 0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Дифракционная PSF (Point Spread Function) через FFT зрачка.
-    
+
     Алгоритм:
     1. Карта волнового фронта W(x,y) на зрачке
     2. Комплексная функция зрачка: P(x,y) = mask * exp(i * 2π * W(x,y))
     3. PSF = |FFT(P)|² (нормированная на единицу)
-    
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм).
+        num_rays: Размер сетки зрачка.
+        field_y: Поле (град).
+        defocus_mm: Смещение плоскости установки (мм) — добавляет к
+            зрачку параксиальный дефокус W_df = 0.5·Δz·NA²·ρ²/λ;
+            0 — плоскость Гаусса (прежнее поведение).
+
     Возвращает:
         psf: 2D массив PSF (нормированный на max=1.0)
         dx: 1D массив координат по x (мкм)
         dy: 1D массив координат по y (мкм)
     """
     wavefront, pupil_mask = compute_wavefront_map(system, wl, num_rays, field_y)
-    
+
     # Комплексная функция зрачка
     pupil_complex = pupil_mask * np.exp(1j * 2 * np.pi * wavefront)
-    
+
+    # Дефокус (смещение плоскости установки) — квадратичный фазовый член
+    if abs(defocus_mm) > 1e-12:
+        aperture = get_effective_aperture(system, default=10.0)
+        efl = abs(paraxial_trace(system).get('focal_length', 1))
+        na_img = aperture / (2.0 * efl) if efl > 0 else 0.0
+        r2 = _pupil_grid_r2(num_rays)
+        w_defocus = (PARAXIAL_DEFOCUS_FACTOR * defocus_mm * na_img ** 2 * r2
+                     / (wl * 1e-3))
+        pupil_complex = pupil_complex * np.exp(1j * 2 * np.pi * w_defocus)
+
     # PSF = |FFT(P)|²
     ft = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(pupil_complex)))
     psf = np.abs(ft) ** 2
-    
+
     # Нормировка
     psf_max = psf.max()
     if psf_max > 0:
         psf = psf / psf_max
-    
+
     # Координатные оси в мкм
     aperture = get_effective_aperture(system, default=10.0)
     efl = abs(paraxial_trace(system).get('focal_length', 1))
-    
+
     # Шаг на зрачке (мм)
     dp = aperture / num_rays
-    
+
     # Шаг на изображении: Δx = λ * f / (N * dp_pupil)
     # dp_pupil = aperture/num_rays (мм), λ в мм
     wl_mm = wl * 1e-3
-    delta_img = wl_mm * efl / aperture  # мкм: wl_mm*1e3 * efl / aperture... 
+    delta_img = wl_mm * efl / aperture  # мкм: wl_mm*1e3 * efl / aperture...
     # точнее: pixel_size = λ * EFL / D_pupil  (в мм)
     # delta_img в мм, переведём в мкм
     pixel_size_mm = wl_mm * efl / aperture
     pixel_size_um = pixel_size_mm * 1000  # → мкм
-    
+
     center = num_rays // 2
     coords = (np.arange(num_rays) - center) * pixel_size_um
-    
+
     return psf, coords, coords.copy()
 
 
@@ -367,6 +400,182 @@ def compute_esf(system: OpticalSystem,
         esf = np.zeros_like(cs)
 
     return axis, esf
+
+
+# ============================================================
+# Тест-объекты: симуляция изображения (п. 14 GAP v2)
+# ============================================================
+
+# Виды тест-объектов: (ключ, подпись). Единственный источник списка
+# для расчёта, GUI и тестов.
+TEST_OBJECT_KINDS = (
+    ('mira', 'Шпальная мира'),
+    ('edge', 'Край (edge)'),
+    ('point', 'Точка'),
+    ('sine', 'Синус. мишень'),
+)
+
+# Число групп штрихов шпальной миры по умолчанию
+MIRA_DEFAULT_GROUPS = 6
+
+
+def make_test_object(kind: str,
+                     x_um: np.ndarray,
+                     y_um: np.ndarray,
+                     freq_lp_mm: float = 10.0,
+                     num_bars: int = MIRA_DEFAULT_GROUPS) -> np.ndarray:
+    """
+    Идеальное (геометрически резкое) изображение тест-объекта.
+
+    Объект строится на сетке координат изображения ``x_um`` × ``y_um``
+    (мкм) — тех же осях, на которых задана PSF.
+
+    Виды (см. :data:`TEST_OBJECT_KINDS`):
+      * ``'mira'`` — шпальная мира: пары штрих/пробел убывающей толщины
+        (ширина штриха первой группы 1000/freq_lp_mm мкм, далее вдвое
+        меньше), штрихи вдоль X, толщина убывает вдоль Y от центра;
+      * ``'edge'`` — резкий край: 1 при y ≥ 0, иначе 0;
+      * ``'point'`` — точка (единичный отсчёт в центре сетки);
+      * ``'sine'`` — синусоидальная мишень 0.5+0.5·sin(2πf·y).
+
+    Args:
+        kind: Вид объекта (ключ из TEST_OBJECT_KINDS).
+        x_um: Ось X сетки (мкм).
+        y_um: Ось Y сетки (мкм).
+        freq_lp_mm: Частота первой группы миры / синусоиды (лин/мм).
+        num_bars: Число групп штрихов миры.
+
+    Returns:
+        2D массив (len(y_um), len(x_um)) со значениями 0..1.
+    """
+    X, Y = np.meshgrid(x_um, y_um)
+    obj = np.zeros(X.shape, dtype=float)
+
+    if kind == 'point':
+        # Ближайший к (0, 0) отсчёт
+        iy = int(np.argmin(np.abs(y_um)))
+        ix = int(np.argmin(np.abs(x_um)))
+        obj[iy, ix] = 1.0
+        return obj
+
+    if kind == 'edge':
+        obj[Y >= 0.0] = 1.0
+        return obj
+
+    if kind == 'sine':
+        period_um = 1000.0 / freq_lp_mm
+        return 0.5 + 0.5 * np.sin(2.0 * np.pi * Y / period_um)
+
+    if kind == 'mira':
+        # Шпальная мира: пары «штрих-пробел» убывающей толщины,
+        # симметрично от центра. Ширина штриха группы k: w_k = w0/2^k,
+        # w0 = 1000/freq_lp_mm мкм. Строится как функция |Y| —
+        # зеркальная симметрия точна по построению.
+        A = np.abs(Y)
+        w0_um = 1000.0 / freq_lp_mm
+        pos = 0.0
+        value = 1.0
+        for group in range(num_bars):
+            w = w0_um / (2.0 ** group)
+            # штрих и пробел одной толщины w
+            obj[(A >= pos) & (A < pos + w)] = value
+            pos += w
+            value = 1.0 - value
+            obj[(A >= pos) & (A < pos + w)] = value
+            pos += w
+            value = 1.0 - value
+        return obj
+
+    raise ValueError(f"Неизвестный тест-объект: {kind!r} "
+                     f"(допустимо: {', '.join(k for k, _ in TEST_OBJECT_KINDS)})")
+
+
+def convolve_fft(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
+    """
+    Линейная свёртка через FFT ('same'-размер с image).
+
+    Нулевое дополнение до image.shape + kernel.shape − 1 исключает
+    заворот периода (circular wrap) — в отличие от прямого
+    поэлементного произведения FFT одинакового размера.
+
+    Выравнивание центра: отсчёт kernel[k // 2] совпадает с центральным
+    отсчётом PSF (coords[k // 2] = 0), поэтому центр результата
+    соответствует центру входа.
+
+    Note: у краёв сетки ('same'-обрезка) неизбежны краевые эффекты —
+    свёртка «не знает» объект за пределами окна; физичные значения
+    в центральной части кадра.
+    """
+    ni, nj = image.shape
+    ki, kj = kernel.shape
+    full_shape = (ni + ki - 1, nj + kj - 1)
+    conv = np.fft.irfft2(
+        np.fft.rfft2(image, full_shape) * np.fft.rfft2(kernel, full_shape),
+        full_shape)
+    return conv[ki // 2:ki // 2 + ni, kj // 2:kj // 2 + nj]
+
+
+def compute_test_object_image(system: OpticalSystem,
+                              kind: str = 'mira',
+                              wl: float = None,
+                              field_y: float = 0.0,
+                              defocus_mm: float = 0.0,
+                              num_rays: int = 128,
+                              freq_lp_mm: float = 10.0,
+                              num_bars: int = MIRA_DEFAULT_GROUPS) -> dict:
+    """
+    Симуляция изображения тест-объекта через оптическую систему (п. 14).
+
+    FFT-свёртка идеального изображения объекта с дифракционной PSF
+    (:func:`compute_psf`, с учётом смещения плоскости установки).
+
+    Args:
+        system: Оптическая система.
+        kind: Вид объекта (ключ из :data:`TEST_OBJECT_KINDS`).
+        wl: Длина волны (мкм); ``None`` — основная λ системы.
+        field_y: Поле (град).
+        defocus_mm: Смещение плоскости установки (мм), 0 — Гаусс.
+        num_rays: Сетка PSF.
+        freq_lp_mm: Частота миры/синусоиды (лин/мм).
+        num_bars: Число групп штрихов миры.
+
+    Returns:
+        Словарь: ``kind``, ``x``, ``y`` (оси мкм), ``ideal``, ``image``
+        (2D массивы), ``psf`` (ядро свёртки, нормированное на единичную
+        сумму), ``defocus_mm``, ``freq_lp_mm``, ``num_bars``.
+
+    Note: объект продолжается за края кадра (edge-replication) —
+    свёртка не «теряет» свет у границ окна.
+    """
+    if wl is None:
+        wl = get_primary_wl(system)
+
+    psf, dx, dy = compute_psf(system, wl=wl, num_rays=num_rays,
+                              field_y=field_y, defocus_mm=defocus_mm)
+    ideal = make_test_object(kind, dx, dy, freq_lp_mm=freq_lp_mm,
+                             num_bars=num_bars)
+
+    total = psf.sum()
+    kernel = psf / total if total > 0 else psf
+    # Кадр продолжается за края (edge-replication): свет от объекта
+    # «за кадром» не теряется у границ — иначе у рамки ложное
+    # затемнение от усечения окна свёртки.
+    pad = num_rays // 2
+    padded = np.pad(ideal, pad, mode='edge')
+    conv = convolve_fft(padded, kernel)
+    image = conv[pad:pad + num_rays, pad:pad + num_rays]
+
+    return {
+        'kind': kind,
+        'x': dx,
+        'y': dy,
+        'ideal': ideal,
+        'image': image,
+        'psf': kernel,
+        'defocus_mm': defocus_mm,
+        'freq_lp_mm': freq_lp_mm,
+        'num_bars': num_bars,
+    }
 
 
 if __name__ == "__main__":

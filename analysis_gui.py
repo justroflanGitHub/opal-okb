@@ -37,7 +37,7 @@ from gui.widgets import (
     # Wavefront
     WavefrontMapWidget,
     ZernikeWidget,
-    WavefrontRmsVsFieldWidget,
+    WfRmsFieldMplWidget,
     # Other widgets
     FocusCurveWidget,
     ChiefRayWidget,
@@ -69,7 +69,7 @@ __all__ = [
     'PSF3DWidget',
     'WavefrontMapWidget',
     'ZernikeWidget',
-    'WavefrontRmsVsFieldWidget',
+    'WfRmsFieldMplWidget',
     'FocusCurveWidget',
     'ChiefRayWidget',
     'BeamGeometryWidget',

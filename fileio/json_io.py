@@ -11,14 +11,11 @@ from optics_engine import (
 )
 
 
-# Стандартные длины волн — справочник
-STANDARD_WAVELENGTHS = {
-    'i': 0.36501, 'h': 0.40466, 'g': 0.43584, "G'": 0.43405,
-    "F'": 0.47999, 'F': 0.48613, 'e': 0.54607,
-    'd': 0.58756, "D": 0.58929, "C'": 0.64385,
-    'C': 0.65627, 'r': 0.70652, 's': 0.85211,
-    't': 1.01398,
-}
+# Стандартные длины волн — проекция справочника спектральных линий
+# (п. 11 GAP v2, единственный источник — utils/spectral_lines.py)
+from utils.spectral_lines import named_wavelengths
+
+STANDARD_WAVELENGTHS = named_wavelengths()
 
 
 def save_json(system: OpticalSystem, path: str):
@@ -49,6 +46,12 @@ def save_json(system: OpticalSystem, path: str):
                 "glass": s.glass,
                 "semi_diameter": s.semi_diameter,
                 "surface_type": s.surface_type.name,
+                # Наклон/децентрировка (п. 17; degrees / мм)
+                "tilt_x": s.tilt_x,
+                "tilt_y": s.tilt_y,
+                "tilt_z": s.tilt_z,
+                "decenter_x": s.decenter_x,
+                "decenter_y": s.decenter_y,
             }
             for s in system.surfaces
         ],
@@ -103,6 +106,12 @@ def load_json(path: str) -> OpticalSystem:
             glass=glass_name,
             semi_diameter=sd.get("semi_diameter", 0.0),
             surface_type=stype,
+            # Наклон/децентрировка (п. 17; старые файлы без полей → нули)
+            tilt_x=sd.get("tilt_x", 0.0),
+            tilt_y=sd.get("tilt_y", 0.0),
+            tilt_z=sd.get("tilt_z", 0.0),
+            decenter_x=sd.get("decenter_x", 0.0),
+            decenter_y=sd.get("decenter_y", 0.0),
         )
         # Поддержка зеркал
         if glass_name.upper() in ("ЗЕРКАЛО", "MIRROR"):

@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import copy
 import math
 from typing import Any
 
@@ -16,14 +15,18 @@ import numpy as np
 from PyQt5.QtWidgets import (
     QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QGroupBox, QFormLayout, QSplitter,
-    QDoubleSpinBox, QComboBox,
-    QPushButton, QSizePolicy,
+    QDoubleSpinBox, QComboBox, QStackedWidget,
+    QPushButton, QSizePolicy, QPlainTextEdit, QCheckBox,
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QHeaderView
 
-from optics_engine import OpticalSystem, paraxial_trace, seidel_aberrations
+from optics_engine import (
+    OpticalSystem, paraxial_trace, seidel_aberrations,
+    paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS, PUPIL_POSITION_KEYS,
+    BEAM_SEMI_MODES,
+)
 from aberrations import (
     trace_aberration_fan,
     compute_spot_diagram,
@@ -35,17 +38,28 @@ from aberrations import (
     compute_field_aberrations,
     compute_focus_curve,
     compute_chief_ray_characteristics,
+    compute_isoplanatism,
+    compute_gauge_rays,
+    DEFAULT_FOCUS_STEP_MM,
 )
 from advanced_analysis import (
     compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf,
     compute_bar_target_mtf_table,
+    TEST_OBJECT_KINDS, compute_test_object_image,
 )
 from zernike import (
     compute_zernike_coefficients,
     compute_wavefront_map_2d,
     compute_zernike_chromatic,
+    compute_global_zernike,
+    format_global_zernike_text,
 )
-from optics_utils import get_primary_wl, fmt_val
+from optics_utils import (
+    get_primary_wl, fmt_val, wl_name,
+    get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
+    PUPIL_UNIT_CHOICES, format_pupil_position,
+    field_native_unit, field_unit_display, format_field,
+)
 
 from .widgets import (
     # Table helpers
@@ -54,6 +68,8 @@ from .widgets import (
     # Widget classes
     SpotDiagramWidget,
     AberrationGraphWidget,
+    IsoplanatismWidget,
+    AxialBeamWidget,
     MTFWidget,
     DistortionWidget,
     AstigmatismWidget,
@@ -68,11 +84,13 @@ from .widgets import (
     ChiefRayWidget,
     ZernikeWidget,
     WavefrontMapWidget,
+    Wavefront3DWidget,
     ESFWidget,
-    WavefrontRmsVsFieldWidget,
+    WfRmsFieldMplWidget,
     FocusDiagramWidget,
     PSF3DWidget,
     BarTargetWidget,
+    TestObjectWidget,
 )
 from .analysis_pipeline import compute_all_analysis
 
@@ -100,12 +118,27 @@ class AnalysisPanel(QTabWidget):
 
         settings_layout.addWidget(QLabel("Азимут (°):"))
         self.azimuth_spin = QDoubleSpinBox()
-        self.azimuth_spin.setRange(0.0, 90.0)
+        self.azimuth_spin.setRange(0.0, 360.0)
         self.azimuth_spin.setSingleStep(5.0)
         self.azimuth_spin.setDecimals(1)
+        self.azimuth_spin.setWrapping(True)
         self.azimuth_spin.setValue(0.0)
-        self.azimuth_spin.setToolTip("Азимутальный угол сечения: 0=меридиональное, 90=сагиттальное")
+        self.azimuth_spin.setToolTip(
+            "Азимутальный угол сечения пучка (0..360°):\n"
+            "0°/360° — меридиональное, 90° — сагиттальное,\n"
+            "произвольный угол — косое сечение")
         settings_layout.addWidget(self.azimuth_spin)
+        settings_layout.addStretch()
+
+        settings_layout.addWidget(QLabel("ΔS' (мм):"))
+        self.focus_step_spin = QDoubleSpinBox()
+        self.focus_step_spin.setRange(0.001, 10.0)
+        self.focus_step_spin.setSingleStep(0.01)
+        self.focus_step_spin.setDecimals(3)
+        self.focus_step_spin.setValue(DEFAULT_FOCUS_STEP_MM)
+        self.focus_step_spin.setToolTip(
+            "Шаг фокусировки ΔS' для фокусировочных диаграмм (defocus = 0, ±ΔS', ±2ΔS')")
+        settings_layout.addWidget(self.focus_step_spin)
         settings_layout.addStretch()
 
         settings_layout.addWidget(QLabel("Хроматизм:"))
@@ -115,8 +148,58 @@ class AnalysisPanel(QTabWidget):
         settings_layout.addWidget(self.chromatic_combo)
         settings_layout.addStretch()
 
+        # Режим расчёта габаритов пучков (п. 15 GAP v2)
+        settings_layout.addWidget(QLabel("Габариты пучков:"))
+        self.beam_mode_combo = QComboBox()
+        for key, label in BEAM_SEMI_MODES:
+            self.beam_mode_combo.addItem(label, key)
+        self.beam_mode_combo.setToolTip(
+            "Режим расчёта габаритов пучков (вкладка «Габариты»):\n"
+            "«Заданные» — по заданной апертуре системы,\n"
+            "«Реальные» — по фактическим полудиаметрам поверхностей")
+        settings_layout.addWidget(self.beam_mode_combo)
+        self.sharp_edge_chk = QCheckBox("Острый край")
+        self.sharp_edge_chk.setChecked(True)
+        self.sharp_edge_chk.setToolTip(
+            "Виньетирование по острому краю (без скругления кромки);\n"
+            "снят — световой проём меньше на 5% полудиаметра")
+        settings_layout.addWidget(self.sharp_edge_chk)
+        settings_layout.addStretch()
+
+        # Единицы зрачков мм/дптр (п. 16 GAP v2, OPAL-PC Л1.4.4):
+        # положения зрачков sP/sP' (D = 1000/мм) и оси поля (tan через f')
+        settings_layout.addWidget(QLabel("Зрачки:"))
+        self.pupil_unit_combo = QComboBox()
+        self.pupil_unit_combo.addItems(list(PUPIL_UNIT_CHOICES))
+        self.pupil_unit_combo.setToolTip(
+            "Единицы зрачков (OPAL-PC Л1.4.4):\n"
+            "положения зрачков sP/sP' и оси поля — мм или дптр\n"
+            "(1 дптр = 1/м; поле: D = 1000·tg ω / f')")
+        self.pupil_unit_combo.setCurrentText(get_pupil_unit())
+        self.pupil_unit_combo.currentIndexChanged.connect(
+            self._on_pupil_unit_changed)
+        settings_layout.addWidget(self.pupil_unit_combo)
+        settings_layout.addStretch()
+        # состояние единиц — общее (utils); наблюдатель синхронизирует
+        # комбобокс и перестраивает зависимые таблицы/графики
+        add_pupil_unit_observer(self._on_pupil_unit_state_changed)
+
+        self.zernike_chrom_btn = QPushButton("Цернике по λ")
+        self.zernike_chrom_btn.setCheckable(True)
+        self.zernike_chrom_btn.setStyleSheet(
+            "QPushButton { font-size: 10px; padding: 2px 6px; }"
+            "QPushButton:checked { background-color: #505080; }")
+        self.zernike_chrom_btn.setToolTip(
+            "Разложение Цернике для каждой рабочей λ (гистограмма + таблица\n"
+            "Z_nm(λ) с разностями от первичной λ)")
+        self.zernike_chrom_btn.toggled.connect(
+            self._on_zernike_chromatic_toggle)
+        settings_layout.addWidget(self.zernike_chrom_btn)
+        settings_layout.addStretch()
+
         # Create plot widgets
         self.spot_diagram = SpotDiagramWidget()
+        self.axial = AxialBeamWidget()
         self.transverse = AberrationGraphWidget('transverse')
         self.longitudinal = AberrationGraphWidget('longitudinal')
         self.wavefront = AberrationGraphWidget('wavefront')
@@ -134,13 +217,30 @@ class AnalysisPanel(QTabWidget):
         self.chief_ray = ChiefRayWidget()
         self.zernike_w = ZernikeWidget()
         self.wavefront_map_w = WavefrontMapWidget()
+        # Волновой фронт: 2D карта уровней / вращаемая 3D-поверхность
+        # (п. 10 GAP v2) — общий расчёт, переключение без пересчёта
+        self.wavefront_3d_w = Wavefront3DWidget()
+        self.wavefront_stack = QStackedWidget()
+        self.wavefront_stack.addWidget(self.wavefront_map_w)
+        self.wavefront_stack.addWidget(self.wavefront_3d_w)
         self.esf_w = ESFWidget()
-        self.wf_rms_field_w = WavefrontRmsVsFieldWidget()
+        # Симуляция изображения тест-объекта (п. 14 GAP v2) — рядом с ESF
+        self.test_object_w = TestObjectWidget()
+        # Вкладка «Цернике»: гистограммы коэффициентов + СКВ по полю (п. 2)
+        self.wf_rms_field_w = WfRmsFieldMplWidget()
+        self.zernike_page = QSplitter(Qt.Vertical)
+        self.zernike_page.addWidget(self.zernike_w)
+        self.zernike_page.addWidget(self.wf_rms_field_w)
+        self.zernike_page.setStretchFactor(0, 3)
+        self.zernike_page.setStretchFactor(1, 2)
         self.focus_diagrams = FocusDiagramWidget()
         self.psf_3d_w = PSF3DWidget()
         self.bar_target_w = BarTargetWidget()
 
         self._table_containers: dict[str, QWidget] = {}
+        # Таблицы вкладки «Цернике»: коэффициенты + СКВ по полю (stacked)
+        self._zernike_table = None
+        self._wf_rms_table = None
         self._parax_data = {}
         self._seidel_data = {}
         self._fno = 0
@@ -149,10 +249,20 @@ class AnalysisPanel(QTabWidget):
 
         parax_placeholder = QWidget()
         seidel_placeholder = QWidget()
+        rays_placeholder = QWidget()
+        zernike_global_placeholder = QWidget()
+
+        # Текстовое окно глобального разложения Цернике (поле × λ)
+        self.zernike_global_text = QPlainTextEdit()
+        self.zernike_global_text.setReadOnly(True)
+        self.zernike_global_text.setFont(QFont("Consolas", 9))
+        self.zernike_global_text.setPlainText('Нет данных')
 
         tabs = [
             ("Параксиальные", parax_placeholder, 'parax'),
             ("Точечная диагр.", self.spot_diagram, 'spot'),
+            ("Фокус.диагр.", self.focus_diagrams, 'focus_diag'),
+            ("Осевой пучок", self.axial, 'axial'),
             ("Поперечные Δy'", self.transverse, 'transverse'),
             ("Продольные Δs'", self.longitudinal, 'longitudinal'),
             ("Волновые W", self.wavefront, 'wavefront'),
@@ -165,15 +275,16 @@ class AnalysisPanel(QTabWidget):
             ("PSF 3D", self.psf_3d_w, 'psf3d'),
             ("LSF", self.lsf_w, 'lsf'),
             ("ESF", self.esf_w, 'esf'),
+            ("Изображение", self.test_object_w, 'test_object'),
             ("ENC", self.enc_w, 'enc'),
             ("PTF", self.ptf_w, 'ptf'),
             ("Топограмма", self.heatmap_w, 'heatmap'),
-            ("Фокус.диагр.", self.focus_diagrams, 'focus_diag'),
             ("Габариты", self.beam_geom, 'beam'),
             ("Гл. лучи", self.chief_ray, 'chief'),
-            ("Цернике", self.zernike_w, 'zernike'),
-            ("Волн. фронт", self.wavefront_map_w, 'wfmap'),
-            ("СКВ по полю", self.wf_rms_field_w, 'wf_rms_field'),
+            ("Лучи (ход)", rays_placeholder, 'rays'),
+            ("Цернике", self.zernike_page, 'zernike'),
+            ("Цернике (глоб.)", zernike_global_placeholder, 'zernike_global'),
+            ("Волн. фронт", self.wavefront_stack, 'wfmap'),
             ("Мира", self.bar_target_w, 'bar_target'),
             ("Зейдель", seidel_placeholder, 'seidel'),
         ]
@@ -182,7 +293,7 @@ class AnalysisPanel(QTabWidget):
         self._toggle_btns = []
 
         for title, plot_widget, key in tabs:
-            if key in ('parax', 'seidel'):
+            if key in ('parax', 'seidel', 'rays', 'zernike_global'):
                 container = QWidget()
                 container.setLayout(QVBoxLayout(container))
                 container.layout().setContentsMargins(0, 0, 0, 0)
@@ -260,12 +371,36 @@ class AnalysisPanel(QTabWidget):
                 splitter.setStretchFactor(1, 0)
 
     def _set_table(self, key: str, table) -> None:
-        """Replace the table widget in a container."""
+        """Replace the table widget in a container.
+
+        ``table`` — один виджет или их список (тогда таблицы stacked
+        вертикально, например Цернике + СКВ по полю на одной вкладке).
+        """
         container = self._table_containers[key]
         layout = container.layout()
         clear_layout(layout)
-        if table:
-            layout.addWidget(table)
+        tables = table if isinstance(table, (list, tuple)) else [table]
+        tables = [t for t in tables if t is not None]
+        if not tables:
+            return
+        if len(tables) == 1:
+            layout.addWidget(tables[0])
+            return
+        stack = QWidget()
+        stack_layout = QVBoxLayout(stack)
+        stack_layout.setContentsMargins(0, 0, 0, 0)
+        stack_layout.setSpacing(4)
+        for t in tables:
+            stack_layout.addWidget(t)
+        layout.addWidget(stack)
+
+    def _refresh_zernike_tables(self) -> None:
+        """Обновить stacked-таблицы вкладки «Цернике».
+
+        Вкладка содержит две таблицы: коэффициенты Цернике и СКВ
+        волновой аберрации по полю (обновляются независимо).
+        """
+        self._set_table('zernike', [self._zernike_table, self._wf_rms_table])
 
     # ------------------------------------------------------------------
     #  Parax / Seidel
@@ -283,30 +418,23 @@ class AnalysisPanel(QTabWidget):
         self._update_seidel_table()
 
     def _update_parax_table(self) -> None:
-        from optics_engine import paraxial_trace as _paraxial_trace
         parax = self._parax_data
         if not parax:
             self._set_table('parax', make_table(
                 ["Параметр", "Значение"], [["—", "Нет данных"]], [120, 120]))
             return
 
+        # Параксиалы для каждой рабочей λ (п. 13 GAP v2) — один расчёт,
+        # без копий системы: paraxial_trace принимает λ напрямую.
         sys = getattr(self, '_parax_sys', None)
-        wl_labels = []
-        parax_by_wl = {}
-        if sys and sys.wavelengths:
-            for wl in sys.wavelengths:
-                label = wl.name if wl.name else f"{wl.value:.4f}"
-                try:
-                    sys_wl = copy.deepcopy(sys)
-                    sys_wl.wavelengths = [type(wl)(wl.value, 1.0, wl.name)]
-                    parax_by_wl[label] = _paraxial_trace(sys_wl)
-                    wl_labels.append(label)
-                except Exception:
-                    pass
-        if not wl_labels:
-            wl_labels = ['d']
-            parax_by_wl['d'] = parax
-        n_wl = len(wl_labels)
+        per_wl = (paraxial_trace_all_wavelengths(sys)
+                  if sys is not None else [parax])
+        if sys is not None and sys.wavelengths:
+            labels = [w.name if w.name else wl_name(w.value)
+                      for w in sys.wavelengths]
+        else:
+            labels = [wl_name(per_wl[0].get('wl', 0.58756))]
+        n_wl = len(labels)
 
         f_val = parax.get('focal_length', 0)
         common_rows = [
@@ -323,38 +451,23 @@ class AnalysisPanel(QTabWidget):
         table1 = make_table(["Кардинальные", "Значение"], common_rows, [90, 80])
         table1.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        per_wl_keys = [
-            ("s' (дптр)", 'back_focal_distance'),
-            ("s' (мм)", 'back_focal_distance'),
-            ("s'G (мм)", 'back_focal_distance'),
-            ("V", 'V'),
-            ("sP (мм)", 'sP'),
-            ("sP' (мм)", 'sP_prime'),
-        ]
-        wl_headers = ["Параметр"] + wl_labels
+        # Полный набор характеристик на каждую λ (набор строк — PARAXIAL_WL_ROWS)
+        wl_headers = ["Характеристика"] + labels
         wl_rows = []
-        for name, key in per_wl_keys:
-            vals = []
-            raw_vals = []
-            for wl in wl_labels:
-                p = parax_by_wl.get(wl, {})
-                v = p.get(key, 0)
-                if 'дптр' in name and v:
-                    v = 1000.0 / v if abs(v) > 1e-10 else 0
-                raw_vals.append(v)
-            if name == 'V' and len(raw_vals) > 1:
-                base = raw_vals[0]
-                for i, v in enumerate(raw_vals):
-                    if i == 0:
-                        vals.append(f"{v:.5f}" if v is not None else "—")
-                    else:
-                        vals.append(f"{v - base:+.5f}" if v is not None else "—")
+        unit = get_pupil_unit()
+        for name, key, fmt in PARAXIAL_WL_ROWS:
+            if key in PUPIL_POSITION_KEYS:
+                # положения зрачков — в выбранных единицах мм/дптр (п. 16)
+                title = name.partition(' (')[0]
+                vals = [format_pupil_position(p.get(key, 0.0) or 0.0, unit)
+                        for p in per_wl]
+                wl_rows.append([f"{title} ({unit})"] + vals)
             else:
-                for v in raw_vals:
-                    vals.append(f"{v:.4f}" if v is not None else "—")
-            wl_rows.append([name] + vals)
+                vals = [format(p.get(key, 0.0) or 0.0, fmt) for p in per_wl]
+                wl_rows.append([name] + vals)
         table2 = make_table(wl_headers, wl_rows, [60] + [55] * n_wl)
         table2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self._parax_wl_table = table2
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(table1)
@@ -387,7 +500,97 @@ class AnalysisPanel(QTabWidget):
         return self.defocus_spin.value() if hasattr(self, 'defocus_spin') else 0.0
 
     def get_azimuth(self) -> float:
-        return self.azimuth_spin.value() if hasattr(self, 'azimuth_spin') else 0.0
+        """Азимутальный угол сечения (°), нормализованный к [0, 360)."""
+        if not hasattr(self, 'azimuth_spin'):
+            return 0.0
+        from aberrations import normalize_azimuth_deg
+        return normalize_azimuth_deg(self.azimuth_spin.value())
+
+    def get_focus_step(self) -> float:
+        """Шаг фокусировки ΔS' (мм) для фокусировочных диаграмм."""
+        return (self.focus_step_spin.value()
+                if hasattr(self, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM)
+
+    def get_beam_semi_mode(self) -> str:
+        """Режим габаритов пучков: 'given' | 'real' (BEAM_SEMI_MODES)."""
+        if not hasattr(self, 'beam_mode_combo'):
+            return 'given'
+        return self.beam_mode_combo.currentData() or 'given'
+
+    def get_beam_sharp_edge(self) -> bool:
+        """Флаг «острый край» (виньетирование без скругления кромки)."""
+        return (self.sharp_edge_chk.isChecked()
+                if hasattr(self, 'sharp_edge_chk') else True)
+
+    def get_pupil_unit(self) -> str:
+        """Единицы зрачков ('мм' | 'дптр') — общее состояние (п. 16)."""
+        return get_pupil_unit()
+
+    # ------------------------------------------------------------------
+    #  Единицы зрачков: смена состояния и перестройка отображения
+    # ------------------------------------------------------------------
+
+    def _on_pupil_unit_changed(self, index: int) -> None:
+        """Комбобокс панели: записать выбранную единицу в общее состояние."""
+        set_pupil_unit(self.pupil_unit_combo.currentText())
+
+    def _on_pupil_unit_state_changed(self, unit: str) -> None:
+        """Наблюдатель общего состояния: синхронизировать и перестроить."""
+        self.pupil_unit_combo.blockSignals(True)
+        self.pupil_unit_combo.setCurrentText(unit)
+        self.pupil_unit_combo.blockSignals(False)
+        self._update_parax_table()
+        sys = getattr(self, '_parax_sys', None)
+        if sys is not None and sys.surfaces:
+            self._refresh_field_tables(sys)
+            for widget in (self.distortion, self.astigmatism, self.coma,
+                           self.beam_geom):
+                widget.update()
+            self.wf_rms_field_w.redraw()
+
+    def _refresh_field_tables(self, sys: OpticalSystem) -> None:
+        """Перестроить таблицы с полем из уже рассчитанных данных виджетов
+        (без повторной трассировки при смене единиц зрачков)."""
+        self._update_distortion_table(sys, self.distortion.field_data)
+        self._update_astigmatism_table(sys, self.astigmatism.field_data)
+        self._update_coma_table(sys, self.coma.field_data)
+        self._update_beam_table(sys, self.beam_geom.beam_data)
+        self._update_chief_table(sys, self.chief_ray.chief_data)
+        self._update_wf_rms_field_table(sys)
+
+    # ------------------------------------------------------------------
+    #  Контекст поля: f' и родная единица (п. 16)
+    # ------------------------------------------------------------------
+
+    def _efl_mm(self, sys: OpticalSystem) -> float:
+        """Фокусное расстояние системы (мм) — из параксиального расчёта."""
+        cached_sys, cached_efl = getattr(self, '_efl_cache', (None, 0.0))
+        if cached_sys is sys:
+            return cached_efl
+        efl = (self._parax_data or {}).get('focal_length', 0)
+        if not efl:
+            efl = paraxial_trace(sys).get('focal_length', 0)
+        self._efl_cache = (sys, efl or 0.0)
+        return efl or 0.0
+
+    def _push_field_context(self, sys: OpticalSystem) -> None:
+        """Раздать виджетам с осями поля f' и родную единицу системы."""
+        efl = self._efl_mm(sys)
+        native = field_native_unit(sys)
+        for widget in (self.distortion, self.astigmatism, self.coma,
+                       self.beam_geom, self.wf_rms_field_w):
+            widget.efl_mm = efl
+            widget.field_native_unit = native
+
+    def _field_cell(self, sys: OpticalSystem, field_y: float,
+                    ndigits: int = 4) -> str:
+        """Ячейка таблицы со значением поля в единицах отображения."""
+        return format_field(field_y, self._efl_mm(sys),
+                            field_native_unit(sys), ndigits)
+
+    def _field_unit_label(self, sys: OpticalSystem) -> str:
+        """Единица поля для заголовков таблиц («°»/«мм»/«дптр»)."""
+        return field_unit_display(field_native_unit(sys), self._efl_mm(sys))
 
     # ------------------------------------------------------------------
     #  Precomputed data application
@@ -396,18 +599,23 @@ class AnalysisPanel(QTabWidget):
     def apply_precomputed(self, sys: OpticalSystem, data: dict) -> None:
         """Apply precomputed analysis data to all widgets (GUI thread)."""
         d = data
+        # контекст поля (f', родная единица) — до применения данных (п. 16)
+        self._push_field_context(sys)
         self.spot_diagram.spots_mono = d.get('spot_mono', [])
         self.spot_diagram.rms = d.get('spot_rms', 0)
+        self.spot_diagram.rms_xy = d.get('spot_rms_xy', {})
         self.spot_diagram._wl_cache = d.get('wl_list', [0.588])
         self.spot_diagram.spots_poly = d.get('spot_poly', [])
         self.spot_diagram.poly_rms = d.get('poly_rms', 0)
+        self.spot_diagram.poly_rms_xy = d.get('poly_rms_xy', {})
         self.spot_diagram.update()
 
         for widget in [self.transverse, self.longitudinal, self.wavefront]:
             widget.fan_data = d.get('fan_data', {})
-            widget.isoplanatism_data = d.get('isoplanatism_data', {})
             widget.oblique_data = d.get('oblique_data')
             widget.update()
+        self.axial.apply_data(d.get('fan_data', {}), d.get('isoplanatism_data', {}),
+                              d.get('oblique_data'))
 
         self.mtf.geo_mtf = d.get('geo_mtf')
         self.mtf.diff_mtf = d.get('diff_mtf')
@@ -443,18 +651,21 @@ class AnalysisPanel(QTabWidget):
         self.heatmap_w.num_points = d.get('heatmap_num_points', 0)
         self.heatmap_w.update()
 
-        self.beam_geom.beam_data = d.get('beam_data'); self.beam_geom.update()
+        self.beam_geom.apply_data(d.get('beam_data'))
         self.chief_ray.chief_data = d.get('chief_data'); self.chief_ray.update()
         self.zernike_w.coeffs = d.get('zernike_coeffs', [])
         self.zernike_w.chromatic_data = d.get('zernike_chromatic'); self.zernike_w.update()
         self.wavefront_map_w.wf_data = d.get('wf_data')
         self.wavefront_map_w.coords = d.get('wf_coords')
         self.wavefront_map_w.mask = d.get('wf_mask'); self.wavefront_map_w.update()
-        self.wf_rms_field_w.field_data = d.get('wf_rms_field'); self.wf_rms_field_w.update()
-        self.focus_diagrams.spots_by_defocus = d.get('focus_diag_data', {})
-        self.focus_diagrams.max_range = d.get('focus_diag_max_range', 0.001); self.focus_diagrams.update()
-        self.psf_3d_w.x_coords = d.get('psf3d_x'); self.psf_3d_w.y_coords = d.get('psf3d_y')
-        self.psf_3d_w.Z = d.get('psf3d_Z'); self.psf_3d_w.update()
+        self.wavefront_3d_w.apply_data(d.get('wf_data'), d.get('wf_coords'),
+                                       d.get('wf_mask'))
+        self.wf_rms_field_w.apply_data(d.get('wf_rms_field'),
+                                       wl_label=f"{get_primary_wl(sys):.4f} мкм")
+        self.focus_diagrams.apply_data(
+            d.get('focus_diag_data', {}), d.get('focus_diag_max_range', 1e-6))
+        self.psf_3d_w.apply_data(d.get('psf3d_x'), d.get('psf3d_y'),
+                                 d.get('psf3d_Z'))
         self.bar_target_w.x_um = d.get('bar_x'); self.bar_target_w.ideal = d.get('bar_ideal')
         self.bar_target_w.blurred = d.get('bar_blurred'); self.bar_target_w.mtf_table = d.get('bar_mtf_table')
         self.bar_target_w.update()
@@ -486,10 +697,25 @@ class AnalysisPanel(QTabWidget):
                          f"{poly_rms_xy.get('centroid_y', 0):.4f}", f"{poly_max:.4f}"])
         self._set_table('spot', make_table(
             ["\u041f\u043e\u043b\u0435", "\u03bb, \u043c\u043a\u043c", "\u041b\u0443\u0447\u0435\u0439", "RMS, \u043c\u043c",
-             "RMS_X", "RMS_Y", "Y\u0446\u044d", "\u041c\u0430\u043a\u0441 R, \u043c\u043c"],
+             "RMS_X, \u043c\u043c", "RMS_Y, \u043c\u043c", "Y\u0446\u044d, \u043c\u043c", "\u041c\u0430\u043a\u0441 R, \u043c\u043c"],
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
 
         fan_primary = d.get('fan_data', {}).get(wl, [])
+        iso_primary = d.get('isoplanatism_data', {}).get(wl, ([], []))
+        iso_by_pupil = dict(zip(iso_primary[0], iso_primary[1]))
+        rows_axial = []
+        step_axial = max(1, len(fan_primary) // 13)
+        for i in range(0, len(fan_primary), step_axial):
+            r = fan_primary[i]
+            if r['success']:
+                eta = iso_by_pupil.get(r['pupil_y'])
+                rows_axial.append([f"{r['pupil_y']:.4f}", f"{r['dy']*1000:.5f}",
+                                   f"{r['ds']:.5f}", f"{r['wave']:.5f}",
+                                   f"{eta*100:.5f}" if eta is not None else "—"])
+        self._set_table('axial', make_table(
+            ["Высота луча", "Δy' (мкм)", "Δs' (мм)", "W (λ)", "η (%)"],
+            rows_axial, [70, 75, 75, 70, 70]))
+
         for key, val_key in [('transverse', 'dy'), ('longitudinal', 'ds'), ('wavefront', 'wave')]:
             rows_fan = []
             step = max(1, len(fan_primary) // 13)
@@ -534,27 +760,29 @@ class AnalysisPanel(QTabWidget):
             rows_mtf, [45, 48, 48, 48, 48, 48, 45]))
 
         field_data = d.get('field_data', [])
+        unit = self._field_unit_label(sys)
         rows_dist = []; rows_astig = []; rows_coma = []
         for dd in field_data:
             fy = dd['field_y']
+            fy_txt = self._field_cell(sys, fy)
             if dd.get('distortion') is not None:
                 dist_pct = dd['distortion']
                 dist_mm = fy * dist_pct / 100.0 if abs(fy) > 1e-10 else 0.0
-                rows_dist.append([f"{fy:.4f}", f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
+                rows_dist.append([fy_txt, f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
             if dd.get('z_m') is not None:
                 dz = dd['z_m'] - dd['z_s']
-                rows_astig.append([f"{fy:.4f}", f"{dd['z_m']:.5f}", f"{dd['z_s']:.5f}", f"{dz:.5f}"])
+                rows_astig.append([fy_txt, f"{dd['z_m']:.5f}", f"{dd['z_s']:.5f}", f"{dz:.5f}"])
             if dd.get('coma') is not None:
                 coma_y = dd['coma'] * 1000
-                rows_coma.append([f"{fy:.4f}", "0.0000", f"{coma_y:.5f}"])
+                rows_coma.append([fy_txt, "0.0000", f"{coma_y:.5f}"])
         self._set_table('distortion', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "\u0414\u0438\u0441\u0442. %", "\u0414\u0438\u0441\u0442. (\u043c\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "\u0414\u0438\u0441\u0442. %", "\u0414\u0438\u0441\u0442. (\u043c\u043c)"],
             rows_dist, [75, 70, 75]))
         self._set_table('astigmatism', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "Z'm (\u043c\u043c)", "Z's (\u043c\u043c)", "\u0394Z (\u043c\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "Z'm (\u043c\u043c)", "Z's (\u043c\u043c)", "\u0394Z (\u043c\u043c)"],
             rows_astig, [70, 65, 65, 65]))
         self._set_table('coma', make_table(
-            ["\u041f\u043e\u043b\u0435 Y (\u043c\u043c)", "\u041a\u043e\u043c\u0430 X (\u043c\u043a\u043c)", "\u041a\u043e\u043c\u0430 Y (\u043c\u043a\u043c)"],
+            [f"\u041f\u043e\u043b\u0435 Y ({unit})", "\u041a\u043e\u043c\u0430 X (\u043c\u043a\u043c)", "\u041a\u043e\u043c\u0430 Y (\u043c\u043a\u043c)"],
             rows_coma, [75, 75, 75]))
 
         curve = d.get('focus_curve')
@@ -675,60 +903,52 @@ class AnalysisPanel(QTabWidget):
         beam_data = d.get('beam_data', [])
         rows_beam = []
         for bd in beam_data:
-            rows_beam.append([f"{bd['field_y']:.4f}", f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
+            rows_beam.append([self._field_cell(sys, bd['field_y']),
+                              f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
                               f"{bd['vignetting_upper']:.4f}", f"{bd['vignetting_lower']:.4f}",
                               f"{bd['relative_illumination']:.4f}"])
         self._set_table('beam', make_table(
-            ["\u041f\u043e\u043b\u0435", "Ay", "Ay'", "\u0412\u0438\u043d\u044c\u0435\u0442.\u2191",
+            [f"\u041f\u043e\u043b\u0435 ({unit})", "Ay", "Ay'", "\u0412\u0438\u043d\u044c\u0435\u0442.\u2191",
              "\u0412\u0438\u043d\u044c\u0435\u0442.\u2193", "\u0421\u0432\u0435\u0442\u043e\u0440\u0430\u0441\u043f\u0440."],
-            rows_beam, [45, 50, 50, 55, 55, 60]))
+            rows_beam, [55, 50, 50, 55, 55, 60]))
 
         chief_data = d.get('chief_data', [])
         rows_chief = []
         for cd in chief_data:
-            rows_chief.append([f"{cd['field_y']:.4f}", f"{cd['distortion_abs']:.6f}",
+            rows_chief.append([self._field_cell(sys, cd['field_y']),
+                               f"{cd['distortion_abs']:.6f}",
                                f"{cd['distortion_rel']:.6f}", f"{cd['Zm']:.6f}",
                                f"{cd['Zs']:.6f}", f"{cd['lateral_color']:.6f}"])
         self._set_table('chief', make_table(
-            ["\u041f\u043e\u043b\u0435", "\u0414\u0438\u0441\u0442.\u0430\u0431\u0441", "\u0414\u0438\u0441\u0442.%",
+            [f"\u041f\u043e\u043b\u0435 ({unit})", "\u0414\u0438\u0441\u0442.\u0430\u0431\u0441", "\u0414\u0438\u0441\u0442.%",
              "Z'm", "Z's", "\u0425\u0440.\u0443\u0432\u0435\u043b."],
-            rows_chief, [45, 60, 55, 60, 60, 60]))
+            rows_chief, [55, 60, 55, 60, 60, 60]))
+
+        gauge_rays = d.get('gauge_rays')
+        if gauge_rays is None:
+            try:
+                gauge_rays = compute_gauge_rays(sys, wl=wl)
+            except Exception:
+                gauge_rays = []
+        self._set_table('rays', self._build_gauge_rays_tables(sys, gauge_rays))
+
+        self._update_zernike_global(sys, d.get('zernike_global'))
 
         zernike_coeffs = d.get('zernike_coeffs', [])
         zernike_chromatic = d.get('zernike_chromatic')
         if zernike_chromatic and self.zernike_w._show_chromatic:
-            wl_keys = [k for k in zernike_chromatic if not k.startswith('delta_')]
-            if wl_keys:
-                headers = ["\u041f\u043e\u043b\u0438\u043d\u043e\u043c"] + wl_keys
-                rows_zk = []
-                for idx, (val, name) in enumerate(zernike_coeffs):
-                    row = [name]
-                    for key in wl_keys:
-                        if key in zernike_chromatic:
-                            for c, n in zernike_chromatic[key]:
-                                if n == name:
-                                    row.append(f"{c:+.6f}")
-                                    break
-                            else:
-                                row.append("\u2014")
-                        else:
-                            row.append("\u2014")
-                    rows_zk.append(row)
-                delta_headers = [k for k in ['delta_F-d', 'delta_C-d'] if k in zernike_chromatic]
-                for delta_key in delta_headers:
-                    for idx, (val, name) in enumerate(zernike_chromatic[delta_key]):
-                        if idx < len(rows_zk):
-                            rows_zk[idx].append(f"{val:+.6f}")
-                headers.extend(delta_headers)
-                self._set_table('zernike', make_table(
-                    headers, rows_zk, [80] + [70] * (len(headers) - 1)))
-                return
+            self._zernike_table = self._build_zernike_chromatic_table(
+                zernike_coeffs, zernike_chromatic)
+            self._refresh_zernike_tables()
+            self._build_wf_rms_table_precomputed(d)
+            return
         rows_z = []
         for val, name in zernike_coeffs:
             rows_z.append([name, f"{val:+.6f}"])
-        self._set_table('zernike', make_table(
+        self._zernike_table = make_table(
             ["\u041f\u043e\u043b\u0438\u043d\u043e\u043c", "\u041a\u043e\u044d\u0444\u0444. (\u03bb)"],
-            rows_z, [120, 90]))
+            rows_z, [120, 90])
+        self._refresh_zernike_tables()
 
         wf_data = d.get('wf_data'); wf_mask = d.get('wf_mask')
         rows_wf = [["\u03bb \u043f\u0435\u0440\u0432.", f"{wl:.4f} \u043c\u043a\u043c"]]
@@ -776,19 +996,28 @@ class AnalysisPanel(QTabWidget):
         self._set_table('psf3d', make_table(
             ["\u041f\u0430\u0440\u0430\u043c\u0435\u0442\u0440", "\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435"], rows_p3, [100, 120]))
 
+        self._build_wf_rms_table_precomputed(d)
+
+    def _build_wf_rms_table_precomputed(self, d: dict) -> None:
+        """\u0422\u0430\u0431\u043b\u0438\u0446\u0430 \u0421\u041a\u0412 \u043f\u043e \u043f\u043e\u043b\u044e \u0438\u0437 \u0437\u0430\u0440\u0430\u043d\u0435\u0435 \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043d\u043d\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445 (\u0444\u0430\u0437\u0430 2).
+
+        \u041a\u043e\u043b\u043e\u043d\u043a\u0430 \u043f\u043e\u043b\u044f \u2014 \u0432 \u0435\u0434\u0438\u043d\u0438\u0446\u0430\u0445 \u043e\u0442\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f (\u00b0 / \u043c\u043c / \u0434\u043f\u0442\u0440, \u043f. 16);
+        \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442 (f', \u0440\u043e\u0434\u043d\u0430\u044f \u0435\u0434\u0438\u043d\u0438\u0446\u0430) \u0443\u0436\u0435 \u0437\u0430\u0434\u0430\u043d \u0432\u0438\u0434\u0436\u0435\u0442\u0443 \u043f\u0430\u043d\u0435\u043b\u044c\u044e.
+        """
         wf_rms = d.get('wf_rms_field')
+        w = self.wf_rms_field_w
         if wf_rms and wf_rms[0]:
-            field_vals, rms_full, rms_no_def, rms_no_tilt = wf_rms
-            rows_wr = []
-            for f, r_f, r_d, r_t in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-                rows_wr.append([f"{f:.2f}\u00b0", fmt_val(r_f), fmt_val(r_d), fmt_val(r_t)])
-            self._set_table('wf_rms_field', make_table(
-                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 (\u03bb)", "\u0421\u041a\u0412-\u0434\u0435\u0444", "\u0421\u041a\u0412-\u0442\u0438\u043b\u044c\u0442"],
-                rows_wr, [55, 75, 75, 75]))
+            field_vals, rms_vals = wf_rms
+            rows_wr = [[format_field(f, w.efl_mm, w.field_native_unit,
+                                     ndigits=2, with_unit=True), fmt_val(r)]
+                       for f, r in zip(field_vals, rms_vals)]
+            self._wf_rms_table = make_table(
+                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"], rows_wr, [70, 90])
         else:
-            self._set_table('wf_rms_field', make_table(
-                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 (\u03bb)"],
-                [["\u2014", "\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445"]], [60, 100]))
+            self._wf_rms_table = make_table(
+                ["\u041f\u043e\u043b\u0435", "\u0421\u041a\u0412 W (\u03bb)"],
+                [["\u2014", "\u041d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445"]], [60, 90])
+        self._refresh_zernike_tables()
 
         bar_mtf = d.get('bar_mtf_table')
         if bar_mtf:
@@ -808,19 +1037,20 @@ class AnalysisPanel(QTabWidget):
     # ------------------------------------------------------------------
 
     _PHASE2_WIDGETS = (
-        'spot_diagram', 'transverse', 'longitudinal', 'wavefront',
+        'spot_diagram', 'axial', 'transverse', 'longitudinal', 'wavefront',
         'mtf', 'distortion', 'astigmatism', 'coma',
         'focus_curve', 'psf_w', 'lsf_w', 'esf_w',
         'enc_w', 'ptf_w', 'heatmap_w', 'beam_geom',
-        'chief_ray', 'zernike_w', 'wavefront_map_w',
+        'chief_ray', 'zernike_w', 'wavefront_map_w', 'wavefront_3d_w',
         'wf_rms_field_w', 'focus_diagrams', 'psf_3d_w',
-        'bar_target_w',
+        'bar_target_w', 'test_object_w',
     )
     _PHASE2_TABLES = (
-        'spot', 'transverse', 'longitudinal', 'wavefront', 'mtf',
+        'spot', 'axial', 'transverse', 'longitudinal', 'wavefront', 'mtf',
         'distortion', 'astigmatism', 'coma', 'focus', 'psf', 'psf3d',
         'lsf', 'esf', 'enc', 'ptf', 'heatmap', 'focus_diag',
-        'beam', 'chief', 'zernike', 'wfmap', 'wf_rms_field', 'bar_target',
+        'beam', 'chief', 'rays', 'zernike', 'zernike_global', 'wfmap',
+        'bar_target',
     )
 
     def apply_phase1(self, sys: OpticalSystem, data: dict) -> None:
@@ -857,12 +1087,16 @@ class AnalysisPanel(QTabWidget):
             self.analyze(sys)
             return
         wl = get_primary_wl(sys)
+        # контекст поля (f', родная единица) — до применения данных (п. 16)
+        self._push_field_context(sys)
         if 'spots_mono' in data:
             self.spot_diagram.spots_mono = data['spots_mono']
             self.spot_diagram.rms = data['rms']
+            self.spot_diagram.rms_xy = data.get('rms_xy', {})
             self.spot_diagram._wl_cache = [w.value for w in sys.wavelengths]
             self.spot_diagram.spots_poly = data.get('spots_poly', [])
             self.spot_diagram.poly_rms = data.get('poly_rms', data['rms'])
+            self.spot_diagram.poly_rms_xy = data.get('poly_rms_xy', {})
             self.spot_diagram.update()
         if 'fan_data' in data:
             all_fans = data['fan_data']
@@ -871,8 +1105,6 @@ class AnalysisPanel(QTabWidget):
             for key, widget in [('transverse', self.transverse), ('longitudinal', self.longitudinal), ('wavefront', self.wavefront)]:
                 widget.fan_data = all_fans
                 widget._wl_cache = wl_keys
-                if key == 'transverse' and isoplanatism:
-                    widget.isoplanatism_data = isoplanatism
                 if key == 'transverse':
                     widget.val_key = 'dy'; widget.scale = 1000
                 elif key == 'longitudinal':
@@ -880,6 +1112,7 @@ class AnalysisPanel(QTabWidget):
                 else:
                     widget.val_key = 'wave'; widget.scale = 1
                 widget.update()
+            self.axial.apply_data(all_fans, isoplanatism)
         if 'geo_mtf' in data:
             self.mtf.geo_mtf = data['geo_mtf']
             self.mtf.diff_mtf = data.get('diff_mtf')
@@ -904,19 +1137,20 @@ class AnalysisPanel(QTabWidget):
         if data.get('ptf_data') is not None:
             self.ptf_w.ptf_data = data['ptf_data']; self.ptf_w.update()
         if 'beam_data' in data:
-            self.beam_geom.beam_data = data['beam_data']; self.beam_geom.update()
+            self.beam_geom.apply_data(data['beam_data'])
         if 'chief_data' in data:
             self.chief_ray.chief_data = data['chief_data']; self.chief_ray.update()
         if 'zernike_coeffs' in data:
             self.zernike_w.coeffs = data['zernike_coeffs']
-            self.zernike_w.chromatic = data.get('zernike_chromatic'); self.zernike_w.update()
+            self.zernike_w.chromatic_data = data.get('zernike_chromatic'); self.zernike_w.update()
         if data.get('wfmap') is not None:
             wf, coords, mask = data['wfmap']
             self.wavefront_map_w.wf_data = wf; self.wavefront_map_w.coords = coords
             self.wavefront_map_w.mask = mask; self.wavefront_map_w.update()
+            self.wavefront_3d_w.apply_data(wf, coords, mask)
         if data.get('focus_diagrams'):
-            self.focus_diagrams.spots_by_defocus = data['focus_diagrams']
-            self.focus_diagrams.max_range = data.get('focus_diag_max', 1e-6); self.focus_diagrams.update()
+            self.focus_diagrams.apply_data(
+                data['focus_diagrams'], data.get('focus_diag_max', 1e-6))
         if data.get('bar_x') is not None:
             self.bar_target_w.x_um = data['bar_x']; self.bar_target_w.ideal = data['bar_ideal']
             self.bar_target_w.blurred = data['bar_blurred']; self.bar_target_w.mtf_table = data.get('bar_mtf_table')
@@ -924,7 +1158,11 @@ class AnalysisPanel(QTabWidget):
         self.heatmap_w.set_data(sys)
         self.wf_rms_field_w.set_data(sys)
         self.psf_3d_w.set_data(sys)
+        # Тест-объект (п. 14): пересчёт по текущим параметрам виджета
+        self.test_object_w.set_data(sys,
+                                    defocus_offset=self.get_defocus_offset())
         self._update_spot_table(sys)
+        self._update_axial_table(sys)
         self._update_transverse_table(sys)
         self._update_longitudinal_table(sys)
         self._update_wavefront_table(sys)
@@ -941,7 +1179,9 @@ class AnalysisPanel(QTabWidget):
         self._update_heatmap_table(sys)
         self._update_beam_table(sys)
         self._update_chief_table(sys)
+        self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
+        self._update_zernike_global(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
         self._update_focus_diag_table(sys)
@@ -970,6 +1210,7 @@ class AnalysisPanel(QTabWidget):
         self.update_parax(parax, fno, epd, sys=sys)
         self.update_seidel(seidel_aberrations(sys))
         self.spot_diagram.set_data(sys)
+        self.axial.set_data(sys, azimuth_deg=azimuth)
         self.transverse.set_data(sys, azimuth_deg=azimuth)
         self.longitudinal.set_data(sys, azimuth_deg=azimuth)
         self.wavefront.set_data(sys, azimuth_deg=azimuth)
@@ -981,18 +1222,25 @@ class AnalysisPanel(QTabWidget):
         self.psf_w.set_data(sys)
         self.lsf_w.set_data(sys)
         self.esf_w.set_data(sys, defocus_offset=defocus)
+        self.test_object_w.set_data(sys, defocus_offset=defocus)
         self.enc_w.set_data(sys)
         self.ptf_w.set_data(sys)
         self.heatmap_w.set_data(sys)
-        self.beam_geom.set_data(sys)
+        self.beam_geom.set_data(sys, semi_mode=self.get_beam_semi_mode(),
+                                sharp_edge=self.get_beam_sharp_edge())
         self.chief_ray.set_data(sys)
         self.zernike_w.set_data(sys, defocus_offset=defocus)
         self.wavefront_map_w.set_data(sys, defocus_offset=defocus)
+        # 3D-вид — те же данные, без повторного расчёта карты
+        self.wavefront_3d_w.apply_data(self.wavefront_map_w.wf_data,
+                                       self.wavefront_map_w.coords,
+                                       self.wavefront_map_w.mask)
         self.wf_rms_field_w.set_data(sys)
-        self.focus_diagrams.set_data(sys)
+        self.focus_diagrams.set_data(sys, focus_step_mm=self.get_focus_step())
         self.psf_3d_w.set_data(sys)
         self.bar_target_w.set_data(sys)
         self._update_spot_table(sys)
+        self._update_axial_table(sys)
         self._update_transverse_table(sys)
         self._update_longitudinal_table(sys)
         self._update_wavefront_table(sys)
@@ -1009,7 +1257,9 @@ class AnalysisPanel(QTabWidget):
         self._update_heatmap_table(sys)
         self._update_beam_table(sys)
         self._update_chief_table(sys)
+        self._update_gauge_rays_table(sys)
         self._update_zernike_table(sys)
+        self._update_zernike_global(sys)
         self._update_wfmap_table(sys)
         self._update_wf_rms_field_table(sys)
         self._update_focus_diag_table(sys)
@@ -1045,8 +1295,28 @@ class AnalysisPanel(QTabWidget):
                          f"{poly_rms_xy['rms_y']:.4f}", f"{poly_rms_xy['centroid_y']:.4f}",
                          f"{poly_max:.4f}"])
         self._set_table('spot', make_table(
-            ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X", "RMS_Y", "Yцэ", "Макс R, мм"],
+            ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X, мм", "RMS_Y, мм",
+             "Yцэ, мм", "Макс R, мм"],
             rows, [35, 55, 40, 60, 60, 60, 60, 60]))
+
+    def _update_axial_table(self, sys: OpticalSystem) -> None:
+        """Таблица осевого пучка: h, Δy', Δs', W, неизопланатизм η."""
+        wl = get_primary_wl(sys)
+        fan = trace_aberration_fan(sys, wl, num_rays=30)
+        iso_pupils, iso_vals = compute_isoplanatism(sys, wl=wl, num_rays=30)
+        iso_by_pupil = dict(zip(iso_pupils, iso_vals))
+        rows = []
+        step = max(1, len(fan) // 13)
+        for i in range(0, len(fan), step):
+            r = fan[i]
+            if r['success']:
+                eta = iso_by_pupil.get(r['pupil_y'])
+                rows.append([f"{r['pupil_y']:.4f}", f"{r['dy']*1000:.5f}",
+                             f"{r['ds']:.5f}", f"{r['wave']:.5f}",
+                             f"{eta*100:.5f}" if eta is not None else "—"])
+        self._set_table('axial', make_table(
+            ["Высота луча", "Δy' (мкм)", "Δs' (мм)", "W (λ)", "η (%)"],
+            rows, [70, 75, 75, 70, 70]))
 
     def _update_transverse_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)
@@ -1106,36 +1376,50 @@ class AnalysisPanel(QTabWidget):
             ["Частота", "Г.мер.", "Г.саг.", "Д.мер.", "Д.саг.", "Безаб.", "Полихр."],
             rows, [45, 48, 48, 48, 48, 48, 45]))
 
-    def _update_distortion_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_distortion_table(self, sys: OpticalSystem,
+                                 data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['distortion'] is not None:
                 fy = d['field_y']; dist_pct = d['distortion']
                 dist_mm = fy * dist_pct / 100.0 if abs(fy) > 1e-10 else 0.0
-                rows.append([f"{fy:.4f}", f"{dist_pct:.5f}", f"{dist_mm:.5f}"])
-        self._set_table('distortion', make_table(["Поле Y (мм)", "Дист. %", "Дист. (мм)"], rows, [75, 70, 75]))
+                rows.append([self._field_cell(sys, fy), f"{dist_pct:.5f}",
+                             f"{dist_mm:.5f}"])
+        self._set_table('distortion', make_table(
+            [f"Поле Y ({unit})", "Дист. %", "Дист. (мм)"], rows, [75, 70, 75]))
 
-    def _update_astigmatism_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_astigmatism_table(self, sys: OpticalSystem,
+                                  data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['z_m'] is not None:
                 dz = d['z_m'] - d['z_s']
-                rows.append([f"{d['field_y']:.4f}", f"{d['z_m']:.5f}", f"{d['z_s']:.5f}", f"{dz:.5f}"])
-        self._set_table('astigmatism', make_table(["Поле Y (мм)", "Z'm (мм)", "Z's (мм)", "ΔZ (мм)"], rows, [70, 65, 65, 65]))
+                rows.append([self._field_cell(sys, d['field_y']),
+                             f"{d['z_m']:.5f}", f"{d['z_s']:.5f}", f"{dz:.5f}"])
+        self._set_table('astigmatism', make_table(
+            [f"Поле Y ({unit})", "Z'm (мм)", "Z's (мм)", "ΔZ (мм)"],
+            rows, [70, 65, 65, 65]))
 
-    def _update_coma_table(self, sys: OpticalSystem) -> None:
-        wl = get_primary_wl(sys)
-        data = compute_field_aberrations(sys, wl=wl)
+    def _update_coma_table(self, sys: OpticalSystem,
+                           data: list | None = None) -> None:
+        if data is None:
+            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+        unit = self._field_unit_label(sys)
         rows = []
         for d in data:
             if d['coma'] is not None:
                 coma_y = d['coma'] * 1000
-                rows.append([f"{d['field_y']:.4f}", "0.0000", f"{coma_y:.5f}"])
-        self._set_table('coma', make_table(["Поле Y (мм)", "Кома X (мкм)", "Кома Y (мкм)"], rows, [75, 75, 75]))
+                rows.append([self._field_cell(sys, d['field_y']),
+                             "0.0000", f"{coma_y:.5f}"])
+        self._set_table('coma', make_table(
+            [f"Поле Y ({unit})", "Кома X (мкм)", "Кома Y (мкм)"],
+            rows, [75, 75, 75]))
 
     def _update_focus_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
@@ -1245,78 +1529,292 @@ class AnalysisPanel(QTabWidget):
             rows.append(["Статус", "Нет данных"])
         self._set_table('heatmap', make_table(["Параметр", "Значение"], rows, [130, 130]))
 
-    def _update_beam_table(self, sys: OpticalSystem) -> None:
-        from optics_engine import compute_beam_geometry
-        beam_data = compute_beam_geometry(sys)
+    def _update_beam_table(self, sys: OpticalSystem,
+                           beam_data: list | None = None) -> None:
+        if beam_data is None:
+            from optics_engine import compute_beam_geometry
+            beam_data = compute_beam_geometry(
+                sys, semi_mode=self.get_beam_semi_mode(),
+                sharp_edge=self.get_beam_sharp_edge())
+        unit = self._field_unit_label(sys)
         rows = []
         for bd in beam_data:
-            rows.append([f"{bd['field_y']:.4f}", f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
+            rows.append([self._field_cell(sys, bd['field_y']),
+                         f"{bd['Ay']:.4f}", f"{bd['Ay_prime']:.4f}",
                          f"{bd['vignetting_upper']:.4f}", f"{bd['vignetting_lower']:.4f}",
                          f"{bd['relative_illumination']:.4f}"])
         self._set_table('beam', make_table(
-            ["Поле", "Ay", "Ay'", "Виньет.↑", "Виньет.↓", "Светораспр."],
-            rows, [45, 50, 50, 55, 55, 60]))
+            [f"Поле ({unit})", "Ay", "Ay'", "Виньет.↑", "Виньет.↓", "Светораспр."],
+            rows, [55, 50, 50, 55, 55, 60]))
 
-    def _update_chief_table(self, sys: OpticalSystem) -> None:
-        chief_data = compute_chief_ray_characteristics(sys)
+    def _update_chief_table(self, sys: OpticalSystem,
+                            chief_data: list | None = None) -> None:
+        if chief_data is None:
+            chief_data = compute_chief_ray_characteristics(sys)
+        unit = self._field_unit_label(sys)
         rows = []
         for cd in chief_data:
-            rows.append([f"{cd['field_y']:.4f}", f"{cd['distortion_abs']:.6f}",
+            rows.append([self._field_cell(sys, cd['field_y']),
+                         f"{cd['distortion_abs']:.6f}",
                          f"{cd['distortion_rel']:.6f}", f"{cd['Zm']:.6f}",
                          f"{cd['Zs']:.6f}", f"{cd['lateral_color']:.6f}"])
         self._set_table('chief', make_table(
-            ["Поле", "Дист.абс", "Дист.%", "Z'm", "Z's", "Хр.увел."],
-            rows, [45, 60, 55, 60, 60, 60]))
+            [f"Поле ({unit})", "Дист.абс", "Дист.%", "Z'm", "Z's", "Хр.увел."],
+            rows, [55, 60, 55, 60, 60, 60]))
+
+    # ------------------------------------------------------------------
+    #  Габаритные лучи (пункт 7): координаты / высоты, углы, длины хода
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _gauge_point_labels(sys: OpticalSystem, points: list) -> list[str]:
+        """Подписи точек пути луча: Старт / Пов N / Диафр. / Изобр.
+
+        Поверхности нумеруются последовательно по порядку встречи (точка
+        попадания лежит на самой поверхности, а не в вершине). Точка в
+        плоскости диафрагмы (вставляется трассировкой после прохождения
+        поверхности диафрагмы) помечается «Диафр.»; последняя точка в
+        плоской плоскости изображения — «Изобр.».
+        """
+        from optics_utils import compute_z_positions
+        z_pos = compute_z_positions(sys)
+        stop_idx = getattr(sys, 'stop_surface', -1)
+        z_stop = (z_pos[stop_idx] + getattr(sys, 'stop_offset', 0.0)
+                  if 0 <= stop_idx < len(z_pos) else None)
+        labels = []
+        surf_no = 0
+        n = len(points)
+        for j, (_, _, z) in enumerate(points):
+            if j == 0:
+                labels.append('Старт')
+                continue
+            if j == n - 1 and abs(z - z_pos[-1]) < 1e-6:
+                labels.append('Изобр.')
+                continue
+            if (z_stop is not None and abs(z - z_stop) < 1e-6
+                    and surf_no > stop_idx):
+                labels.append('Диафр.')
+                continue
+            surf_no += 1
+            labels.append(f'Пов {surf_no}')
+        return labels
+
+    def _build_gauge_rays_tables(self, sys: OpticalSystem,
+                                 rays: list) -> list:
+        """Таблицы габаритных лучей (для вкладки «Лучи (ход)»).
+
+        Строит три таблицы: координаты (x, y, z) на каждой поверхности;
+        высоты / углы сегментов / длины сегментов; сводка хода лучей.
+        """
+        if not rays:
+            return [make_table(["Статус"], [["Нет данных"]], [200])]
+
+        n_points = max(len(r['points']) for r in rays)
+        # Подписи точек — по самому длинному пути (у лучей, идущих точно
+        # через вершину поверхности диафрагмы, точки диафрагмы нет)
+        longest = max(rays, key=lambda r: len(r['points']))
+        labels = self._gauge_point_labels(sys, longest['points'])
+
+        # ── Таблица 1: координаты (x, y, z) на каждой поверхности ──
+        coord_headers = ['Точка']
+        for r in rays:
+            coord_headers += [f"{r['short']} x", f"{r['short']} y", f"{r['short']} z"]
+        coord_rows = []
+        for i in range(n_points):
+            row = [labels[i] if i < len(labels) else f'№{i}']
+            for r in rays:
+                if r['success'] and i < len(r['points']):
+                    p = r['points'][i]
+                    row += [f"{p[0]:.4f}", f"{p[1]:.4f}", f"{p[2]:.4f}"]
+                else:
+                    row += ['—', '—', '—']
+            coord_rows.append(row)
+        table_coords = make_table(coord_headers, coord_rows,
+                                  [50] + [46] * (len(coord_headers) - 1))
+
+        # ── Таблица 2: высоты на поверхностях, углы и длины сегментов ──
+        param_headers = ['Точка']
+        for r in rays:
+            param_headers += [f"{r['short']} h", f"{r['short']} ν°", f"{r['short']} d"]
+        param_rows = []
+        for i in range(n_points):
+            row = [labels[i] if i < len(labels) else f'№{i}']
+            for r in rays:
+                if r['success'] and i < len(r['points']):
+                    h = r['points'][i][1]
+                    row.append(f"{h:.4f}")
+                    if i < len(r['directions']):
+                        k, l, m = r['directions'][i]
+                        nu = math.degrees(math.atan2(math.hypot(k, l), m))
+                        row.append(f"{nu:.4f}")
+                        row.append(f"{r['segment_lengths'][i]:.4f}")
+                    else:
+                        row += ['—', '—']
+                else:
+                    row += ['—', '—', '—']
+            param_rows.append(row)
+        table_params = make_table(param_headers, param_rows,
+                                  [50] + [42] * (len(param_headers) - 1))
+
+        # ── Таблица 3: сводка габаритных лучей ──
+        summary_rows = []
+        for r in rays:
+            px, py = r['pupil']
+            status = 'OK' if r['success'] else (r['error'] or 'ошибка')
+            summary_rows.append([
+                r['label'], f"({px:+.0f}, {py:+.0f})",
+                f"{r['path_length']:.4f}" if r['success'] else '—',
+                f"{r['opl']:.4f}" if r['success'] else '—',
+                status])
+        table_summary = make_table(
+            ["Луч", "Зрачок (px, py)", "Длина хода, мм", "OPL, мм", "Статус"],
+            summary_rows, [150, 90, 90, 80, 60])
+
+        return [table_coords, table_params, table_summary]
+
+    def _update_gauge_rays_table(self, sys: OpticalSystem) -> None:
+        """Вкладка «Лучи (ход)»: построить таблицы (живой расчёт)."""
+        try:
+            rays = compute_gauge_rays(sys)
+        except Exception:
+            rays = []
+        self._set_table('rays', self._build_gauge_rays_tables(sys, rays))
+
+    @staticmethod
+    def _build_zernike_chromatic_table(coeffs: list, chromatic: dict):
+        """Таблица Z_nm(λ): колонки для каждой λ + разности от первичной.
+
+        Единственная точка построения хроматической таблицы Цернике —
+        используется живым расчётом и фоновым пайплайном.
+        """
+        wl_keys = [k for k in chromatic if not k.startswith('delta_')]
+        delta_keys = [k for k in chromatic if k.startswith('delta_')]
+        by_name = {key: {n: c for c, n in chromatic[key]}
+                   for key in wl_keys + delta_keys}
+
+        headers = ["Полином"] + wl_keys + delta_keys
+        rows = []
+        for _, name in coeffs:
+            row = [name]
+            for key in wl_keys + delta_keys:
+                c = by_name.get(key, {}).get(name)
+                row.append(f"{c:+.6f}" if c is not None else "—")
+            rows.append(row)
+        return make_table(headers, rows, [80] + [70] * (len(headers) - 1))
+
+    def _on_zernike_chromatic_toggle(self, checked: bool) -> None:
+        """Кнопка «Цернике по λ»: гистограмма + таблица Z_nm(λ)."""
+        self.zernike_w._show_chromatic = checked
+        self.zernike_w.update()
+        sys = getattr(self, '_parax_sys', None)
+        if sys is not None and sys.surfaces:
+            self._update_zernike_table(sys)
 
     def _update_zernike_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys); defocus = self.get_defocus_offset()
         try:
-            coeffs = compute_zernike_coefficients(sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
+            coeffs = self.zernike_w.coeffs or compute_zernike_coefficients(
+                sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
             chromatic = None
             if len(sys.wavelengths) > 1:
-                try:
-                    chromatic = compute_zernike_chromatic(sys, num_rays=32, max_order=4)
-                except Exception:
-                    pass
+                chromatic = self.zernike_w.chromatic_data
+                if chromatic is None:
+                    try:
+                        chromatic = compute_zernike_chromatic(
+                            sys, num_rays=32, max_order=4)
+                    except Exception:
+                        chromatic = None
             if chromatic and self.zernike_w._show_chromatic:
-                wl_keys = [k for k in chromatic if not k.startswith('delta_')]
-                if wl_keys:
-                    headers = ["Полином"] + wl_keys
-                    rows = []
-                    for idx, (val, name) in enumerate(coeffs):
-                        row = [name]
-                        for key in wl_keys:
-                            if key in chromatic:
-                                for c, n in chromatic[key]:
-                                    if n == name:
-                                        row.append(f"{c:+.6f}"); break
-                                else:
-                                    row.append("—")
-                            else:
-                                row.append("—")
-                        rows.append(row)
-                    for delta_key in ['delta_F-d', 'delta_C-d']:
-                        if delta_key in chromatic:
-                            for idx, (val, name) in enumerate(chromatic[delta_key]):
-                                if idx < len(rows):
-                                    rows[idx].append(f"{val:+.6f}")
-                    if any(k in chromatic for k in ['delta_F-d', 'delta_C-d']):
-                        delta_headers = [k for k in ['delta_F-d', 'delta_C-d'] if k in chromatic]
-                        headers.extend(delta_headers)
-                    self._set_table('zernike', make_table(headers, rows, [80] + [70] * (len(headers) - 1)))
-                    return
-            rows = []
-            for val, name in coeffs:
-                rows.append([name, f"{val:+.6f}"])
-            self._set_table('zernike', make_table(["Полином", "Коэфф. (λ)"], rows, [120, 90]))
+                self._zernike_table = self._build_zernike_chromatic_table(
+                    coeffs, chromatic)
+            else:
+                rows = [[name, f"{val:+.6f}"] for val, name in coeffs]
+                self._zernike_table = make_table(
+                    ["Полином", "Коэфф. (λ)"], rows, [120, 90])
+            self._refresh_zernike_tables()
         except Exception:
-            self._set_table('zernike', None)
+            self._zernike_table = None
+            self._refresh_zernike_tables()
+
+    # ------------------------------------------------------------------
+    #  Глобальное разложение Цернике (пункт 9): текст + экспорт
+    # ------------------------------------------------------------------
+
+    def _wl_names(self, sys: OpticalSystem) -> dict:
+        """Метки λ системы: значение → имя (или само значение строкой)."""
+        return {w.value: (w.name or f"{w.value:.4f}")
+                for w in (sys.wavelengths or [])}
+
+    def _update_zernike_global(self, sys: OpticalSystem,
+                               result: dict = None) -> None:
+        """Вкладка «Цернике (глоб.)»: текстовая таблица поле × λ."""
+        if result is None:
+            try:
+                result = compute_global_zernike(sys)
+            except Exception:
+                result = None
+        text = (format_global_zernike_text(result,
+                                            wl_names=self._wl_names(sys))
+                if result else 'Нет данных')
+        self.zernike_global_text.setPlainText(text)
+
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(2)
+        bar = QHBoxLayout()
+        export_btn = QPushButton("Экспорт .txt")
+        export_btn.setStyleSheet(
+            "QPushButton { font-size: 10px; padding: 2px 6px; }")
+        export_btn.setToolTip("Сохранить таблицу глобального разложения "
+                              "Цернике в текстовый файл")
+        export_btn.clicked.connect(self._export_zernike_global)
+        bar.addWidget(export_btn)
+        bar.addStretch()
+        page_layout.addLayout(bar)
+        page_layout.addWidget(self.zernike_global_text)
+        self._set_table('zernike_global', page)
+
+    def _export_zernike_global(self) -> None:
+        """Экспорт текста глобального разложения Цернике в файл."""
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        text = self.zernike_global_text.toPlainText()
+        if not text or text == 'Нет данных':
+            QMessageBox.information(self, 'Экспорт', 'Нет данных для экспорта')
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Экспорт глобального разложения Цернике',
+            'zernike_global.txt', 'Текст (*.txt);;Все файлы (*)')
+        if not path:
+            return
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(text)
+            QMessageBox.information(self, 'Экспорт',
+                                    f'Сохранено: {path}')
+        except OSError as e:
+            QMessageBox.warning(self, 'Экспорт', f'Ошибка записи:\n{e}')
+
+    def set_wavefront_3d(self, enabled: bool) -> None:
+        """Показать 3D-поверхность волнового фронта вместо 2D-карты."""
+        self.wavefront_stack.setCurrentIndex(1 if enabled else 0)
+
+    @property
+    def wavefront_3d_enabled(self) -> bool:
+        """Признак «показана 3D-поверхность волнового фронта»."""
+        return self.wavefront_stack.currentIndex() == 1
 
     def _update_wfmap_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         try:
-            wf, coords, mask = compute_wavefront_map_2d(sys, wl=wl, grid_size=48, defocus_offset=self.get_defocus_offset())
+            # карта уже рассчитана виджетом — переиспользуем (как Цернике)
+            wf = self.wavefront_map_w.wf_data
+            mask = self.wavefront_map_w.mask
+            if wf is None:
+                wf, coords, mask = compute_wavefront_map_2d(
+                    sys, wl=wl, grid_size=48,
+                    defocus_offset=self.get_defocus_offset())
             if wf is not None and mask is not None:
                 valid = wf[mask > 0]; valid = valid[np.isfinite(valid)]
                 if valid.size > 0:
@@ -1374,14 +1872,23 @@ class AnalysisPanel(QTabWidget):
         self._set_table('psf3d', make_table(["Параметр", "Значение"], rows, [100, 120]))
 
     def _update_wf_rms_field_table(self, sys: OpticalSystem) -> None:
-        data = self.wf_rms_field_w.field_data
+        """Таблица СКВ волновой аберрации по полю (вкладка «Цернике»).
+
+        Колонка поля — в единицах отображения (° / мм / дптр, п. 16).
+        """
+        w = self.wf_rms_field_w
+        data = w.field_data
         if not data or not data[0]:
-            self._set_table('wf_rms_field', make_table(["Поле", "СКВ (λ)"], [["—", "Нет данных"]], [60, 100])); return
-        field_vals, rms_full, rms_no_def, rms_no_tilt = data
-        rows = []
-        for f, r_full, r_def, r_tilt in zip(field_vals, rms_full, rms_no_def, rms_no_tilt):
-            rows.append([f"{f:.2f}°", fmt_val(r_full), fmt_val(r_def), fmt_val(r_tilt)])
-        self._set_table('wf_rms_field', make_table(["Поле", "СКВ (λ)", "СКВ-деф", "СКВ-тильт"], rows, [55, 75, 75, 75]))
+            self._wf_rms_table = make_table(
+                ["Поле", "СКВ W (λ)"], [["—", "Нет данных"]], [60, 90])
+        else:
+            field_vals, rms_vals = data
+            rows = [[format_field(f, w.efl_mm, w.field_native_unit,
+                                  ndigits=2, with_unit=True), fmt_val(r)]
+                    for f, r in zip(field_vals, rms_vals)]
+            self._wf_rms_table = make_table(
+                ["Поле", "СКВ W (λ)"], rows, [70, 90])
+        self._refresh_zernike_tables()
 
     def _update_bar_target_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)

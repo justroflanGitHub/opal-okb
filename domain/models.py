@@ -30,6 +30,10 @@ class ApertureType(Enum):
     ENTRANCE_PUPIL = 0    # Входной зрачок (диаметр)
     NUMERICAL_APERTURE = 1  # Числовая апертура
     F_NUMBER = 2          # Относительное отверстие (F/#)
+    FRONT_ANGLE = 3       # Передняя апертура: полуугол предметного луча (°)
+    REAR_ANGLE = 4        # Задняя апертура: полуугол в пространстве изображений (°)
+    REAR_NA = 5           # Задняя апертура: NA' = n'·sin u' (воздух: sin u')
+    STOP_HEIGHT = 6       # Высота луча на апертурной диафрагме (полувысота, мм)
 
 
 @dataclass
@@ -51,9 +55,10 @@ class Surface:
     hologram_coeffs: List[float] = field(default_factory=list)
     # Override refractive index (if set, used instead of glass_catalog)
     n_override: dict = field(default_factory=dict)  # {wl_value: n}
-    # Coordinate break / tilt / decenter
+    # Coordinate break / tilt / decenter (п. 17; преобразования — domain/spatial.py)
     tilt_x: float = 0.0       # tilt around X axis (degrees)
     tilt_y: float = 0.0       # tilt around Y axis (degrees)
+    tilt_z: float = 0.0       # tilt around Z axis (degrees)
     decenter_x: float = 0.0   # lateral shift in X (mm)
     decenter_y: float = 0.0   # lateral shift in Y (mm)
 

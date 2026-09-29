@@ -14,9 +14,10 @@ from typing import Any, Dict, Optional
 from PyQt5.QtCore import QThread
 
 from optics_engine import (
-    OpticalSystem, SurfaceType, paraxial_trace, seidel_aberrations,
+    OpticalSystem, paraxial_trace, seidel_aberrations,
 )
-from optics_utils import get_primary_wl
+from optics_utils import get_primary_wl, get_effective_aperture
+from aberrations import DEFAULT_FOCUS_STEP_MM
 
 
 class CalculationController:
@@ -60,44 +61,10 @@ class CalculationController:
             self.mw.statusBar().showMessage("Нет поверхностей")
             return
 
-        # Update surfaces from table
-        n_wl = max(1, len(sys.wavelengths))
-        sd_col = 4 + n_wl     # D/2
-        k_col = 4 + n_wl + 2  # k
-        for i in range(min(self.mw.surface_table.rowCount(), len(sys.surfaces))):
-            r_item = self.mw.surface_table.item(i, 1)
-            d_item = self.mw.surface_table.item(i, 2)
-            g_item = self.mw.surface_table.item(i, 3)
-            sd_item = self.mw.surface_table.item(i, sd_col)
-
-            if r_item:
-                txt = r_item.text().strip()
-                sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
-            if d_item:
-                txt = d_item.text().strip()
-                sys.surfaces[i].thickness = float(txt) if txt else 0.0
-            if g_item:
-                glass = g_item.text().strip()
-                sys.surfaces[i].glass = glass
-                if glass.upper() in ("ЗЕРКАЛО", "MIRROR"):
-                    sys.surfaces[i].is_reflective = True
-                else:
-                    sys.surfaces[i].is_reflective = False
-            if sd_item:
-                txt = sd_item.text().strip()
-                sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.mw.surface_table.item(i, k_col)
-            if k_item:
-                txt = k_item.text().strip()
-                try:
-                    k_val = float(txt)
-                    sys.surfaces[i].conic_constant = k_val
-                    if abs(k_val) > 1e-10:
-                        sys.surfaces[i].surface_type = SurfaceType.CONIC
-                    elif sys.surfaces[i].surface_type == SurfaceType.CONIC:
-                        sys.surfaces[i].surface_type = SurfaceType.SPHERE
-                except ValueError:
-                    pass
+        # Update surfaces from table (единая реализация — system_controller:
+        # R, d, стекло, D/2, k, наклон/децентр)
+        from gui.controllers.system_controller import read_surface_table
+        read_surface_table(self.mw.surface_table, sys.surfaces)
 
         # System-level parameters from UI
         self._collect_system_params(sys)
@@ -127,7 +94,11 @@ class CalculationController:
         if sync:
             defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
             azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
-            phase2_data = self.do_calc_phase2(sys, defocus, azimuth)
+            focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
+            beam_semi_mode = self.mw.analysis.get_beam_semi_mode() if hasattr(self.mw.analysis, 'get_beam_semi_mode') else 'given'
+            beam_sharp_edge = self.mw.analysis.get_beam_sharp_edge() if hasattr(self.mw.analysis, 'get_beam_sharp_edge') else True
+            phase2_data = self.do_calc_phase2(sys, defocus, azimuth, focus_step,
+                                              beam_semi_mode, beam_sharp_edge)
             self.update_after_calc(sys, phase1_data, phase2_data)
             return
 
@@ -148,9 +119,13 @@ class CalculationController:
 
         defocus = self.mw.analysis.get_defocus_offset() if hasattr(self.mw.analysis, 'defocus_spin') else 0.0
         azimuth = self.mw.analysis.get_azimuth() if hasattr(self.mw.analysis, 'azimuth_spin') else 0.0
+        focus_step = self.mw.analysis.get_focus_step() if hasattr(self.mw.analysis, 'focus_step_spin') else DEFAULT_FOCUS_STEP_MM
+        beam_semi_mode = self.mw.analysis.get_beam_semi_mode() if hasattr(self.mw.analysis, 'get_beam_semi_mode') else 'given'
+        beam_sharp_edge = self.mw.analysis.get_beam_sharp_edge() if hasattr(self.mw.analysis, 'get_beam_sharp_edge') else True
 
         self._calc_thread = QThread()
-        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth)
+        self._calc_worker = Worker(self.do_calc_phase2, sys, defocus, azimuth, focus_step,
+                                   beam_semi_mode, beam_sharp_edge)
         self._calc_worker.moveToThread(self._calc_thread)
         self._calc_thread.started.connect(self._calc_worker.run)
         self._calc_worker.finished.connect(
@@ -185,6 +160,9 @@ class CalculationController:
         sys: OpticalSystem,
         defocus: float,
         azimuth: float,
+        focus_step: float = DEFAULT_FOCUS_STEP_MM,
+        beam_semi_mode: str = 'given',
+        beam_sharp_edge: bool = True,
     ) -> Dict[str, Any]:
         """Phase 2: Heavy computations run in a worker thread.
 
@@ -195,6 +173,12 @@ class CalculationController:
             sys: The optical system to analyse.
             defocus: Defocus offset in mm (from analysis panel).
             azimuth: Azimuth angle in degrees (from analysis panel).
+            focus_step: Фокусировочный шаг ΔS' (мм) для фокусировочных
+                диаграмм (из настроек анализа).
+            beam_semi_mode: Режим габаритов пучков — 'given' | 'real'
+                (BEAM_SEMI_MODES, п. 15 GAP v2).
+            beam_sharp_edge: Флаг «острый край» (виньетирование без
+                скругления кромки).
 
         Returns:
             Dictionary of analysis results.
@@ -207,9 +191,10 @@ class CalculationController:
             compute_spot_diagram, compute_rms_spot,
             compute_spot_diagram_polychromatic, compute_polychromatic_rms,
             trace_aberration_fan, compute_field_aberrations,
-            compute_focus_curve, compute_spot_diagram_at_defocus,
+            compute_focus_curve,
             compute_rms_spot_xy, compute_geometric_mtf,
             compute_chief_ray_characteristics, compute_isoplanatism,
+            compute_focus_diagrams,
         )
         from diffraction_mtf import (
             compute_diffraction_mtf, compute_diffraction_limited_mtf,
@@ -229,11 +214,11 @@ class CalculationController:
         n_workers = min(8, max(2, os.cpu_count() or 4))
 
         results: Dict[str, Any] = {}
-        parax = paraxial_trace(sys)
 
         spots_mono = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0)
         results['spots_mono'] = spots_mono
         results['rms'] = compute_rms_spot(spots_mono)
+        results['rms_xy'] = compute_rms_spot_xy(spots_mono)
 
         # Polychromatic
         if len(sys.wavelengths) > 1:
@@ -247,7 +232,7 @@ class CalculationController:
         else:
             results['spots_poly'] = [(dx, dy, 0) for dx, dy in spots_mono]
             results['poly_rms'] = results['rms']
-            results['poly_rms_xy'] = {}
+            results['poly_rms_xy'] = results['rms_xy']
             results['poly_max'] = 0
 
         # -- Parallel tasks --
@@ -312,7 +297,8 @@ class CalculationController:
                 return None
 
         def _task_beam():
-            return compute_beam_geometry(sys)
+            return compute_beam_geometry(sys, semi_mode=beam_semi_mode,
+                                         sharp_edge=beam_sharp_edge)
 
         def _task_chief():
             return compute_chief_ray_characteristics(sys)
@@ -378,24 +364,13 @@ class CalculationController:
                 except Exception:
                     results[key] = None
 
-        # Focus diagrams
-        ds = abs(parax.get('longitudinal_spherical', 0)) if parax.get('longitudinal_spherical') else 0.1
-        results['focus_diagrams'] = {}
-        all_spots = []
-        for label, df in [("номинал", 0), ("+DS'", ds), ("-DS'", -ds), ("+2DS'", 2 * ds), ("-2DS'", -2 * ds)]:
-            try:
-                spots = compute_spot_diagram_at_defocus(
-                    sys, wl=wl, num_rays=60, field_y=0.0, defocus_mm=df,
-                )
-                rms_info = compute_rms_spot_xy(spots)
-                results['focus_diagrams'][label] = (spots, rms_info, df)
-                all_spots.extend(spots)
-            except Exception:
-                pass
-        results['focus_diag_max'] = (
-            max((math.sqrt(dx**2 + dy**2) for dx, dy in all_spots), default=1e-6)
-            if all_spots else 1e-6
-        )
+        # Focus diagrams (шаг ΔS' из настроек анализа)
+        try:
+            results['focus_diagrams'], results['focus_diag_max'] = \
+                compute_focus_diagrams(sys, wl=wl, focus_step_mm=focus_step)
+        except Exception:
+            results['focus_diagrams'] = {}
+            results['focus_diag_max'] = 1e-6
 
         return results
 
@@ -479,17 +454,8 @@ class CalculationController:
         sys.image_type = ObjectType.INFINITE if sp.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = sp.obj_height_spin.value()
 
-        ap_idx = sp.front_ap_combo.currentIndex()
-        ap_val = sp.front_ap_spin.value()
-        if ap_idx == 0:  # Y height (D/2)
-            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
-            sys.aperture_value = ap_val * 2
-        elif ap_idx == 1:  # NA
-            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
-            sys.aperture_value = ap_val
-        else:  # F/#
-            sys.aperture_type = ApertureType.F_NUMBER
-            sys.aperture_value = ap_val
+        # Апертура: способ задания + значение из UI (п. 12 GAP v2)
+        sys.aperture_type, sys.aperture_value = sp.aperture_from_ui()
 
         sys.obscuration_ratio = sp.obscuration_spin.value() / 100.0
         sys.beam_mode = "real" if sp.beam_mode_combo.currentIndex() == 0 else "given"
@@ -530,7 +496,7 @@ class CalculationController:
         epd = parax.get('entrance_pupil_diameter', 0)
         if fno == 0:
             efl = parax.get('focal_length', 0)
-            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            epd = get_effective_aperture(sys, default=efl / 4.0)
             fno = efl / epd if epd > 0 else 0
         self.mw.results._fno = fno
         self.mw.results._epd = epd

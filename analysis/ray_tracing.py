@@ -1,12 +1,15 @@
 """
 OPAL-OKB - Реальная трассировка лучей
-Реальный луч через сферические и асферические поверхности с законом Снеллиуса
+Реальный луч через сферические и асферические поверхности с законом Снеллиуса.
+Пространственные системы: наклон/децентрировка поверхностей — перевод луча
+в локальную СК поверхности (п. 17; преобразования — domain/spatial.py).
 """
 import math
 from typing import List, Tuple, Optional
 from optics_engine import OpticalSystem, Surface, ObjectType, Wavelength, SurfaceType
 from glass_catalog import compute_refractive_index
 from optics_utils import get_effective_aperture, make_field_ray, EPSILON, TINY, UNLIMITED_SD
+from domain.spatial import CoordBreak, surface_has_coord_break
 
 
 class Ray:
@@ -351,39 +354,24 @@ def _has_coord_break(s: Surface) -> bool:
     """Check if a surface has non-zero tilt or decenter.
 
     Returns True when any of the coordinate-break parameters
-    (tilt_x, tilt_y, decenter_x, decenter_y) differ from zero
-    by more than a numerical threshold.
+    (tilt_x, tilt_y, tilt_z, decenter_x, decenter_y) differ from zero
+    by more than a numerical threshold.  Делегирует единственной
+    реализации :func:`domain.spatial.surface_has_coord_break`.
     """
-    return (abs(getattr(s, 'tilt_x', 0.0)) > 1e-12 or
-            abs(getattr(s, 'tilt_y', 0.0)) > 1e-12 or
-            abs(getattr(s, 'decenter_x', 0.0)) > 1e-12 or
-            abs(getattr(s, 'decenter_y', 0.0)) > 1e-12)
+    return surface_has_coord_break(s)
 
 
 def _apply_coord_break(ray: Ray, tilt_x_deg: float, tilt_y_deg: float,
-                       dec_x: float, dec_y: float) -> Ray:
-    """Apply coordinate break: decenter then tilt.
+                       dec_x: float, dec_y: float,
+                       tilt_z_deg: float = 0.0,
+                       z_vertex: float = 0.0) -> Ray:
+    """Apply coordinate break: translate ray to surface-local frame.
 
-    Transforms a ray from global coordinates to surface-local
-    coordinates before intersection.
-
-    Convention (right-handed, Z = optical axis):
-
-    1. **Decenter** — translate the ray origin laterally by
-       ``(-dec_x, -dec_y)`` so the surface vertex sits at the
-       origin in local XY.
-
-    2. **Tilt X** — rotate direction cosines around the X axis
-       (Y-Z plane) by *tilt_x_deg* degrees.  Positive angle
-       tilts the surface normal toward +Y.
-
-    3. **Tilt Y** — rotate direction cosines around the Y axis
-       (X-Z plane) by *tilt_y_deg* degrees.  Positive angle
-       tilts the surface normal toward +X.
-
-    Only the direction cosines are rotated; the ray's (x, y, z)
-    position is shifted by the decenter alone.  This is exact for
-    pure decenter and exact to first order for tilt.
+    Точное преобразование (п. 17): позиция луча поворачивается вокруг
+    вершины поверхности ``V = (dec_x, dec_y, z_vertex)`` и сносится в
+    неё, направление — только поворачивается: ``p_local = Rᵀ·(p − V)``,
+    ``d_local = Rᵀ·d`` (``R = Rz·Ry·Rx``, правые повороты).  Матрица и
+    порядок поворотов — :mod:`domain.spatial` (единственная реализация).
 
     Args:
         ray: Incoming ray in global coordinates.
@@ -391,68 +379,34 @@ def _apply_coord_break(ray: Ray, tilt_x_deg: float, tilt_y_deg: float,
         tilt_y_deg: Tilt around Y (degrees).
         dec_x: Lateral decenter in X (mm).
         dec_y: Lateral decenter in Y (mm).
+        tilt_z_deg: Tilt around Z (degrees).
+        z_vertex: Z-coordinate of the surface vertex in global
+            frame (mm) — pivot of the rotation.
 
     Returns:
-        Ray in surface-local coordinates.
+        Ray in surface-local coordinates (surface vertex at origin).
     """
-    # Decenter: translate ray position
-    x = ray.x - dec_x
-    y = ray.y - dec_y
-    k, l, m = ray.k, ray.l, ray.m
-
-    # Tilt around X axis (rotation in Y-Z plane)
-    if abs(tilt_x_deg) > 1e-12:
-        a = math.radians(tilt_x_deg)
-        c, s = math.cos(a), math.sin(a)
-        l, m = l * c - m * s, l * s + m * c
-
-    # Tilt around Y axis (rotation in X-Z plane)
-    if abs(tilt_y_deg) > 1e-12:
-        b = math.radians(tilt_y_deg)
-        c, s = math.cos(b), math.sin(b)
-        k, m = k * c - m * s, k * s + m * c
-
-    return Ray(x=x, y=y, z=ray.z, k=k, l=l, m=m)
+    cb = CoordBreak(tilt_x=tilt_x_deg, tilt_y=tilt_y_deg, tilt_z=tilt_z_deg,
+                    decenter_x=dec_x, decenter_y=dec_y, z_vertex=z_vertex)
+    x, y, z = cb.point_to_local((ray.x, ray.y, ray.z))
+    k, l, m = cb.dir_to_local((ray.k, ray.l, ray.m))
+    return Ray(x=x, y=y, z=z, k=k, l=l, m=m)
 
 
 def _undo_coord_break(ray: Ray, tilt_x_deg: float, tilt_y_deg: float,
-                      dec_x: float, dec_y: float) -> Ray:
-    """Reverse a coordinate break after intersection/refraction.
+                      dec_x: float, dec_y: float,
+                      tilt_z_deg: float = 0.0,
+                      z_vertex: float = 0.0) -> Ray:
+    """Reverse a coordinate break: ray from surface-local to global frame.
 
-    Transforms a ray from surface-local coordinates back to
-    global coordinates.  Operations are applied in reverse order
-    relative to :func:`_apply_coord_break`: reverse tilt-Y,
-    reverse tilt-X, then reverse decenter.
-
-    Args:
-        ray: Ray in surface-local coordinates.
-        tilt_x_deg: Tilt around X (degrees) that was applied.
-        tilt_y_deg: Tilt around Y (degrees) that was applied.
-        dec_x: Lateral decenter in X (mm) that was applied.
-        dec_y: Lateral decenter in Y (mm) that was applied.
-
-    Returns:
-        Ray in global coordinates.
+    Точное обратное преобразование к :func:`_apply_coord_break`:
+    ``p_global = V + R·p_local``, ``d_global = R·d_local``.
     """
-    k, l, m = ray.k, ray.l, ray.m
-
-    # Reverse tilt around Y axis
-    if abs(tilt_y_deg) > 1e-12:
-        b = math.radians(-tilt_y_deg)
-        c, s = math.cos(b), math.sin(b)
-        k, m = k * c - m * s, k * s + m * c
-
-    # Reverse tilt around X axis
-    if abs(tilt_x_deg) > 1e-12:
-        a = math.radians(-tilt_x_deg)
-        c, s = math.cos(a), math.sin(a)
-        l, m = l * c - m * s, l * s + m * c
-
-    # Reverse decenter
-    x = ray.x + dec_x
-    y = ray.y + dec_y
-
-    return Ray(x=x, y=y, z=ray.z, k=k, l=l, m=m)
+    cb = CoordBreak(tilt_x=tilt_x_deg, tilt_y=tilt_y_deg, tilt_z=tilt_z_deg,
+                    decenter_x=dec_x, decenter_y=dec_y, z_vertex=z_vertex)
+    x, y, z = cb.point_to_global((ray.x, ray.y, ray.z))
+    k, l, m = cb.dir_to_global((ray.k, ray.l, ray.m))
+    return Ray(x=x, y=y, z=z, k=k, l=l, m=m)
 
 
 def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) -> TraceResult:
@@ -513,66 +467,71 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             current_ray.y = sy
             current_ray.z = sz
 
-        # Apply coordinate break (tilt/decenter) before intersection
-        has_cb = _has_coord_break(s)
-        if has_cb:
-            current_ray = _apply_coord_break(
-                current_ray, s.tilt_x, s.tilt_y,
-                s.decenter_x, s.decenter_y)
+        # Локальная СК поверхности: наклон/децентрировка (п. 17).
+        # Пересечение и преломление — в локальной СК (вершина поверхности
+        # в начале координат), точки пути луча — в глобальной СК.
+        cb = CoordBreak.from_surface(s, z_surf)
+        if cb.is_identity:
+            local_ray = current_ray   # быстрый путь: без наклона/децентрировки
+            z_intersect = z_surf
+        else:
+            px, py, pz = cb.point_to_local((current_ray.x, current_ray.y, current_ray.z))
+            dk, dl, dm = cb.dir_to_local((current_ray.k, current_ray.l, current_ray.m))
+            local_ray = Ray(px, py, pz, dk, dl, dm)
+            z_intersect = 0.0         # вершина — в начале локальной СК
 
         R = s.radius if abs(s.radius) > EPSILON else 0.0
-        
+
         # Пересечение с поверхностью
         if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > TINY or len(s.aspheric_coeffs) > 0:
-            hit = intersect_aspheric(current_ray, R, z_surf,
+            hit = intersect_aspheric(local_ray, R, z_intersect,
                                      conic_k=s.conic_constant,
                                      aspheric_coeffs=s.aspheric_coeffs)
         else:
-            hit = intersect_sphere(current_ray, R, z_surf)
-        if hit is None:
+            hit = intersect_sphere(local_ray, R, z_intersect)
+        # NaN-безопасность: луч мимо поверхности или расхождение итераций
+        # по асферике → маркер «пропал» (MISS), без крэша и NaN в пути
+        if hit is None or not all(math.isfinite(v) for v in hit):
             # If surface is behind the ray (e.g. virtual surface in mirror/laser systems),
             # skip it and continue tracing
-            going_forward = current_ray.m > 0
-            surface_behind = (z_surf < current_ray.z - 1e-6) if going_forward else (z_surf > current_ray.z + 1e-6)
+            going_forward = local_ray.m > 0
+            surface_behind = (z_intersect < local_ray.z - 1e-6) if going_forward else (z_intersect > local_ray.z + 1e-6)
             if surface_behind:
                 # Skip this virtual surface — don't refract, just continue
                 continue
             result.success = False
             result.error = 'MISS'
             return result
-        
+
         hx, hy, hz, t = hit
         
-        # Проверка полудиаметра
+        # Проверка полудиаметра (в локальной СК — от вершины поверхности)
         aperture = getattr(sys, 'aperture_value', 0) or 20.0
         semi_d = _compute_semi_diameter(s, aperture)
         r_hit = math.sqrt(hx**2 + hy**2)
+        # Точка попадания — в глобальной СК (для пути луча и габаритов)
+        gx, gy, gz = (hx, hy, hz) if cb.is_identity else cb.point_to_global((hx, hy, hz))
         if r_hit > semi_d:
             result.success = False
             result.error = 'EDGE'
-            result.add_point(hx, hy, hz)
+            result.add_point(gx, gy, gz)
             # Накапливаем OPL до этой точки
             result.opl += current_n * t
             return result
-        
+
         # Накапливаем OPL: n * геометрическое расстояние
         result.opl += current_n * t
-        
-        result.add_point(hx, hy, hz)
+
+        result.add_point(gx, gy, gz)
         result.surfaces_hit += 1
-        
-        # Обновляем позицию луча на точку попадания
-        current_ray.x = hx
-        current_ray.y = hy
-        current_ray.z = hz
-        
-        # Нормаль
+
+        # Нормаль (в локальной СК)
         if s.surface_type != SurfaceType.SPHERE or abs(s.conic_constant) > TINY or len(s.aspheric_coeffs) > 0:
-            nx, ny, nz = surface_normal_aspheric(hx, hy, hz, R, z_surf,
+            nx, ny, nz = surface_normal_aspheric(hx, hy, hz, R, z_intersect,
                                                   conic_k=s.conic_constant,
                                                   aspheric_coeffs=s.aspheric_coeffs)
         else:
-            nx, ny, nz = surface_normal(hx, hy, hz, R, z_surf)
+            nx, ny, nz = surface_normal(hx, hy, hz, R, z_intersect)
         
         # Показатели преломления
         if i == 0:
@@ -601,25 +560,26 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
         if s.is_reflective:
             # Отражение: среда не меняется, n остаётся прежним
             current_n = n1
-            dot = current_ray.k * nx + current_ray.l * ny + current_ray.m * nz
-            current_ray.k = current_ray.k - 2 * dot * nx
-            current_ray.l = current_ray.l - 2 * dot * ny
-            current_ray.m = current_ray.m - 2 * dot * nz
+            dot = local_ray.k * nx + local_ray.l * ny + local_ray.m * nz
+            local_ray.k = local_ray.k - 2 * dot * nx
+            local_ray.l = local_ray.l - 2 * dot * ny
+            local_ray.m = local_ray.m - 2 * dot * nz
         else:
             # Преломление
-            ref = refract(current_ray.k, current_ray.l, current_ray.m,
+            ref = refract(local_ray.k, local_ray.l, local_ray.m,
                          nx, ny, nz, n1, n2)
             if ref is None:
                 result.success = False
                 result.error = 'TIR'
                 return result
-            current_ray.k, current_ray.l, current_ray.m = ref
+            local_ray.k, local_ray.l, local_ray.m = ref
 
-        # Undo coordinate break after refraction/reflection
-        if has_cb:
-            current_ray = _undo_coord_break(
-                current_ray, s.tilt_x, s.tilt_y,
-                s.decenter_x, s.decenter_y)
+        # После преломления/отражения — назад в глобальную СК
+        if cb.is_identity:
+            current_ray = Ray(gx, gy, gz, local_ray.k, local_ray.l, local_ray.m)
+        else:
+            gk, gl, gm = cb.dir_to_global((local_ray.k, local_ray.l, local_ray.m))
+            current_ray = Ray(gx, gy, gz, gk, gl, gm)
 
     # После последней поверхности — propagate до плоскости изображения
     if sys.surfaces:

@@ -106,15 +106,28 @@ def clear_layout(layout) -> None:
 #  Wavelength → colour mapping
 # ---------------------------------------------------------------------------
 
+# Цвет линии — по обозначению из справочника (п. 11 GAP v2);
+# значения λ якорей берутся из utils/spectral_lines.py, здесь — только RGB
 _WL_PLOT_COLORS = [
-    (0.405, QColor(148, 0, 211)),    # h
-    (0.436, QColor(100, 0, 255)),    # g
-    (0.486, QColor(0, 80, 255)),     # F — blue
-    (0.546, QColor(220, 200, 0)),    # e
-    (0.588, QColor(0, 200, 80)),     # d — green
-    (0.656, QColor(255, 60, 60)),    # C — red
-    (0.707, QColor(200, 0, 0)),      # r
+    ('h', QColor(148, 0, 211)),      # Hg, фиолетовая
+    ('g', QColor(100, 0, 255)),      # Hg, синяя
+    ('F', QColor(0, 80, 255)),       # H, синяя
+    ('e', QColor(220, 200, 0)),      # Hg, зелёная
+    ('d', QColor(0, 200, 80)),       # He, жёлтая
+    ('C', QColor(255, 60, 60)),      # H, красная
+    ('r', QColor(200, 0, 0)),        # He, красная
 ]
+
+
+def _wl_plot_anchors() -> list:
+    """Пары (λ якоря из справочника, QColor) для поиска ближайшего."""
+    from utils.spectral_lines import spectral_line_by_name
+    anchors = []
+    for name, color in _WL_PLOT_COLORS:
+        line = spectral_line_by_name(name)
+        if line is not None:
+            anchors.append((line.wavelength_um, color))
+    return anchors
 
 
 def wl_to_plot_color(wl_um: float) -> QColor:
@@ -126,7 +139,7 @@ def wl_to_plot_color(wl_um: float) -> QColor:
     Returns:
         Matching ``QColor``.
     """
-    best = min(_WL_PLOT_COLORS, key=lambda item: abs(item[0] - wl_um))
+    best = min(_wl_plot_anchors(), key=lambda item: abs(item[0] - wl_um))
     return best[1]
 
 

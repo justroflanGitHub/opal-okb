@@ -19,6 +19,8 @@ from .spot_diagram import (
 )
 from .aberration_graphs import (
     AberrationGraphWidget,
+    IsoplanatismWidget,
+    AxialBeamWidget,
     DistortionWidget,
     AstigmatismWidget,
     ComaWidget,
@@ -34,13 +36,16 @@ from .psf_widgets import (
 )
 from .wavefront import (
     WavefrontMapWidget,
+    Wavefront3DWidget,
     ZernikeWidget,
-    WavefrontRmsVsFieldWidget,
+    WfRmsFieldMplWidget,
 )
 from .focus_curve import FocusCurveWidget
 from .chief_ray import ChiefRayWidget
 from .beam_geometry import BeamGeometryWidget
 from .bar_target import BarTargetWidget
+from .test_object import TestObjectWidget
+from .mpl_widgets import MplCanvasWidget, MplSurface3DWidget
 
 __all__ = [
     # Base
@@ -55,6 +60,8 @@ __all__ = [
     'FocusDiagramWidget',
     # Aberration graphs
     'AberrationGraphWidget',
+    'IsoplanatismWidget',
+    'AxialBeamWidget',
     'DistortionWidget',
     'AstigmatismWidget',
     'ComaWidget',
@@ -69,11 +76,16 @@ __all__ = [
     'PSF3DWidget',
     # Wavefront
     'WavefrontMapWidget',
+    'Wavefront3DWidget',
     'ZernikeWidget',
-    'WavefrontRmsVsFieldWidget',
+    'WfRmsFieldMplWidget',
     # Other
     'FocusCurveWidget',
     'ChiefRayWidget',
     'BeamGeometryWidget',
     'BarTargetWidget',
+    'TestObjectWidget',
+    # matplotlib infrastructure
+    'MplCanvasWidget',
+    'MplSurface3DWidget',
 ]

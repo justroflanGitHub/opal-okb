@@ -15,18 +15,21 @@ from domain.models import (
     GlassCatalogEntry, _std_wavelengths,
 )
 from glass_catalog import compute_refractive_index
+from domain.aperture import aperture_to_epd
 from optics_utils import (
     compute_z_positions, get_primary_wl, get_effective_aperture,
     EPSILON, TINY, UNLIMITED_SD,
 )
 
 
-def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x: float = 0.0) -> bool:
+def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float,
+                     ray_x: float = 0.0, sharp_edge: bool = True) -> bool:
     """
     Проверить виньетирование луча.
     Луч виньетируется если на любой поверхности полудиаметр луча
-    превышает semi_diameter этой поверхности.
-    
+    превышает semi_diameter этой поверхности (с учётом кромки —
+    см. :func:`effective_semi_diameter`).
+
     Возвращает True если луч виньетирован (отсекается),
     False если луч проходит.
     """
@@ -88,7 +91,9 @@ def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float, ray_x:
         z_new = z + t * m
         
         # Проверка полудиаметра
-        sd = s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD
+        sd = effective_semi_diameter(
+            s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD,
+            sharp_edge)
         r_hit = math.sqrt(x_new**2 + y_new**2)
         if r_hit > sd:
             return True
@@ -122,10 +127,18 @@ def refractive_index(glass_name: str, wavelength_um: float, catalog: dict = None
     return compute_refractive_index(glass_name, wavelength_um)
 
 
-def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
+def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
+                   wl: float = None) -> dict:
     """
     Параксиальный расчёт оптической системы.
     Возвращает полный набор кардинальных отрезков и характеристик.
+
+    Args:
+        sys: Оптическая система.
+        catalog: Каталог стёкол (None — встроенный).
+        wl: Рабочая длина волны (мкм) для показателей преломления;
+            ``None`` — основная λ системы. Позволяет сосчитать
+            характеристики для любой λ без копии системы (п. 13 GAP v2).
 
     Note: sys.stop_type ('d', 'z', 'p') определяет тип диафрагмы, но
     текущий расчёт работает только с типом 'd' (апертурная диафрагма).
@@ -135,7 +148,9 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     ordinary surfaces in the paraxial approximation.  Full tilt
     support in paraxial optics requires ABCD matrix rotation which
     is not implemented here.  The paraxial results are therefore
-    approximate for systems with tilted/decentered elements.
+    approximate for systems with tilted/decentered elements
+    (точная трассировка таких поверхностей — analysis/ray_tracing.py
+    через локальную СК domain/spatial.py, п. 17).
     """
     if not sys.surfaces:
         return {}
@@ -163,7 +178,8 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         'entrance_pupil_diameter': 0.0,  # D входного зрачка
     }
 
-    wl_primary = get_primary_wl(sys)
+    wl_used = float(wl) if wl is not None else get_primary_wl(sys)
+    results['wl'] = wl_used
     ns = len(sys.surfaces)
 
     # Показатели преломления для каждой среды (ns+1 сред)
@@ -175,7 +191,7 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
             # Зеркало: после отражения n меняет знак
             n_medium.append(-n_medium[-1])
         else:
-            n_medium.append(refractive_index(s.glass, wl_primary, catalog, getattr(s, 'n_override', None)))
+            n_medium.append(refractive_index(s.glass, wl_used, catalog, getattr(s, 'n_override', None)))
 
     # ===== Длина системы =====
     L = sum(s.thickness for s in sys.surfaces)
@@ -271,18 +287,6 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
         sH = (D_mat - 1.0) / C_mat
         results['sH'] = sH
 
-        # f/# и входной зрачок
-        epd = sys.aperture_value if sys.aperture_value > 0 else abs(efl) / 4.0
-        if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
-            results['entrance_pupil_diameter'] = epd
-        elif sys.aperture_type == ApertureType.F_NUMBER:
-            results['entrance_pupil_diameter'] = abs(efl) / epd if epd > 0 else 0.0
-        elif sys.aperture_type == ApertureType.NUMERICAL_APERTURE:
-            results['entrance_pupil_diameter'] = 2.0 * abs(efl) * epd  # D = 2*f'*NA
-
-        f_number = abs(efl) / results['entrance_pupil_diameter'] if results['entrance_pupil_diameter'] > 0 else 0.0
-        results['f_number'] = f_number
-
     # ===== Положение зрачков (sP, sP') =====
     stop_idx = max(0, min(sys.stop_surface - 1, ns - 1))  # 0-based
     stop_off = getattr(sys, 'stop_offset', 0.0)  # смещение диафрагмы от stop_surface (мм)
@@ -358,6 +362,32 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     results['exit_pupil'] = sP_prime
     results['pupil_location'] = sP_prime
 
+    # ===== Увеличения изображения диафрагмы (пересчёт апертур, п. 12) =====
+    # Трассирован луч через центр диафрагмы: y = 0 на диафрагме,
+    # nu = 1 (приведённый угол). По инварианту Лагранжа для сопряжённых
+    # плоскостей «диафрагма → зрачок» увеличение = 1/nu этого луча
+    # в плоскости зрачка.
+    nu_exit = nub[ns - 1] if ns > 0 else 0.0
+    m_entrance = 1.0 / nub[0] if abs(nub[0]) > TINY else None
+    m_exit = 1.0 / nu_exit if abs(nu_exit) > TINY else None
+    results['entrance_pupil_magnification'] = m_entrance
+    results['exit_pupil_magnification'] = m_exit
+    if m_entrance and m_exit and abs(m_entrance) > TINY:
+        results['pupil_magnification'] = m_exit / m_entrance
+
+    # ===== f/# и входной зрачок (п. 12 GAP v2) =====
+    # Любой способ задания апертуры (углы, NA', высота на диафрагме,
+    # D, F/#, NA) приводится к диаметру входного зрачка — после
+    # положения зрачков, на которые опираются пересчёты.
+    efl = results.get('focal_length', 0.0)
+    if abs(efl) > TINY:
+        epd = aperture_to_epd(sys, sys.aperture_value, sys.aperture_type,
+                              parax=results)
+        if not epd or epd <= TINY:
+            epd = abs(efl) / 4.0
+        results['entrance_pupil_diameter'] = epd
+        results['f_number'] = abs(efl) / epd if epd > 0 else 0.0
+
     # ===== Обобщённое увеличение V =====
     if sys.object_type == ObjectType.FINITE and abs(sys.object_height) > EPSILON:
         # Для конечного предмета: V = f' / (s + f') where s = -obj_dist
@@ -378,9 +408,235 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None) -> dict:
     return results
 
 
-def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
+# Строки таблицы «параксиальные характеристики по λ» (п. 13 GAP v2):
+# (подпись, ключ результата paraxial_trace, формат вывода).
+# Единственный источник набора строк — используется GUI и тестами.
+PARAXIAL_WL_ROWS = (
+    ("f' (мм)", 'focal_length', '.4f'),
+    ("sF (мм)", 'sF', '.4f'),
+    ("sF' (мм)", 'sF_prime', '.4f'),
+    ("sH (мм)", 'sH', '.4f'),
+    ("sH' (мм)", 'sH_prime', '.4f'),
+    ("L (мм)", 'L', '.2f'),
+    ("sP (мм)", 'sP', '.4f'),
+    ("sP' (мм)", 'sP_prime', '.4f'),
+    ("V", 'V', '.5f'),
+    ("f/#", 'f_number', '.2f'),
+    ("D вх.зр. (мм)", 'entrance_pupil_diameter', '.2f'),
+)
+
+# Ключи PARAXIAL_WL_ROWS с положениями зрачков (п. 16 GAP v2): эти
+# строки переключаются в диоптрии (D = 1000/мм, OPAL-PC Л1.4.4),
+# подпись «(мм)» заменяется на выбранную единицу.
+PUPIL_POSITION_KEYS = ('sP', 'sP_prime')
+
+
+def paraxial_trace_all_wavelengths(sys: OpticalSystem,
+                                   catalog: dict = None) -> List[dict]:
+    """
+    Параксиальный расчёт для каждой рабочей λ системы (п. 13 GAP v2).
+
+    Прогоняет :func:`paraxial_trace` для каждой λ из ``sys.wavelengths``
+    с показателями преломления этой λ; первая λ — основная.
+    Если λ не заданы — один расчёт для основной λ.
+
+    Args:
+        sys: Оптическая система (не изменяется).
+        catalog: Каталог стёкол (None — встроенный).
+
+    Returns:
+        Список результатов paraxial_trace (по одному на λ); каждый
+        результат содержит ключ ``'wl'`` с использованной λ (мкм).
+    """
+    wls = [w.value for w in sys.wavelengths] if sys.wavelengths else []
+    if not wls:
+        wls = [get_primary_wl(sys)]
+    return [paraxial_trace(sys, catalog, wl) for wl in wls]
+
+
+# --------------------------------------------------------------------------- #
+# Режимы расчёта габаритов пучков (п. 15 GAP v2)
+# --------------------------------------------------------------------------- #
+
+BEAM_SEMI_MODES = (
+    ('given', 'Заданные'),   # по заданной апертуре системы
+    ('real', 'Реальные'),    # по фактическим полудиаметрам поверхностей
+)
+
+#: Скругление кромки — доля полудиаметра, теряемая при флаге
+#: «острый край» = выкл (кромка линзы скруглена, световой проём меньше).
+EDGE_ROUND_FRACTION = 0.05
+
+#: Шагов бинарного поиска (виньетирование по полю, реальный габарит пучка).
+VIGNETTING_BISECT_STEPS = 20
+
+
+def effective_semi_diameter(semi_diameter: float, sharp_edge: bool = True) -> float:
+    """Действующий полудиаметр поверхности с учётом кромки.
+
+    ``sharp_edge=True`` — виньетирование по острому краю (весь
+    полудиаметр); ``False`` — кромка скруглена: световой проём меньше
+    на :data:`EDGE_ROUND_FRACTION` от полудиаметра. Нулевой/
+    отрицательный полудиаметр (не задан) проходит без изменений.
+
+    Единственное место, где применяется «острый край» — используют и
+    :func:`apply_vignetting`, и расчёт габаритов пучков.
+    """
+    if semi_diameter <= 0:
+        return semi_diameter
+    if sharp_edge:
+        return semi_diameter
+    return semi_diameter * (1.0 - EDGE_ROUND_FRACTION)
+
+
+def _trace_beam_ray(system: OpticalSystem, z_pos: list, wl: float,
+                    y_start: float, x_start: float, field_y: float,
+                    sharp_edge: bool = True) -> Tuple[float, float, bool]:
+    """Трассировка габаритного луча через систему.
+
+    Возвращает ``(y_img, x_img, success)``; ``success=False`` — луч
+    виньетирован или не пересёк поверхность. Используется расчётом
+    габаритов пучков (:func:`compute_beam_geometry`,
+    :func:`real_beam_aperture`).
+    """
+    if system.object_type == ObjectType.INFINITE:
+        angle = math.radians(field_y) if field_y != 0 else 0.0
+        ray_y = y_start
+        ray_x = x_start
+        k = 0.0
+        l = math.sin(angle)
+        m = math.cos(angle)
+    else:
+        obj_z = -system.surfaces[0].thickness if system.surfaces else -50
+        d = abs(obj_z)
+        ray_y = y_start
+        ray_x = x_start
+        k = x_start / d if d > 0 else 0.0
+        l = (y_start - field_y) / d if d > 0 else 0.0
+        m = 1.0
+        norm = math.sqrt(k**2 + l**2 + m**2)
+        if norm > TINY:
+            k /= norm; l /= norm; m /= norm
+
+    success = True
+    z = -50.0 if system.object_type == ObjectType.INFINITE else (z_pos[0] - abs(system.surfaces[0].thickness) if system.surfaces else -50)
+    y = ray_y
+    x = ray_x
+
+    for i, s in enumerate(system.surfaces):
+        R = s.radius if abs(s.radius) > EPSILON else 0.0
+        z_surf = z_pos[i]
+
+        if abs(m) < TINY:
+            success = False
+            break
+
+        if R == 0:
+            t = (z_surf - z) / m
+        else:
+            cz = z_surf + R
+            dz_val = z - cz
+            a_coef = k**2 + l**2 + m**2
+            b_coef = 2 * (k * x + l * y + m * dz_val)
+            c_val = x**2 + y**2 + dz_val**2 - R**2
+            disc = b_coef**2 - 4*a_coef*c_val
+            if disc < 0:
+                success = False
+                break
+            sqrt_disc = math.sqrt(disc)
+            t1 = (-b_coef - sqrt_disc) / (2 * a_coef)
+            t2 = (-b_coef + sqrt_disc) / (2 * a_coef)
+            t = t1 if t1 > EPSILON else t2
+            if t < EPSILON:
+                success = False
+                break
+
+        y_new = y + t * l
+        x_new = x + t * k
+        z_new = z + t * m
+
+        # Проверка виньетирования (с учётом кромки)
+        sd = effective_semi_diameter(
+            s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD,
+            sharp_edge)
+        r_hit = math.sqrt(x_new**2 + y_new**2)
+        if r_hit > sd:
+            success = False
+            break
+
+        # Преломление
+        if R != 0:
+            n_before = 1.0 if i == 0 else refractive_index(system.surfaces[i-1].glass, wl, None, getattr(system.surfaces[i-1], 'n_override', None))
+            n_after = refractive_index(s.glass, wl, None, getattr(s, 'n_override', None))
+            phi = (n_after - n_before) / R
+            l_new = (l * n_before - y_new * phi) / n_after
+            k_new = (k * n_before - x_new * phi) / n_after
+            norm = math.sqrt(k_new**2 + l_new**2 + m**2)
+            if norm > TINY:
+                k, l = k_new / norm, l_new / norm
+
+        y, x, z = y_new, x_new, z_new
+
+    return y, x, success
+
+
+def real_beam_aperture(system: OpticalSystem, wl: float = None,
+                       sharp_edge: bool = True) -> Optional[float]:
+    """Диаметр наибольшего осевого пучка, проходящего по фактическим
+    полудиаметрам поверхностей (режим габаритов «Реальные»).
+
+    Бинарным поиском (по трассировке :func:`_trace_beam_ray`) ищется
+    максимальная полувысота луча на входе, при которой осевой пучок
+    (оба крайних меридиональных луча) нигде не виньетируется. Верхняя
+    граница поиска — наименьший действующий полудиаметр поверхностей.
+
+    Возвращает ``None``, если ни у одной поверхности полудиаметр не
+    задан (режим вырождается — считать «по фактическому» не по чему);
+    вызывающий код откатывается на заданную апертуру системы.
+    """
+    if not system.surfaces:
+        return None
+    sds = [s.semi_diameter for s in system.surfaces if s.semi_diameter > 0]
+    if not sds:
+        return None
+
+    if wl is None:
+        wl = get_primary_wl(system)
+    z_pos = compute_z_positions(system)
+    cap = min(effective_semi_diameter(sd, sharp_edge) for sd in sds)
+
+    def passes(half_height: float) -> bool:
+        upper = _trace_beam_ray(system, z_pos, wl, half_height, 0.0, 0.0,
+                                sharp_edge)
+        lower = _trace_beam_ray(system, z_pos, wl, -half_height, 0.0, 0.0,
+                                sharp_edge)
+        return upper[2] and lower[2]
+
+    lo, hi = 0.0, cap
+    for _ in range(VIGNETTING_BISECT_STEPS):
+        mid = (lo + hi) / 2.0
+        if passes(mid):
+            lo = mid
+        else:
+            hi = mid
+    return 2.0 * lo
+
+
+def compute_beam_geometry(system: OpticalSystem, wl: float = None,
+                          semi_mode: str = 'given',
+                          sharp_edge: bool = True) -> list:
     """
     Вычислить габариты пучков для всех полей.
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (None — основная).
+        semi_mode: Режим габаритов — ``'given'`` (по заданной апертуре
+            системы) или ``'real'`` (по фактическим полудиаметрам
+            поверхностей, см. :func:`real_beam_aperture`); ключи —
+            :data:`BEAM_SEMI_MODES`.
+        sharp_edge: Виньетирование по острому краю (без скругления
+            кромки), см. :func:`effective_semi_diameter`.
 
     Возвращает для каждого field_point:
     {
@@ -394,6 +650,11 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
         'relative_illumination': float,  # светораспределение (доля от осевого)
     }
     """
+    mode_keys = [key for key, _ in BEAM_SEMI_MODES]
+    if semi_mode not in mode_keys:
+        raise ValueError(f"неизвестный режим габаритов: {semi_mode!r} "
+                         f"(допустимо {mode_keys})")
+
     if wl is None:
         wl = get_primary_wl(system)
 
@@ -401,6 +662,16 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
     parax = paraxial_trace(system)
     efl = parax.get('focal_length', 0)
     fno = parax.get('f_number', 0)
+    if semi_mode == 'real':
+        real_d = real_beam_aperture(system, wl=wl, sharp_edge=sharp_edge)
+        if real_d is not None and real_d > EPSILON:
+            # Пучок ограничен фактическими полудиаметрами поверхностей,
+            # а не заданной апертурой; f/# — от этого же пучка.
+            aperture = real_d
+            if abs(efl) > EPSILON:
+                fno = efl / aperture
+
+    z_pos = compute_z_positions(system)
 
     results = []
 
@@ -414,101 +685,14 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
         lower_y_start = -aperture / 2.0
         sag_x_start = aperture / 2.0
 
-        # Z-позиции поверхностей
-        z_pos = compute_z_positions(system)
-
-        def _trace_marginal_ray(y_start, x_start, field_y_val):
-            """Трассировка габаритного луча, возвращает (y_img, x_img, success, max_clear_aperture)"""
-            if system.object_type == ObjectType.INFINITE:
-                angle = math.radians(field_y_val) if field_y_val != 0 else 0.0
-                ray_y = y_start
-                ray_x = x_start
-                k = 0.0
-                l = math.sin(angle)
-                m = math.cos(angle)
-            else:
-                obj_z = -system.surfaces[0].thickness if system.surfaces else -50
-                d = abs(obj_z)
-                ray_y = y_start
-                ray_x = x_start
-                k = x_start / d if d > 0 else 0.0
-                l = (y_start - field_y_val) / d if d > 0 else 0.0
-                m = 1.0
-                norm = math.sqrt(k**2 + l**2 + m**2)
-                if norm > TINY:
-                    k /= norm; l /= norm; m /= norm
-
-            success = True
-            last_y = 0.0
-            last_x = 0.0
-            z = -50.0 if system.object_type == ObjectType.INFINITE else (z_pos[0] - abs(system.surfaces[0].thickness) if system.surfaces else -50)
-            y = ray_y
-            x = ray_x
-
-            for i, s in enumerate(system.surfaces):
-                R = s.radius if abs(s.radius) > EPSILON else 0.0
-                z_surf = z_pos[i]
-
-                if abs(m) < TINY:
-                    success = False
-                    break
-
-                if R == 0:
-                    t = (z_surf - z) / m
-                else:
-                    cz = z_surf + R
-                    dz_val = z - cz
-                    a_coef = k**2 + l**2 + m**2
-                    b_coef = 2 * (k * x + l * y + m * dz_val)
-                    c_val = x**2 + y**2 + dz_val**2 - R**2
-                    disc = b_coef**2 - 4*a_coef*c_val
-                    if disc < 0:
-                        success = False
-                        break
-                    sqrt_disc = math.sqrt(disc)
-                    t1 = (-b_coef - sqrt_disc) / (2 * a_coef)
-                    t2 = (-b_coef + sqrt_disc) / (2 * a_coef)
-                    t = t1 if t1 > EPSILON else t2
-                    if t < EPSILON:
-                        success = False
-                        break
-
-                y_new = y + t * l
-                x_new = x + t * k
-                z_new = z + t * m
-
-                # Проверка виньетирования
-                sd = s.semi_diameter if s.semi_diameter > 0 else UNLIMITED_SD
-                r_hit = math.sqrt(x_new**2 + y_new**2)
-                if r_hit > sd:
-                    success = False
-                    break
-
-                # Преломление
-                if R != 0:
-                    n_before = 1.0 if i == 0 else refractive_index(system.surfaces[i-1].glass, wl, None, getattr(system.surfaces[i-1], 'n_override', None))
-                    n_after = refractive_index(s.glass, wl, None, getattr(s, 'n_override', None))
-                    phi = (n_after - n_before) / R
-                    l_new = (l * n_before - y_new * phi) / n_after
-                    k_new = (k * n_before - x_new * phi) / n_after
-                    norm = math.sqrt(k_new**2 + l_new**2 + m**2)
-                    if norm > TINY:
-                        k, l = k_new / norm, l_new / norm
-
-                y, x, z = y_new, x_new, z_new
-
-            last_y = y
-            last_x = x
-            return last_y, last_x, success
-
         # Верхний луч
-        uy, ux, upper_ok = _trace_marginal_ray(upper_y_start, 0.0, field_y)
+        uy, ux, upper_ok = _trace_beam_ray(system, z_pos, wl, upper_y_start, 0.0, field_y, sharp_edge)
         # Нижний луч
-        ly, lx, lower_ok = _trace_marginal_ray(lower_y_start, 0.0, field_y)
+        ly, lx, lower_ok = _trace_beam_ray(system, z_pos, wl, lower_y_start, 0.0, field_y, sharp_edge)
         # Сагиттальный луч
-        sy, sx, sag_ok = _trace_marginal_ray(0.0, sag_x_start, field_y)
+        sy, sx, sag_ok = _trace_beam_ray(system, z_pos, wl, 0.0, sag_x_start, field_y, sharp_edge)
         # Главный луч
-        cy, cx, chief_ok = _trace_marginal_ray(0.0, 0.0, field_y)
+        cy, cx, chief_ok = _trace_beam_ray(system, z_pos, wl, 0.0, 0.0, field_y, sharp_edge)
 
         # Передние апертуры — полуширина пучка на входе
         Ax = aperture / 2.0  # сагиттальная
@@ -531,10 +715,10 @@ def compute_beam_geometry(system: OpticalSystem, wl: float = None) -> list:
             for sign, label in [(1.0, 'upper'), (-1.0, 'lower')]:
                 lo, hi = 0.0, 1.0
                 best = 0.0
-                for _ in range(20):
+                for _ in range(VIGNETTING_BISECT_STEPS):
                     mid = (lo + hi) / 2.0
                     y_test = sign * mid * aperture / 2.0
-                    _, _, ok = _trace_marginal_ray(y_test, 0.0, field_y)
+                    _, _, ok = _trace_beam_ray(system, z_pos, wl, y_test, 0.0, field_y, sharp_edge)
                     if ok:
                         best = mid
                         lo = mid

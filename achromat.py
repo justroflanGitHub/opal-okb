@@ -246,10 +246,8 @@ def achromat_report(sys: OpticalSystem) -> str:
     lines.append(f"Поверхностей: {sys.num_surfaces}")
     lines.append("")
 
-    # Параксиальный расчёт (d-линия)
-    wl_orig = sys.wavelengths[:]
-    sys.wavelengths = [Wavelength(LAMBDA_d, 1.0, "d")]
-    parax = paraxial_trace(sys)
+    # Параксиальный расчёт (d-линия); λ задаётся напрямую (п. 13 GAP v2)
+    parax = paraxial_trace(sys, wl=LAMBDA_d)
     f_prime = parax.get('focal_length', 0)
     bfd_val = parax.get('back_focal_distance', 0) + sys.surfaces[-1].thickness
     lines.append(f"Фокусное расстояние f' = {f_prime:.4f} мм")
@@ -257,15 +255,8 @@ def achromat_report(sys: OpticalSystem) -> str:
     lines.append("")
 
     # Ахроматизм: f'_F - f'_C
-    sys.wavelengths = [Wavelength(LAMBDA_F, 1.0, "F")]
-    parax_F = paraxial_trace(sys)
-    f_F = parax_F.get('focal_length', 0)
-
-    sys.wavelengths = [Wavelength(LAMBDA_C, 1.0, "C")]
-    parax_C = paraxial_trace(sys)
-    f_C = parax_C.get('focal_length', 0)
-
-    sys.wavelengths = wl_orig[:]  # восстановить
+    f_F = paraxial_trace(sys, wl=LAMBDA_F).get('focal_length', 0)
+    f_C = paraxial_trace(sys, wl=LAMBDA_C).get('focal_length', 0)
 
     delta_f = f_F - f_C
     lines.append(f"f'_F = {f_F:.4f} мм")

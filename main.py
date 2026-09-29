@@ -22,17 +22,23 @@ from PyQt5.QtGui import QFont, QIcon, QColor
 from optics_engine import (
     OpticalSystem, Surface, Wavelength, FieldPoint,
     ObjectType, ApertureType, SurfaceType,
-    paraxial_trace, seidel_aberrations, create_demo_system,
+    paraxial_trace, paraxial_trace_all_wavelengths,
+    seidel_aberrations, create_demo_system,
     apply_vignetting
 )
 from visualization import OpticalSystemView
 from visualization3d import Visualization3D
 from analysis_gui import AnalysisPanel
 from system_utils import reverse_system, scale_system, nearest_standard_radius, standardize_radii, get_radii_changes
-from io_utils import save_json, load_json, append_system, export_protocol, STANDARD_WAVELENGTHS
+from io_utils import save_json, load_json, append_system, export_protocol
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
-from optics_utils import get_primary_wl, copy_table_selection
+from optics_utils import (
+    get_primary_wl, get_effective_aperture, copy_table_selection,
+    get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
+    PUPIL_UNIT_CHOICES, format_pupil_position, INFINITY_TEXT,
+    format_coord_cell,
+)
 
 from gui.controllers.calculation_controller import CalculationController
 from gui.controllers.system_controller import SystemController
@@ -43,12 +49,29 @@ from gui.dialogs.fit_dialog import FitDialog
 from gui.dialogs.achromat_dialog import AchromatDialog
 
 
+#: Способы задания апертуры осевого пучка (п. 12 GAP v2):
+#: подпись в UI ↔ тип апертуры. Пересчёт между способами —
+#: domain/aperture.py (через параксиальные характеристики).
+APERTURE_METHODS = (
+    ("Входной зрачок D (мм)", ApertureType.ENTRANCE_PUPIL),
+    ("Передняя апертура: угол (°)", ApertureType.FRONT_ANGLE),
+    ("Задняя апертура: угол (°)", ApertureType.REAR_ANGLE),
+    ("Задняя апертура: NA'", ApertureType.REAR_NA),
+    ("Высота на диафрагме (мм)", ApertureType.STOP_HEIGHT),
+    ("F/#", ApertureType.F_NUMBER),
+    ("NA", ApertureType.NUMERICAL_APERTURE),
+)
+
+
 class SurfaceTable(QTableWidget):
     """Таблица поверхностей оптической системы."""
 
     # Базовые заголовки (до n-колонок и после)
     BASE_BEFORE = ["No", "Радиусы\nR (мм)", "Осевые\nрасст. d (мм)", "Марка\nстекла"]
-    BASE_AFTER = ["Высоты\nD/2 (мм)", "Тип", "k (конич.)", "Стоп"]
+    # Наклон/децентр (п. 17): «X,Y,Z (°)» / «X,Y (мм)» — формат ячеек
+    # utils/optics_utils.py (format_coord_cell/parse_coord_cell)
+    BASE_AFTER = ["Высоты\nD/2 (мм)", "Тип", "k (конич.)",
+                  "Наклон\nX,Y,Z (°)", "Децентр\nX,Y (мм)", "Стоп"]
 
     def __init__(self, parent=None):
         super().__init__(0, len(self.BASE_BEFORE) + 1 + len(self.BASE_AFTER), parent)
@@ -80,7 +103,9 @@ class SurfaceTable(QTableWidget):
             'sd': 4 + n,
             'type': 4 + n + 1,
             'k': 4 + n + 2,
-            'stop': 4 + n + 3,
+            'tilt': 4 + n + 3,
+            'dec': 4 + n + 4,
+            'stop': 4 + n + 5,
         }
 
     def load_system(self, sys: OpticalSystem):
@@ -129,6 +154,12 @@ class SurfaceTable(QTableWidget):
             k_text = f"{s.conic_constant:.4f}" if abs(s.conic_constant) > 1e-10 else "0"
             self.setItem(i, cols['k'], QTableWidgetItem(k_text))
 
+            # Наклон/децентрировка (п. 17; формат — utils/optics_utils)
+            self.setItem(i, cols['tilt'], QTableWidgetItem(
+                format_coord_cell((s.tilt_x, s.tilt_y, getattr(s, 'tilt_z', 0.0)))))
+            self.setItem(i, cols['dec'], QTableWidgetItem(
+                format_coord_cell((s.decenter_x, s.decenter_y))))
+
             # Стоп-чекбокс
             stop_item = QTableWidgetItem()
             stop_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -140,7 +171,7 @@ class SurfaceTable(QTableWidget):
             self.setItem(i, cols['stop'], stop_item)
 
             # Выравнивание
-            for key in ['no', 'r', 'd', 'sd', 'k']:
+            for key in ['no', 'r', 'd', 'sd', 'k', 'tilt', 'dec']:
                 item = self.item(i, cols[key])
                 if item:
                     item.setTextAlignment(Qt.AlignCenter)
@@ -288,13 +319,18 @@ class ResultsPanel(QWidget):
         self.parax_table.setMinimumWidth(250)
         # No max width - let it expand
 
-        # Единицы зрачков
+        # Единицы зрачков: общее состояние в utils (п. 16), комбобокс —
+        # только представление; смена синхронизируется с панелью анализа
         pupil_unit_layout = QHBoxLayout()
         pupil_unit_layout.addWidget(QLabel("Единицы зрачков:"))
         self.pupil_unit_combo = QComboBox()
-        self.pupil_unit_combo.addItems(["мм", "дптр"])
-        self.pupil_unit_combo.setToolTip("Единицы для sP и sP'")
+        self.pupil_unit_combo.addItems(list(PUPIL_UNIT_CHOICES))
+        self.pupil_unit_combo.setToolTip(
+            "Единицы для sP и sP' (1 дптр = 1/м):\n"
+            "одно состояние с панелью анализа (OPAL-PC Л1.4.4)")
+        self.pupil_unit_combo.setCurrentText(get_pupil_unit())
         self.pupil_unit_combo.currentIndexChanged.connect(self._on_pupil_unit_changed)
+        add_pupil_unit_observer(self._on_pupil_unit_state_changed)
         pupil_unit_layout.addWidget(self.pupil_unit_combo)
         pupil_unit_layout.addStretch()
         self._parax_result = {}
@@ -361,7 +397,14 @@ class ResultsPanel(QWidget):
         layout.addStretch()
 
     def _on_pupil_unit_changed(self, index):
-        """Переключение единиц зрачков мм/дптр."""
+        """Переключение единиц зрачков мм/дптр: записать в общее состояние."""
+        set_pupil_unit(self.pupil_unit_combo.currentText())
+
+    def _on_pupil_unit_state_changed(self, unit):
+        """Наблюдатель общего состояния: синхронизировать комбобокс и таблицу."""
+        self.pupil_unit_combo.blockSignals(True)
+        self.pupil_unit_combo.setCurrentText(unit)
+        self.pupil_unit_combo.blockSignals(False)
         self._update_parax_display()
 
     def _update_parax_display(self):
@@ -382,18 +425,16 @@ class ResultsPanel(QWidget):
             ("f/#", f"{self._fno:.2f}"),
             ("D вх.зрачка", f"{self._epd:.2f} мм"),
         ]
-        # sP и sP' - с учётом единиц
-        sP = parax.get('sP', 0)
-        sP_prime = parax.get('sP_prime', 0)
-        if self.pupil_unit_combo.currentText() == "дптр":
-            n = 1.0
-            sP_str = f"{1000.0/n/sP:.4f} дптр" if abs(sP) > 1e-10 else "∞"
-            sPp_str = f"{1000.0/n/sP_prime:.4f} дптр" if abs(sP_prime) > 1e-10 else "∞"
-        else:
-            sP_str = f"{sP:.4f} мм"
-            sPp_str = f"{sP_prime:.4f} мм"
-        rows.append(("sP (вх. зрачок)", sP_str))
-        rows.append(("sP' (вых. зрачок)", sPp_str))
+        # sP и sP' — в выбранных единицах зрачков (п. 16; дптр = 1000/мм);
+        # ∞ (зрачок «на бесконечности») — без единицы
+        unit = get_pupil_unit()
+
+        def _sP_text(value_mm: float) -> str:
+            text = format_pupil_position(value_mm, unit)
+            return text if text == INFINITY_TEXT else f"{text} {unit}"
+
+        rows.append(("sP (вх. зрачок)", _sP_text(parax.get('sP', 0))))
+        rows.append(("sP' (вых. зрачок)", _sP_text(parax.get('sP_prime', 0))))
 
         self.parax_table.setRowCount(len(rows))
         for i, (name, val) in enumerate(rows):
@@ -444,7 +485,7 @@ class ResultsPanel(QWidget):
         epd = parax.get('entrance_pupil_diameter', 0)
         if fno == 0:
             efl = parax.get('focal_length', 0)
-            epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
+            epd = get_effective_aperture(sys, default=efl / 4.0)
             fno = efl / epd if epd > 0 else 0
         self._fno = fno
         self._epd = epd
@@ -463,32 +504,16 @@ class ResultsPanel(QWidget):
             self.parax_wl_label.setVisible(False)
             return
 
-        import copy
-
-        # Базовое фокусное расстояние (первая λ)
-        base_f = None
-        base_bfd = None
+        # Параксиалы для каждой λ (п. 13 GAP v2) — общий расчёт без копий
+        # системы; первая λ — база для хроматических разностей.
+        per_wl = paraxial_trace_all_wavelengths(sys)
+        base_f = per_wl[0].get('focal_length', 0)
         rows_data = []
-
-        for wl in sys.wavelengths:
+        for wl, parax_wl in zip(sys.wavelengths, per_wl):
             wl_name = wl.name if wl.name else f"{wl.value:.3f}"
-            try:
-                sys_wl = copy.deepcopy(sys)
-                sys_wl.wavelengths = [wl]
-                parax_wl = paraxial_trace(sys_wl)
-                f_wl = parax_wl.get('focal_length', 0)
-                bfd_wl = parax_wl.get('back_focal_distance', 0)
-
-                if base_f is None:
-                    base_f = f_wl
-                    base_bfd = bfd_wl
-                    delta_f = 0.0
-                else:
-                    delta_f = f_wl - base_f
-
-                rows_data.append((wl_name, f_wl, bfd_wl, delta_f))
-            except Exception:
-                rows_data.append((wl_name, 0, 0, 0))
+            f_wl = parax_wl.get('focal_length', 0)
+            bfd_wl = parax_wl.get('back_focal_distance', 0)
+            rows_data.append((wl_name, f_wl, bfd_wl, f_wl - base_f))
 
         if not rows_data:
             self.parax_wl_table.setVisible(False)
@@ -675,35 +700,24 @@ class SystemParamsWidget(QWidget):
         stop_layout.addStretch()
         layout.addWidget(stop_group)
 
-        # === Апертуры ===
-        ap_group = QGroupBox("Апертуры")
+        # === Апертура (п. 12 GAP v2: способ задания + значение) ===
+        ap_group = QGroupBox("Апертура")
         ap_grid = QGridLayout(ap_group)
-        ap_grid.addWidget(QLabel("Передняя апертура:"), 0, 0)
-        self.front_ap_spin = QDoubleSpinBox()
-        self.front_ap_spin.setRange(0, 1000)
-        self.front_ap_spin.setDecimals(6)
-        self.front_ap_combo = QComboBox()
-        self.front_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
-        ap_grid.addWidget(self.front_ap_spin, 0, 1)
-        ap_grid.addWidget(self.front_ap_combo, 0, 2)
-
-        ap_grid.addWidget(QLabel("Задняя апертура:"), 1, 0)
-        self.rear_ap_spin = QDoubleSpinBox()
-        self.rear_ap_spin.setRange(0, 1000)
-        self.rear_ap_spin.setDecimals(6)
-        self.rear_ap_combo = QComboBox()
-        self.rear_ap_combo.addItems(["Высота по Y (мм)", "NA (sin)", "F/#"])
-        ap_grid.addWidget(self.rear_ap_spin, 1, 1)
-        ap_grid.addWidget(self.rear_ap_combo, 1, 2)
+        ap_grid.addWidget(QLabel("Способ задания:"), 0, 0)
+        self.ap_method_combo = QComboBox()
+        self.ap_method_combo.addItems([label for label, _ in APERTURE_METHODS])
+        self.ap_method_combo.setToolTip(
+            "Пересчёт между способами — через параксиальные характеристики\n"
+            "(f', положение зрачков, увеличение диафрагмы)")
+        self.ap_value_spin = QDoubleSpinBox()
+        self.ap_value_spin.setRange(0, 10000)
+        self.ap_value_spin.setDecimals(6)
+        self.ap_value_spin.setValue(20.0)
+        ap_grid.addWidget(self.ap_method_combo, 0, 1)
+        ap_grid.addWidget(self.ap_value_spin, 0, 2)
         layout.addWidget(ap_group)
 
         # === Скрытые виджеты для совместимости ===
-        self.aperture_type_combo = QComboBox()  # legacy compat
-        self.aperture_type_combo.addItems(["Входной зрачок D (мм)", "Числовая апертура NA", "F/#"])
-        self.aperture_spin = QDoubleSpinBox()
-        self.aperture_spin.setRange(0, 10000)
-        self.aperture_spin.setDecimals(4)
-        self.aperture_spin.setValue(20.0)
         self.obscuration_spin = QDoubleSpinBox()
         self.obscuration_spin.setRange(0, 50)
         self.obscuration_spin.setDecimals(1)
@@ -728,9 +742,35 @@ class SystemParamsWidget(QWidget):
         self.obj_height_spin.valueChanged.connect(self._update_gmms_label)
         self.img_measure_combo.currentIndexChanged.connect(lambda: self._update_gmms_label())
         self.img_height_spin.valueChanged.connect(self._update_gmms_label)
-        # Связь передней апертуры с aperture_type_combo/aperture_spin для совместимости
-        self.front_ap_spin.valueChanged.connect(self._sync_aperture)
-        self.front_ap_combo.currentIndexChanged.connect(self._sync_aperture)
+
+    def aperture_from_ui(self):
+        """Активный способ задания апертуры и значение (п. 12 GAP v2).
+
+        Единственная точка чтения апертуры из UI — контроллеры вызывают
+        этот метод, а не читают виджеты напрямую.
+
+        Returns:
+            Кортеж ``(ApertureType, значение в единицах способа)``.
+        """
+        idx = self.ap_method_combo.currentIndex()
+        if 0 <= idx < len(APERTURE_METHODS):
+            ap_type = APERTURE_METHODS[idx][1]
+        else:
+            ap_type = ApertureType.ENTRANCE_PUPIL
+        return ap_type, self.ap_value_spin.value()
+
+    def set_aperture(self, ap_type, value):
+        """Показать способ задания апертуры и значение (загрузка системы).
+
+        Args:
+            ap_type: Способ задания (:class:`ApertureType`).
+            value: Значение в единицах способа.
+        """
+        for i, (_, t) in enumerate(APERTURE_METHODS):
+            if t == ap_type:
+                self.ap_method_combo.setCurrentIndex(i)
+                break
+        self.ap_value_spin.setValue(value if value and value > 0 else 0.0)
 
     def _on_type_changed(self, side: str, idx: int):
         """Auto-set мера/отрезок при смене типа предмета/изображения.
@@ -748,17 +788,6 @@ class SystemParamsWidget(QWidget):
             self.back_shift_combo.setCurrentIndex(1 if is_far else 0)
             self.img_height_spin.setSuffix('' if is_far else ' мм')
         self._update_gmms_label()
-
-    def _sync_aperture(self):
-        """Синхронизировать переднюю апертуру с legacy aperture_spin/aperture_type_combo."""
-        idx = self.front_ap_combo.currentIndex()
-        val = self.front_ap_spin.value()
-        # 0=Y height (D/2), 1=NA, 2=F/#
-        self.aperture_type_combo.setCurrentIndex(idx)
-        if idx == 0:  # Y → D
-            self.aperture_spin.setValue(val * 2 if val > 0 else 20.0)
-        else:
-            self.aperture_spin.setValue(val)
 
     def _update_gmms_label(self, val=None):
         """Обновить отображение поля в формате Г.ММСС."""
@@ -786,36 +815,6 @@ class SystemParamsWidget(QWidget):
         self.wl_table.setItem(row, 1, QTableWidgetItem("1.0"))
         self.wl_table.setItem(row, 2, QTableWidgetItem("e"))
 
-    def _standard_wavelengths(self):
-        """Диалог выбора стандартной длины волны."""
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Стандартные длины волн")
-        dlg.setMinimumWidth(300)
-        dlg.setMinimumHeight(350)
-        layout = QVBoxLayout(dlg)
-        layout.addWidget(QLabel("Выберите длину волны:"))
-        lst = QListWidget()
-        for name, wl_val in STANDARD_WAVELENGTHS.items():
-            item = QListWidgetItem(f"{name} - {wl_val*1000:.2f} нм ({wl_val:.5f} мкм)")
-            item.setData(Qt.UserRole, (name, wl_val))
-            lst.addItem(item)
-        layout.addWidget(lst)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.accepted.connect(dlg.accept)
-        buttons.rejected.connect(dlg.reject)
-        layout.addWidget(buttons)
-        lst.itemDoubleClicked.connect(lambda: dlg.accept())
-        if dlg.exec_() == QDialog.Accepted:
-            sel = lst.selectedItems()
-            if sel:
-                name, wl_val = sel[0].data(Qt.UserRole)
-                row = self.wl_table.rowCount()
-                self.wl_table.insertRow(row)
-                self.wl_table.setItem(row, 0, QTableWidgetItem(str(wl_val)))
-                self.wl_table.setItem(row, 1, QTableWidgetItem("1.0"))
-                self.wl_table.setItem(row, 2, QTableWidgetItem(name))
-
     def _del_wavelength(self):
         rows = set(i.row() for i in self.wl_table.selectedItems())
         for r in sorted(rows, reverse=True):
@@ -832,19 +831,8 @@ class SystemParamsWidget(QWidget):
         self._on_type_changed('obj', self.obj_type_combo.currentIndex())
         self._on_type_changed('img', self.img_type_combo.currentIndex())
 
-        # Апертура: автоматически выбрать тип и значение
-        if sys.aperture_type == ApertureType.ENTRANCE_PUPIL:
-            self.front_ap_combo.setCurrentIndex(0)  # Y height
-            self.front_ap_spin.setValue(sys.aperture_value / 2.0)  # D → D/2
-        elif sys.aperture_type == ApertureType.NUMERICAL_APERTURE:
-            self.front_ap_combo.setCurrentIndex(1)  # NA
-            self.front_ap_spin.setValue(sys.aperture_value)
-        elif sys.aperture_type == ApertureType.F_NUMBER:
-            self.front_ap_combo.setCurrentIndex(2)  # F/#
-            self.front_ap_spin.setValue(sys.aperture_value)
-        # Legacy sync
-        self.aperture_type_combo.setCurrentIndex(sys.aperture_type.value)
-        self.aperture_spin.setValue(sys.aperture_value)
+        # Апертура (п. 12): способ задания + значение
+        self.set_aperture(sys.aperture_type, sys.aperture_value)
 
         # Диафрагма
         self.stop_nd_spin.setValue(sys.stop_surface)
@@ -1260,9 +1248,13 @@ class MainWindow(QMainWindow):
         """Phase 1: Fast synchronous computations (< 0.5 s)."""
         return self._calc_controller.do_calc_phase1(sys)
 
-    def _do_calc_phase2(self, sys, defocus, azimuth):
+    def _do_calc_phase2(self, sys, defocus, azimuth,
+                        focus_step: float = None):
         """Phase 2: Heavy computations (fans, MTF, PSF, Zernike, etc.)."""
-        return self._calc_controller.do_calc_phase2(sys, defocus, azimuth)
+        from aberrations import DEFAULT_FOCUS_STEP_MM
+        return self._calc_controller.do_calc_phase2(
+            sys, defocus, azimuth,
+            DEFAULT_FOCUS_STEP_MM if focus_step is None else focus_step)
 
     def _on_calc_error(self, err):
         """Handle calculation error from worker thread."""
@@ -1563,49 +1555,42 @@ class MainWindow(QMainWindow):
 
 
     def _show_ray_table(self):
-        """Показать таблицу координат габаритных лучей (#7)."""
-        from aberrations import compute_ray_coordinates
+        """Показать таблицы габаритных лучей (#7).
+
+        Те же таблицы, что на вкладке «Лучи (ход)» панели анализа
+        (единая точка построения — ``_build_gauge_rays_tables``).
+        """
+        from aberrations import compute_gauge_rays
         sys = self.current_system
-        wl = get_primary_wl(sys)
         try:
-            coords = compute_ray_coordinates(sys, wl=wl, field_y=0.0)
+            rays = compute_gauge_rays(sys, wl=get_primary_wl(sys), field_y=0.0)
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка трассировки: {e}")
             return
-        if not coords:
+        if not rays:
             QMessageBox.information(self, "Таблица", "Нет данных")
             return
 
-        from PyQt5.QtWidgets import QDialog, QDialogButtonBox
+        from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QScrollArea, QWidget
         dlg = QDialog(self)
-        dlg.setWindowTitle("Координаты габаритных лучей")
-        dlg.setMinimumSize(800, 400)
+        dlg.setWindowTitle("Габаритные лучи: координаты и ход")
+        dlg.setMinimumSize(900, 500)
         layout = QVBoxLayout(dlg)
 
-        headers = ["Пов.", "X верх", "Y верх", "Z верх",
-                    "X низ", "Y низ", "Z низ",
-                    "X гл.", "Y гл.", "Z гл."]
-        table = QTableWidget()
-        table.setColumnCount(len(headers))
-        table.setHorizontalHeaderLabels(headers)
-        table.setRowCount(len(coords))
-        table.setAlternatingRowColors(True)
-        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setFont(QFont("Consolas", 9))
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        tables = self.analysis._build_gauge_rays_tables(sys, rays)
+        if len(tables) == 1:
+            layout.addWidget(tables[0])
+        else:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            inner = QWidget()
+            inner_layout = QVBoxLayout(inner)
+            inner_layout.setContentsMargins(0, 0, 0, 0)
+            for t in tables:
+                inner_layout.addWidget(t)
+            scroll.setWidget(inner)
+            layout.addWidget(scroll)
 
-        for i, entry in enumerate(coords):
-            table.setItem(i, 0, QTableWidgetItem(str(entry['surface'])))
-            for j, key in enumerate(['x_upper', 'y_upper', 'z_upper',
-                                      'x_lower', 'y_lower', 'z_lower',
-                                      'x_chief', 'y_chief', 'z_chief']):
-                val = entry.get(key)
-                text = f"{val:.4f}" if val is not None else "-"
-                item = QTableWidgetItem(text)
-                item.setTextAlignment(Qt.AlignCenter)
-                table.setItem(i, j + 1, item)
-
-        layout.addWidget(table)
         buttons = QDialogButtonBox(QDialogButtonBox.Close)
         buttons.rejected.connect(dlg.reject)
         layout.addWidget(buttons)
@@ -1618,10 +1603,9 @@ class MainWindow(QMainWindow):
             if 'Волн' in self.analysis.tabText(i):
                 self.analysis.setCurrentIndex(i)
                 break
-        wf = self.analysis.wavefront_map_w
-        wf._mode_3d = not wf._mode_3d
-        wf.update()
-        mode = "3D" if wf._mode_3d else "2D"
+        enabled = not self.analysis.wavefront_3d_enabled
+        self.analysis.set_wavefront_3d(enabled)
+        mode = "3D" if enabled else "2D"
         self.statusBar().showMessage(f"Волновой фронт: {mode}")
 
     def _toggle_chromatic_rays(self):

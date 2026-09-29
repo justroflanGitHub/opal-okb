@@ -8,12 +8,73 @@ from __future__ import annotations
 
 from typing import List
 
-from PyQt5.QtWidgets import QTableWidgetItem
-
 from optics_engine import (
     ApertureType, FieldPoint, ObjectType, OpticalSystem,
     Surface, SurfaceType, Wavelength,
 )
+from optics_utils import (
+    parse_coord_cell, COORD_CELL_TILT_COUNT, COORD_CELL_DECENTER_COUNT,
+)
+
+
+def read_surface_table(table, surfaces: List[Surface]) -> None:
+    """Прочитать ячейки таблицы поверхностей в ``surfaces`` — единственная
+    реализация (переиспользуется контроллерами системы и расчёта).
+
+    Читает радиус R, осевое расстояние d, марку стекла, высоту D/2,
+    коническую постоянную k, наклон X,Y,Z (°) и децентр X,Y (мм).
+    Индексы колонок — :meth:`SurfaceTable._col_indices` (single source
+    of truth раскладки таблицы).  Нечисловые значения k/наклона/децентра
+    молча оставляют прежние (как в OPAL-PC поле EDIT).
+    """
+    cols = table._col_indices()
+    for i in range(min(table.rowCount(), len(surfaces))):
+        surf = surfaces[i]
+        r_item = table.item(i, cols['r'])
+        d_item = table.item(i, cols['d'])
+        g_item = table.item(i, cols['glass'])
+        sd_item = table.item(i, cols['sd'])
+        if r_item:
+            txt = r_item.text().strip()
+            surf.radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
+        if d_item:
+            txt = d_item.text().strip()
+            surf.thickness = float(txt) if txt else 0.0
+        if g_item:
+            glass = g_item.text().strip()
+            surf.glass = glass
+            surf.is_reflective = glass.upper() in ("ЗЕРКАЛО", "MIRROR")
+        if sd_item:
+            txt = sd_item.text().strip()
+            surf.semi_diameter = float(txt) if txt else 0.0
+        k_item = table.item(i, cols['k'])
+        if k_item:
+            txt = k_item.text().strip()
+            try:
+                k_val = float(txt)
+                surf.conic_constant = k_val
+                if abs(k_val) > 1e-10:
+                    surf.surface_type = SurfaceType.CONIC
+                elif surf.surface_type == SurfaceType.CONIC:
+                    surf.surface_type = SurfaceType.SPHERE
+            except ValueError:
+                pass
+        # Наклон X,Y,Z (°) и децентр X,Y (мм) — п. 17; формат ячеек и
+        # разбор — utils/optics_utils.py (единая реализация)
+        tilt_item = table.item(i, cols['tilt'])
+        if tilt_item:
+            try:
+                surf.tilt_x, surf.tilt_y, surf.tilt_z = parse_coord_cell(
+                    tilt_item.text(), COORD_CELL_TILT_COUNT)
+            except ValueError:
+                pass  # нечисловое значение — оставляем прежнее
+        dec_item = table.item(i, cols['dec'])
+        if dec_item:
+            try:
+                surf.decenter_x, surf.decenter_y = parse_coord_cell(
+                    dec_item.text(), COORD_CELL_DECENTER_COUNT)
+            except ValueError:
+                pass
 
 
 class SystemController:
@@ -43,48 +104,13 @@ class SystemController:
         """Read all UI fields into ``main_window.current_system``.
 
         Parses the surface table (radius, thickness, glass, semi-diameter,
-        conic constant) and the system parameter widgets (aperture, field
-        points, wavelengths, etc.).
+        conic constant, tilt/decenter — :func:`read_surface_table`) and the
+        system parameter widgets (aperture, field points, wavelengths, etc.).
         """
         sys = self.mw.current_system
-        n_wl = max(1, len(sys.wavelengths))
-        sd_col = 4 + n_wl     # D/2
-        k_col = 4 + n_wl + 2  # k
 
         # Surfaces
-        for i in range(min(self.mw.surface_table.rowCount(), len(sys.surfaces))):
-            r_item = self.mw.surface_table.item(i, 1)
-            d_item = self.mw.surface_table.item(i, 2)
-            g_item = self.mw.surface_table.item(i, 3)
-            sd_item = self.mw.surface_table.item(i, sd_col)
-            if r_item:
-                txt = r_item.text().strip()
-                sys.surfaces[i].radius = float(txt) if txt not in ("∞", "inf", "") else 0.0
-            if d_item:
-                txt = d_item.text().strip()
-                sys.surfaces[i].thickness = float(txt) if txt else 0.0
-            if g_item:
-                glass = g_item.text().strip()
-                sys.surfaces[i].glass = glass
-                if glass.upper() in ("ЗЕРКАЛО", "MIRROR"):
-                    sys.surfaces[i].is_reflective = True
-                else:
-                    sys.surfaces[i].is_reflective = False
-            if sd_item:
-                txt = sd_item.text().strip()
-                sys.surfaces[i].semi_diameter = float(txt) if txt else 0.0
-            k_item = self.mw.surface_table.item(i, k_col)
-            if k_item:
-                txt = k_item.text().strip()
-                try:
-                    k_val = float(txt)
-                    sys.surfaces[i].conic_constant = k_val
-                    if abs(k_val) > 1e-10:
-                        sys.surfaces[i].surface_type = SurfaceType.CONIC
-                    elif sys.surfaces[i].surface_type == SurfaceType.CONIC:
-                        sys.surfaces[i].surface_type = SurfaceType.SPHERE
-                except ValueError:
-                    pass
+        read_surface_table(self.mw.surface_table, sys.surfaces)
 
         # System-level parameters
         sp = self.mw.sys_params
@@ -95,17 +121,8 @@ class SystemController:
         sys.image_type = ObjectType.INFINITE if sp.img_type_combo.currentIndex() == 0 else ObjectType.FINITE
         sys.object_height = sp.obj_height_spin.value()
 
-        ap_idx = sp.front_ap_combo.currentIndex()
-        ap_val = sp.front_ap_spin.value()
-        if ap_idx == 0:  # Y height (D/2)
-            sys.aperture_type = ApertureType.ENTRANCE_PUPIL
-            sys.aperture_value = ap_val * 2
-        elif ap_idx == 1:  # NA
-            sys.aperture_type = ApertureType.NUMERICAL_APERTURE
-            sys.aperture_value = ap_val
-        else:  # F/#
-            sys.aperture_type = ApertureType.F_NUMBER
-            sys.aperture_value = ap_val
+        # Апертура: способ задания + значение из UI (п. 12 GAP v2)
+        sys.aperture_type, sys.aperture_value = sp.aperture_from_ui()
 
         sys.obscuration_ratio = sp.obscuration_spin.value() / 100.0
         sys.beam_mode = "real" if sp.beam_mode_combo.currentIndex() == 0 else "given"

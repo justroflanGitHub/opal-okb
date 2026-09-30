@@ -122,10 +122,63 @@ def _create_from_generator(gen_name):
 
 
 def _create_from_opj(filepath):
-    """Загрузить систему из OPJ файла."""
+    """Загрузить систему из OPJ файла.
+
+    Standalone .OPJ встречаются в двух раскладках: «standalone» (R,d
+    интерливом, fileio/opj_io.load_opj) и компактной LBO (fileio/decode_lbo).
+    Пробуем оба декодера и выбираем лучший по объективным критериям
+    (число поверхностей, стёкла, совпадение f' с именем системы).
+    """
     from opj_reader import load_opj
-    sys, _info = load_opj(filepath)
-    return sys
+    sys_opj, _info = load_opj(filepath)
+    try:
+        with open(filepath, 'rb') as f:
+            data = f.read()
+        from decode_lbo_opj import decode_lbo_opj
+        sys_lbo = decode_lbo_opj(data)
+    except Exception:
+        sys_lbo = None
+    return _pick_better_system(sys_opj, sys_lbo, filepath)
+
+
+# Совпадение f' из имени системы (f'=104, F'=100, ...)
+import re as _re
+_F_NAME_RE = _re.compile(r"[fF]['\u2032]?=\s*(-?\d+(?:\.\d+)?)")
+
+
+def _system_score(sys_obj, name_hint=None):
+    """Оценка качества декодирования: больше — лучше."""
+    if sys_obj is None or not getattr(sys_obj, 'surfaces', None):
+        return -1e9
+    from optics_engine import paraxial_trace
+    n = len(sys_obj.surfaces)
+    n_glass = sum(1 for s in sys_obj.surfaces if s.glass)
+    score = float(n) + 3.0 * n_glass
+    try:
+        f = paraxial_trace(sys_obj).get('focal_length', 0) or 0
+    except Exception:
+        f = 0
+    if f and abs(f) > 1e-6:
+        score += 5.0                      # непустой параксиал — уже хорошо
+        m = _F_NAME_RE.search(name_hint or sys_obj.name or '')
+        if m:
+            target = abs(float(m.group(1)))
+            if target > 0:
+                ratio = abs(abs(f) - target) / target
+                if ratio < 0.08:
+                    score += 50.0         # f' совпал с именем — сильный сигнал
+                elif ratio < 0.25:
+                    score += 10.0
+    return score
+
+
+def _pick_better_system(a, b, name_hint=None):
+    """Вернуть систему с большей оценкой декодирования."""
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return a if _system_score(a, name_hint) >= _system_score(b, name_hint) else b
 
 
 def _create_from_opj_bytes(opj_data, is_lbo=False):

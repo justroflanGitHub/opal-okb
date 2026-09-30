@@ -286,10 +286,19 @@ class OpticalSystemView(QWidget):
         
         z_range = z_max - z_min
         y_range = y_max * 2
+        # Защита от вырожденных/бесконечных диапазонов (мусорные данные)
+        if not (z_range > 1e-9) or not math.isfinite(z_range):
+            z_range = 100.0
+            z_min, z_max = -z_range / 2, z_range / 2
+        if not (y_range > 1e-9) or not math.isfinite(y_range):
+            y_max = 15.0
+            y_range = y_max * 2
         draw_w = w - 2 * margin
         draw_h = h - 2 * margin
         
         base_scale = min(draw_w / z_range, draw_h / y_range)
+        if not math.isfinite(base_scale) or base_scale <= 0:
+            base_scale = 1.0
         scale = base_scale * self._zoom
         
         cx = w / 2 + self._pan_x
@@ -303,16 +312,21 @@ class OpticalSystemView(QWidget):
         
         # ===== Сетка (лёгкая) =====
         painter.setPen(QPen(self.COLOR_GRID, 1))
-        # Вертикальные линии через каждые 10мм
+        # Вертикальные линии через каждые 10мм; при гигантском z-диапазоне
+        # укрупняем шаг, чтобы число итераций оставалось конечным
         z_step = 10
         if self._zoom > 3: z_step = 5
         if self._zoom > 10: z_step = 1
-        z = z_min - z_min % z_step
-        while z <= z_max:
+        if z_range > 1e6:
+            z_step = z_range / 200.0
+        z = z_min - z_min % z_step if z_step > 0 else z_min
+        n_grid = 0
+        while z <= z_max and n_grid < 2000:
             sx1, sy1 = to_screen(z, y_max)
             sx2, sy2 = to_screen(z, -y_max)
             painter.drawLine(int(sx1), int(sy1), int(sx2), int(sy2))
             z += z_step
+            n_grid += 1
         
         # ===== Оптическая ось (до F') =====
         pen_axis = QPen(self.COLOR_AXIS, 1.5, Qt.SolidLine)
@@ -329,23 +343,28 @@ class OpticalSystemView(QWidget):
         if self.system.object_type == ObjectType.FINITE:
             parax_obj = paraxial_trace(self.system)
             sF = parax_obj.get('sF', 0)
+            obj_z = None
             if sF and abs(sF) > 1e-6:
                 obj_z = -abs(sF)
                 obj_h = self.system.object_height if self.system.object_height else 5.0
-            # Стрелка вверх от оси
-            p_base = to_screen(obj_z, 0)
-            p_top = to_screen(obj_z, obj_h)
-            painter.setPen(QPen(QColor(255, 200, 50), 2))
-            painter.drawLine(int(p_base[0]), int(p_base[1]), int(p_top[0]), int(p_top[1]))
-            # Стрелка
-            arrow_size = max(3, scale * 0.02)
-            painter.drawLine(int(p_top[0]), int(p_top[1]),
-                             int(p_top[0] - arrow_size), int(p_top[1] + arrow_size))
-            painter.drawLine(int(p_top[0]), int(p_top[1]),
-                             int(p_top[0] + arrow_size), int(p_top[1] + arrow_size))
-            painter.setPen(QColor(200, 200, 220))
-            painter.setFont(QFont("Consolas", 8))
-            painter.drawText(int(p_top[0]) - 15, int(p_top[1]) - 5, "Предмет")
+            # Передний фокус недоступен (вырожденная система) — предмет не рисуем;
+            # иначе obj_z не определён и NameError прервёт paintEvent
+            if obj_z is not None:
+                # Стрелка вверх от оси
+                p_base = to_screen(obj_z, 0)
+                p_top = to_screen(obj_z, obj_h)
+                painter.setPen(QPen(QColor(255, 200, 50), 2))
+                painter.drawLine(int(p_base[0]), int(p_base[1]),
+                                 int(p_top[0]), int(p_top[1]))
+                # Стрелка
+                arrow_size = max(3, scale * 0.02)
+                painter.drawLine(int(p_top[0]), int(p_top[1]),
+                                 int(p_top[0] - arrow_size), int(p_top[1] + arrow_size))
+                painter.drawLine(int(p_top[0]), int(p_top[1]),
+                                 int(p_top[0] + arrow_size), int(p_top[1] + arrow_size))
+                painter.setPen(QColor(200, 200, 220))
+                painter.setFont(QFont("Consolas", 8))
+                painter.drawText(int(p_top[0]) - 15, int(p_top[1]) - 5, "Предмет")
         
         # ===== Линзы и зеркала (заливка) =====
         for i, s in enumerate(self.system.surfaces):
@@ -364,12 +383,13 @@ class OpticalSystemView(QWidget):
         # ===== Лучи =====
         for rtype, wl, results in self.ray_results:
             for rr in results:
-                # Пропускаем EDGE-blocked лучи (виньетирование поверхности)
-                # Рисуем только STOP-blocked (диафрагма) и успешные
-                if rr.error == 'EDGE':
+                # EDGE (мимо полудиаметра) рисуем серым до точки среза —
+                # видно, где пучок виньетируется поверхностью;
+                # OBSCURED (экранирование) — пропускаем
+                if rr.error == 'OBSCURED':
                     continue
                 if len(rr.path) >= 2:
-                    self._draw_ray(painter, rr, to_screen, rtype, wl, 
+                    self._draw_ray(painter, rr, to_screen, rtype, wl,
                                    blocked=not rr.success)
         
         # ===== Фокальная точка F' =====

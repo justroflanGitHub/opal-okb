@@ -43,7 +43,12 @@ def _fields(system, count: int = 3):
 
 
 def _assert_parity(ref, nat, ctx: str) -> None:
-    """Посравнивать списки результатов референса и нативного ядра."""
+    """Посравнивать списки результатов референса и нативного ядра.
+
+    Пути и OPL сравниваются и для лучей с ошибками (EDGE/STOP/MISS) —
+    ядро воспроизводит те же точки обрыва; фактическая точность
+    побайтовая (diff == 0.0), допуск 1e-9 — требование TASK_NATIVE.
+    """
     assert len(ref) == len(nat), f'{ctx}: число результатов {len(ref)} != {len(nat)}'
     for i, (r, n) in enumerate(zip(ref, nat)):
         c = f'{ctx}, луч {i}'
@@ -51,8 +56,6 @@ def _assert_parity(ref, nat, ctx: str) -> None:
         assert r.error == n.error, f'{c}: ошибка {r.error!r} != {n.error!r}'
         assert r.surfaces_hit == n.surfaces_hit, \
             f'{c}: поверхностей {r.surfaces_hit} != {n.surfaces_hit}'
-        if r.error is not None:
-            continue  # пути лучей с ошибкой могут обрываться по-разному
         assert len(r.path) == len(n.path), f'{c}: точек пути {len(r.path)} != {len(n.path)}'
         for j, (a, b) in enumerate(zip(r.path, n.path)):
             assert a == pytest.approx(b, abs=ATOL), f'{c}: точка пути {j}: {a} != {b}'
@@ -111,6 +114,27 @@ def test_error_branches_exercised():
     errors = {r.error for r in ref}
     assert 'EDGE' in errors, 'ожидались обрезанные краевые лучи (EDGE)'
     assert 'STOP' in errors, 'ожидалась обрезка апертурной диафрагмой (STOP)'
+
+
+def test_ref_pow_bitparity():
+    """Самопроверка окружения: ``ref_pow(x, 2.0)`` побитово равен ``x ** 2``.
+
+    Референс возводит в квадрат через CPython ``float_pow`` → ucrtbase.dll
+    ``pow``; модуль собран со статическим CRT, поэтому его pow обязан идти
+    через ту же ucrtbase.dll (GetProcAddress при импорте). Если это
+    сломалось (другой CRT/платформа), побайтовый паритет невозможен —
+    подробности в ``native/README.md``.
+    """
+    import struct
+
+    import _opal_native
+
+    # 399.99999992968741935 — реальный az нормали зеркала, на нём
+    # pow и умножение расходятся ровно на 1 ulp (0x…e2823e против …3f)
+    for x in (399.99999992968741935, 0.007500003684924539, -12.3456789,
+              1.0000000000001, 1e-7, 123.456, 0.0, 1.0):
+        assert (struct.pack('>d', x ** 2)
+                == struct.pack('>d', _opal_native.ref_pow(x, 2.0))), repr(x)
 
 
 def test_coord_break_parity():

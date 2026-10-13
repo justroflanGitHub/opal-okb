@@ -10,7 +10,26 @@ All notable changes to OPAL-OKB will be documented in this file.
 побайтово повторяют `analysis/ray_tracing.py` (сфера/асферика-Ньютон,
 векторный Снеллиус, OPL, координатные изломы п. 17, апертурная диафрагма,
 виртуальные поверхности, зеркало). Точки пути и OPL — `atol=1e-9`
-(фактически ≤ 1e-14), флаги ошибок `TIR/MISS/EDGE/STOP/OBSCURED` — точно.
+(фактически **побитово**: diff == 0.0 на всей сетке fan/grid 4 систем ×
+2 λ × 4 зрачка, включая лучи с EDGE/STOP/MISS), флаги ошибок
+`TIR/MISS/EDGE/STOP/OBSCURED` — точно.
+
+Побитовый паритет потребовал двух неочевидных решений (обоих нет в
+«обычном» портировании формул):
+
+1. **`x**2` — это `pow(x, 2.0)`, а не `x*x`**: CPython `float **` зовёт
+   C `pow`, а ucrt `pow(x,2)` отличается от умножения на 1 ulp
+   (замер: `pow(az,2)=…e2823e`, `az*az=…e2823f`; расхождение шло через
+   нормаль зеркала → OPL 1.7e-13). Все места, где референс пишет `**2`
+   (квадратичные формы пересечения, нормали, Снеллиус, стоп/полудиаметр),
+   в C++ зовут `pow2()`.
+2. **pow — именно из `ucrtbase.dll`**: модуль собран со статическим CRT
+   (`/MT`), а ЕГО `libucrt pow(x,2)` округляется иначе (даёт `…82f`, как
+   умножение), тогда как интерпретатор зовёт системную `ucrtbase.dll`
+   (даёт `…82e`). Все вызовы pow идут через указатель, полученный
+   `GetProcAddress`-ом из уже загруженной интерпретатором `ucrtbase.dll`
+   (`_opal_native.ref_pow` — самопроверка в тестах); на Linux — родной
+   `std::pow` (glibc-версия у CPython и модуля одна и та же).
 
 - **`native/`** — C++20 + pybind11: `trace_one`/`trace_batch` (CSR-выход:
   `path_flat` + `path_offsets`), structured dtype `SurfaceData` со
@@ -38,9 +57,12 @@ All notable changes to OPAL-OKB will be documented in this file.
   `tests/test_native_perf.py` — маркер `perf`, обычным прогоном скипается
   (`OPAL_NATIVE_PERF=1`): fan 4096 ≥ 10×.
 - **Бенчмарк**: `scripts/bench_native.py` — таблица до/после (финальная
-  сборка, LTO off): чистое ядро 4096 лучей **27–43×** (achromat 38×,
-  petzval 43×), fan 4096 end-to-end **12–20×** (achromat 14×);
-  `scripts/bench_trace.py` — прежний Python-baseline.
+  сборка, LTO off, честный `pow`-паритет): чистое ядро 4096 лучей
+  **15–21×** (achromat 18.6×, petzval 21.1×), fan 4096 end-to-end
+  **11–14×** (achromat 12.5×, petzval 14.2×); `scripts/bench_trace.py` —
+  прежний Python-baseline. Одиночный луч через фасад медленнее референса
+  (0.1–0.4×): `prepare_surfaces` на один луч не окупается — нативный путь
+  предназначен для батчей.
 
 ## [1.9.1] — 2026-10-01
 

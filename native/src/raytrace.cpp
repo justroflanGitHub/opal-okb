@@ -24,6 +24,10 @@
 #include <type_traits>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>  // GetModuleHandleW/GetProcAddress — см. g_pow ниже
+#endif
+
 namespace py = pybind11;
 
 // ==== Константы (источник — utils/optics_utils.py, НЕ магические числа) ====
@@ -33,6 +37,36 @@ constexpr double TINY    = 1e-15;  // optics_utils.TINY — защита дел�
 constexpr double VIRTUAL_SURFACE_TOL = 1e-6;
 // intersect_aspheric: max_iter=20, tol=EPSILON (значения по умолчанию референса)
 constexpr int NEWTON_MAX_ITER = 20;
+
+// Квадрат ЧЕРЕЗ pow — так делает референс: Python `x ** 2` (CPython
+// float_pow) вызывает C pow(x, 2.0), а ucrt pow может отличаться от x*x
+// на 1 ulp (замерено: pow(az,2)=…e2823e, az*az=…e2823f — расходится и
+// ломает побайтовый паритет). MSVC /fp:precise НЕ сворачивает pow(x,2.0)
+// в x*x — проверено пробником на MSVC 19.50.
+//
+// ВАЖНО (Windows): наш модуль собран со СТАТИЧЕСКИМ CRT (/MT — см.
+// native/CMakeLists.txt: сожительство со старыми msvcp140/vcruntime140
+// из PyQt5/Qt5), а СТАТИЧЕСКИЙ libucrt pow(x,2) даёт …e2823f (как x*x).
+// CPython же зовёт pow из системной ucrtbase.dll → …e2823e. Поэтому все
+// pow идут через указатель g_pow на ucrtbase!pow (инициализация в
+// PYBIND11_MODULE). На прочих платформах — свой std::pow (glibc pow
+// корректно округлён, CPython там зовёт его же).
+static double (__cdecl *g_pow)(double, double) = nullptr;
+
+static void init_ref_pow() {
+#ifdef _WIN32
+    HMODULE h = GetModuleHandleW(L"ucrtbase.dll");  // уже загружена интерпретатором
+    if (h)
+        g_pow = reinterpret_cast<decltype(g_pow)>(GetProcAddress(h, "pow"));
+#endif
+}
+
+// pow, побитово совпадающий с CPython float ** (двойное подчёркивание).
+static inline double ref_pow(double x, double y) {
+    return g_pow ? g_pow(x, y) : std::pow(x, y);
+}
+
+static inline double pow2(double x) { return ref_pow(x, 2.0); }
 
 // ==== Коды ошибок — согласованы со строками TraceResult.error в Python ====
 // 0=OK, 1=TIR, 2=MISS, 3=EDGE; 4=STOP — обрезка апертурной диафрагмой
@@ -94,11 +128,11 @@ static inline bool intersect_sphere(const RayState& ray, double R, double z_surf
     const double dy = ray.y - cy;
     const double dz = ray.z - cz;
 
-    const double a = ray.k * ray.k + ray.l * ray.l + ray.m * ray.m;  // =1 для единичного
+    const double a = pow2(ray.k) + pow2(ray.l) + pow2(ray.m);  // =1 для единичного
     const double b = 2.0 * (dx * ray.k + dy * ray.l + dz * ray.m);
-    const double c = dx * dx + dy * dy + dz * dz - R * R;
+    const double c = pow2(dx) + pow2(dy) + pow2(dz) - pow2(R);
 
-    const double disc = b * b - 4.0 * a * c;
+    const double disc = pow2(b) - 4.0 * a * c;
     if (disc < 0.0) return false;
 
     const double sqrt_disc = std::sqrt(disc);
@@ -157,7 +191,7 @@ static inline bool intersect_aspheric(const RayState& ray, double R, double z_su
         for (int j = 0; j < n_coeffs; ++j) {
             const int e = 2 * (j + 2);  // степень r в самом члене: 4, 6, 8, ...
             if (r > TINY)
-                dz_dr += coeffs[j] * static_cast<double>(e) * std::pow(r, static_cast<double>(e - 1));
+                dz_dr += coeffs[j] * static_cast<double>(e) * ref_pow(r, static_cast<double>(e - 1));
             else
                 dz_dr += 0.0;
         }
@@ -203,16 +237,14 @@ static inline bool intersect_aspheric(const RayState& ray, double R, double z_su
         for (int j = 0; j < n_coeffs; ++j) {
             const int power = 2 * (j + 2);  // A4->r⁴, A6->r⁶, ...
             // Python: r2 ** (power // 2) — именно pow от r² (не r^power!)
-            z_asph_new += coeffs[j] * std::pow(r2, static_cast<double>(power / 2));
+            z_asph_new += coeffs[j] * ref_pow(r2, static_cast<double>(power / 2));
         }
         z = z_asph_new;
 
         if (std::fabs(dt) < EPSILON) break;
     }
 
-    const double t = std::sqrt((x - ray.x) * (x - ray.x) +
-                               (y - ray.y) * (y - ray.y) +
-                               (z - ray.z) * (z - ray.z));
+    const double t = std::sqrt(pow2(x - ray.x) + pow2(y - ray.y) + pow2(z - ray.z));
     if (t < EPSILON) return false;
 
     hx = x;
@@ -235,7 +267,7 @@ static inline void surface_normal_sphere(double x, double y, double z, double R,
     const double ax = x - cx;
     const double ay = y - cy;
     const double az = z - cz;
-    const double norm = std::sqrt(ax * ax + ay * ay + az * az);
+    const double norm = std::sqrt(pow2(ax) + pow2(ay) + pow2(az));
     if (norm < TINY) {
         nx = 0.0;
         ny = 0.0;
@@ -268,7 +300,7 @@ static inline void surface_normal_aspheric(double x, double y, double z, double 
     for (int j = 0; j < n_coeffs; ++j) {
         const int e = 2 * (j + 2);
         if (r > TINY)
-            dz_dr += coeffs[j] * static_cast<double>(e) * std::pow(r, static_cast<double>(e - 1));
+            dz_dr += coeffs[j] * static_cast<double>(e) * ref_pow(r, static_cast<double>(e - 1));
     }
 
     double ax, ay;
@@ -307,7 +339,7 @@ static inline bool refract(double k, double l, double m, double nx, double ny, d
     }
 
     const double eta = n1 / n2;
-    const double sin2_t = eta * eta * (1.0 - cos_i * cos_i);
+    const double sin2_t = pow2(eta) * (1.0 - pow2(cos_i));
     if (sin2_t > 1.0) return false;  // TIR
 
     const double cos_t = std::sqrt(1.0 - sin2_t);
@@ -316,7 +348,7 @@ static inline bool refract(double k, double l, double m, double nx, double ny, d
     const double ln = eta * l + (eta * cos_i - cos_t) * ny;
     const double mn = eta * m + (eta * cos_i - cos_t) * nz;
 
-    const double norm = std::sqrt(kn * kn + ln * ln + mn * mn);
+    const double norm = std::sqrt(pow2(kn) + pow2(ln) + pow2(mn));
     k_new = kn / norm;
     l_new = ln / norm;
     m_new = mn / norm;
@@ -408,7 +440,7 @@ static void trace_one_core(const SurfaceData* surfaces, int32_t n_surf,
             const double dt_stop = (z_stop - cur_z) / cur_m;
             const double sx = cur_x + dt_stop * cur_k;
             const double sy = cur_y + dt_stop * cur_l;
-            const double r_at_stop = std::sqrt(sx * sx + sy * sy);
+            const double r_at_stop = std::sqrt(pow2(sx) + pow2(sy));
 
             if (stop_radius > 0 && r_at_stop > stop_radius) {
                 // Луч обрезан диафрагмой
@@ -464,7 +496,7 @@ static void trace_one_core(const SurfaceData* surfaces, int32_t n_surf,
         }
 
         // -- полудиаметр (в локальной СК), точка — в глобальной --
-        const double r_hit = std::sqrt(hx * hx + hy * hy);
+        const double r_hit = std::sqrt(pow2(hx) + pow2(hy));
         double gx, gy, gz;
         if (!s.is_coord_break) {
             gx = hx; gy = hy; gz = hz;
@@ -712,6 +744,10 @@ static py::dict py_surface_dtype() {
 PYBIND11_MODULE(_opal_native, m) {
     m.doc() = "OPAL-OKB: нативное C++ ядро трассировки лучей (паритет analysis/ray_tracing.py)";
 
+    // Привязка pow к ucrtbase.dll ДО любого вызова трассировки (паритет
+    // с CPython float ** — см. комментарий у g_pow).
+    init_ref_pow();
+
     // Константы референса (utils/optics_utils.py) — для интроспекции/тестов
     m.attr("EPSILON") = EPSILON;
     m.attr("TINY") = TINY;
@@ -726,6 +762,10 @@ PYBIND11_MODULE(_opal_native, m) {
 
     m.def("surface_dtype", &py_surface_dtype,
           "Спецификация numpy structured dtype для SurfaceData (names/formats/offsets/itemsize).");
+
+    m.def("ref_pow", &ref_pow, py::arg("x"), py::arg("y"),
+          "pow, побитово совпадающий с CPython float ** (ucrtbase.dll на Windows); "
+          "для самопроверки паритета в тестах.");
 
     m.def("trace_one", &py_trace_one,
           py::arg("surfaces"), py::arg("ray"), py::arg("wl") = 0.58756,

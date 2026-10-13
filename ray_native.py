@@ -413,7 +413,9 @@ def _make_fan_rays(system: OpticalSystem, num_rays: int, pupil_range: float,
         l = y_start - obj_y           # l = y_start − obj_y
         m = np.full(num_rays, obj_dist)
         k = np.zeros(num_rays)
-        norm = np.sqrt(k * k + l * l + m * m)
+        # **2 в референсе = CPython float_pow → C pow(x, 2.0); np.power с
+        # показателем 2.0 тоже зовёт pow поэлементно (не целочисленный путь).
+        norm = np.sqrt(np.power(k, 2.0) + np.power(l, 2.0) + np.power(m, 2.0))
         rays = np.column_stack([
             np.zeros(num_rays), np.full(num_rays, obj_y),
             np.full(num_rays, -obj_dist),
@@ -546,7 +548,8 @@ def trace_grid_3d_native(system: OpticalSystem, num_rings: int = 3,
             else:
                 obj_y = field_y
                 k, l, m = 0.0, 0.0 - obj_y, obj_dist
-                norm = math.sqrt(k * k + l * l + m * m)
+                # **2 — как в референсе (CPython float_pow → C pow)
+                norm = math.sqrt(k ** 2 + l ** 2 + m ** 2)
                 rays_flat.append((0.0, obj_y, -obj_dist,
                                   k / norm, l / norm, m / norm))
             layout.append(1)
@@ -566,7 +569,8 @@ def trace_grid_3d_native(system: OpticalSystem, num_rings: int = 3,
                 dy = py - obj_y
                 dz_val = z_pupil - (-obj_dist)
                 k, l, m = dx, dy, dz_val
-                norm = math.sqrt(k * k + l * l + m * m)
+                # **2 — как в референсе (CPython float_pow → C pow)
+                norm = math.sqrt(k ** 2 + l ** 2 + m ** 2)
                 rays_flat.append((0.0, obj_y, -obj_dist,
                                   k / norm, l / norm, m / norm))
         layout.append(num_azimuths)

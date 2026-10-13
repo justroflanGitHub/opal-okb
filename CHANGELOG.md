@@ -2,6 +2,44 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.10.0] — 2026-10-13
+
+### Нативное C++ ядро трассировки лучей (TASK_NATIVE): `_opal_native.pyd` (pybind11)
+
+Паритет важнее скорости: формулы и порядок операций `native/src/raytrace.cpp`
+побайтово повторяют `analysis/ray_tracing.py` (сфера/асферика-Ньютон,
+векторный Снеллиус, OPL, координатные изломы п. 17, апертурная диафрагма,
+виртуальные поверхности, зеркало). Точки пути и OPL — `atol=1e-9`
+(фактически ≤ 1e-14), флаги ошибок `TIR/MISS/EDGE/STOP/OBSCURED` — точно.
+
+- **`native/`** — C++20 + pybind11: `trace_one`/`trace_batch` (CSR-выход:
+  `path_flat` + `path_offsets`), structured dtype `SurfaceData` со
+  спецификацией из C++ (`surface_dtype()`, `offsetof` — единственный источник
+  раскладки, Python и C++ разойтись не могут). Показатели преломления и
+  матрицы изломов СК готовит Python-фасад (`glass_catalog`, `domain.spatial`)
+  — дисперсия и тригонометрия в C++ не дублируются. GIL отпускается на время
+  батча.
+- **`native/build.bat`** — сборка одной командой (каскад: MSVC `vcvars64` →
+  портативный MinGW-w64 в `%LOCALAPPDATA%\opal-native-toolchain` → g++ из
+  PATH; cmake/ninja/pybind11 из pip). Флаги паритета: MSVC
+  `/O2 /fp:precise` + **статический CRT `/MT`** (биндинг к чужим старым
+  `VCRUNTIME140.dll` из `PyQt5\Qt5\bin` через pytest-qt давал access
+  violation при LoadLibrary), gcc/clang — `-O2 -ffp-contract=off`
+  (запрет FMA-сжатия).
+- **`ray_native.py`** — Python-фасад: `prepare_surfaces`/`trace_batch`/
+  `trace_one`/`trace_fan_native`/`trace_grid_3d_native` (генерация лучей —
+  через существующие `optics_utils` helpers, без дублей логики поля);
+  при отсутствии `.pyd` — прозрачный fallback на Python-референс с тем же
+  интерфейсом результатов.
+- **Тесты**: `tests/test_native_parity.py` — fan 33×3 поля×2 λ на
+  achromat/telephoto/petzval/mirror + coord-break/экранирование/асферика/
+  увеличенный зрачок (ветки EDGE/STOP) — 22 зелёных;
+  `tests/test_native_perf.py` — маркер `perf`, обычным прогоном скипается
+  (`OPAL_NATIVE_PERF=1`): fan 4096 ≥ 10×.
+- **Бенчмарк**: `scripts/bench_native.py` — таблица до/после: чистое ядро
+  4096 лучей **25.6–53.9×** (achromat 36×, petzval 54×), fan 4096 end-to-end
+  **9.2–22.5×**; `scripts/bench_trace.py` — прежний Python-baseline.
+
 ## [1.9.1] — 2026-10-01
 
 ### Массовый фикс отображения каталога (по report.md: было 319/697 FAIL → 0 пустых, 0 «зависаний», 540/697 численно OK)

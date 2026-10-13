@@ -2,6 +2,47 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.10.1] — 2026-10-13
+
+### Интеграция нативного ядра в горячие пути приложения (TASK_INTEGRATE)
+
+Массовые расчёты (GUI-анализ, оптимизатор, визуализация) переведены на
+нативную трассировку **без изменения результатов**: генерация лучей — те
+же выражения на Python, трассировка — одним батчем
+`ray_native.trace_batch` (побайтовый паритет гарантируют
+`tests/test_native_parity.py`; при отсутствии `.pyd` фасад сам падает на
+Python-референс). Одиночные лучи (главные лучи полей, хроматизм
+увеличения) сознательно оставлены на `trace_ray_through_system` —
+батч из одного луча не окупается (`prepare_surfaces` доминирует).
+
+- **`analysis/aberrations.py`** — `_trace_ray_list` хелпер (батч + guard
+  пустого входа) и перевод восьми массовых функций: `trace_aberration_fan`
+  (таблицы поперечных/продольных/волновых аберраций, неизопланатизм),
+  `compute_spot_diagram` (точечные диаграммы GUI и **оценочная функция
+  оптимизатора** — `_merit_function` гоняет её λ×поле×итерации),
+  `compute_field_aberrations` и `compute_chief_ray_characteristics`
+  (меридиональные/сагиттальные веера по полям), `compute_focus_curve`
+  (сетка 30×30), `compute_spot_diagram_at_defocus` (сетка 100×100 ×5
+  позиций — `compute_focus_diagrams`), `compute_oblique_fan`,
+  `trace_wavefront_hexapolar` (волновой фронт/Цернике).
+- **`visualization.py`** — осевой пучок (`set_system_fast`) и полный ход
+  лучей (`_trace_all_rays`, хроматика по всем λ) через
+  `trace_fan_native`; **`visualization3d.py`** — 3D-сетка зрачка в
+  `_trace_rays` через `trace_grid_3d_native`. Неиспользуемые импорты
+  референсной трассировки убраны.
+- **`scripts/bench_native.py`** — секция «integration spots»: реальные
+  вызовы приложения A/B через подмену `ray_native.native_supports`
+  (fallback на Python-референс, тот же код — честный «до»). Замер
+  (achromat/telephoto/petzval/mirror): точечная диаграмма 30×30
+  **3.9–8.2×**, оценочная функция оптимизатора **2.8–9.0×** (умножается
+  на итерации DLS/simplex × line search), фокусировочные диаграммы
+  5×40² **3.5–7.4×**, ход лучей 2D-визуализации **1.8–3.1×** (веера по
+  11 лучей — выигрыш меньше, там доминирует подготовка поверхностей).
+  3D-визуализация = ≤3 λ × ≤2 поля вызовов `trace_grid_3d 3×8` (строка
+  в таблице; ручной замер — кнопка «Trace 3D Rays»).
+- `main.py` напрямую трассировку не зовёт (работает через слой анализа),
+  `optimizer.py` ускоряется опосредованно через `compute_spot_diagram`.
+
 ## [1.10.0] — 2026-10-13
 
 ### Нативное C++ ядро трассировки лучей (TASK_NATIVE): `_opal_native.pyd` (pybind11)

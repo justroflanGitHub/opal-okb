@@ -9,7 +9,19 @@
 сетка зрачка), плюс чистое ядро без Python-обёртки и fan 4096 из ТЗ.
 Строки «facade» включают генерацию лучей/подготовку поверхностей и
 оборачивание результатов в namedtuple (честный end-to-end).
+
+Секция «integration spots» (TASK_INTEGRATE): реальные массовые вызовы
+приложения — analysis/aberrations.py (таблицы аберраций GUI, оценочная
+функция оптимизатора), visualization.py (ход лучей). «До» получается
+подменой ``ray_native.native_supports`` → ``trace_batch`` уходит на
+Python-референс с тем же интерфейсом: измерается именно эффект
+интеграции, без дублирования логики в бенче.
+
+visualization3d._trace_rays = wl(≤3) × поле(≤2) вызовов «trace_grid_3d
+3×8» из таблицы выше (замер вручную: кнопка «Trace 3D Rays» в GUI;
+инстанцирование QOpenGLWidget в headless-бенче ненадёжно).
 """
+import os
 import statistics
 import sys
 import time
@@ -42,6 +54,21 @@ def bench(fn, repeats: int = 5) -> float:
 def fmt_row(label: str, t_py: float, t_nat: float) -> str:
     """Строка таблицы: scenario | Python | C++ | speedup."""
     return f"{label:36s} {t_py:10.2f} {t_nat:10.2f} {t_py / t_nat:9.1f}x"
+
+
+def _with_python_core(fn):
+    """Выполнить ``fn()`` с выключенным нативным ядром (fallback).
+
+    ``ray_native.trace_batch`` при ``native_supports() == False`` идёт по
+    Python-референсу с тем же интерфейсом результатов — это честный
+    «до» для интеграционных точек (тот же код приложения, другое ядро).
+    """
+    saved = ray_native.native_supports
+    ray_native.native_supports = lambda system: False
+    try:
+        return fn()
+    finally:
+        ray_native.native_supports = saved
 
 
 def run_system(name: str) -> None:
@@ -101,6 +128,65 @@ def run_system(name: str) -> None:
         print(fmt_row("trace_grid_3d 3x16", t_py, t_nat))
     except Exception as exc:  # pragma: no cover — зависит от системы
         print(f"trace_grid_3d 3x16: skipped ({exc})")
+
+    run_integration_spots(system, wl)
+
+
+def run_integration_spots(system, wl: float) -> None:
+    """Секция «integration spots»: реальные вызовы приложения, A/B ядро.
+
+    Замеряет функции, которые после TASK_INTEGRATE трассируются нативным
+    батчем: точечные диаграммы и фокусировочные диаграммы
+    (analysis/aberrations.py, они же — оценочная функция оптимизатора),
+    ход лучей 2D-визуализации (visualization.py, offscreen Qt).
+    """
+    import optimizer
+    from analysis import aberrations as ab
+
+    print("-- integration spots (app-level, same code, core A/B) --")
+
+    spot = lambda: ab.compute_spot_diagram(system, wl=wl, num_rays=30)  # noqa: E731
+    t_py = bench(lambda: _with_python_core(spot), repeats=3)
+    t_nat = bench(spot, repeats=3)
+    print(fmt_row("spot_diagram 30 grid", t_py, t_nat))
+
+    merit = lambda: optimizer._merit_function(system, [], num_rays=20)  # noqa: E731
+    t_py = bench(lambda: _with_python_core(merit), repeats=3)
+    t_nat = bench(merit, repeats=3)
+    print(fmt_row("optimizer merit 20 rays", t_py, t_nat))
+
+    focus = lambda: ab.compute_focus_diagrams(system, wl=wl, num_rays=40)  # noqa: E731
+    t_py = bench(lambda: _with_python_core(focus), repeats=3)
+    t_nat = bench(focus, repeats=3)
+    print(fmt_row("focus_diagrams 5x40 grid", t_py, t_nat))
+
+    # visualization.py: реальный вызов виджета без GUI-ивента (offscreen).
+    # set_system_fast — мгновенный осевой пучок при правке системы,
+    # _trace_all_rays (через set_system) — полный ход лучей по всем λ.
+    try:
+        os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+        from PyQt5.QtWidgets import QApplication
+        import visualization
+        app = QApplication.instance() or QApplication([])
+        view = visualization.OpticalSystemView()
+
+        t_py = bench(lambda: _with_python_core(
+            lambda: view.set_system_fast(system)), repeats=3)
+        t_nat = bench(lambda: view.set_system_fast(system), repeats=3)
+        print(fmt_row("viz set_system_fast 11 fan", t_py, t_nat))
+
+        def _viz_full():
+            view.chromatic_rays = True
+            view.set_system(system, trace_rays=True)
+
+        t_py = bench(lambda: _with_python_core(_viz_full), repeats=3)
+        t_nat = bench(_viz_full, repeats=3)
+        print(fmt_row("viz _trace_all_rays chromatic", t_py, t_nat))
+        view.deleteLater()
+        app.processEvents()
+    except Exception as exc:  # pragma: no cover — зависит от окружения
+        print(f"visualization rows: skipped ({exc}); "
+              f"замер вручную: открыть систему в GUI → «Рассчитать»")
 
 
 def main() -> int:

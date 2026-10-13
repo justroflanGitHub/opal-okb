@@ -37,9 +37,10 @@ All notable changes to OPAL-OKB will be documented in this file.
   увеличенный зрачок (ветки EDGE/STOP) — 22 зелёных;
   `tests/test_native_perf.py` — маркер `perf`, обычным прогоном скипается
   (`OPAL_NATIVE_PERF=1`): fan 4096 ≥ 10×.
-- **Бенчмарк**: `scripts/bench_native.py` — таблица до/после: чистое ядро
-  4096 лучей **25.6–53.9×** (achromat 36×, petzval 54×), fan 4096 end-to-end
-  **9.2–22.5×**; `scripts/bench_trace.py` — прежний Python-baseline.
+- **Бенчмарк**: `scripts/bench_native.py` — таблица до/после (финальная
+  сборка, LTO off): чистое ядро 4096 лучей **27–43×** (achromat 38×,
+  petzval 43×), fan 4096 end-to-end **12–20×** (achromat 14×);
+  `scripts/bench_trace.py` — прежний Python-baseline.
 
 ## [1.9.1] — 2026-10-01
 

@@ -10,6 +10,7 @@ from optics_engine import (OpticalSystem, Surface, SurfaceType, ObjectType,
                            Wavelength, FieldPoint, paraxial_trace)
 from ray_tracing import (Ray, trace_ray_through_system, refract,
                          surface_normal, surface_normal_aspheric)
+import ray_native
 from glass_catalog import compute_refractive_index
 from optics_utils import (compute_z_positions, get_primary_wl, get_effective_aperture,
                           make_field_ray, EPSILON, TINY)
@@ -27,6 +28,31 @@ DEFAULT_ISOPLANATISM_EPS_DEG = 0.5
 # Опорное поле (град) для нормировки, если у системы не задано ни одной
 # точки поля и object_height == 0.
 FALLBACK_ISOPLANATISM_REF_FIELD_DEG = 1.0
+
+
+def _trace_ray_list(system: OpticalSystem, rays: List[Ray],
+                    wl: float) -> List[ray_native.TraceResultNative]:
+    """Протрассировать список лучей одним батчем (горячие пути анализа).
+
+    Все массовые расчёты этого модуля (веера, сетки зрачка, точечные
+    диаграммы) трассируются через нативное C++ ядро
+    ``ray_native.trace_batch``; при отсутствии ``_opal_native.pyd`` фасад
+    сам падает на Python-референс с тем же интерфейсом результатов.
+    Генерация лучей остаётся здесь — значения лучей те же, что раньше
+    подавались в ``trace_ray_through_system`` по одному.
+
+    Args:
+        system: Оптическая система.
+        rays: Лучи (:class:`Ray`) в порядке трассировки.
+        wl: Длина волны (мкм).
+
+    Returns:
+        Результаты в порядке лучей; пустой список для пустого входа.
+    """
+    if not rays:
+        return []
+    return ray_native.trace_batch(
+        system, [(r.x, r.y, r.z, r.k, r.l, r.m) for r in rays], wl)
 
 
 def _compute_ray_start(system, parax):
@@ -306,19 +332,19 @@ def trace_aberration_fan(sys: OpticalSystem, wl: float,
     opl_chief = _chief_reference_opl(sys, wl, field_y, z_start, z_pupil,
                                      ref_center, ref_r)
 
-    results = []
-
+    # Генерация веера — теми же выражениями, что и раньше по одному лучу;
+    # трассировка — одним батчем (нативное ядро)
+    pupils: List[float] = []
+    fan_rays: List[Ray] = []
     for i in range(num_rays):
         # Зрачковая координата от -1 до 1
         pupil_y = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
-        y_start = pupil_y * aperture / 2
+        pupils.append(pupil_y)
+        fan_rays.append(make_field_ray(sys, 0, pupil_y * aperture / 2,
+                                       field_y, z_start, z_pupil))
 
-        # Создаём луч
-        ray = make_field_ray(sys, 0, y_start, field_y, z_start, z_pupil)
-
-        # Трассировка
-        result = trace_ray_through_system(sys, ray, wl)
-
+    results = []
+    for pupil_y, result in zip(pupils, _trace_ray_list(sys, fan_rays, wl)):
         if result.success and len(result.path) >= 2:
             last = result.path[-1]
 
@@ -434,15 +460,14 @@ def compute_spot_diagram(sys: OpticalSystem, wl: float = 0.58756,
                 if px**2 + py**2 <= 1.0:
                     pupil_coords.append((px, py))
 
+    # Сетка зрачка → один батч (нативное ядро); главный луч остался
+    # одиночной трассировкой выше (одиночный луч батчем не окупается)
+    rays = [make_field_ray(sys, px * aperture / 2, py * aperture / 2,
+                           field_y, z_start, z_pupil)
+            for px, py in pupil_coords]
+
     spots = []
-    for px, py in pupil_coords:
-        y_start = py * aperture / 2
-        x_start = px * aperture / 2
-
-        ray = make_field_ray(sys, x_start, y_start, field_y, z_start, z_pupil)
-
-        result = trace_ray_through_system(sys, ray, wl)
-
+    for result in _trace_ray_list(sys, rays, wl):
         if result.success and result.path:
             last = result.path[-1]
             dx = last[0] - chief_x
@@ -608,14 +633,18 @@ def compute_field_aberrations(system: OpticalSystem,
             y_parax = field_y
 
         # ===== 2. Меридиональный веер (в плоскости Y-Z, varying y_start) =====
-        merid_rays = []
+        # Генерация веера + трассировка батчем (нативное ядро)
+        merid_pupils: List[float] = []
+        merid_fan: List[Ray] = []
         for i in range(num_fan_rays):
             py = -1.0 + 2.0 * i / (num_fan_rays - 1)
             y_start = py * aperture / 2
+            merid_pupils.append(py)
 
             if system.object_type == ObjectType.INFINITE:
                 # Лучи с полевым углом + смещение по Y — aim through entrance pupil
-                ray = make_field_ray(system, 0, y_start, field_y, z_start, z_pupil)
+                merid_fan.append(make_field_ray(system, 0, y_start, field_y,
+                                                z_start, z_pupil))
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
@@ -623,8 +652,11 @@ def compute_field_aberrations(system: OpticalSystem,
                          k=0, l=y_start / d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
+                merid_fan.append(ray)
 
-            res = trace_ray_through_system(system, ray, wl)
+        merid_rays = []
+        for py, res in zip(merid_pupils,
+                           _trace_ray_list(system, merid_fan, wl)):
             if res.success and len(res.path) >= 2:
                 last = res.path[-1]
                 prev = res.path[-2]
@@ -634,14 +666,17 @@ def compute_field_aberrations(system: OpticalSystem,
                                    'slope_y': slope_y, 'pupil': py})
 
         # ===== 3. Сагиттальный веер (в плоскости X-Z, varying x_start) =====
-        sag_rays = []
+        sag_pupils: List[float] = []
+        sag_fan: List[Ray] = []
         for i in range(num_fan_rays):
             px = -1.0 + 2.0 * i / (num_fan_rays - 1)
             x_start = px * aperture / 2
+            sag_pupils.append(px)
 
             if system.object_type == ObjectType.INFINITE:
                 # Сагиттальный луч: поле по Y, смещение по X — aim through entrance pupil
-                ray = make_field_ray(system, x_start, 0, field_y, z_start, z_pupil)
+                sag_fan.append(make_field_ray(system, x_start, 0, field_y,
+                                              z_start, z_pupil))
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
@@ -649,8 +684,10 @@ def compute_field_aberrations(system: OpticalSystem,
                          k=x_start / d, l=0, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
+                sag_fan.append(ray)
 
-            res = trace_ray_through_system(system, ray, wl)
+        sag_rays = []
+        for px, res in zip(sag_pupils, _trace_ray_list(system, sag_fan, wl)):
             if res.success and len(res.path) >= 2:
                 last = res.path[-1]
                 prev = res.path[-2]
@@ -779,20 +816,26 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
         # Через меридиональный и сагиттальный веера
         num_fan = 15
 
-        # Меридиональный веер (в Y-Z плоскости, pupil в Y)
-        merid_rays = []
+        # Меридиональный веер (в Y-Z плоскости, pupil в Y) — батчем
+        merid_pupils: List[float] = []
+        merid_fan: List[Ray] = []
         for i in range(num_fan):
             py = -1.0 + 2.0 * i / (num_fan - 1)
             y_start = py * aperture / 2
+            merid_pupils.append(py)
             if system.object_type == ObjectType.INFINITE:
-                ray = make_field_ray(system, 0, y_start, field_y, z_start, z_pupil)
+                merid_fan.append(make_field_ray(system, 0, y_start, field_y,
+                                                z_start, z_pupil))
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
                 ray = Ray(x=0, y=y_start + field_y, z=obj_z, k=0, l=y_start / d, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
-            res = trace_ray_through_system(system, ray, wl)
+                merid_fan.append(ray)
+        merid_rays = []
+        for py, res in zip(merid_pupils,
+                           _trace_ray_list(system, merid_fan, wl)):
             if res.success and len(res.path) >= 2:
                 last = res.path[-1]
                 prev = res.path[-2]
@@ -800,20 +843,25 @@ def compute_chief_ray_characteristics(system: OpticalSystem, wl: float = None) -
                 slope_y = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else 0
                 merid_rays.append({'y': last[1], 'z': last[2], 'slope_y': slope_y, 'pupil': py})
 
-        # Сагиттальный веер (в X-Z плоскости, pupil в X)
-        sag_rays = []
+        # Сагиттальный веер (в X-Z плоскости, pupil в X) — батчем
+        sag_pupils: List[float] = []
+        sag_fan: List[Ray] = []
         for i in range(num_fan):
             px = -1.0 + 2.0 * i / (num_fan - 1)
             x_start = px * aperture / 2
+            sag_pupils.append(px)
             if system.object_type == ObjectType.INFINITE:
-                ray = make_field_ray(system, x_start, 0, field_y, z_start, z_pupil)
+                sag_fan.append(make_field_ray(system, x_start, 0, field_y,
+                                              z_start, z_pupil))
             else:
                 obj_z = -system.surfaces[0].thickness if system.surfaces else -50
                 d = abs(obj_z)
                 ray = Ray(x=x_start, y=field_y, z=obj_z, k=x_start / d, l=0, m=1)
                 norm = math.sqrt(ray.k**2 + ray.l**2 + ray.m**2)
                 ray.k /= norm; ray.l /= norm; ray.m /= norm
-            res = trace_ray_through_system(system, ray, wl)
+                sag_fan.append(ray)
+        sag_rays = []
+        for px, res in zip(sag_pupils, _trace_ray_list(system, sag_fan, wl)):
             if res.success and len(res.path) >= 2:
                 last = res.path[-1]
                 prev = res.path[-2]
@@ -879,9 +927,8 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
     z_start, z_pupil = _compute_ray_start(system, parax)
 
     # Трассируем сетку лучей на зрачке - получаем позиции и направления
-    # на выходе в плоскость изображения
-    exit_rays = []  # [(x, y, z, kx, ky)]  - kx,ky = dx/dz, dy/dz
-
+    # на выходе в плоскость изображения (один батч, нативное ядро)
+    grid_rays: List[Ray] = []
     for i in range(num_rays):
         for j in range(num_rays):
             px = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
@@ -890,21 +937,20 @@ def compute_focus_curve(system, wl=0.58756, num_points=40, defocus_range=2.0,
             if px**2 + py**2 > 1.0:
                 continue
 
-            y_start = py * aperture / 2
-            x_start = px * aperture / 2
+            grid_rays.append(make_field_ray(
+                system, px * aperture / 2, py * aperture / 2,
+                field_y, z_start, z_pupil))
 
-            ray = make_field_ray(system, x_start, y_start, field_y, z_start, z_pupil)
-
-            result = trace_ray_through_system(system, ray, wl)
-
-            if result.success and len(result.path) >= 2:
-                last = result.path[-1]
-                prev = result.path[-2]
-                dz = last[2] - prev[2]
-                if abs(dz) > 1e-12:
-                    kx = (last[0] - prev[0]) / dz
-                    ky = (last[1] - prev[1]) / dz
-                    exit_rays.append((last[0], last[1], last[2], kx, ky))
+    exit_rays = []  # [(x, y, z, kx, ky)]  - kx,ky = dx/dz, dy/dz
+    for result in _trace_ray_list(system, grid_rays, wl):
+        if result.success and len(result.path) >= 2:
+            last = result.path[-1]
+            prev = result.path[-2]
+            dz = last[2] - prev[2]
+            if abs(dz) > 1e-12:
+                kx = (last[0] - prev[0]) / dz
+                ky = (last[1] - prev[1]) / dz
+                exit_rays.append((last[0], last[1], last[2], kx, ky))
 
     if not exit_rays:
         return []
@@ -1201,26 +1247,28 @@ def compute_spot_diagram_at_defocus(system, wl=0.58756, num_rays=100, field_y=0.
     img_z = z_pos[-1]
     target_z = img_z + defocus_mm
 
-    # Трассируем сетку лучей
-    exit_rays = []  # [(x, y, z, kx, ky)]
+    # Трассируем сетку лучей (один батч, нативное ядро)
+    grid_rays: List[Ray] = []
     for i in range(num_rays):
         for j in range(num_rays):
             px = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
             py = -1.0 + 2.0 * j / (num_rays - 1) if num_rays > 1 else 0.0
             if px**2 + py**2 > 1.0:
                 continue
-            y_start = py * aperture / 2
-            x_start = px * aperture / 2
-            ray = make_field_ray(system, x_start, y_start, field_y, z_start, z_pupil)
-            result = trace_ray_through_system(system, ray, wl)
-            if result.success and len(result.path) >= 2:
-                last = result.path[-1]
-                prev = result.path[-2]
-                dz = last[2] - prev[2]
-                if abs(dz) > 1e-12:
-                    kx = (last[0] - prev[0]) / dz
-                    ky = (last[1] - prev[1]) / dz
-                    exit_rays.append((last[0], last[1], last[2], kx, ky))
+            grid_rays.append(make_field_ray(
+                system, px * aperture / 2, py * aperture / 2,
+                field_y, z_start, z_pupil))
+
+    exit_rays = []  # [(x, y, z, kx, ky)]
+    for result in _trace_ray_list(system, grid_rays, wl):
+        if result.success and len(result.path) >= 2:
+            last = result.path[-1]
+            prev = result.path[-2]
+            dz = last[2] - prev[2]
+            if abs(dz) > 1e-12:
+                kx = (last[0] - prev[0]) / dz
+                ky = (last[1] - prev[1]) / dz
+                exit_rays.append((last[0], last[1], last[2], kx, ky))
 
     if not exit_rays:
         return []
@@ -1470,23 +1518,26 @@ def compute_oblique_fan(system, wl=0.58756, num_rays=20, field_y=0.0, azimuth_de
     chief_x = chief_result.path[-1][0]
     chief_y = chief_result.path[-1][1]
 
-    pupil_heights = []
-    dy_mer_um = []
-    dy_sag_um = []
-
+    # Генерация веера косого сечения + трассировка батчем (нативное ядро)
+    pupils: List[float] = []
+    fan_rays: List[Ray] = []
     for i in range(num_rays):
         h = -1.0 + 2.0 * i / (num_rays - 1) if num_rays > 1 else 0.0
+        pupils.append(h)
 
         # Раскладываем зрачковую координату по меридиональному и сагиттальному направлениям
         # с учётом азимутального угла
         y_start = h * math.cos(az) * aperture / 2  # меридиональная компонента
         x_start = h * math.sin(az) * aperture / 2  # сагиттальная компонента
 
-        ray = _pupil_field_ray(system, x_start, y_start, field_y,
-                               z_start, z_pupil)
+        fan_rays.append(_pupil_field_ray(system, x_start, y_start, field_y,
+                                         z_start, z_pupil))
 
-        result = trace_ray_through_system(system, ray, wl)
+    pupil_heights = []
+    dy_mer_um = []
+    dy_sag_um = []
 
+    for h, result in zip(pupils, _trace_ray_list(system, fan_rays, wl)):
         if result.success and result.path:
             last = result.path[-1]
             dx = (last[0] - chief_x) * 1000  # мм -> мкм
@@ -1670,11 +1721,14 @@ def trace_wavefront_hexapolar(system: OpticalSystem, wl: float = None,
     chief_opl = _chief_reference_opl(system, wl, field_y, z_start, z_pupil,
                                      ref_center, ref_r)
 
+    # Гексаполярная сетка зрачка — одним батчем (нативное ядро)
+    pupil_pts = _hexapolar_points(num_rings=num_rings)
+    rays = [make_field_ray(system, px * aperture / 2, py * aperture / 2,
+                           field_y, z_start, z_pupil)
+            for px, py in pupil_pts]
+
     points = []
-    for px, py in _hexapolar_points(num_rings=num_rings):
-        ray = make_field_ray(system, px * aperture / 2, py * aperture / 2,
-                             field_y, z_start, z_pupil)
-        result = trace_ray_through_system(system, ray, wl)
+    for (px, py), result in zip(pupil_pts, _trace_ray_list(system, rays, wl)):
         if result.success and result.path:
             points.append((px, py,
                            _ray_wavefront(system, result, chief_opl,

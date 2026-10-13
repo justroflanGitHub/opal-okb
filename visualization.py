@@ -13,7 +13,7 @@ from PyQt5.QtGui import (QPainter, QPen, QBrush, QColor, QFont,
                           QMouseEvent, QCursor, QTransform)
 
 from optics_engine import OpticalSystem, Surface, ObjectType, paraxial_trace
-from ray_tracing import trace_fan, TraceResult
+import ray_native
 from optics_utils import compute_z_positions, get_primary_wl, get_effective_aperture
 
 
@@ -94,8 +94,8 @@ class OpticalSystemView(QWidget):
             self.ray_results = []
             wl = get_primary_wl(sys)
             # Только осевой пучок, num_rays=11 — быстро (<100мс)
-            # trace_fan now auto-reduces pupil_range if needed
-            axial = trace_fan(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
+            # trace_fan_native auto-reduces pupil_range if needed
+            axial = ray_native.trace_fan_native(sys, num_rays=11, pupil_range=1.0, wl=wl, field_y=0.0)
             self.ray_results.append(('axial', wl, axial))
         self.update()
     
@@ -136,17 +136,17 @@ class OpticalSystemView(QWidget):
                 max_sd = max((s2.semi_diameter for s2 in sys.surfaces if s2.semi_diameter > 0), default=ap_r)
                 pupil_rng = min(max_sd / ap_r * 1.1, 1.3) if ap_r > 0 else 1.0
             
-            # Trace at field angle (trace_fan auto-reduces if EDGE failures)
-            fan = trace_fan(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
+            # Trace at field angle (trace_fan_native auto-reduces if EDGE failures)
+            fan = ray_native.trace_fan_native(sys, num_rays=11, pupil_range=pupil_rng, wl=wl, field_y=field_angle)
             self.ray_results.append(('axial', wl, fan))
-            
+
             # Also trace field=0 (guaranteed axial bundle) if field_angle > 0
             if field_angle > 0:
                 axial_pr = 1.0
                 # For systems with tiny aperture, use conservative pupil_range
                 if ap < 1.0:
                     axial_pr = 0.3
-                axial_fan = trace_fan(sys, num_rays=11, pupil_range=axial_pr, wl=wl, field_y=0.0)
+                axial_fan = ray_native.trace_fan_native(sys, num_rays=11, pupil_range=axial_pr, wl=wl, field_y=0.0)
                 self.ray_results.append(('field0', wl, axial_fan))
     
     def reset_view(self):

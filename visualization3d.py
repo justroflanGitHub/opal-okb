@@ -37,7 +37,7 @@ except ImportError:
     HAS_OPENGL = False
 
 from optics_engine import OpticalSystem, Surface, ObjectType, paraxial_trace
-from ray_tracing import trace_ray_through_system, trace_grid_3d, Ray, TraceResult
+import ray_native
 from optics_utils import compute_z_positions, get_effective_aperture
 
 
@@ -175,8 +175,9 @@ class Visualization3D(QWidget):
         for wl in wavelengths:
             for fa in field_angles:
                 try:
-                    results = trace_grid_3d(sys, num_rings=3, num_azimuths=8,
-                                           wl=wl, field_y=fa)
+                    results = ray_native.trace_grid_3d_native(
+                        sys, num_rings=3, num_azimuths=8,
+                        wl=wl, field_y=fa)
                     if results and any(ring for ring in results):
                         self.ray_data_3d.append((wl, fa, results))
                 except Exception:

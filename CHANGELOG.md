@@ -24,8 +24,9 @@ All notable changes to OPAL-OKB will be documented in this file.
   PATH; cmake/ninja/pybind11 из pip). Флаги паритета: MSVC
   `/O2 /fp:precise` + **статический CRT `/MT`** (биндинг к чужим старым
   `VCRUNTIME140.dll` из `PyQt5\Qt5\bin` через pytest-qt давал access
-  violation при LoadLibrary), gcc/clang — `-O2 -ffp-contract=off`
-  (запрет FMA-сжатия).
+  violation при LoadLibrary) + **LTO выключен** (`PYBIND11_LTO=OFF`:
+  `/GL`+`/LTCG` от pybind11 воспроизводили тот же крэш независимо от CRT),
+  gcc/clang — `-O2 -ffp-contract=off` (запрет FMA-сжатия).
 - **`ray_native.py`** — Python-фасад: `prepare_surfaces`/`trace_batch`/
   `trace_one`/`trace_fan_native`/`trace_grid_3d_native` (генерация лучей —
   через существующие `optics_utils` helpers, без дублей логики поля);

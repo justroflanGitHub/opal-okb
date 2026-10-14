@@ -1,0 +1,117 @@
+=== handler 0x2e73:0x9272 (lin 0x379a2) ===
+0379a2  a39824                  mov word ptr [0x2498], ax
+0379a5  891e9a24                mov word ptr [0x249a], bx
+0379a9  890e9c24                mov word ptr [0x249c], cx
+0379ad  89169e24                mov word ptr [0x249e], dx
+0379b1  893ea024                mov word ptr [0x24a0], di
+0379b5  8936a224                mov word ptr [0x24a2], si
+0379b9  8cc0                    mov ax, es
+0379bb  a3a424                  mov word ptr [0x24a4], ax
+0379be  5b                      pop bx
+0379bf  07                      pop es
+0379c0  9d                      popf 
+0379c1  32e4                    xor ah, ah
+0379c3  268a07                  mov al, byte ptr es:[bx]
+0379c6  43                      inc bx
+0379c7  268b0f                  mov cx, word ptr es:[bx]
+0379ca  43                      inc bx
+0379cb  43                      inc bx
+0379cc  8b369224                mov si, word ptr [0x2492]
+0379d0  81fe8000                cmp si, 0x80
+0379d4  7209                    jb 0x379df
+0379d6  ba4b29                  mov dx, 0x294b
+0379d9  e87efd                  call 0x3775a
+0379dc  e9b702                  jmp 0x37c96
+0379df  8bfe                    mov di, si
+0379e1  d1e7                    shl di, 1
+0379e3  d1e7                    shl di, 1
+0379e5  03fe                    add di, si
+0379e7  46                      inc si
+0379e8  89369224                mov word ptr [0x2492], si
+0379ec  81c7a824                add di, 0x24a8
+0379f0  06                      push es
+0379f1  5e                      pop si
+0379f2  8935                    mov word ptr [di], si
+0379f4  47                      inc di
+0379f5  47                      inc di
+0379f6  891d                    mov word ptr [di], bx
+0379f8  47                      inc di
+0379f9  47                      inc di
+0379fa  8a1ea624                mov bl, byte ptr [0x24a6]
+0379fe  881d                    mov byte ptr [di], bl
+037a00  8bf8                    mov di, ax
+037a02  d1e7                    shl di, 1
+037a04  81c7742a                add di, 0x2a74
+037a08  8b15                    mov dx, word ptr [di]
+037a0a  8bf8                    mov di, ax
+037a0c  81c7b22a                add di, 0x2ab2
+037a10  8a05                    mov al, byte ptr [di]
+037a12  e85000                  call 0x37a65
+037a15  e81bfe                  call 0x37833
+037a18  7309                    jae 0x37a23
+037a1a  ba2829                  mov dx, 0x2928
+037a1d  e83afd                  call 0x3775a
+037a20  e97302                  jmp 0x37c96
+037a23  e82300                  call 0x37a49
+037a26  0e                      push cs
+037a27  bb3092                  mov bx, 0x9230
+037a2a  53                      push bx
+037a2b  52                      push dx
+037a2c  51                      push cx
+037a2d  8e06a424                mov es, word ptr [0x24a4]
+037a31  8b36a224                mov si, word ptr [0x24a2]
+037a35  8b3ea024                mov di, word ptr [0x24a0]
+037a39  8b169e24                mov dx, word ptr [0x249e]
+037a3d  8b0e9c24                mov cx, word ptr [0x249c]
+037a41  8b1e9a24                mov bx, word ptr [0x249a]
+037a45  a19824                  mov ax, word ptr [0x2498]
+037a48  cb                      retf 
+037a49  50                      push ax
+037a4a  06                      push es
+037a4b  e83300                  call 0x37a81
+037a4e  7212                    jb 0x37a62
+037a50  33c0                    xor ax, ax
+037a52  a0a624                  mov al, byte ptr [0x24a6]
+037a55  50                      push ax
+037a56  b80600                  mov ax, 6
+037a59  50                      push ax
+037a5a  9c                      pushf 
+037a5b  ff1ed029                lcall [0x29d0]
+037a5f  83c404                  add sp, 4
+037a62  07                      pop es
+037a63  58                      pop ax
+037a64  c3                      ret 
+037a65  50                      push ax
+037a66  06                      push es
+037a67  e81700                  call 0x37a81
+037a6a  7212                    jb 0x37a7e
+037a6c  33c0                    xor ax, ax
+037a6e  a0a624                  mov al, byte ptr [0x24a6]
+037a71  50                      push ax
+037a72  b80700                  mov ax, 7
+037a75  50                      push ax
+037a76  9c                      pushf 
+037a77  ff1ed029                lcall [0x29d0]
+037a7b  83c404                  add sp, 4
+037a7e  07                      pop es
+037a7f  58                      pop ax
+037a80  c3                      ret 
+037a81  803ed42900              cmp byte ptr [0x29d4], 0
+037a86  740b                    je 0x37a93
+037a88  803ed52900              cmp byte ptr [0x29d5], 0
+037a8d  7402                    je 0x37a91
+037a8f  f8                      clc 
+037a90  c3                      ret 
+037a91  f9                      stc 
+037a92  c3                      ret 
+037a93  c606d42901              mov byte ptr [0x29d4], 1
+037a98  51                      push cx
+037a99  56                      push si
+037a9a  57                      push di
+037a9b  b003                    mov al, 3
+037a9d  b435                    mov ah, 0x35
+037a9f  cd21                    int 0x21
+
+=== int-90 error strings (DS=DGROUP) ===
+0x3364: '\n\rThis program must be run under OPAL-PC\n\r\x07$\n\rThis program must be run under OPA'
+0x3390: '\n\rThis program must be run under OPAL-PC\n\r\x07$/U'

@@ -1,0 +1,102 @@
+=== строки оверлей-менеджера (DGROUP) ===
+0x282a шаблон пути: ''
+0x287a dos<2: 'Incorrect DOS version\r\n'
+0x2892: '\r\nPlease insert diskette containing '
+0x28b7: '\r\nin drive '
+0x2990: '\r\nCannot load overlay:  too many open files\r\n'
+0x2928 overlay not found: '\r\nOverlay not found\r\n'
+
+=== таблица селекторов 0x2a74 (0x40 слов) + байты 0x2ab2 (0x30) ===
+слова: 0000 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 3f60 0100 0101 0101 0101 0101 0101 0101 0101 0101 0101 0101 0202 0202 0202 0202 0002 0000 0000 0000 0000 0000 6f00 6170 616c 652e 6578 0000 0000 0000 003f 4bb1 0000 0000
+байты: 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 02 02 02 02 02 02 02 02 02 00 00 00 00 00 00 00 00 00 00 00 00 6f 70 61 6c 61
+
+=== прямые записи в IVT (26 xx …, адрес < 0x400) ===
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x9c ctx=a3 68 43 a3 66 43 8e 06 ee 2a 26 c7 06 00 00 01 00 26 a3 02
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x22b9 ctx=9d 3c 73 2e 75 12 8e 06 60 2b 26 c7 06 00 00 01 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x22c0 ctx=06 60 2b 26 c7 06 00 00 01 00 26 c7 06 02 00 00 00 8e 06 6a
+  mov es:[imm16],imm16 -> 0x4 @ lin 0x23c5 ctx=c7 06 16 34 00 00 8e 06 60 2b 26 c7 06 04 00 01 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x6 @ lin 0x23cc ctx=06 60 2b 26 c7 06 04 00 01 00 26 c7 06 06 00 00 00 b8 40 00
+  mov es:[imm16],imm16 -> 0x24 @ lin 0x894f ctx=8a 66 f7 9e 74 23 8e 06 f2 2b 26 c7 06 24 00 01 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x26 @ lin 0x8956 ctx=06 f2 2b 26 c7 06 24 00 01 00 26 c7 06 26 00 00 00 b8 68 51
+  mov es:[imm16],imm16 -> 0x28 @ lin 0x8a7e ctx=8a 66 f7 9e 74 50 8e 06 f2 2b 26 c7 06 28 00 01 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x2a @ lin 0x8a85 ctx=06 f2 2b 26 c7 06 28 00 01 00 26 c7 06 2a 00 00 00 26 a1 14
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x187e1 ctx=2e 31 26 a3 00 00 0b c0 75 07 26 c7 06 00 00 01 00 c7 46 fc
+  mov es:[imm16],imm16 -> 0x52 @ lin 0x1883b ctx=2e 31 26 a3 52 00 0b c0 75 07 26 c7 06 52 00 01 00 8e 06 2e
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x1f0f7 ctx=3e 00 00 0a 76 12 8e 06 50 31 26 c7 06 00 00 01 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x1f0fe ctx=06 50 31 26 c7 06 00 00 01 00 26 c7 06 02 00 00 00 c7 46 e6
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x27815 ctx=04 9a 18 e0 f9 0f 8e 06 ec 31 26 c7 06 00 00 06 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x2781c ctx=06 ec 31 26 c7 06 00 00 06 00 26 c7 06 02 00 02 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x4 @ lin 0x27823 ctx=00 06 00 26 c7 06 02 00 02 00 26 c7 06 04 00 04 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x6 @ lin 0x2782a ctx=00 02 00 26 c7 06 04 00 04 00 26 c7 06 06 00 08 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x8 @ lin 0x27831 ctx=00 04 00 26 c7 06 06 00 08 00 26 c7 06 08 00 0b 00 26 c7 06
+  mov es:[imm16],imm16 -> 0xa @ lin 0x27838 ctx=00 08 00 26 c7 06 08 00 0b 00 26 c7 06 0a 00 0f 00 26 c7 06
+  mov es:[imm16],imm16 -> 0xc @ lin 0x2783f ctx=00 0b 00 26 c7 06 0a 00 0f 00 26 c7 06 0c 00 00 00 c4 5e 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x2790a ctx=9d 3c 73 2e 7e 0d 8e 06 ec 31 26 c7 06 02 00 02 00 eb 0b 8e
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x27917 ctx=02 00 02 00 eb 0b 8e 06 ec 31 26 c7 06 02 00 0b 00 8e 06 ec
+  mov es:[imm16],imm16 -> 0x198 @ lin 0x279d8 ctx=f8 00 be 0e 11 b9 08 00 f2 a5 26 c7 06 98 01 08 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x19a @ lin 0x279df ctx=00 f2 a5 26 c7 06 98 01 08 00 26 c7 06 9a 01 00 00 2b c0 89
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x2a315 ctx=16 07 a5 a5 a5 a5 8e 06 42 32 26 c7 06 00 00 66 66 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x2a31c ctx=06 42 32 26 c7 06 00 00 66 66 26 c7 06 02 00 00 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x4 @ lin 0x2a323 ctx=00 66 66 26 c7 06 02 00 00 00 26 c7 06 04 00 ff ff 26 c7 06
+  mov es:[imm16],imm16 -> 0x6 @ lin 0x2a32a ctx=00 00 00 26 c7 06 04 00 ff ff 26 c7 06 06 00 00 00 e9 0e fd
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x2aa54 ctx=19 cd 3f 02 bc 0c 8e 06 42 32 26 c7 06 00 00 ff ff 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x2aa5b ctx=06 42 32 26 c7 06 00 00 ff ff 26 c7 06 02 00 00 00 5e 5f 8b
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x2cc24 ctx=da a5 a5 a5 a5 1f 8e 06 a6 32 26 c7 06 00 00 66 66 26 c7 06
+  mov es:[imm16],imm16 -> 0x2 @ lin 0x2cc2b ctx=06 a6 32 26 c7 06 00 00 66 66 26 c7 06 02 00 00 00 5e 5f 8b
+  mov es:[imm16],imm16 -> 0x20 @ lin 0x2d753 ctx=46 fe 00 00 eb 20 8e 06 58 33 26 c7 06 20 00 04 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x22 @ lin 0x2d75a ctx=06 58 33 26 c7 06 20 00 04 00 26 c7 06 22 00 02 00 eb 27 55
+  mov es:[imm16],imm16 -> 0x20 @ lin 0x2d77c ctx=26 80 3f 00 75 d7 8e 06 58 33 26 c7 06 20 00 02 00 26 c7 06
+  mov es:[imm16],imm16 -> 0x22 @ lin 0x2d783 ctx=06 58 33 26 c7 06 20 00 02 00 26 c7 06 22 00 04 00 c4 5e 0e
+  mov es:[imm16],imm16 -> 0x0 @ lin 0x2e303 ctx=26 89 47 02 eb 0b 8e 06 5a 33 26 c7 06 00 00 01 00 8b e5 5d
+  mov es:[imm16],ax -> 0x2 @ lin 0xa3 ctx=06 ee 2a 26 c7 06 00 00 01 00 26 a3 02 00 26 a3 06 00 26 a3
+  mov es:[imm16],ax -> 0x6 @ lin 0xa7 ctx=c7 06 00 00 01 00 26 a3 02 00 26 a3 06 00 26 a3 04 00 cd 39
+  mov es:[imm16],ax -> 0x4 @ lin 0xab ctx=01 00 26 a3 02 00 26 a3 06 00 26 a3 04 00 cd 39 06 f0 2a cd
+  mov es:[imm16],ax -> 0x0 @ lin 0x3c8 ctx=00 26 8b 16 06 00 8e 06 0a 2b 26 a3 00 00 26 89 16 02 00 8e
+  mov es:[imm16],ax -> 0x0 @ lin 0x228b ctx=00 26 8b 16 0e 00 8e 06 60 2b 26 a3 00 00 26 89 16 02 00 8e
+  mov es:[imm16],ax -> 0x0 @ lin 0x2708 ctx=25 ff a1 cc 44 99 8e 06 6c 2b 26 a3 00 00 26 89 16 02 00 05
+  mov es:[imm16],ax -> 0x6 @ lin 0x6996 ctx=00 02 76 0e 8e 06 c6 2b 2b c0 26 a3 06 00 26 a3 04 00 83 3e
+  mov es:[imm16],ax -> 0x4 @ lin 0x699a ctx=8e 06 c6 2b 2b c0 26 a3 06 00 26 a3 04 00 83 3e c6 45 02 74
+  mov es:[imm16],ax -> 0x2 @ lin 0x69e0 ctx=03 e9 67 fe 8e 06 c6 2b 2b c0 26 a3 02 00 26 a3 00 00 e9 56
+  mov es:[imm16],ax -> 0x0 @ lin 0x69e4 ctx=8e 06 c6 2b 2b c0 26 a3 02 00 26 a3 00 00 e9 56 fe c4 5e 0a
+  mov es:[imm16],ax -> 0x4 @ lin 0x7b1f ctx=47 e4 26 8b 57 e6 8e 06 e4 2b 26 a3 04 00 26 89 16 06 00 c4
+  mov es:[imm16],ax -> 0x26 @ lin 0x8914 ctx=f7 9e 74 1f 8e 06 f2 2b 2b c0 26 a3 26 00 26 a3 24 00 b8 68
+  mov es:[imm16],ax -> 0x24 @ lin 0x8918 ctx=8e 06 f2 2b 2b c0 26 a3 26 00 26 a3 24 00 b8 68 51 bf 40 00
+  mov es:[imm16],ax -> 0x2a @ lin 0x8a16 ctx=f7 9e 74 4c 8e 06 f2 2b 2b c0 26 a3 2a 00 26 a3 28 00 26 a1
+  mov es:[imm16],ax -> 0x28 @ lin 0x8a1a ctx=8e 06 f2 2b 2b c0 26 a3 2a 00 26 a3 28 00 26 a1 10 00 26 0b
+  mov es:[imm16],ax -> 0x4 @ lin 0x8c1f ctx=05 26 8b 16 56 05 8e 06 f2 2b 26 a3 04 00 26 89 16 06 00 9a
+  mov es:[imm16],ax -> 0x2 @ lin 0xf4d3 ctx=7a 50 cd 3d 8e 06 9e 2e 2b c0 26 a3 02 00 26 a3 00 00 cd 39
+  mov es:[imm16],ax -> 0x0 @ lin 0xf4d7 ctx=8e 06 9e 2e 2b c0 26 a3 02 00 26 a3 00 00 cd 39 06 f8 3b cd
+  mov es:[imm16],ax -> 0x0 @ lin 0x186e6 ctx=8b 07 26 8b 57 02 8e 06 2a 31 26 a3 00 00 26 89 16 02 00 b8
+  mov es:[imm16],ax -> 0x31 @ lin 0x18769 ctx=00 26 8b 16 02 00 8e 06 2c 31 26 a3 31 00 26 89 16 33 00 c7
+  mov es:[imm16],ax -> 0x0 @ lin 0x187d9 ctx=50 9a 36 39 73 2e 8e 06 2e 31 26 a3 00 00 0b c0 75 07 26 c7
+  mov es:[imm16],ax -> 0x52 @ lin 0x18833 ctx=50 9a 36 39 73 2e 8e 06 2e 31 26 a3 52 00 0b c0 75 07 26 c7
+  mov es:[imm16],ax -> 0xf6 @ lin 0x1885c ctx=b9 28 00 f2 a5 1f 26 a1 00 00 26 a3 f6 00 c7 46 fc 50 00 c7
+  mov es:[imm16],ax -> 0xa4 @ lin 0x188ab ctx=50 9a 36 39 73 2e 8e 06 2e 31 26 a3 a4 00 89 46 f4 eb 04 83
+  mov es:[imm16],ax -> 0xa4 @ lin 0x1890a ctx=c4 0e 8e 06 2e 31 8b 46 f4 40 26 a3 a4 00 b8 0c 00 ba be 46
+  mov es:[imm16],ax -> 0x2 @ lin 0x18b39 ctx=2e 83 c4 02 8e 06 30 31 2b c0 26 a3 02 00 26 a3 00 00 c4 5e
+  mov es:[imm16],ax -> 0x0 @ lin 0x18b3d ctx=8e 06 30 31 2b c0 26 a3 02 00 26 a3 00 00 c4 5e 12 26 89 47
+  mov es:[imm16],ax -> 0x0 @ lin 0x18d87 ctx=8e 06 30 31 8b 46 e0 8b 56 e2 26 a3 00 00 26 89 16 02 00 8d
+  mov es:[imm16],ax -> 0x4 @ lin 0x19246 ctx=f2 ab aa 8e 06 38 31 a1 52 38 26 a3 04 00 a1 56 38 8b 16 58
+  mov es:[imm16],ax -> 0x0 @ lin 0x19251 ctx=a3 04 00 a1 56 38 8b 16 58 38 26 a3 00 00 26 89 16 02 00 c4
+  mov es:[imm16],ax -> 0x20 @ lin 0x1f8e6 ctx=a3 14 5d a1 be 38 8b 16 c0 38 26 a3 20 00 26 89 16 22 00 a1
+  mov es:[imm16],ax -> 0xf6 @ lin 0x20557 ctx=50 9a 36 39 73 2e 8e 06 58 31 26 a3 f6 00 3d 01 00 74 54 8b
+  mov es:[imm16],ax -> 0x0 @ lin 0x20f59 ctx=06 60 31 26 a1 00 00 80 cc 20 26 a3 00 00 8e 06 62 31 26 a1
+  mov es:[imm16],ax -> 0x0 @ lin 0x20f77 ctx=06 60 31 26 a1 00 00 80 cc 08 26 a3 00 00 c7 46 f8 30 00 c7
+  mov es:[imm16],ax -> 0x2 @ lin 0x21125 ctx=0b c0 74 0e 8e 06 68 31 2b c0 26 a3 02 00 26 a3 00 00 c7 46
+  mov es:[imm16],ax -> 0x0 @ lin 0x21129 ctx=8e 06 68 31 2b c0 26 a3 02 00 26 a3 00 00 c7 46 fc 06 00 c7
+  mov es:[imm16],ax -> 0x2 @ lin 0x211b5 ctx=0b c0 74 0e 8e 06 70 31 2b c0 26 a3 02 00 26 a3 00 00 5e 5f
+  mov es:[imm16],ax -> 0x0 @ lin 0x211b9 ctx=8e 06 70 31 2b c0 26 a3 02 00 26 a3 00 00 5e 5f 8b e5 5d cb
+  mov es:[imm16],ax -> 0x0 @ lin 0x2dcae ctx=4f 73 2e 83 c4 0c 8e 06 5a 33 26 a3 00 00 0b c0 74 03 e9 46
+  mov es:[imm16],ax -> 0x0 @ lin 0x2dd67 ctx=4f 73 2e 83 c4 0c 8e 06 5a 33 26 a3 00 00 0b c0 74 03 e9 8d
+  mov es:[imm16],ax -> 0x0 @ lin 0x2de48 ctx=4f 73 2e 83 c4 0c 8e 06 5a 33 26 a3 00 00 0b c0 74 03 e9 ac
+  mov es:[imm16],ax -> 0x0 @ lin 0x2df01 ctx=4f 73 2e 83 c4 0c 8e 06 5a 33 26 a3 00 00 0b c0 74 03 e9 f3
+
+=== int 11h (equipment) контексты ===
+
+=== push 0; pop es и пр. ===
+
+=== opala.exe хвост после load image: 0xcbe6 байт ===
+голова: 52 05 60 3f 47 05 60 3f 3e 05 60 3f 06 05 60 3f 01 05 60 3f f6 04 60 3f eb 04 60 3f e0 04 60 3f
+OPALTRAC.EXE: size=0xa92e, MZ=True, совпадение с хвостом 274/43310
+OPALCALC.EXE: size=0x164a0, MZ=True, совпадение с хвостом 640/52198
+METAPRN.EXE: size=0x52348, MZ=True, совпадение с хвостом 672/52198

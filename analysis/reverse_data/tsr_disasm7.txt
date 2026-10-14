@@ -1,0 +1,208 @@
+=== сегмент 0: lin 0x0..0x70 ===
+000000  55                      push bp
+000001  8bec                    mov bp, sp
+000003  83ec18                  sub sp, 0x18
+000006  57                      push di
+000007  56                      push si
+000008  c70600436400            mov word ptr [0x4300], 0x64
+00000e  c70602430000            mov word ptr [0x4302], 0
+000014  c746fc5000              mov word ptr [bp - 4], 0x50
+000019  c746fa0400              mov word ptr [bp - 6], 4
+00001e  c746f80400              mov word ptr [bp - 8], 4
+000023  b8a200                  mov ax, 0xa2
+000026  1e                      push ds
+000027  50                      push ax
+000028  b87843                  mov ax, 0x4378
+00002b  1e                      push ds
+00002c  50                      push ax
+00002d  b8fc42                  mov ax, 0x42fc
+000030  1e                      push ds
+000031  50                      push ax
+000032  b80a43                  mov ax, 0x430a
+000035  1e                      push ds
+000036  50                      push ax
+000037  b80443                  mov ax, 0x4304
+00003a  1e                      push ds
+00003b  50                      push ax
+00003c  8d46f6                  lea ax, [bp - 0xa]
+00003f  a34419                  mov word ptr [0x1944], ax
+000042  8c164619                mov word ptr [0x1946], ss
+000046  9aa686f90f              lcall 0xff9, 0x86a6
+00004b  a10443                  mov ax, word ptr [0x4304]
+00004e  0b060643                or ax, word ptr [0x4306]
+000052  7403                    je 0x57
+000054  e9d606                  jmp 0x72d
+000057  c70600340100            mov word ptr [0x3400], 1
+00005d  c70602340000            mov word ptr [0x3402], 0
+000063  c706f4330400            mov word ptr [0x33f4], 4
+000069  c706f6330000            mov word ptr [0x33f6], 0
+
+=== 0x35e18 (init-call #1) ===
+035e18  55                      push bp
+035e19  8bec                    mov bp, sp
+035e1b  55                      push bp
+035e1c  8e1ee320                mov ds, word ptr [0x20e3]
+035e20  33c9                    xor cx, cx
+035e22  8bc1                    mov ax, cx
+035e24  8be9                    mov bp, cx
+035e26  8bf9                    mov di, cx
+035e28  49                      dec cx
+035e29  8b362c00                mov si, word ptr [0x2c]
+035e2d  0bf6                    or si, si
+035e2f  7410                    je 0x35e41
+035e31  8ec6                    mov es, si
+035e33  26803e000000            cmp byte ptr es:[0], 0
+035e39  7406                    je 0x35e41
+035e3b  f2ae                    repne scasb al, byte ptr es:[di]
+035e3d  45                      inc bp
+035e3e  ae                      scasb al, byte ptr es:[di]
+035e3f  75fa                    jne 0x35e3b
+035e41  45                      inc bp
+035e42  97                      xchg di, ax
+035e43  40                      inc ax
+035e44  24fe                    and al, 0xfe
+035e46  8bfd                    mov di, bp
+035e48  d1e5                    shl bp, 1
+035e4a  d1e5                    shl bp, 1
+035e4c  03c5                    add ax, bp
+035e4e  16                      push ss
+035e4f  1f                      pop ds
+035e50  57                      push di
+035e51  bf0900                  mov di, 9
+035e54  e89b0c                  call 0x36af2
+035e57  5f                      pop di
+035e58  8bcf                    mov cx, di
+035e5a  8bfd                    mov di, bp
+035e5c  03f8                    add di, ax
+035e5e  892e0621                mov word ptr [0x2106], bp
+035e62  8c1e0821                mov word ptr [0x2108], ds
+035e66  1e                      push ds
+035e67  07                      pop es
+035e68  8ede                    mov ds, si
+035e6a  33f6                    xor si, si
+035e6c  49                      dec cx
+035e6d  e317                    jcxz 0x35e86
+035e6f  813c3b43                cmp word ptr [si], 0x433b
+035e73  7409                    je 0x35e7e
+035e75  897e00                  mov word ptr [bp], di
+035e78  8c4602                  mov word ptr [bp + 2], es
+035e7b  83c504                  add bp, 4
+035e7e  ac                      lodsb al, byte ptr [si]
+035e7f  aa                      stosb byte ptr es:[di], al
+035e80  0ac0                    or al, al
+035e82  75fa                    jne 0x35e7e
+035e84  e2e9                    loop 0x35e6f
+035e86  894e00                  mov word ptr [bp], cx
+035e89  894e02                  mov word ptr [bp + 2], cx
+035e8c  16                      push ss
+035e8d  1f                      pop ds
+035e8e  5d                      pop bp
+035e8f  8be5                    mov sp, bp
+035e91  5d                      pop bp
+035e92  cb                      retf 
+
+=== 0x35e94 (init-call #2) ===
+035e94  8f061e21                pop word ptr [0x211e]
+035e98  8f062021                pop word ptr [0x2120]
+035e9c  ba0200                  mov dx, 2
+035e9f  3816e520                cmp byte ptr [0x20e5], dl
+035ea3  7429                    je 0x35ece
+035ea5  8e06e320                mov es, word ptr [0x20e3]
+035ea9  268e062c00              mov es, word ptr es:[0x2c]
+035eae  8c060c21                mov word ptr [0x210c], es
+035eb2  33c0                    xor ax, ax
+035eb4  99                      cdq 
+035eb5  b90080                  mov cx, 0x8000
+035eb8  33ff                    xor di, di
+035eba  f2ae                    repne scasb al, byte ptr es:[di]
+035ebc  ae                      scasb al, byte ptr es:[di]
+035ebd  75fb                    jne 0x35eba
+035ebf  47                      inc di
+035ec0  47                      inc di
+035ec1  893e0a21                mov word ptr [0x210a], di
+035ec5  b9ffff                  mov cx, 0xffff
+035ec8  f2ae                    repne scasb al, byte ptr es:[di]
+035eca  f7d1                    not cx
+035ecc  8bd1                    mov dx, cx
+035ece  bf0100                  mov di, 1
+035ed1  be8100                  mov si, 0x81
+035ed4  8e1ee320                mov ds, word ptr [0x20e3]
+035ed8  ac                      lodsb al, byte ptr [si]
+035ed9  3c20                    cmp al, 0x20
+035edb  74fb                    je 0x35ed8
+035edd  3c09                    cmp al, 9
+035edf  74f7                    je 0x35ed8
+035ee1  3c0d                    cmp al, 0xd
+035ee3  746f                    je 0x35f54
+035ee5  0ac0                    or al, al
+035ee7  746b                    je 0x35f54
+035ee9  47                      inc di
+035eea  4e                      dec si
+035eeb  ac                      lodsb al, byte ptr [si]
+035eec  3c20                    cmp al, 0x20
+035eee  74e8                    je 0x35ed8
+035ef0  3c09                    cmp al, 9
+035ef2  74e4                    je 0x35ed8
+035ef4  3c0d                    cmp al, 0xd
+035ef6  745c                    je 0x35f54
+035ef8  0ac0                    or al, al
+035efa  7458                    je 0x35f54
+035efc  3c22                    cmp al, 0x22
+035efe  7424                    je 0x35f24
+035f00  3c5c                    cmp al, 0x5c
+035f02  7403                    je 0x35f07
+035f04  42                      inc dx
+035f05  ebe4                    jmp 0x35eeb
+035f07  33c9                    xor cx, cx
+035f09  41                      inc cx
+035f0a  ac                      lodsb al, byte ptr [si]
+035f0b  3c5c                    cmp al, 0x5c
+035f0d  74fa                    je 0x35f09
+035f0f  3c22                    cmp al, 0x22
+035f11  7404                    je 0x35f17
+035f13  03d1                    add dx, cx
+035f15  ebd3                    jmp 0x35eea
+035f17  8bc1                    mov ax, cx
+035f19  d1e9                    shr cx, 1
+035f1b  13d1                    adc dx, cx
+035f1d  a801                    test al, 1
+
+=== 0x35c1c (init-call #3) ===
+035c1c  b430                    mov ah, 0x30
+035c1e  cd21                    int 0x21
+035c20  a3e520                  mov word ptr [0x20e5], ax
+035c23  b80035                  mov ax, 0x3500
+035c26  cd21                    int 0x21
+035c28  891ed120                mov word ptr [0x20d1], bx
+035c2c  8c06d320                mov word ptr [0x20d3], es
+035c30  0e                      push cs
+035c31  1f                      pop ds
+035c32  b80025                  mov ax, 0x2500
+035c35  ba993f                  mov dx, 0x3f99
+035c38  cd21                    int 0x21
+035c3a  16                      push ss
+035c3b  1f                      pop ds
+035c3c  8b0e582a                mov cx, word ptr [0x2a58]
+035c40  e32e                    jcxz 0x35c70
+035c42  8e06e320                mov es, word ptr [0x20e3]
+035c46  268b362c00              mov si, word ptr es:[0x2c]
+035c4b  c5065a2a                lds ax, ptr [0x2a5a]
+035c4f  8cda                    mov dx, ds
+035c51  33db                    xor bx, bx
+035c53  36ff1e562a              lcall ss:[0x2a56]
+035c58  7305                    jae 0x35c5f
+035c5a  16                      push ss
+035c5b  1f                      pop ds
+035c5c  e9b7ff                  jmp 0x35c16
+035c5f  36c5065e2a              lds ax, ptr ss:[0x2a5e]
+035c64  8cda                    mov dx, ds
+035c66  bb0300                  mov bx, 3
+035c69  36ff1e562a              lcall ss:[0x2a56]
+035c6e  16                      push ss
+035c6f  1f                      pop ds
+035c70  8e06e320                mov es, word ptr [0x20e3]
+035c74  268b0e2c00              mov cx, word ptr es:[0x2c]
+035c79  e336                    jcxz 0x35cb1
+035c7b  8ec1                    mov es, cx
+035c7d  33ff                    xor di, di
+

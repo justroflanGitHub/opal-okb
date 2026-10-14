@@ -1,0 +1,94 @@
+=== строки обработчика int 3Fh (DGROUP) ===
+err 0x2928 (lin 0x57c18): 0d 0a 4f 76 65 72 6c 61 79 20 6e 6f 74 20 66 6f 75 6e 64 0d 0a 00 43 61 | ascii=b'\r\nOverlay not found\r\n\x00Ca' | cp866='\r\nOverlay not found\r\n'
+err 0x294b (lin 0x57c3b): 0d 0a 4f 76 65 72 6c 61 79 20 4d 61 6e 61 67 65 72 20 73 74 61 63 6b 20 | ascii=b'\r\nOverlay Manager stack ' | cp866='\r\nOverlay Manager stack overflow\r\n'
+имя файла 0x2add (lin 0x57dcd): 6f 70 61 6c 61 2e 65 78 65 00 00 00 00 00 00 3f 00 b1 4b 00 00 00 00 00 | ascii=b'opala.exe\x00\x00\x00\x00\x00\x00?\x00\xb1K\x00\x00\x00\x00\x00' | cp866='opala.exe'
+таблица слов 0x2a74 (lin 0x57d64): 00 00 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f | ascii=b'\x00\x00`?`?`?`?`?`?`?`?`?`?`?' | cp866=''
+таблица байт 0x2ab2 (lin 0x57da2): 00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01 02 02 | ascii=b'\x00\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x02\x02' | cp866=''
+magic 0x2a38 (lin 0x57d28): 00 00 98 3f 98 3f 98 3f 00 00 00 00 0c 3d 73 2e aa 40 73 2e 50 80 73 2e | ascii=b'\x00\x00\x98?\x98?\x98?\x00\x00\x00\x00\x0c=s.\xaa@s.P\x80s.' | cp866=''
+сигнатура отладчика 0x29c8 (lin 0x57cb8): 43 56 44 45 42 55 47 00 7b 00 00 00 00 00 00 00 00 00 00 00 00 20 00 00 | ascii=b'CVDEBUG\x00{\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00 \x00\x00' | cp866='CVDEBUG'
+
+=== CD 3F (int 3Fh инлайн) в образе ===
+всего 6, в кодовой зоне 6
+  lin 0x37de ctx=f8 a3 44 19 8c 16 46 19 cd 3f 16 00 00 c4 5e 06 a1 d0
+  lin 0x423b ctx=f2 a3 44 19 8c 16 46 19 cd 3f 1c 70 45 eb ce c4 5e 1a
+  lin 0x4329 ctx=ff 76 16 b8 d4 34 1e 50 cd 3f 12 63 52 e9 4c 22 8e 06
+  lin 0x29c67 ctx=f6 a3 44 19 8c 16 46 19 cd 3f 02 bc 0c 5e 5f 8b e5 5d
+  lin 0x2aa4b ctx=f6 a3 44 19 8c 16 46 19 cd 3f 02 bc 0c 8e 06 42 32 26
+  lin 0x2c084 ctx=f6 a3 44 19 8c 16 46 19 cd 3f 02 bc 0c 5e 5f 8b e5 5d
+
+=== стаб-продолжение 0x2e73:0x9230 (lin 0x37960) ===
+037960  a39824                  mov word ptr [0x2498], ax
+037963  891e9a24                mov word ptr [0x249a], bx
+037967  a19224                  mov ax, word ptr [0x2492]
+03796a  48                      dec ax
+03796b  a39224                  mov word ptr [0x2492], ax
+03796e  8bd8                    mov bx, ax
+037970  d1e3                    shl bx, 1
+037972  d1e3                    shl bx, 1
+037974  03d8                    add bx, ax
+037976  81c3a824                add bx, 0x24a8
+03797a  ff37                    push word ptr [bx]
+03797c  43                      inc bx
+03797d  43                      inc bx
+03797e  ff37                    push word ptr [bx]
+037980  43                      inc bx
+037981  43                      inc bx
+037982  32e4                    xor ah, ah
+037984  8a07                    mov al, byte ptr [bx]
+037986  e8dc00                  call 0x37a65
+037989  e8a7fe                  call 0x37833
+03798c  7309                    jae 0x37997
+03798e  ba2829                  mov dx, 0x2928
+037991  e8c6fd                  call 0x3775a
+037994  e9ff02                  jmp 0x37c96
+037997  e8af00                  call 0x37a49
+03799a  8b1e9a24                mov bx, word ptr [0x249a]
+03799e  a19824                  mov ax, word ptr [0x2498]
+0379a1  cb                      retf 
+
+=== 0x37833 (валидатор после диспетчеризации) ===
+037833  50                      push ax
+037834  53                      push bx
+037835  51                      push cx
+037836  52                      push dx
+037837  57                      push di
+037838  56                      push si
+037839  a2a624                  mov byte ptr [0x24a6], al
+03783c  0ac0                    or al, al
+03783e  7406                    je 0x37846
+037840  3a06a724                cmp al, byte ptr [0x24a7]
+037844  7503                    jne 0x37849
+037846  e90f01                  jmp 0x37958
+037849  a2a724                  mov byte ptr [0x24a7], al
+03784c  8bc8                    mov cx, ax
+03784e  33d2                    xor dx, dx
+037850  89169624                mov word ptr [0x2496], dx
+037854  ba2a28                  mov dx, 0x282a
+037857  b000                    mov al, 0
+037859  b43d                    mov ah, 0x3d
+03785b  cd21                    int 0x21
+03785d  732e                    jae 0x3788d
+03785f  3d0400                  cmp ax, 4
+037862  7509                    jne 0x3786d
+037864  ba9029                  mov dx, 0x2990
+037867  e8f0fe                  call 0x3775a
+03786a  e92904                  jmp 0x37c96
+03786d  33d2                    xor dx, dx
+03786f  f7d2                    not dx
+037871  89169624                mov word ptr [0x2496], dx
+037875  ba9228                  mov dx, 0x2892
+037878  e8dffe                  call 0x3775a
+03787b  badd2a                  mov dx, 0x2add
+03787e  e8d9fe                  call 0x3775a
+037881  bab728                  mov dx, 0x28b7
+037884  e8d3fe                  call 0x3775a
+037887  b408                    mov ah, 8
+037889  cd21                    int 0x21
+03788b  ebc7                    jmp 0x37854
+03788d  a39424                  mov word ptr [0x2494], ax
+037890  8bc1                    mov ax, cx
+
+=== таблица 0x2a74 (16 слов) ===
+00 00 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f 60 3f
+=== таблица 0x2ab2 (16 байт) ===
+00 01 01 01 01 01 01 01 01 01 01 01 01 01 01 01

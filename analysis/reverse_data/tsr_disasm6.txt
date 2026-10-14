@@ -1,0 +1,167 @@
+=== стартовый путь RTL: lin 0x3261e (jmp-цель входа) ===
+03261e  b430                    mov ah, 0x30
+032620  cd21                    int 0x21
+032622  3c02                    cmp al, 2
+032624  7302                    jae 0x32628
+032626  cd20                    int 0x20
+032628  bf2f55                  mov di, 0x552f
+03262b  8b360200                mov si, word ptr [2]
+03262f  2bf7                    sub si, di
+032631  81fe0010                cmp si, 0x1000
+032635  7203                    jb 0x3263a
+032637  be0010                  mov si, 0x1000
+03263a  fa                      cli 
+03263b  8ed7                    mov ss, di
+03263d  81c42e65                add sp, 0x652e
+032641  fb                      sti 
+032642  7314                    jae 0x32658
+032644  16                      push ss
+032645  1f                      pop ds
+032646  90                      nop 
+032647  0e                      push cs
+032648  e84737                  call 0x35d92
+03264b  33c0                    xor ax, ax
+03264d  50                      push ax
+03264e  90                      nop 
+03264f  0e                      push cs
+032650  e88e37                  call 0x35de1
+032653  b8ff4c                  mov ax, 0x4cff
+032656  cd21                    int 0x21
+032658  83e4fe                  and sp, 0xfffe
+03265b  3689261a17              mov word ptr ss:[0x171a], sp
+032660  3689261617              mov word ptr ss:[0x1716], sp
+032665  8bc6                    mov ax, si
+032667  b104                    mov cl, 4
+032669  d3e0                    shl ax, cl
+03266b  48                      dec ax
+03266c  36a31417                mov word ptr ss:[0x1714], ax
+032670  03f7                    add si, di
+032672  89360200                mov word ptr [2], si
+032676  8cc3                    mov bx, es
+032678  2bde                    sub bx, si
+03267a  f7db                    neg bx
+03267c  b44a                    mov ah, 0x4a
+03267e  cd21                    int 0x21
+032680  368c1ee320              mov word ptr ss:[0x20e3], ds
+032685  16                      push ss
+032686  07                      pop es
+032687  fc                      cld 
+032688  bfec42                  mov di, 0x42ec
+03268b  b93065                  mov cx, 0x6530
+03268e  2bcf                    sub cx, di
+032690  33c0                    xor ax, ax
+032692  f3aa                    rep stosb byte ptr es:[di], al
+032694  16                      push ss
+032695  1f                      pop ds
+032696  90                      nop 
+032697  0e                      push cs
+032698  e87d37                  call 0x35e18
+03269b  90                      nop 
+03269c  0e                      push cs
+03269d  e8f437                  call 0x35e94
+0326a0  90                      nop 
+0326a1  0e                      push cs
+0326a2  e87735                  call 0x35c1c
+0326a5  16                      push ss
+0326a6  1f                      pop ds
+0326a7  33ed                    xor bp, bp
+0326a9  ff360821                push word ptr [0x2108]
+0326ad  ff360621                push word ptr [0x2106]
+0326b1  ff360421                push word ptr [0x2104]
+0326b5  ff360221                push word ptr [0x2102]
+0326b9  ff360021                push word ptr [0x2100]
+0326bd  9a00000000              lcall 0, 0
+0326c2  50                      push ax
+0326c3  90                      nop 
+0326c4  0e                      push cs
+0326c5  e81f36                  call 0x35ce7
+0326c8  c3                      ret 
+0326c9  b82f55                  mov ax, 0x552f
+0326cc  8ed8                    mov ds, ax
+0326ce  b80300                  mov ax, 3
+0326d1  36c7061817b775          mov word ptr ss:[0x1718], 0x75b7
+0326d8  55                      push bp
+0326d9  8bec                    mov bp, sp
+0326db  50                      push ax
+0326dc  90                      nop 
+0326dd  0e                      push cs
+0326de  e8b136                  call 0x35d92
+0326e1  90                      nop 
+0326e2  0e                      push cs
+0326e3  e8fb36                  call 0x35de1
+0326e6  36813e382ad6d6          cmp word ptr ss:[0x2a38], 0xd6d6
+0326ed  7507                    jne 0x326f6
+0326ef  58                      pop ax
+0326f0  50                      push ax
+0326f1  36ff163c2a              call word ptr ss:[0x2a3c]
+0326f6  b8ff00                  mov ax, 0xff
+0326f9  50                      push ax
+0326fa  0e                      push cs
+0326fb  ff161817                call word ptr [0x1718]
+0326ff  00558b                  add byte ptr [di - 0x75], dl
+032702  ec                      in al, dx
+032703  83ec08                  sub sp, 8
+032706  56                      push si
+032707  8b7604                  mov si, word ptr [bp + 4]
+03270a  8b1e8418                mov bx, word ptr [0x1884]
+03270e  ff068418                inc word ptr [0x1884]
+032712  8a07                    mov al, byte ptr [bx]
+032714  8846fc                  mov byte ptr [bp - 4], al
+032717  2ae4                    sub ah, ah
+032719  50                      push ax
+03271a  8d46f8                  lea ax, [bp - 8]
+03271d  50                      push ax
+03271e  8d46fe                  lea ax, [bp - 2]
+032721  50                      push ax
+032722  e86319                  call 0x34088
+032725  81fef218                cmp si, 0x18f2
+032729  750e                    jne 0x32739
+03272b  8b46fe                  mov ax, word ptr [bp - 2]
+03272e  3d5100                  cmp ax, 0x51
+032731  7e03                    jle 0x32736
+032733  b85100                  mov ax, 0x51
+032736  8946fe                  mov word ptr [bp - 2], ax
+032739  ff76fe                  push word ptr [bp - 2]
+03273c  ff76fa                  push word ptr [bp - 6]
+03273f  ff76f8                  push word ptr [bp - 8]
+032742  1e                      push ds
+032743  56                      push si
+032744  90                      nop 
+032745  0e                      push cs
+032746  e85946                  call 0x36da2
+032749  83c40a                  add sp, 0xa
+
+=== голова сегмента 0: lin 0x60..0x110 (IVT-подобные записи + int 39) ===
+000060  3400                    xor al, 0
+000062  00c7                    add bh, al
+000064  06                      push es
+000065  f4                      hlt 
+000066  3304                    xor ax, word ptr [si]
+000068  00c7                    add bh, al
+00006a  06                      push es
+00006b  f633                    div byte ptr [bp + di]
+00006d  0000                    add byte ptr [bx + si], al
+00006f  2bc0                    sub ax, ax
+000071  a30a34                  mov word ptr [0x340a], ax
+000074  a30834                  mov word ptr [0x3408], ax
+000077  c70604340100            mov word ptr [0x3404], 1
+00007d  a30634                  mov word ptr [0x3406], ax
+000080  a3f233                  mov word ptr [0x33f2], ax
+000083  a3f033                  mov word ptr [0x33f0], ax
+000086  c706f8330400            mov word ptr [0x33f8], 4
+00008c  a3fa33                  mov word ptr [0x33fa], ax
+00008f  a3d834                  mov word ptr [0x34d8], ax
+000092  a36843                  mov word ptr [0x4368], ax
+000095  a36643                  mov word ptr [0x4366], ax
+000098  8e06ee2a                mov es, word ptr [0x2aee]
+00009c  26c70600000100          mov word ptr es:[0], 1
+0000a3  26a30200                mov word ptr es:[2], ax
+0000a7  26a30600                mov word ptr es:[6], ax
+0000ab  26a30400                mov word ptr es:[4], ax
+0000af  cd39                    int 0x39
+0000b1  06                      push es
+
+=== lin 0x2ae0..0x2b10 (что по адресу [0x2aee]) ===
+0055c0  00 00 ff 06 9c 44 83 3e 9c 44 06 7e dd c7 06 18 |.....D.>.D.~....|
+0055d0  34 01 00 c7 06 1a 34 00 00 a1 f8 33 8b 16 fa 33 |4.....4....3...3|
+0055e0  a3 20 34 89 16 22 34 a1 fc 33 8b 16 fe 33 a3 24 |. 4.."4..3...3.$|

@@ -288,7 +288,9 @@ class _GLWidget(QOpenGLWidget):
         glRotatef(self._rot_y, 0.0, 1.0, 0.0)
 
         # Determine scale factor
-        total_z = z_pos[-1] - z_pos[0]
+        # Mirror systems fold the path backwards: total z extent is negative,
+        # take |z| so the whole system (mirror + folded focus) fits the view
+        total_z = abs(z_pos[-1] - z_pos[0])
         max_sd = max((s.semi_diameter for s in sys.surfaces if s.semi_diameter > 0), default=15.0)
         aperture = get_effective_aperture(sys, default=20.0)
         if aperture < 1.0:
@@ -368,7 +370,7 @@ class _GLWidget(QOpenGLWidget):
         # Draw the surface as a disc with sag
         if self.parent3d._show_wireframe:
             # Wireframe mode: just the outline
-            glColor4f(color[0], color[1], color[2], color[3] * 2)
+            glColor4f(color[0], color[1], color[2], min(1.0, color[3] * 2))
             glLineWidth(1.5)
             glBegin(GL_LINE_LOOP)
             for i in range(n_segments):
@@ -381,6 +383,19 @@ class _GLWidget(QOpenGLWidget):
         else:
             # Solid: filled disc
             if is_mirror:
+                # Mirror substrate: nearly-opaque dark disc with sag, so rays
+                # and surfaces behind the mirror don't shine through it
+                glColor4f(0.32, 0.26, 0.10, 0.92)
+                glBegin(GL_TRIANGLE_FAN)
+                sag_center = self._sag(R, 0.0)
+                glVertex3f(0.0, 0.0, z + sag_center)
+                for i in range(n_segments + 1):
+                    a = 2 * math.pi * i / n_segments
+                    x = sd * math.cos(a)
+                    y = sd * math.sin(a)
+                    sag = self._sag(R, math.sqrt(x*x + y*y))
+                    glVertex3f(x, y, z + sag)
+                glEnd()
                 # Mirror: draw front and back arcs
                 glColor4f(color[0], color[1], color[2], color[3])
                 glLineWidth(3.0)
@@ -437,6 +452,10 @@ class _GLWidget(QOpenGLWidget):
 
     def _draw_glass_volume(self, s1, s2, z1, z2, sd, n_segments):
         """Draw a semi-transparent volume between two surfaces."""
+        if s1.is_reflective or s2.is_reflective:
+            # Mirror: after reflection there is no medium behind the surface —
+            # no glass volume may be drawn for/behind a reflecting surface
+            return
         R1 = s1.radius if abs(s1.radius) > 1e-10 else 0.0
         R2 = s2.radius if abs(s2.radius) > 1e-10 else 0.0
 

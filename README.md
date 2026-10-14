@@ -138,7 +138,7 @@ py main.py
 | `glass_catalog.py` | 14 ГОСТ стёкол (встроенный) |
 | `glass_catalog_full.py` | 889 марок из .FIL файлов |
 | `visualization.py` | Ход лучей (QPainter, зум/пан, хроматика) |
-| `aberrations.py` | Spot, Δy', Δs', W, геом. MTF |
+| `aberrations.py` | Spot, Δy', Δs', W, геом. MTF, след Коддингтона Z'm/Z's + радиусы каустик |
 | `diffraction_mtf.py` | Дифракционная ЧКХ через FFT |
 | `advanced_analysis.py` | PSF, LSF, ENC, PTF |
 | `zernike.py` | Полиномы Цернике + хроматика |

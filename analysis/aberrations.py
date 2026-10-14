@@ -1782,3 +1782,454 @@ def compute_wavefront_rms_vs_field(system: OpticalSystem, wl: float = None,
             math.sqrt(sum((w - mean_w) ** 2 for w in ws) / len(ws)))
 
     return (fields, rms_values)
+
+
+# ── След Коддингтона и радиусы каустик (реверс OPAL §7-8) ──────────────────
+#
+# OPAL (analysis/REVERSE_TRACE.md §7-8) считает астигматические отрезки
+# Z'm/Z's дифференциальным следом вдоль главного луча: FUN_1000_e7db
+# (0x1E7DB) засевает массив «углов» B косинусами главного луча, трейсер
+# ведёт 2×2-рекурренцию h' = −(u + c·h); u' = h (0x19553-0x19604) по
+# поверхностям (зеркальный аналог — классические уравнения
+# Коддингтона), FUN_1000_93f3/9897 (0x193F3/0x19897) выдают Z'm/Z's как
+# отношения «высота/угол» h/u (0x1971D/0x197BA; у 9897 — с минусом и
+# множителем n, 0x19C15/0x19C6C — отсчёт в «оптических» переменных) и
+# отсчитывают их от опорной плоскости (0x19976: Z := z_ref − Z).
+# Поворот системы на угол поля (FUN_1000_9232, 0x19232) в порте не
+# нужен: главный луч трассируется в исходных осях, а уравнения
+# Коддингтона ведутся в естественном виде вдоль луча.
+
+# Запас полудиаметров для прохода главного луча косого пучка
+# (тот же приём, что в compute_field_aberrations: полудиаметры LBO
+# часто чуть занижены)
+CODDINGTON_SD_INFLATE = 1.4
+
+# δ-лучи каустики по умолчанию: 1% от радиуса зрачка
+CAUSTIC_DELTA_PUPIL_FRACTION = 0.01
+# Эскалация δ при вырождении второй разности (шум ∝ δ² меньше сигнала)
+CAUSTIC_DELTA_ESCALATE = 5.0
+CAUSTIC_MAX_ESCALATIONS = 3
+# Порог «второй разности нет» (мм, масштаб от |z₀|)
+CAUSTIC_NOISE_FLOOR = 1e-9
+
+
+def _surface_sag_mm(surf: Surface, x: float, y: float,
+                    z_surf: float) -> float:
+    """sag поверхности в точке (x, y): сфера/коника + полином.
+
+    Формула — как в ``intersect_aspheric`` (analysis/ray_tracing.py):
+    z = z_surf + c·r²/(1+√(1−(1+k)c²r²)) + Σ Aᵢ·r^(2i+2).
+    """
+    R = surf.radius if abs(surf.radius) > EPSILON else 0.0
+    c = 1.0 / R if R else 0.0
+    r_sq = x * x + y * y
+    z = z_surf
+    if abs(c) > TINY and r_sq > 0.0:
+        k1c_sq = (1.0 + surf.conic_constant) * c * c
+        disc = max(0.0, 1.0 - k1c_sq * r_sq)
+        z += c * r_sq / (1.0 + math.sqrt(disc))
+    for j, coeff in enumerate(surf.aspheric_coeffs or []):
+        z += coeff * r_sq ** (j + 2)
+    return z
+
+
+def _point_on_surface(point: Tuple[float, float, float], surf: Surface,
+                      z_surf: float) -> bool:
+    """Лежит ли точка пути на поверхности (для разбора пути луча).
+
+    Сфера/плоскость — точный аналитический тест (пересечение аналитическое,
+    остаточные невязки ~1e-12); асферика — сравнение z с sag.
+    """
+    x, y, z = point
+    if (surf.surface_type == SurfaceType.SPHERE
+            and abs(surf.conic_constant) <= TINY
+            and not surf.aspheric_coeffs):
+        R = surf.radius
+        if abs(R) < EPSILON:
+            return abs(z - z_surf) < 1e-6 * (1.0 + abs(z_surf))
+        cz = z_surf + R
+        d = math.sqrt(x * x + y * y + (z - cz) ** 2)
+        return abs(d - abs(R)) < 1e-6 * (1.0 + abs(R))
+    return abs(z - _surface_sag_mm(surf, x, y, z_surf)) \
+        < 1e-6 * (1.0 + abs(z_surf))
+
+
+def _is_aspheric_like(surf: Surface) -> bool:
+    """Поверхность с коникой/полиномом (как ветка трейсера)."""
+    return (surf.surface_type != SurfaceType.SPHERE
+            or abs(surf.conic_constant) > TINY
+            or len(surf.aspheric_coeffs) > 0)
+
+
+def _match_chief_surface_hits(system: OpticalSystem, path: list,
+                              z_pos: list) -> List[int] | None:
+    """Индексы точек пути, лежащих на поверхностях 0..N-1 (по порядку).
+
+    Путь главного луча содержит посторонние точки (старт, плоскость
+    диафрагмы, плоскость изображения); точки падения выбираются
+    последовательным тестом «точка на поверхности».
+    """
+    hits: List[int] = []
+    ptr = 1  # path[0] — старт
+    for i, surf in enumerate(system.surfaces):
+        z_surf = z_pos[i]
+        matched = False
+        while ptr < len(path):
+            if _point_on_surface(path[ptr], surf, z_surf):
+                hits.append(ptr)
+                ptr += 1
+                matched = True
+                break
+            ptr += 1
+        if not matched:
+            return None
+    return hits
+
+
+def _trace_indices_at(system: OpticalSystem, i: int,
+                      wl: float) -> Tuple[float, float]:
+    """(n₁, n₂) на поверхности i — та же логика, что в трейсере
+    (вкл. n_override с допуском 0.002 мкм)."""
+    if i == 0:
+        n1 = compute_refractive_index("", wl)
+    else:
+        prev = system.surfaces[i - 1]
+        n1 = compute_refractive_index(prev.glass, wl)
+        for wl_key, n_val in (getattr(prev, 'n_override', None) or {}).items():
+            if abs(wl_key - wl) < 0.002:
+                n1 = n_val
+                break
+    n2 = compute_refractive_index(system.surfaces[i].glass, wl)
+    for wl_key, n_val in (getattr(system.surfaces[i], 'n_override', None)
+                          or {}).items():
+        if abs(wl_key - wl) < 0.002:
+            n2 = n_val
+            break
+    return n1, n2
+
+
+def _path_seg_dir(path: list, i_pt: int) -> Tuple[float, float, float] | None:
+    """Единичное направление сегмента после точки ``i_pt`` пути."""
+    if i_pt + 1 >= len(path):
+        return None
+    p0, p1 = path[i_pt], path[i_pt + 1]
+    dx, dy, dz = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+    n = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if n < TINY:
+        return None
+    return (dx / n, dy / n, dz / n)
+
+
+def coddington_trace(system: OpticalSystem, wl: float | None = None,
+                     field_y: float = 0.0) -> Dict:
+    """Дифференциальный след Коддингтона вдоль главного луча.
+
+    Классические уравнения Коддингтона (реверс OPAL §7: вычислители
+    Z'm/Z's FUN_1000_93f3/9897, адреса 0x193F3/0x19897; выход h/u —
+    0x1971D/0x197BA, у 9897 с минусом и ×n — 0x19C15/0x19C6C: у OPAL
+    отсчёт в «оптических» (×n) переменных, здесь — физические мм).
+    Для каждой поверхности по ходу главного луча (:func:`_field_chief_ray`
+    + ``trace_ray_through_system``): точка падения, косинусы
+    падения/преломления cos i = |D·N|, cos r = |D'·N|, радиус с знаком
+    (положителен, когда центр кривизны справа от вершины — выпуклость
+    навстречу лучу), перенос между поверхностями — вдоль луча. Рефракция
+    (n' = n₂; для зеркал n' = −n, ветка NS<0 у 9897):
+
+        n'·cos²r/t_m' = n·cos²i/t_m + (n'·cos r − n·cos i)/R
+        n'/t_s'       = n/t_s       + (n'·cos r − n·cos i)/R
+
+    Плоская волна на входе (t = ∞) стартует в обратных величинах
+    P = n·cos²i/t (аналог «углов» массива B у OPAL); для ближнего типа
+    предмета t₀ — расстояние от точки предмета до первой поверхности
+    вдоль луча. Отсчёт результата — от опорной плоскости изображения
+    (аналог 0x19976: Z := z_ref − Z): ``delta_zm = z_m − img_z``, как
+    ``compute_field_aberrations``.
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        field_y: Угол поля (град) для INFINITE / высота предмета (мм)
+            для FINITE.
+
+    Returns:
+        Словарь::
+
+            z_m, z_s        — z-координаты меридионального/сагиттального
+                              фокусов (мм; отрезки t_m/t_s вдоль луча от
+                              последней поверхности спроецированы на ось)
+            delta_zm, delta_zs — от плоскости Гаусса img_z (мм)
+            astigmatism     — delta_zm − delta_zs (мм)
+            u_m, u_s        — «углы» следа (1/мм): наклон соседнего луча
+                              на единичную высоту (= 1/t; аналог
+                              знаменателей массива B, 0x3D30/0x3D38)
+            t_m, t_s        — фокальные отрезки вдоль главного луча от
+                              последней поверхности (мм); при field_y=0
+                              оба равны заднему фокальному отрезку
+
+        При неудачной трассировке главного луча значения ``None``.
+    """
+    empty = {'z_m': None, 'z_s': None, 'delta_zm': None, 'delta_zs': None,
+             'astigmatism': None, 'u_m': None, 'u_s': None,
+             't_m': None, 't_s': None}
+    if wl is None:
+        wl = get_primary_wl(system)
+    if not system.surfaces:
+        return empty
+
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    chief_ray = _field_chief_ray(system, field_y, z_start, z_pupil)
+
+    # Запас полудиаметров, чтобы главный луч косого пучка прошёл
+    # (тот же приём, что compute_field_aberrations)
+    _orig_sds = [s.semi_diameter for s in system.surfaces]
+    for s in system.surfaces:
+        if s.semi_diameter > 0:
+            s.semi_diameter = abs(s.semi_diameter) * CODDINGTON_SD_INFLATE
+    try:
+        res = trace_ray_through_system(system, chief_ray, wl)
+    finally:
+        for i, s in enumerate(system.surfaces):
+            s.semi_diameter = _orig_sds[i]
+    if not res.success or not res.path:
+        return empty
+
+    path = res.path
+    z_pos = compute_z_positions(system)
+    hits = _match_chief_surface_hits(system, path, z_pos)
+    if hits is None:
+        return empty
+
+    # Стартовые отрезки: ∞ (плоская волна) для дальнего типа, для
+    # ближнего — от точки предмета до первой поверхности вдоль луча
+    if system.object_type == ObjectType.INFINITE:
+        t_m = t_s = math.inf
+    else:
+        t_m = t_s = math.dist(path[0], path[hits[0]])
+
+    for i, surf in enumerate(system.surfaces):
+        pt = path[hits[i]]
+        n1, n2 = _trace_indices_at(system, i, wl)
+        if surf.is_reflective:
+            n2 = -n1  # зеркальная ветка (аналог NS<0 у FUN_1000_9897)
+
+        z_surf = z_pos[i]
+        if _is_aspheric_like(surf):
+            nx, ny, nz = surface_normal_aspheric(
+                pt[0], pt[1], pt[2], surf.radius, z_surf,
+                conic_k=surf.conic_constant,
+                aspheric_coeffs=surf.aspheric_coeffs or None)
+        else:
+            nx, ny, nz = surface_normal(pt[0], pt[1], pt[2],
+                                        surf.radius, z_surf)
+
+        d_in = _path_seg_dir(path, hits[i] - 1)
+        d_out = _path_seg_dir(path, hits[i])
+        if d_in is None or d_out is None:
+            return empty
+        cos_i = abs(d_in[0] * nx + d_in[1] * ny + d_in[2] * nz)
+        cos_r = abs(d_out[0] * nx + d_out[1] * ny + d_out[2] * nz)
+
+        # Сила поверхности для следа (0 для плоскости)
+        R = surf.radius if abs(surf.radius) > EPSILON else math.inf
+        phi = (n2 * cos_r - n1 * cos_i) / R if math.isfinite(R) else 0.0
+
+        # Рефракция в обратных величинах P (нулевому t соответствует P = 0)
+        P_m = n1 * cos_i * cos_i / t_m if abs(t_m) > TINY else 0.0
+        P_s = n1 / t_s if abs(t_s) > TINY else 0.0
+        P_m += phi
+        P_s += phi
+        t_m = n2 * cos_r * cos_r / P_m if P_m != 0.0 else math.inf
+        t_s = n2 / P_s if P_s != 0.0 else math.inf
+
+        # Перенос к следующей поверхности вдоль главного луча
+        if i + 1 < len(system.surfaces):
+            D = math.dist(path[hits[i]], path[hits[i + 1]])
+            t_m = t_m - D if math.isfinite(t_m) else math.inf
+            t_s = t_s - D if math.isfinite(t_s) else math.inf
+
+    # Направление выхода в воздухе (последний сегмент либо преломление
+    # на последней поверхности при нулевом отрезке до изображения)
+    exit_dir = _air_exit_direction(system, res, wl)
+    if exit_dir is None:
+        exit_dir = _path_seg_dir(path, len(path) - 2)
+    if exit_dir is None:
+        return empty
+
+    img_z = z_pos[-1]
+    last_z = path[hits[-1]][2]
+    z_m = last_z + t_m * exit_dir[2] if math.isfinite(t_m) else None
+    z_s = last_z + t_s * exit_dir[2] if math.isfinite(t_s) else None
+    return {
+        'z_m': z_m,
+        'z_s': z_s,
+        'delta_zm': z_m - img_z if z_m is not None else None,
+        'delta_zs': z_s - img_z if z_s is not None else None,
+        'astigmatism': z_m - z_s
+        if z_m is not None and z_s is not None else None,
+        'u_m': 1.0 / t_m if math.isfinite(t_m) and abs(t_m) > TINY else 0.0,
+        'u_s': 1.0 / t_s if math.isfinite(t_s) and abs(t_s) > TINY else 0.0,
+        't_m': t_m if math.isfinite(t_m) else None,
+        't_s': t_s if math.isfinite(t_s) else None,
+    }
+
+
+def _exit_line(system: OpticalSystem, ray: Ray, wl: float
+               ) -> Tuple[float, float, float, float, float] | None:
+    """Прямая выхода луча в воздухе: ``(x, y, z, dx/dz, dy/dz)``.
+
+    Берётся последний воздушный сегмент пути (до плоскости изображения);
+    при нулевом отрезке до изображения направление преломляется на
+    последней поверхности (:func:`_air_exit_direction`).
+    """
+    res = trace_ray_through_system(system, ray, wl)
+    if not res.success or len(res.path) < 2:
+        return None
+    p0, p1 = res.path[-2], res.path[-1]
+    dz = p1[2] - p0[2]
+    if abs(dz) > 1e-12:
+        return (p1[0], p1[1], p1[2],
+                (p1[0] - p0[0]) / dz, (p1[1] - p0[1]) / dz)
+    d = _air_exit_direction(system, res, wl)
+    if d is None or abs(d[2]) < TINY:
+        return None
+    return (p1[0], p1[1], p1[2], d[0] / d[2], d[1] / d[2])
+
+
+def _z_intersection(line1: Tuple, line2: Tuple, axis: int) -> float | None:
+    """z пересечения двух прямых x(z)/y(z) (``axis``: 0 — x, 1 — y).
+
+    Формула — как ``_find_focal_z``: z = (v₂−v₁−z₂s₂+z₁s₁)/(s₁−s₂).
+    """
+    i_slope = 4 if axis == 1 else 3
+    v1, z1, s1 = line1[axis], line1[2], line1[i_slope]
+    v2, z2, s2 = line2[axis], line2[2], line2[i_slope]
+    ds = s1 - s2
+    if abs(ds) < 1e-15:
+        return None
+    return (v2 - v1 - z2 * s2 + z1 * s1) / ds
+
+
+def caustic_radii(system: OpticalSystem, wl: float | None = None,
+                  field_y: float = 0.0,
+                  ray_halfheight: float | None = None) -> Dict:
+    """Радиусы кривизны каустических поверхностей 2-го порядка (мм).
+
+    Численно-дифференциальный аналог форм 2-го порядка OPAL (§8:
+    0x19739-0x197F7 и 0x19C39-0x19CB1 — R = A₂/u², показатель
+    [0x2D8E]≈2; точнее слепого копирования — по физике лучей). По вееру
+    из 3 лучей на сечение (главной + два на высоте ±δ, δ =
+    ``ray_halfheight`` либо 1% радиуса зрачка): z(h) — пересечение
+    луча h с главным; вершина z₀ — фокус следа Коддингтона
+    (:func:`coddington_trace`). Параболическая аппроксимация
+    z(h) ≈ z₀ + h²/R ⇒ вторая разность даёт
+
+        R = 2δ² / (2z₀ − z(δ) − z(−δ))
+
+    Знак: R > 0 — центр кривизны за фокусом (каустика вытянута вдоль
+    оси; у недоисправленной положительной оптики маргинальные фокусы
+    ближе — рог каустики раскрывается навстречу лучам). Относительная
+    нормировка r_rel = r/f′·100 — масштаб [0x3A10] ≈ 100/f′ у OPAL.
+
+    При вырождении (вторая разность на уровне шума при малом δ) δ
+    эскалируется ×5 (до :data:`CAUSTIC_MAX_ESCALATIONS` раз); если и
+    это не помогает — ``None`` и ``method='numeric'``.
+
+    Args:
+        system: Оптическая система.
+        wl: Длина волны (мкм); None → основная λ системы.
+        field_y: Угол поля (град) / высота предмета (мм).
+        ray_halfheight: Высота δ крайних лучей в зрачке (мм);
+            None → 1% радиуса зрачка.
+
+    Returns:
+        Словарь: ``r_m, r_s`` — меридиональный/сагиттальный радиусы
+        каустики (мм); ``r_m_rel, r_s_rel`` — в процентах от f′;
+        ``method`` — ``'coddington'`` (вершина из следа Коддингтона)
+        | ``'numeric'`` (вырождение/фолбэк на пересечение пары ±δ);
+        диагностические ключи ``delta_mm, z_m0, z_s0, z_m_plus,
+        z_m_minus, z_s_plus, z_s_minus``.
+    """
+    empty = {'r_m': None, 'r_s': None, 'r_m_rel': None, 'r_s_rel': None,
+             'method': 'numeric', 'delta_mm': ray_halfheight,
+             'z_m0': None, 'z_s0': None,
+             'z_m_plus': None, 'z_m_minus': None,
+             'z_s_plus': None, 'z_s_minus': None}
+    if wl is None:
+        wl = get_primary_wl(system)
+    if not system.surfaces:
+        return empty
+
+    parax = paraxial_trace(system)
+    efl = parax.get('focal_length', 0)
+    aperture = get_effective_aperture(system, default=10.0)
+    pupil_r = aperture / 2.0
+    delta = float(ray_halfheight) if ray_halfheight \
+        else CAUSTIC_DELTA_PUPIL_FRACTION * pupil_r
+    if delta <= 0.0:
+        return empty
+
+    # Вершина каустики — фокусы следа Коддингтона (метод 'coddington')
+    cod = coddington_trace(system, wl=wl, field_y=field_y)
+    cod_z_m0 = cod.get('z_m') if cod else None
+    cod_z_s0 = cod.get('z_s') if cod else None
+
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    _orig_sds = [s.semi_diameter for s in system.surfaces]
+    for s in system.surfaces:
+        if s.semi_diameter > 0:
+            s.semi_diameter = abs(s.semi_diameter) * CODDINGTON_SD_INFLATE
+    try:
+        def _pupil_line(dx: float, dy: float):
+            ray = _pupil_field_ray(system, dx, dy, field_y,
+                                   z_start, z_pupil)
+            return _exit_line(system, ray, wl)
+
+        chief = _pupil_line(0.0, 0.0)
+        if chief is None:
+            return empty
+
+        noise = CAUSTIC_NOISE_FLOOR * (1.0 + abs(cod_z_m0 or 0.0))
+        for _ in range(CAUSTIC_MAX_ESCALATIONS + 1):
+            mer_p = _pupil_line(0.0, +delta)
+            mer_m = _pupil_line(0.0, -delta)
+            sag_p = _pupil_line(+delta, 0.0)
+            sag_m = _pupil_line(-delta, 0.0)
+            if None in (mer_p, mer_m, sag_p, sag_m):
+                return empty
+
+            z_m_plus = _z_intersection(mer_p, chief, axis=1)
+            z_m_minus = _z_intersection(mer_m, chief, axis=1)
+            z_s_plus = _z_intersection(sag_p, chief, axis=0)
+            z_s_minus = _z_intersection(sag_m, chief, axis=0)
+            if None in (z_m_plus, z_m_minus, z_s_plus, z_s_minus):
+                return empty
+
+            # Фолбэк: вершина из симметричной пары ±δ (численно)
+            method = 'coddington'
+            z_m0, z_s0 = cod_z_m0, cod_z_s0
+            if z_m0 is None or z_s0 is None:
+                z_m0 = (z_m_plus + z_m_minus) / 2.0
+                z_s0 = (z_s_plus + z_s_minus) / 2.0
+                method = 'numeric'
+
+            sd_m = 2.0 * z_m0 - z_m_plus - z_m_minus
+            sd_s = 2.0 * z_s0 - z_s_plus - z_s_minus
+            if abs(sd_m) > noise and abs(sd_s) > noise:
+                r_m = 2.0 * delta * delta / sd_m
+                r_s = 2.0 * delta * delta / sd_s
+                return {'r_m': r_m, 'r_s': r_s,
+                        'r_m_rel': r_m / efl * 100.0 if efl else None,
+                        'r_s_rel': r_s / efl * 100.0 if efl else None,
+                        'method': method, 'delta_mm': delta,
+                        'z_m0': z_m0, 'z_s0': z_s0,
+                        'z_m_plus': z_m_plus, 'z_m_minus': z_m_minus,
+                        'z_s_plus': z_s_plus, 'z_s_minus': z_s_minus}
+            # Вырождение: усилить δ (шум ~ δ⁰, сигнал ~ δ²)
+            delta *= CAUSTIC_DELTA_ESCALATE
+            if delta > pupil_r:
+                break
+        return empty
+    finally:
+        for i, s in enumerate(system.surfaces):
+            s.semi_diameter = _orig_sds[i]

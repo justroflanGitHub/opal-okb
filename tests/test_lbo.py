@@ -127,22 +127,22 @@ class TestLBOReader:
             assert len(systems) == info['num_systems'], \
                 f"{info['name']}: expected {info['num_systems']}, got {len(systems)}"
 
-    def test_opj_from_lbo_parses_as_standalone(self):
-        """OPJ данные из LBO парсятся так же как standalone OPJ."""
+    def test_opj_from_lbo_uses_lbo_decoder(self):
+        """OPJ данные из LBO декодируются LBO-декодером (не standalone).
+
+        Standalone .OPJ и OPJ внутри LBO имеют РАЗНУЮ раскладку полей
+        (docs/LBO_FORMAT.md): standalone-ридер даёт мусор (R≈n стёкол,
+        6 вместо 7 поверхностей), LBO-декодер — корректную систему.
+        """
         from lbo_reader import load_lbo
-        from opj_reader import load_opj
         systems = load_lbo(str(LENS_LBO))
         s = systems[0]
-        tmpfd, tmppath = tempfile.mkstemp(suffix='.OPJ')
-        try:
-            os.write(tmpfd, s['opj_data'])
-            os.close(tmpfd)
-            sys_obj, info = load_opj(tmppath)
-            assert sys_obj is not None
-            assert len(sys_obj.surfaces) > 0
-            assert len(sys_obj.surfaces) == len(s['system'].surfaces)
-        finally:
-            os.unlink(tmppath)
+        assert s['system'] is not None, f"LBO decode failed: {s.get('warnings')}"
+        surfs = s['system'].surfaces
+        assert len(surfs) == 7, f"Индустар-7 = 7 поверхностей, got {len(surfs)}"
+        # Первая поверхность тессара: выпуклая, R порядка десятков мм
+        # (standalone-ридер давал здесь R=1.0 — показатель преломления)
+        assert 10.0 < surfs[0].radius < 200.0, f"bad R0: {surfs[0].radius}"
 
     def test_library_integration(self):
         """Интеграция с library.py — LBO в build_library()."""

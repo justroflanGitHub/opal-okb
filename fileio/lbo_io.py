@@ -19,7 +19,7 @@ import struct
 import os
 from typing import List
 
-from opj_reader import load_opj
+from fileio.decode_lbo import decode_lbo_opj
 
 
 RECORD_MARKER = 0x000C
@@ -103,26 +103,15 @@ def load_lbo(filepath: str) -> List[dict]:
             except Exception:
                 description = ''
         
-        # Parse OPJ data using the existing opj_reader
+        # Parse OPJ data using the LBO-specific decoder (layout differs
+        # from standalone .OPJ files: curvatures at 0xA8, glass-index array
+        # and RI matrix are placed differently — see docs/LBO_FORMAT.md).
         system = None
         warnings = []
-        
-        # Write to temp file and use load_opj
-        import tempfile
-        tmpfd, tmppath = tempfile.mkstemp(suffix='.OPJ')
         try:
-            os.write(tmpfd, opj_data)
-            os.close(tmpfd)
-            try:
-                system, info = load_opj(tmppath)
-                warnings = info.get('warnings', [])
-            except Exception as e:
-                warnings.append(f'OPJ parse error: {e}')
-        finally:
-            try:
-                os.unlink(tmppath)
-            except Exception:
-                pass
+            system = decode_lbo_opj(opj_data)
+        except Exception as e:
+            warnings.append(f'OPJ parse error: {e}')
         
         # Use description as name if system name is empty
         name = description if description else rec['filename']

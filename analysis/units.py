@@ -24,6 +24,7 @@ Z'm/Z's             мм                  дптр (от вых. зрачка)
 Переключатель GUI мм/дптр — отдельный слой (utils/optics_utils.py,
 ``DIOPTRE_PER_M``); этот модуль — конверсии табличной печати.
 """
+import decimal
 import math
 
 #: 1 дптр = 1/м → 1000 мм на диоптрию (мм → дптр: ``1000/мм``).
@@ -88,17 +89,27 @@ def _fwo(value, width: int, decimals: int) -> str:
 
     OPAL печатает «   .816», «   -.535640» (ведущий нуль мантиссы не
     печатается; «-.0000» → «.0000»); ``None`` — пробелы; переполнение
-    поля — звёздочки, как FORTRAN.
+    поля — звёздочки, как FORTRAN. Округление — HALF_UP по десятичному
+    разложению, как RTL 0x2E73 (REVERSE_FMT.md §4), а не half-even
+    f-строки: 0.0625 при d=3 → «.063».
     """
     if value is None:
         return ' ' * width
-    text = f'{value:.{decimals}f}'
+    try:
+        with decimal.localcontext() as ctx:
+            ctx.prec = 60
+            q = decimal.Decimal(value).quantize(
+                decimal.Decimal(1).scaleb(-decimals),
+                rounding=decimal.ROUND_HALF_UP)
+        text = f'{q:f}'
+    except (decimal.InvalidOperation, ValueError, OverflowError):
+        text = f'{value:.{decimals}f}'
+    if text.startswith('-') and set(text[1:]) <= {'0', '.'}:
+        text = text[1:]
     if text.startswith('0.'):
         text = text[1:]
     elif text.startswith('-0.'):
         text = '-' + text[2:]
-        if set(text[2:]) <= {'0'}:
-            text = text[1:]
     if len(text) > width:
         return '*' * width
     return text.rjust(width)

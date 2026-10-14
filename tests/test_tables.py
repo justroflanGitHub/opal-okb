@@ -137,6 +137,20 @@ class TestFormatFwo:
         assert _fwo(1234.5, 8, 4) == '*' * 8
         assert _fwo(202.9300, 8, 4) == '202.9300'   # ровно 8 — помещается
 
+    def test_rounding_half_up(self):
+        """Округление HALF_UP по десятичному разложению (RTL 0x2E73,
+        REVERSE_FMT.md §4), а не half-even f-строки Python."""
+        # 0.0625 при d=3: Python «.062», OPAL «.063» (связь вверх по модулю)
+        assert _fwo(0.0625, 8, 3) == '    .063'
+        assert _fwo(-0.0625, 8, 3) == '   -.063'
+        assert _fwo(0.1875, 8, 3) == '    .188'   # не связь — одинаково
+        assert _fwo(2.5, 4, 0) == '   3'
+        assert _fwo(0.5, 4, 0) == '   1'
+        # не-связи не меняются относительно прежнего half-even
+        assert _fwo(0.00005, 8, 4) == '   .0001'
+        # double -0.00015 = -0.0001499999...98 — ниже связи → вниз
+        assert _fwo(-0.00015, 9, 4) == '   -.0001'
+
     def test_data_line_width(self, industar23u):
         """Строки данных ≤ 96 символов (формат + пробел печатальщика)."""
         lines = format_tabgl(tabgl_rows(industar23u)).splitlines()

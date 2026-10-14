@@ -44,6 +44,7 @@ Del%»; «PR2» — НЕИЗВЕСТНО].
 √(2/3) от 36°: ω=30.657° → 30°39.43' → «-30.394300» (точно); «2W=72»
 шапки ↔ −36.000000 (градусы).
 """
+import decimal
 import math
 
 from optics_engine import OpticalSystem, ObjectType, paraxial_trace
@@ -105,20 +106,45 @@ def _fwo(value, width: int, decimals: int) -> str:
     (эталон RT__2250: ширина поля сохраняется, ведущий нуль мантиссы не
     печатается). ``None`` (луч не дошёл) — пробелы. Отрицательный нуль
     («-.0000») печатается как положительный (эталон, строка N=0).
+
+    Округление — HALF_UP (вверх по модулю): RTL 0x2E73 округляет
+    half-up по десятичному разложению числа (REVERSE_FMT.md §4),
+    а f-строка Python даёт half-even: 0.0625 при d=3 → «.062» у Python
+    против «.063» у OPAL.
     """
     if value is None:
         return ' ' * width
-    text = f'{value:.{decimals}f}'
+    text = _fmt_half_up(value, decimals)
+    if text.startswith('-') and set(text[1:]) <= {'0', '.'}:
+        # минус при нулевой мантиссе не печатается: -0.0000 → .0000
+        text = text[1:]
     if text.startswith('0.'):
         text = text[1:]
     elif text.startswith('-0.'):
         text = '-' + text[2:]
-        # минус при нулевой мантиссе не печатается: -0.0000 → .0000
-        if set(text[2:]) <= {'0'}:
-            text = text[1:]
     if len(text) > width:                 # переполнение Fw.d — как FORTRAN
         return '*' * width
     return text.rjust(width)
+
+
+def _fmt_half_up(value, decimals: int) -> str:
+    """Десятичная запись ``value`` с ``decimals`` знаками, HALF_UP.
+
+    Воспроизводит связку RTL «точное двоично-десятичное разложение +
+    округление 0x34CB0»: Decimal(float) точен, quantize(ROUND_HALF_UP)
+    разрывает связи вверх по модулю. Неконечные значения (в порты не
+    попадают) и большие разрядности (поле всё равно переполнено →
+    звёздочки) откатываются на f-строку.
+    """
+    try:
+        with decimal.localcontext() as ctx:
+            ctx.prec = 60
+            q = decimal.Decimal(value).quantize(
+                decimal.Decimal(1).scaleb(-decimals),
+                rounding=decimal.ROUND_HALF_UP)
+        return f'{q:f}'
+    except (decimal.InvalidOperation, ValueError, OverflowError):
+        return f'{value:.{decimals}f}'
 
 
 def _grminsec(angle_deg: float) -> float:

@@ -1,0 +1,203 @@
+# диф-карта: old(OPAL,base10000) -> new(UNP,base0), SHIFT=0x10000
+old funcs: 903, new funcs: 789
+
+== верификация plain-зоны ==
+старых функций в plain-зоне: 891
+  идентичны (hash+size): 602
+  изменены: 94
+  отсутствуют в новом: 195
+
+  MISSING  old_lin=0x104d6 1000:04d6 FUN_1000_04d6 size=157
+  MISSING  old_lin=0x10574 1000:0574 FUN_1000_0574 size=429
+  MISSING  old_lin=0x10721 1000:0721 FUN_1000_0721 size=37
+  CHANGED  old_lin=0x11333 1000:1333->0000:1333 FUN_1000_1333 size=1925->3541
+  MISSING  old_lin=0x11ab8 1000:1ab8 FUN_1000_1ab8 size=325
+  MISSING  old_lin=0x11bfd 1000:1bfd FUN_1000_1bfd size=984
+  MISSING  old_lin=0x11fd7 1000:1fd7 FUN_1000_1fd7 size=243
+  MISSING  old_lin=0x120ca 1000:20ca FUN_1000_20ca size=54
+  MISSING  old_lin=0x12100 1000:2100 FUN_1000_2100 size=8
+  CHANGED  old_lin=0x12108 1000:2108->0000:2108 FUN_1000_2108 size=1191->1101
+  MISSING  old_lin=0x125b0 1000:25b0 FUN_1000_25b0 size=5598
+  CHANGED  old_lin=0x13b99 1000:3b99->0000:3b99 FUN_1000_3b99 size=3782->8490
+  MISSING  old_lin=0x14a5f 1000:4a5f FUN_1000_4a5f size=170
+  MISSING  old_lin=0x14b45 1000:4b45 FUN_1000_4b45 size=128
+  MISSING  old_lin=0x14bc5 1000:4bc5 FUN_1000_4bc5 size=9
+  MISSING  old_lin=0x14bce 1000:4bce FUN_1000_4bce size=27
+  MISSING  old_lin=0x14be9 1000:4be9 FUN_1000_4be9 size=531
+  MISSING  old_lin=0x14dfc 1000:4dfc FUN_1000_4dfc size=739
+  MISSING  old_lin=0x150df 1000:50df FUN_1000_50df size=9
+  MISSING  old_lin=0x150e8 1000:50e8 FUN_1000_50e8 size=401
+  MISSING  old_lin=0x15279 1000:5279 FUN_1000_5279 size=181
+  MISSING  old_lin=0x1532e 1000:532e FUN_1000_532e size=2513
+  MISSING  old_lin=0x15fff 1000:5fff FUN_1000_5fff size=1323
+  CHANGED  old_lin=0x16233 1000:6233->0000:6233 FUN_1000_6233 size=684->2070
+  CHANGED  old_lin=0x167ef 1000:67ef->0000:67ef FUN_1000_67ef size=279->604
+  MISSING  old_lin=0x16923 1000:6923 FUN_1000_6923 size=101
+  MISSING  old_lin=0x16988 1000:6988 FUN_1000_6988 size=99
+  MISSING  old_lin=0x169eb 1000:69eb FUN_1000_69eb size=73
+  MISSING  old_lin=0x16a34 1000:6a34 FUN_1000_6a34 size=23
+  MISSING  old_lin=0x16e79 1000:6e79 FUN_1000_6e79 size=180
+  MISSING  old_lin=0x17424 1000:7424 FUN_1000_7424 size=225
+  CHANGED  old_lin=0x17514 1000:7514->0000:7514 FUN_1000_7514 size=1097->1135
+  CHANGED  old_lin=0x17c10 1000:7c10->0000:7c10 FUN_1000_7c10 size=150->1172
+  MISSING  old_lin=0x17ca6 1000:7ca6 FUN_1000_7ca6 size=339
+  MISSING  old_lin=0x17df9 1000:7df9 FUN_1000_7df9 size=683
+  CHANGED  old_lin=0x180a6 1000:80a6->0000:80a6 FUN_1000_80a6 size=164->261
+  MISSING  old_lin=0x1814a 1000:814a FUN_1000_814a size=91
+  MISSING  old_lin=0x181a5 1000:81a5 FUN_1000_81a5 size=6
+  CHANGED  old_lin=0x18d5b 1000:8d5b->0000:8d5b FUN_1000_8d5b size=417->1180
+  MISSING  old_lin=0x18efe 1000:8efe FUN_1000_8efe size=7
+  MISSING  old_lin=0x18f05 1000:8f05 FUN_1000_8f05 size=133
+  MISSING  old_lin=0x18fa3 1000:8fa3 FUN_1000_8fa3 size=580
+  MISSING  old_lin=0x191e7 1000:91e7 FUN_1000_91e7 size=75
+  MISSING  old_lin=0x1a098 1000:a098 FUN_1000_a098 size=537
+  MISSING  old_lin=0x1a66a 1000:a66a FUN_1000_a66a size=253
+  MISSING  old_lin=0x1c7b7 1000:c7b7 FUN_1000_c7b7 size=35
+  CHANGED  old_lin=0x1c7da 1000:c7da->0000:c7da FUN_1000_c7da size=60->492
+  MISSING  old_lin=0x1c816 1000:c816 FUN_1000_c816 size=432
+  CHANGED  old_lin=0x1cd62 1000:cd62->0000:cd62 FUN_1000_cd62 size=37->46
+  MISSING  old_lin=0x1cf0b 1000:cf0b thunk_FUN_1000_cf98 size=3
+  MISSING  old_lin=0x1cf98 1000:cf98 FUN_1000_cf98 size=633
+  MISSING  old_lin=0x1d3bd 1000:d3bd FUN_1000_d3bd size=107
+  MISSING  old_lin=0x1db5e 1000:db5e FUN_1000_db5e size=8
+  CHANGED  old_lin=0x1db6f 1000:db6f->0000:db6f FUN_1000_db6f size=89->145
+  MISSING  old_lin=0x1dbc8 1000:dbc8 FUN_1000_dbc8 size=119
+  MISSING  old_lin=0x1dfa8 1000:dfa8 FUN_1000_dfa8 size=19
+  MISSING  old_lin=0x1e002 1000:e002 FUN_1000_e002 size=1105
+  MISSING  old_lin=0x1e41b 1000:e41b FUN_1000_e41b size=56
+  MISSING  old_lin=0x1e48c 1000:e48c FUN_1000_e48c size=64
+  MISSING  old_lin=0x1e4e4 1000:e4e4 FUN_1000_e4e4 size=10
+  CHANGED  old_lin=0x1e920 1000:e920->0000:e920 FUN_1000_e920 size=941->939
+  CHANGED  old_lin=0x1f359 1000:f359->0000:f359 FUN_1000_f359 size=861->1670
+  MISSING  old_lin=0x1f782 1000:f782 FUN_1000_f782 size=809
+  CHANGED  old_lin=0x1ff52 1000:ff52->0000:ff52 FUN_1000_ff52 size=65->66
+  MISSING  old_lin=0x20921 2000:0921 FUN_2000_0921 size=64
+  MISSING  old_lin=0x20976 2000:0976 FUN_2000_0976 size=421
+  MISSING  old_lin=0x20b1b 2000:0b1b FUN_2000_0b1b size=1032
+  MISSING  old_lin=0x20bf5 2000:0bf5 FUN_2000_0bf5 size=21
+  MISSING  old_lin=0x20f48 2000:0f48 FUN_2000_0f48 size=174
+  MISSING  old_lin=0x20fc7 2000:0fc7 FUN_2000_0fc7 size=1316
+  MISSING  old_lin=0x214f2 2000:14f2 FUN_2000_14f2 size=991
+  MISSING  old_lin=0x218d3 2000:18d3 FUN_2000_18d3 size=9
+  MISSING  old_lin=0x218dc 2000:18dc FUN_2000_18dc size=257
+  MISSING  old_lin=0x219dd 2000:19dd FUN_2000_19dd size=340
+  MISSING  old_lin=0x22210 2000:2210 FUN_2000_2210 size=92
+  CHANGED  old_lin=0x223f6 2000:23f6->0ff9:2466 FUN_2000_23f6 size=439->414
+  MISSING  old_lin=0x22938 2000:2938 FUN_2000_2938 size=680
+  CHANGED  old_lin=0x22c1d 2000:2c1d->0ff9:2c8d FUN_2000_2c1d size=363->389
+  MISSING  old_lin=0x22e3f 2000:2e3f FUN_2000_2e3f size=26
+  CHANGED  old_lin=0x23a12 2000:3a12->0ff9:3a82 FUN_2000_3a12 size=523->524
+  ... ещё 209
+
+== функции БЕЗ аналога в старом декомпиле ==
+
+-- CODE_MAIN: 2 функций --
+  new_lin=0x00000 0000:0000 FUN_0000_0000        size=203   insn=68
+  new_lin=0x02558 0000:2558 FUN_0000_2558        size=5690  insn=2034
+
+-- CODE_MATH (0x0FF9): 10 функций --
+  new_lin=0x0ff95 0ff9:0005 FUN_0ff9_0005        size=20    insn=8
+  new_lin=0x0ffa9 0ff9:0019 FUN_0ff9_0019        size=28    insn=12
+  new_lin=0x10574 0ff9:05e4 FUN_0ff9_05e4        size=5492  insn=2101
+  new_lin=0x120ca 0ff9:213a FUN_0ff9_213a        size=389   insn=185
+  new_lin=0x12e5c 0ff9:2ecc FUN_0ff9_2ecc        size=532   insn=254
+  new_lin=0x130c0 0ff9:3130 FUN_0ff9_3130        size=32    insn=17
+  new_lin=0x130e0 0ff9:3150 FUN_0ff9_3150        size=96    insn=50
+  new_lin=0x1327f 0ff9:32ef FUN_0ff9_32ef        size=785   insn=312
+  new_lin=0x16e79 0ff9:6ee9 FUN_0ff9_6ee9        size=3867  insn=1397
+  new_lin=0x18fa3 0ff9:9013 FUN_0ff9_9013        size=18    insn=6
+
+-- CODE_RTL1 (0x1F78): 7 функций --
+  new_lin=0x20ac2 1f78:1342 FUN_1f78_1342        size=306   insn=123
+  new_lin=0x23ab2 1f78:4332 FUN_1f78_4332        size=880   insn=359
+  new_lin=0x26630 1f78:6eb0 FUN_1f78_6eb0        size=2262  insn=814
+  new_lin=0x2756a 1f78:7dea FUN_1f78_7dea        size=144   insn=65
+  new_lin=0x2e532 1f78:edb2 FUN_1f78_edb2        size=13    insn=8
+  new_lin=0x2e611 1f78:ee91 FUN_1f78_ee91        size=35    insn=21
+  new_lin=0x2e659 1f78:eed9 FUN_1f78_eed9        size=200   insn=88
+
+-- CODE_RTL2 (0x2E73): 73 функций --
+  new_lin=0x2e740 2e73:0010 FUN_2e73_0010        size=16    insn=6
+  new_lin=0x2e8cf 2e73:019f FUN_2e73_019f        size=22    insn=14
+  new_lin=0x2f4be 2e73:0d8e FUN_2e73_0d8e        size=11    insn=6
+  new_lin=0x2f512 2e73:0de2 FUN_2e73_0de2        size=11    insn=6
+  new_lin=0x31fe6 2e73:38b6 FUN_2e73_38b6        size=64    insn=34
+  new_lin=0x32028 2e73:38f8 FUN_2e73_38f8        size=61    insn=32
+  new_lin=0x32066 2e73:3936 FUN_2e73_3936        size=108   insn=55
+  new_lin=0x320d3 2e73:39a3 FUN_2e73_39a3        size=10    insn=6
+  new_lin=0x322c1 2e73:3b91 FUN_2e73_3b91        size=13    insn=8
+  new_lin=0x322d0 2e73:3ba0 FUN_2e73_3ba0        size=13    insn=8
+  new_lin=0x322df 2e73:3baf FUN_2e73_3baf        size=13    insn=8
+  new_lin=0x322ee 2e73:3bbe FUN_2e73_3bbe        size=13    insn=8
+  new_lin=0x322fd 2e73:3bcd FUN_2e73_3bcd        size=13    insn=8
+  new_lin=0x3232a 2e73:3bfa FUN_2e73_3bfa        size=13    insn=8
+  new_lin=0x32348 2e73:3c18 FUN_2e73_3c18        size=13    insn=8
+  new_lin=0x32357 2e73:3c27 FUN_2e73_3c27        size=13    insn=8
+  new_lin=0x32366 2e73:3c36 FUN_2e73_3c36        size=13    insn=8
+  new_lin=0x32384 2e73:3c54 FUN_2e73_3c54        size=13    insn=8
+  new_lin=0x323a2 2e73:3c72 FUN_2e73_3c72        size=13    insn=8
+  new_lin=0x32573 2e73:3e43 FUN_2e73_3e43        size=6     insn=2
+  new_lin=0x32591 2e73:3e61 FUN_2e73_3e61        size=6     insn=2
+  new_lin=0x32597 2e73:3e67 FUN_2e73_3e67        size=20    insn=10
+  new_lin=0x325ab 2e73:3e7b FUN_2e73_3e7b        size=6     insn=2
+  new_lin=0x325b1 2e73:3e81 FUN_2e73_3e81        size=5     insn=2
+  new_lin=0x325b6 2e73:3e86 FUN_2e73_3e86        size=5     insn=2
+  new_lin=0x325c0 2e73:3e90 FUN_2e73_3e90        size=6     insn=2
+  new_lin=0x325c6 2e73:3e96 FUN_2e73_3e96        size=5     insn=2
+  new_lin=0x325cb 2e73:3e9b FUN_2e73_3e9b        size=5     insn=2
+  new_lin=0x325d9 2e73:3ea9 FUN_2e73_3ea9        size=6     insn=2
+  new_lin=0x3261e 2e73:3eee FUN_2e73_3eee        size=171   insn=77
+  new_lin=0x335a2 2e73:4e72 FUN_2e73_4e72        size=74    insn=32
+  new_lin=0x35507 2e73:6dd7 caseD_0              size=29    insn=14
+  new_lin=0x35c16 2e73:74e6 FUN_2e73_74e6        size=6     insn=2
+  new_lin=0x35c1c 2e73:74ec FUN_2e73_74ec        size=196   insn=82
+  new_lin=0x35e94 2e73:7764 FUN_2e73_7764        size=141   insn=65
+  new_lin=0x36dcc 2e73:869c thunk_FUN_2e73_9b3a  size=3     insn=1
+  new_lin=0x36dd0 2e73:86a0 thunk_FUN_2e73_9b3a  size=3     insn=1
+  new_lin=0x36efa 2e73:87ca FUN_2e73_87ca        size=24    insn=11
+  new_lin=0x373a4 2e73:8c74 FUN_2e73_8c74        size=103   insn=54
+  new_lin=0x3775a 2e73:902a FUN_2e73_902a        size=22    insn=15
+  new_lin=0x37781 2e73:9051 FUN_2e73_9051        size=11    insn=8
+  new_lin=0x3778c 2e73:905c FUN_2e73_905c        size=62    insn=34
+  new_lin=0x377cb 2e73:909b FUN_2e73_909b        size=103   insn=51
+  new_lin=0x37833 2e73:9103 FUN_2e73_9103        size=300   insn=129
+  new_lin=0x37a49 2e73:9319 FUN_2e73_9319        size=28    insn=15
+  new_lin=0x37a65 2e73:9335 FUN_2e73_9335        size=28    insn=15
+  new_lin=0x37a81 2e73:9351 FUN_2e73_9351        size=69    insn=33
+  new_lin=0x37ac7 2e73:9397 entry                size=81    insn=36
+  new_lin=0x37b1a 2e73:93ea FUN_2e73_93ea        size=379   insn=182
+  new_lin=0x37c96 2e73:9566 FUN_2e73_9566        size=6     insn=3
+  new_lin=0x37c9c 2e73:956c FUN_2e73_956c        size=38    insn=23
+  new_lin=0x37ceb 2e73:95bb FUN_2e73_95bb        size=15    insn=8
+  new_lin=0x383f0 2e73:9cc0 FUN_2e73_9cc0        size=54    insn=28
+  new_lin=0x38dd2 2e73:a6a2 FUN_2e73_a6a2        size=11    insn=5
+  new_lin=0x38ddd 2e73:a6ad FUN_2e73_a6ad        size=187   insn=66
+  new_lin=0x38f3a 2e73:a80a FUN_2e73_a80a        size=88    insn=46
+  new_lin=0x39150 2e73:aa20 FUN_2e73_aa20        size=21    insn=9
+  new_lin=0x39165 2e73:aa35 FUN_2e73_aa35        size=6     insn=3
+  new_lin=0x3917d 2e73:aa4d FUN_2e73_aa4d        size=14    insn=7
+  new_lin=0x3918b 2e73:aa5b FUN_2e73_aa5b        size=8     insn=3
+  new_lin=0x39193 2e73:aa63 FUN_2e73_aa63        size=194   insn=92
+  new_lin=0x3927a 2e73:ab4a FUN_2e73_ab4a        size=13    insn=6
+  new_lin=0x3937e 2e73:ac4e FUN_2e73_ac4e        size=92    insn=34
+  new_lin=0x39798 2e73:b068 FUN_2e73_b068        size=17    insn=8
+  new_lin=0x397a9 2e73:b079 FUN_2e73_b079        size=6     insn=3
+  new_lin=0x397af 2e73:b07f FUN_2e73_b07f        size=84    insn=37
+  new_lin=0x398bd 2e73:b18d FUN_2e73_b18d        size=37    insn=16
+  new_lin=0x39b76 2e73:b446 FUN_2e73_b446        size=84    insn=33
+  new_lin=0x39de3 2e73:b6b3 FUN_2e73_b6b3        size=21    insn=9
+  new_lin=0x39df8 2e73:b6c8 FUN_2e73_b6c8        size=129   insn=55
+  new_lin=0x3a7de 2e73:c0ae FUN_2e73_c0ae        size=30    insn=9
+  new_lin=0x3aa7a 2e73:c34a FUN_2e73_c34a        size=57    insn=29
+  new_lin=0x3d08a 2e73:e95a FUN_2e73_e95a        size=27    insn=12
+
+-- DATA/DGROUP: 1 функций --
+  new_lin=0x55280 52d4:2540 FUN_52d4_2540        size=46    insn=24
+
+== сводка ==
+всего новых (без аналога): 93 из 789
+  CODE_MAIN          2
+  CODE_MATH (0x0FF9) 10
+  CODE_RTL1 (0x1F78) 7
+  CODE_RTL2 (0x2E73) 73
+  DATA/DGROUP        1

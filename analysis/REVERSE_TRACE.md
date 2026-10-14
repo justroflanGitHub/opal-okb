@@ -1299,3 +1299,14 @@ OPAL-семейства (OPALTOL/OPALCALC и т.п.). В OPALA.EXE многом�
 | 3. AVTO (f782) | ОПРОВЕРГНУТ «авто-подгонка»: проигрыватель .REG-скриптов (≤21 команды) с окном/паузами → полный анализ cf98. Подгонка OPAL = solve изображения ↔ fit_focal_length/fit_bfd/fit_magnification порта; DLS/simplex в OPALA.EXE отсутствуют (OPT.TRA/SIMTRA — соседние модули) |
 | 4. Дескрипторы 4000:95xx | Дамп сделан; «таблицы» НЕТ — сегмент = FORTRAN-рантайм, совпадения — дисплейсменты инструкций. Печатальщики EAP/PR2/GL через дескрипторы не локализуемы; модель вывода — TSR-формы (§14.0) |
 | 5–6. Доки | §14–§17 + REVERSE_MAP.md (переатрибуция TABGL/TABPR2, новые глобали/FCB/TSR-сегменты, .PRN-эталоны) |
+
+---
+
+## Указатели волн 5-6 (полные тексты в отдельных файлах)
+
+- **§17 FUN_1000_0746 — полная карта оркестратора** → analysis/REVERSE_0746.md
+- **§18 «TSR-рантайм» — гипотеза опровергнута (EXEPACK, FORTRAN RTL внутри EXE)** → analysis/REVERSE_TSR.md
+- **§19 «Н ЗР» = H ЗР (зрачковая координата, мм) + словарь терминов DOC-корпуса** → analysis/REVERSE_NZR.md
+
+Реализации волн 5-6: analysis/vignetting.py (виньетирование, TABBEA),
+analysis/beam_heights.py (TABESB/TABEAP), analysis/units.py + tables.py::taboc1/taboc2 (единицы, H ЗР).

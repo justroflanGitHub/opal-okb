@@ -1,0 +1,5 @@
+CODE_0 | 1000:0000 .. 5000:463f | size=0x44640 | type=Default | init=true
+CODE_1 | 5464:0000 .. 5464:1931 | size=0x1932 | type=Default | init=true
+DATA | 5464:1932 .. 6000:d141 | size=0x171d0 | type=Default | init=false
+HEADER | HEADER::00000000 .. HEADER::000001ff | size=0x200 | type=Default | init=true
+TABRAY found in CODE_0 at 5000:04d9

@@ -1,0 +1,27 @@
+TABRAY | at 5000:04d9 (segOff=0x4d9) | refs: [] | imm-push: [] | text: TABRAY(1X,i3,4(f9.3,a1),f8.3,f8.3,a1,F9.3,f8.3)X
+TABRAY | at 5000:260c (segOff=0x260c) | refs: [] | imm-push: [] | text: TABRAY
+TABOC1 | at 5000:05fa (segOff=0x5fa) | refs: [] | imm-push: [] | text: TABOC1(f6.3,f12.5,2f11.5).
+TABOC1 | at 5000:2807 (segOff=0x2807) | refs: [] | imm-push: [] | text: TABOC1
+TABOC2 | at 5000:06b3 (segOff=0x6b3) | refs: [] | imm-push: [] | text: TABOC2(F7.3,3F10.4).
+TABOC2 | at 5000:2801 (segOff=0x2801) | refs: [] | imm-push: [] | text: TABOC2TABOC1
+TABAX3 | at 5000:07af (segOff=0x7af) | refs: [] | imm-push: [] | text: TABAX3(f8.3,f9.2,5f12.6).
+TABAX3 | at 5000:2788 (segOff=0x2788) | refs: [] | imm-push: [] | text: TABAX3TABSAG
+TABSAG | at 5000:08a2 (segOff=0x8a2) | refs: [] | imm-push: [] | text: TABSAG(f6.3,2f7.2,6f10.6).
+TABSAG | at 5000:278e (segOff=0x278e) | refs: [] | imm-push: [] | text: TABSAG
+TABGL | at 5000:09ea (segOff=0x9ea) | refs: [] | imm-push: [] | text: TABGL (1x,i2,2(f7.3,f12.6),f9.4,f11.6,2f9.4,2f8.4)3
+TABGL | at 5000:2687 (segOff=0x2687) | refs: [] | imm-push: [] | text: TABGL   TABEAP  22TABBEA.."..)
+TABPR2 | at 5000:0b3e (segOff=0xb3e) | refs: [] | imm-push: [] | text: TABPR2(1x,i3,4f9.4,2f10.5,2f9.4)!
+TABPR2 | at 5000:2681 (segOff=0x2681) | refs: [] | imm-push: [] | text: TABPR2TABGL   TABEAP  22TABBEA.."..)
+TABBEA | at 5000:0c56 (segOff=0xc56) | refs: [] | imm-push: [] | text: TABBEA(1x,i2,2f8.5,2F8.5,2f10.3,2f6.3,2f6.1,2(1x,1a,1x,i3))>
+TABBEA | at 5000:2699 (segOff=0x2699) | refs: [] | imm-push: [] | text: TABBEA.."..)
+TABESB | at 5000:0db9 (segOff=0xdb9) | refs: [] | imm-push: [] | text: TABESB(1X,i3,f11.3,2f12.3,4f10.3)"
+TABESB | at 5000:2606 (segOff=0x2606) | refs: [] | imm-push: [] | text: TABESBTABRAY
+TABEAP | at 5000:0ece (segOff=0xece) | refs: [] | imm-push: [] | text: TABEAP(1X,i3,4f9.5,f9.4,2f8.3,2(1x,1a,1x,i3)).
+TABEAP | at 5000:268f (segOff=0x268f) | refs: [] | imm-push: [] | text: TABEAP  22TABBEA.."..)
+AVTO | at 5000:19f8 (segOff=0x19f8) | refs: [] | imm-push: [] | text: AVTOWA  IAVTOAIEXIT AVTOlRAY
+AVTO | at 5000:1a01 (segOff=0x1a01) | refs: [] | imm-push: [] | text: AVTOAIEXIT AVTOlRAY
+AVTO | at 5000:1a0c (segOff=0x1a0c) | refs: [] | imm-push: [] | text: AVTOlRAY
+AVTO | at 5000:1efe (segOff=0x1efe) | refs: [] | imm-push: [] | text: AVTO RUN=   .REG
+F11.5 | at 5000:03ec (segOff=0x3ec) | refs: [] | imm-push: [] | text: F11.5),2F10.5)3
+F11.5 | at 5000:0455 (segOff=0x455) | refs: [] | imm-push: [] | text: F11.5)).
+f9.3 | at 5000:04e8 (segOff=0x4e8) | refs: [] | imm-push: [] | text: f9.3,a1),f8.3,f8.3,a1,F9.3,f8.3)X

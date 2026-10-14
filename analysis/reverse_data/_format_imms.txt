@@ -1,0 +1,16 @@
+TABRAY (segOff=0x4d9) hits: 
+TABOC1 (segOff=0x5fa) hits: 
+TABOC2 (segOff=0x6b3) hits: 
+TABAX3 (segOff=0x7af) hits: 
+TABSAG (segOff=0x8a2) hits: 
+TABGL (segOff=0x9ea) hits: 
+TABPR2 (segOff=0xb3e) hits: 
+TABBEA (segOff=0xc56) hits: ?:4000:95f1
+TABESB (segOff=0xdb9) hits: 
+TABEAP (segOff=0xece) hits: 
+AVTO (segOff=0x19f8) hits: 
+F11.5-a (segOff=0x3ec) hits: 
+F11.5-b (segOff=0x455) hits: 
+f9.3 (segOff=0x4e8) hits: FUN_2000_6191:2000:62d3
+TABRAY2 (segOff=0x260c) hits: 
+TABAX3-2 (segOff=0x2788) hits: 

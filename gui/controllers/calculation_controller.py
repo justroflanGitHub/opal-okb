@@ -18,6 +18,7 @@ from optics_engine import (
 )
 from optics_utils import get_primary_wl, get_effective_aperture
 from aberrations import DEFAULT_FOCUS_STEP_MM
+from strehl import compute_strehl
 
 
 class CalculationController:
@@ -138,13 +139,15 @@ class CalculationController:
     def do_calc_phase1(self, sys: OpticalSystem) -> Dict[str, Any]:
         """Phase 1: Fast synchronous computations (< 0.5 s).
 
-        Computes paraxial trace, Seidel aberrations, and a spot diagram.
+        Computes paraxial trace, Seidel aberrations, a spot diagram,
+        and the Strehl ratio (wavefront hexapolar + FFT).
 
         Args:
             sys: The optical system to analyse.
 
         Returns:
-            Dictionary with keys ``'parax'``, ``'seidel'``, ``'spots'``.
+            Dictionary with keys ``'parax'``, ``'seidel'``, ``'spots'``,
+            ``'strehl'``.
         """
         from aberrations import compute_spot_diagram
 
@@ -153,6 +156,7 @@ class CalculationController:
             'parax': paraxial_trace(sys),
             'seidel': seidel_aberrations(sys),
             'spots': compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=0.0),
+            'strehl': compute_strehl(sys),
         }
 
     def do_calc_phase2(
@@ -510,6 +514,11 @@ class CalculationController:
         self.mw.analysis.update_parax(parax, fno, epd, sys=sys)
         self.mw.analysis.update_seidel(seidel)
         self.mw.results._update_paraxial_all_wl(sys)
+
+        # Число Штреля: из phase-1 данных либо пересчёт
+        strehl = data.get('strehl') if data else None
+        self.mw.results.update_strehl(
+            strehl if strehl is not None else compute_strehl(sys))
 
     def _on_calc_error(self, err: str) -> None:
         """Handle calculation errors from the worker thread.

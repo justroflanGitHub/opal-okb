@@ -2,7 +2,12 @@
 
 Widgets:
 
-* :class:`SpotDiagramWidget` — polychromatic spot diagram.
+* :class:`SpotDiagramWidget` — полихроматическая точечная диаграмма
+  с переключателем 2D/3D (кнопка в виджете, состояние сохраняется).
+* :class:`SpotDiagram2DWidget` — 2D-вид пятна (QPainter, окружности Эри).
+* :class:`SpotDiagram3DWidget` — 3D-вид пятна (matplotlib scatter,
+  проекция ``'3d'``): X, Y — координаты пятна, Z — плотность лучей,
+  цвет — длина волны (полихром.) или плотность.
 * :class:`HeatmapWidget` — scatter density heatmap.
 * :class:`FocusDiagramWidget` — five spot diagrams at different defocus
   positions (matplotlib, общий масштаб, шаг ΔS' из настроек анализа).
@@ -18,7 +23,9 @@ from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import (
     QPainter, QPen, QBrush, QColor, QFont, QPainterPath,
 )
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget,
+)
 
 from optics_engine import OpticalSystem, paraxial_trace
 from aberrations import (
@@ -40,11 +47,14 @@ from .base import (
     InteractivePlot,
     wl_to_plot_color,
 )
-from .mpl_widgets import MplCanvasWidget, MPL_CURVE_COLOR, MPL_TEXT_COLOR
+from .mpl_widgets import (
+    MplCanvasWidget, MPL_CURVE_COLOR, MPL_TEXT_COLOR, MPL_BG_COLOR,
+    MPL_3D_ELEV, MPL_3D_AZIM, style_3d_axes,
+)
 
 
-class SpotDiagramWidget(AberrationPlotWidget):
-    """Polychromatic spot diagram (Л1.6.1)."""
+class SpotDiagram2DWidget(AberrationPlotWidget):
+    """2D-вид полихроматической точечной диаграммы (Л1.6.1, QPainter)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -152,6 +162,198 @@ class SpotDiagramWidget(AberrationPlotWidget):
                 f"RMS_Y: {rms_xy.get('rms_y', 0.0):.4f} | "
                 f"Yцэ: {rms_xy.get('centroid_y', 0.0):.4f} мм | "
                 f"{num_rays} лучей")
+
+
+class SpotDiagram3DWidget(MplCanvasWidget):
+    """3D-вид точечной диаграммы (matplotlib, проекция ``'3d'``).
+
+    X, Y — координаты пятна (мм); Z — локальная плотность лучей
+    (число точек пятна в ячейке гистограммы); цвет точек — по длине
+    волны в полихроматическом режиме, иначе по плотности (viridis).
+    """
+
+    #: ячеек гистограммы плотности по каждой оси
+    DENSITY_BINS = 32
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.spots_mono: list[tuple[float, float]] = []
+        self.spots_poly: list[tuple[float, float, int]] = []
+        self.rms: float = 0.0
+        self.rms_xy: Dict = {}
+        self.poly_rms: float = 0.0
+        self.poly_rms_xy: Dict = {}
+        self.polychromatic: bool = True
+        self._wl_cache: list[float] = [0.588]
+        #: контент ещё не отрисован / данные изменились — 3D перерисуется
+        #: при следующем показе (ленивый рендер)
+        self._needs_redraw = True
+
+    def _get_wavelengths(self) -> list[float]:
+        """Кэш длин волн (как в 2D-виде)."""
+        return self._wl_cache if self._wl_cache else [0.588]
+
+    def _render(self) -> None:
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+        self._needs_redraw = False
+        if self._render_pending():
+            return
+
+        spots = self.spots_poly if (self.polychromatic and self.spots_poly) else \
+                [(dx, dy, 0) for dx, dy in self.spots_mono] if self.spots_mono else []
+        if not spots:
+            self._render_no_data()
+            return
+
+        xs = np.asarray([dx for dx, _, _ in spots], dtype=float)
+        ys = np.asarray([dy for _, dy, _ in spots], dtype=float)
+
+        # Плотность: Z точки — населенность ячейки гистограммы, где она лежит
+        bins = self.DENSITY_BINS
+        span_x = max(xs.max() - xs.min(), 1e-9)
+        span_y = max(ys.max() - ys.min(), 1e-9)
+        hist, _, _ = np.histogram2d(xs, ys, bins=bins)
+        ix = np.clip(((xs - xs.min()) / span_x * bins).astype(int), 0, bins - 1)
+        iy = np.clip(((ys - ys.min()) / span_y * bins).astype(int), 0, bins - 1)
+        zs = hist[ix, iy]
+
+        # Цвет: по λ (полихром.) либо по плотности
+        wls = self._get_wavelengths()
+        use_wl_color = self.polychromatic and len(wls) > 1
+        if use_wl_color:
+            colors = []
+            for _, _, wl_idx in spots:
+                if wl_idx < 100 and wl_idx < len(wls):
+                    colors.append(wl_to_plot_color(wls[wl_idx]).name())
+                else:
+                    colors.append('#00ff78')
+            cmap = None
+        else:
+            colors = zs / max(float(zs.max()), 1.0)
+            cmap = 'viridis'
+
+        ax = self._figure.add_subplot(projection='3d')
+        style_3d_axes(ax)
+        ax.scatter(xs, ys, zs, c=colors, cmap=cmap, s=8,
+                   depthshade=True, linewidths=0)
+        ax.view_init(elev=MPL_3D_ELEV, azim=MPL_3D_AZIM)
+        try:
+            ax.set_box_aspect((1.0, 1.0, 0.35))
+        except AttributeError:
+            pass  # старые matplotlib без set_box_aspect
+        ax.set_xlabel('X, мм')
+        ax.set_ylabel('Y, мм')
+        ax.set_zlabel('Плотность, лучей/ячейку')
+        cur_rms = self.poly_rms if self.polychromatic else self.rms
+        mode = ' (цвет — λ)' if use_wl_color else ' (цвет — плотность)'
+        ax.set_title(f'Точечная диаграмма 3D{mode} | RMS: {cur_rms:.4f} мм')
+
+    def _render_no_data(self) -> None:
+        """Заглушка «Нет данных» до первого расчёта."""
+        ax = self._figure.add_subplot(111)
+        ax.set_facecolor(MPL_BG_COLOR)
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.text(0.5, 0.5, 'Нет данных', ha='center', va='center',
+                color=MPL_TEXT_COLOR, fontsize=12, transform=ax.transAxes)
+
+
+class SpotDiagramWidget(QWidget):
+    """Точечная диаграмма с переключателем 2D/3D.
+
+    Обёртка: кнопка «2D/3D» + стек из 2D-вида (:class:`SpotDiagram2DWidget`,
+    QPainter) и 3D-вида (:class:`SpotDiagram3DWidget`, matplotlib scatter).
+    Переключение мгновенное, состояние хранится в виджете; 3D перерисовывается
+    лениво — только когда показан. Данные и протокол фаз расчёта
+    (``spots_mono``…``poly_rms_xy``, ``_wl_cache``, ``_pending``, ``update``)
+    делегируются обоим видам, поэтому внешнее API (панель анализа, тесты)
+    не меняется.
+    """
+
+    #: атрибуты данных, перенаправляемые обоим вложенным видам
+    _DATA_ATTRS = ('spots_mono', 'spots_poly', 'rms', 'rms_xy',
+                   'poly_rms', 'poly_rms_xy', 'polychromatic',
+                   '_wl_cache', '_pending')
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._view2d = SpotDiagram2DWidget()
+        self._view3d = SpotDiagram3DWidget()
+        self._stack = QStackedWidget()
+        self._stack.addWidget(self._view2d)   # индекс 0 — 2D (QPainter)
+        self._stack.addWidget(self._view3d)   # индекс 1 — 3D (matplotlib)
+
+        self._btn_3d = QPushButton("2D/3D")
+        self._btn_3d.setMaximumWidth(55)
+        self._btn_3d.setCheckable(True)
+        self._btn_3d.setToolTip(
+            "Переключить 2D/3D вид точечной диаграммы:\n"
+            "3D — высота и цвет по плотности пятна\n"
+            "(цвет по длине волны в полихром. режиме)")
+        self._btn_3d.toggled.connect(self.set_3d_enabled)
+
+        btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(0, 0, 0, 0)
+        btn_row.addWidget(self._btn_3d)
+        btn_row.addStretch()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        layout.addLayout(btn_row)
+        layout.addWidget(self._stack)
+
+    # -- Делегирование данных вложенным видам ----------------------------
+    def __setattr__(self, name, value):
+        if name in SpotDiagramWidget._DATA_ATTRS and '_view2d' in self.__dict__:
+            setattr(self._view2d, name, value)
+            setattr(self._view3d, name, value)
+            self._view3d._needs_redraw = True
+        else:
+            super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        # вызывается только если атрибут не найден обычным путём
+        if name in SpotDiagramWidget._DATA_ATTRS and '_view2d' in self.__dict__:
+            return getattr(self._view2d, name)
+        raise AttributeError(
+            f"{type(self).__name__!r} object has no attribute {name!r}")
+
+    # -- Public API -------------------------------------------------------
+    @property
+    def spot_3d_enabled(self) -> bool:
+        """Включён ли 3D-режим (состояние переключателя)."""
+        return self._stack.currentIndex() == 1
+
+    def set_3d_enabled(self, enabled: bool) -> None:
+        """Переключить 2D/3D-режим (мгновенно, без пересчёта данных)."""
+        self._btn_3d.blockSignals(True)
+        self._btn_3d.setChecked(bool(enabled))
+        self._btn_3d.blockSignals(False)
+        self._stack.setCurrentIndex(1 if enabled else 0)
+        if enabled and self._view3d._needs_redraw:
+            self._view3d.update()   # ленивая перерисовка при показе 3D
+
+    def set_data(self, sys: OpticalSystem) -> None:
+        """Пересчитать пятно (моно + полихром.) и обновить оба вида."""
+        self._view2d.set_data(sys)
+        for name in ('spots_mono', 'spots_poly', 'rms', 'poly_rms',
+                     'polychromatic', '_wl_cache'):
+            setattr(self._view3d, name, getattr(self._view2d, name))
+        self._view3d._needs_redraw = True
+        if self.spot_3d_enabled:
+            self._view3d.update()
+
+    def update(self) -> None:
+        """Qt-update контейнера и вложенных видов (протокол ``_pending``)."""
+        super().update()
+        self._view2d.update()
+        if self.spot_3d_enabled:
+            self._view3d.update()
+
+    @staticmethod
+    def _rms_label(rms: float, rms_xy: Dict, num_rays: int) -> str:
+        """Подпись RMS (делегируется 2D-виду)."""
+        return SpotDiagram2DWidget._rms_label(rms, rms_xy, num_rays)
 
 
 class HeatmapWidget(AberrationPlotWidget):

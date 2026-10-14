@@ -4,6 +4,7 @@ OPAL-OKB Windows 10 - PyQt5 GUI
 """
 import sys
 import os
+from typing import Dict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -33,6 +34,7 @@ from system_utils import reverse_system, scale_system, nearest_standard_radius, 
 from io_utils import save_json, load_json, append_system, export_protocol
 from library import build_library, create_system_from_entry
 from achromat import design_achromat, GLASS_PAIRS
+from strehl import compute_strehl, format_strehl, strehl_tooltip
 from optics_utils import (
     get_primary_wl, get_effective_aperture, copy_table_selection,
     get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
@@ -384,6 +386,12 @@ class ResultsPanel(QWidget):
         seidel_layout.addWidget(self.seidel_table)
         seidel_group.setLayout(seidel_layout)
 
+        # Число Штреля (Л1.7): строка под суммами Зейделя; расшифровка
+        # (формула Марешаля, точный FFT-результат, разбивка по λ) — tooltip
+        self.strehl_label = QLabel("Strehl: —")
+        self.strehl_label.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        self.strehl_label.setToolTip(strehl_tooltip({}))
+
         # Лог
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
@@ -392,6 +400,7 @@ class ResultsPanel(QWidget):
 
         layout.addWidget(parax_group)
         layout.addWidget(seidel_group)
+        layout.addWidget(self.strehl_label)
         layout.addWidget(QLabel("Лог:"))
         layout.addWidget(self.log_text, 1)  # stretch factor 1 — log takes extra space
         layout.addStretch()
@@ -472,6 +481,16 @@ class ResultsPanel(QWidget):
             self.seidel_table.setItem(i, 1, val_item)
         self.seidel_table.setFixedHeight(30 + len(rows) * 22)
 
+    def update_strehl(self, strehl: Dict) -> None:
+        """Обновить строку числа Штреля (Марешаль + точный FFT).
+
+        Args:
+            strehl: Результат :func:`strehl.compute_strehl` (пустой
+                словарь/``None`` → заглушка «Strehl: —»).
+        """
+        self.strehl_label.setText(format_strehl(strehl or {}))
+        self.strehl_label.setToolTip(strehl_tooltip(strehl or {}))
+
     def update_results(self, sys: OpticalSystem):
         """Обновить результаты."""
         parax = paraxial_trace(sys)
@@ -492,6 +511,12 @@ class ResultsPanel(QWidget):
 
         self._update_parax_display()
         self._update_seidel_display(seidel)
+
+        # Число Штреля: полихроматически при нескольких λ системы
+        try:
+            self.update_strehl(compute_strehl(sys))
+        except Exception:
+            self.update_strehl({})
 
         # Параксиальные для всех λ
         self._update_paraxial_all_wl(sys)
@@ -1227,6 +1252,11 @@ class MainWindow(QMainWindow):
         self.sys_params.load_system(self.current_system)
         self.results.log_text.clear()
         self.viz.set_system(self.current_system, trace_rays=False)
+        # Число Штреля — вместе с остальными результатами при смене системы
+        try:
+            self.results.update_strehl(compute_strehl(self.current_system))
+        except Exception:
+            self.results.update_strehl({})
 
     def _add_surface(self):
         """Insert a blank surface before the selected row."""

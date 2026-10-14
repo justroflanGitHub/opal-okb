@@ -456,12 +456,14 @@ def fit_focal_length(system: OpticalSystem, target_f: float,
                      surface_idx: int, param_type: str = 'radius',
                      tol: float = 1e-6, max_iter: int = 100) -> OpticalSystem:
     """
-    Подогнать радиус поверхности для заданного фокусного расстояния.
-    Внимание: толщина поверхности практически не влияет на f'.
+    Подогнать радиус или толщину поверхности для заданного фокусного
+    расстояния (бисекция по параксиальному f').
+
+    В многокомпонентной системе толщина (осевая или воздушный зазор)
+    тоже влияет на f', поэтому подгон толщиной возможен.
     """
-    if param_type == 'thickness':
-        # Толщина почти не меняет f' — подгон невозможен
-        return _deepcopy_system(system)
+    if not math.isfinite(target_f):
+        raise ValueError(f"Целевое f' некорректно: {target_f}")
 
     sys = _deepcopy_system(system)
 
@@ -489,6 +491,11 @@ def fit_focal_length(system: OpticalSystem, target_f: float,
     # Оцениваем текущее f
     _set_variable(sys, surface_idx, param_type, current_val)
     f_current = eval_f(current_val)
+    if not math.isfinite(f_current):
+        raise ValueError(
+            f"Параксиальный расчёт не сходится (f' = {f_current}). "
+            "Проверьте систему."
+        )
 
     if abs(f_current - target_f) < tol:
         return sys
@@ -526,6 +533,11 @@ def fit_focal_length(system: OpticalSystem, target_f: float,
     for _ in range(max_iter):
         mid = (lo + hi) / 2.0
         f_mid = eval_f(mid)
+        if not math.isfinite(f_mid):
+            raise ValueError(
+                f"Параксиальный расчёт выродился (f' = {f_mid}) при "
+                f"{param_type}={mid:.6f}. Выберите другую поверхность."
+            )
 
         if abs(f_mid - target_f) < tol:
             _set_variable(sys, surface_idx, param_type, mid)
@@ -559,7 +571,14 @@ def fit_bfd(system: OpticalSystem, target_bfd: float,
 
     Returns:
         Копия системы с подогнанным параметром
+
+    Raises:
+        ValueError: если цель некорректна/недостижима или параметр
+            не влияет на BFD.
     """
+    if not math.isfinite(target_bfd):
+        raise ValueError(f"Целевой BFD некорректен: {target_bfd}")
+
     sys = _deepcopy_system(system)
 
     if surface_idx == -1:
@@ -589,6 +608,11 @@ def fit_bfd(system: OpticalSystem, target_bfd: float,
     # изображения, он не влияет на положение фокуса относительно последней
     # поверхности)
     bfd_current = eval_bfd(current_val)
+    if not math.isfinite(bfd_current):
+        raise ValueError(
+            f"Параксиальный расчёт не сходится (BFD = {bfd_current}). "
+            "Проверьте систему."
+        )
     probe_val = current_val * 1.01 + 0.1
     bfd_probe = eval_bfd(probe_val)
     _set_variable(sys, surface_idx, param_type, current_val)  # restore
@@ -635,6 +659,11 @@ def fit_bfd(system: OpticalSystem, target_bfd: float,
     for _ in range(max_iter):
         mid = (lo + hi) / 2.0
         bfd_mid = eval_bfd(mid)
+        if not math.isfinite(bfd_mid):
+            raise ValueError(
+                f"Параксиальный расчёт выродился (BFD = {bfd_mid}) при "
+                f"{param_type}={mid:.6f}. Выберите другую поверхность."
+            )
 
         if abs(bfd_mid - target_bfd) < tol:
             _set_variable(sys, surface_idx, param_type, mid)

@@ -1523,35 +1523,73 @@ class MainWindow(QMainWindow):
         """Open the parameter fitting dialog."""
         from optimizer import fit_focal_length, fit_bfd
 
-        dlg = FitDialog(len(self.current_system.surfaces), self)
+        self._collect_system_from_ui()
+
+        # Текущие параксиальные характеристики — умные дефолты диалога
+        current_efl = current_bfd = None
+        try:
+            parax = paraxial_trace(self.current_system)
+            current_efl = parax.get('focal_length')
+            current_bfd = parax.get('back_focal_distance')
+        except Exception:
+            pass  # диалог откроется без дефолтов
+
+        mirror_surfaces = {i for i, s in enumerate(self.current_system.surfaces)
+                           if s.is_reflective}
+
+        dlg = FitDialog(
+            len(self.current_system.surfaces), self,
+            current_efl=current_efl, current_bfd=current_bfd,
+            mirror_surfaces=mirror_surfaces)
         if dlg.exec_() != QDialog.Accepted:
             return
 
-        self._collect_system_from_ui()
         target_type, target_val, surf_idx, param_type = dlg.get_parameters()
+
+        old_system = self.current_system  # fit работает с копией
+        old_surf = old_system.surfaces[surf_idx]
+        old_value = old_surf.radius if param_type == 'radius' else old_surf.thickness
+        old_ach = current_efl if target_type == FitDialog.TARGET_FOCAL else current_bfd
+        old_ach_txt = f"{old_ach:.4f}" if old_ach is not None else "—"
+        param_name = 'R' if param_type == 'radius' else 'd'
 
         try:
             if target_type == FitDialog.TARGET_FOCAL:
                 result_sys = fit_focal_length(
-                    self.current_system, target_val, surf_idx, param_type)
+                    old_system, target_val, surf_idx, param_type)
             else:
                 result_sys = fit_bfd(
-                    self.current_system, target_val, surf_idx, param_type)
-
-            self.current_system = result_sys
-            self._refresh_ui()
-
-            parax = paraxial_trace(self.current_system)
-            if target_type == FitDialog.TARGET_FOCAL:
-                ach_f = parax.get('focal_length', 0)
-                self.statusBar().showMessage(
-                    f"Подгонка: f' = {ach_f:.4f} мм (цель: {target_val:.4f})")
-            else:
-                ach_bfd = parax.get('back_focal_distance', 0)
-                self.statusBar().showMessage(
-                    f"Подгонка: BFD = {ach_bfd:.4f} мм (цель: {target_val:.4f})")
+                    old_system, target_val, surf_idx, param_type)
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка подгонки:\n{e}")
+            return
+
+        parax = paraxial_trace(result_sys)
+        if target_type == FitDialog.TARGET_FOCAL:
+            ach_name = "f'"
+            ach_value = parax.get('focal_length', 0)
+        else:
+            ach_name = "BFD"
+            ach_value = parax.get('back_focal_distance', 0)
+        new_surf = result_sys.surfaces[surf_idx]
+        new_value = new_surf.radius if param_type == 'radius' else new_surf.thickness
+
+        # Изменение деструктивно — подтверждение с возможностью отмены
+        answer = QMessageBox.question(
+            self, "Подгонка характеристик",
+            f"Применить подгонку?\n\n"
+            f"{ach_name}: {old_ach_txt} → {ach_value:.4f} мм\n"
+            f"{param_name}{surf_idx + 1}: {old_value:.4f} → {new_value:.4f} мм",
+            QMessageBox.Apply | QMessageBox.Cancel,
+            QMessageBox.Cancel)
+        if answer != QMessageBox.Apply:
+            return  # исходная система не тронута
+
+        self.current_system = result_sys
+        self._refresh_ui()
+        self.statusBar().showMessage(
+            f"Подгонка: {ach_name} = {ach_value:.4f} мм (цель: {target_val:.4f}); "
+            f"{param_name}{surf_idx + 1}: {old_value:.4f} → {new_value:.4f} мм")
 
 
     def _show_ray_table(self):

@@ -71,6 +71,21 @@ def export_protocol(system: OpticalSystem, paraxial: dict, seidel: dict, filepat
         lines.append("")
         lines.append(f"  Экранирование: {system.obscuration_ratio*100:.1f}%")
 
+    # Таблицы осевого пучка (реверс §11+§19): TABOC1/TABOC2 — поле не
+    # нужно (осевой пучок есть всегда, когда есть поверхности); те же
+    # предосторожности против падения экспорта
+    try:
+        from analysis.tables import (
+            format_taboc1, format_taboc2, taboc1_rows, taboc2_rows,
+        )
+        if system.surfaces:
+            lines.append("")
+            lines.append(format_taboc1(taboc1_rows(system)))
+            lines.append("")
+            lines.append(format_taboc2(taboc2_rows(system)))
+    except Exception:
+        pass
+
     # Таблицы OPAL по полю (реверс §15): TABGL + TABPR2 — только когда
     # в системе есть поле > 0; экспорт протокола не должен падать из-за
     # табличного расчёта (луч может не пройти — секции пропускаются)

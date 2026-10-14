@@ -482,3 +482,310 @@ def format_tabpr2(rows) -> str:
             _fwo(v, w, d) for v, (w, d) in zip(values[1:], TABPR2_FIELD_SPECS))
         lines.append(line.rstrip())
     return '\n'.join(lines)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# TABOC1/TABOC2 — остаточные аберрации ОСЕВОГО ПУЧКА (реверс §11 + §19,
+# волна 7 TASK_UNITS). Секция добавлена в конец файла: существующий код
+# TABGL/TABPR2 не меняется, импорты — здесь же (не в шапке модуля).
+# ══════════════════════════════════════════════════════════════════════════
+
+import bisect  # noqa: E402  (интерполяция неизопл. на зону зрачка)
+
+from analysis.aberrations import (    # noqa: E402
+    _chief_reference_opl, _ray_wavefront, _reference_sphere,
+    compute_isoplanatism,
+)
+from analysis.units import pupil_h_mm           # noqa: E402
+from optics_utils import (                      # noqa: E402
+    get_effective_aperture, make_field_ray,
+)
+from ray_tracing import trace_ray_through_system   # noqa: E402
+
+#: Зоны зрачка осевого пучка — равные площади √(k/n); эталон RT__2236
+#: при n=4: 1.000/.866/.707/.500 + осевая .000 (§19.1.2, та же схема
+#: :func:`field_zones`).
+TABOC_ZONES_N = 4
+
+#: Ширины полей строк данных TABOC1 после «1x» печатальщика: f6.3
+#: отн.зр, f12.5 продольная, 2×f11.5 поперечные — форма 0x505f8.
+TABOC1_FIELD_SPECS = ((6, 3), (12, 5), (11, 5), (11, 5))
+
+#: То же TABOC2: F7.3 метка строки (Tg'*100), 3×F10.4 величины по
+#: селектору — форма 0x506a8.
+TABOC2_FIELD_SPECS = ((7, 3), (10, 4), (10, 4), (10, 4))
+
+#: Величины TABOC2 — шапка-«супернабор» форм 0x506cc–0x5073d (§11.3,
+#: §19.2.1): формат даёт 3 величины из 5, состав — селектор варианта
+#: таблицы ([0x34b8] §11.2). Порядок — порядок шапки формы; тройки —
+#: (ключ селектора, ключ строки :func:`taboc2_rows`, имя, юнит).
+TABOC2_COLUMNS = (
+    ('wave', 'wave', 'Волновые аберрации', '(дл. волн)'),
+    ('iso', 'iso_pct', 'Неизопл.', '(%)'),
+    ('h_zr', 'h_zr_mm', 'Н ЗР', '(мм)'),
+    ('z_m', 'z_m', "Z'm", '(мм)'),
+    ('c_s', 'c_s', "C's", '(мм)'),
+)
+
+#: Слоты шапки TABOC2 (имя/юнит) — нарезка строк формы 0x506cc/0x5073d;
+#: ширины слотов сохранены (графическое окно «Волновые» — 29, прочие —
+#: по ширине колонок). Осевой вариант (etalon RT__2236) печатает
+#: «Волновые, Неизопл., Н ЗР» — тогда используется точная шапка
+#: :data:`TABOC2_HEADER`, иначе собирается из слотов [РЕКОНСТРУКЦИЯ].
+_TABOC2_SLOTS = {
+    'wave': ('     Волновые аберрации      ',
+             '         (дл. волн)          '),
+    'iso': (' Неизопл. ', '   (%)    '),
+    'h_zr': ('  Н ЗР  ', '  (мм)  '),
+    'z_m': ("    Z'm   ", '   (мм)   '),
+    'c_s': ("   C's    ", '   (мм)   '),
+}
+
+#: Заголовок TABOC1 — шапка формы 0x50619 (статический «мм»-вариант:
+#: «Отн.зр│ Продольные аберрации (мм) │ Поперечные аберрации (мм)») +
+#: ось графика эталона RT__2236 (нарезка строк формы 0x50666–0x506a8).
+TABOC1_HEADER = (
+    ' ─Отн.зр│    Продольные аберрации (мм)    │   Поперечные аберрации (мм)',
+    ' ──koop.┴───── 0 ──────── 1 ─────── 2 ────┴────── 0 ──────── 1 ───────── 2 ────',
+)
+
+#: Заголовок TABOC2 осевого варианта — эталон RT__2236 строки 10–12
+#: («Волновые / Неизопл. / Н ЗР»; Z'm/C's — внеосевой вариант, §19.2.1).
+TABOC2_HEADER = (
+    ' ─       │     Волновые аберрации      │ Неизопл. │  Н ЗР',
+    " ─Tg'*100│         (дл. волн)          │   (%)    │  (мм)",
+    ' ──────────── 0 ─────── 1 ─────── 2 ───┴──────────┴────────',
+)
+
+
+def _taboc2_header(columns) -> list:
+    """Шапка TABOC2 под выбранные колонки.
+
+    Осевой эталонный набор ``('wave', 'iso', 'h_zr')`` — точные строки
+    :data:`TABOC2_HEADER`; прочие наборы собираются из слотов формы
+    (оси графика «0 1 2» имеют смысл только у «Волновых»).
+    """
+    if tuple(columns) == ('wave', 'iso', 'h_zr'):
+        return list(TABOC2_HEADER)
+    cells = [_TABOC2_SLOTS[key] for key in columns]
+    line1 = " ─       │" + '│'.join(name for name, _ in cells)
+    line2 = " ─Tg'*100│" + '│'.join(unit for _, unit in cells)
+    sep = (' ────────┴'
+           + '┴'.join('─' * len(name) for name, _ in cells))
+    return [line1.rstrip(), line2.rstrip(), sep]
+
+
+def _interp_at(xs, ys, x):
+    """Линейная интерполяция по возрастающим ``xs`` (без numpy)."""
+    if x <= xs[0]:
+        return ys[0]
+    if x >= xs[-1]:
+        return ys[-1]
+    i = bisect.bisect_right(xs, x) - 1
+    x0, x1 = xs[i], xs[i + 1]
+    t = (x - x0) / (x1 - x0)
+    return ys[i] * (1.0 - t) + ys[i + 1] * t
+
+
+def _axial_zone_fan(system: OpticalSystem, wl: float, zones) -> list:
+    """Зональный веер осевого пучка (field_y = 0) + выходные наклоны.
+
+    Как :func:`aberrations.trace_aberration_fan`, но сетка — зоны зрачка
+    равной площади (эталон RT__2236), и каждый луч дополняется выходным
+    наклоном ``tg_prime`` = dy/dz последнего сегмента (метка-строка
+    TABOC2 «Tg'*100» = 100·tg u′, §19.1.3). Лучи строятся тем же
+    ``make_field_ray(…, pupil_y·aperture/2, …)`` — H ЗР = зона·Ax
+    соответствует фактической входной координате луча.
+
+    ``None`` — луч зоны не дошёл.
+    """
+    parax = paraxial_trace(system)
+    aperture = get_effective_aperture(system, default=10.0)
+    ref_center, ref_r = _reference_sphere(system, 0.0, parax)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    opl_chief = _chief_reference_opl(system, wl, 0.0, z_start, z_pupil,
+                                     ref_center, ref_r)
+    fan = []
+    for zone in zones:
+        ray = make_field_ray(system, 0.0, zone * aperture / 2.0, 0.0,
+                             z_start, z_pupil)
+        res = trace_ray_through_system(system, ray, wl)
+        if not (res.success and len(res.path) >= 2):
+            fan.append({'zone': zone, 'dy': None, 'ds': None,
+                        'wave': None, 'tg_prime': None})
+            continue
+        prev, last = res.path[-2], res.path[-1]
+        dz = last[2] - prev[2]
+        slope_y = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else 0.0
+        dy = last[1]
+        ds = -dy / slope_y if abs(slope_y) > 1e-12 else 0.0
+        fan.append({
+            'zone': zone,
+            'dy': dy,
+            'ds': ds,
+            'wave': _ray_wavefront(system, res, opl_chief, ref_center,
+                                   ref_r, wl),
+            'tg_prime': slope_y,
+        })
+    return fan
+
+
+def taboc1_rows(system: OpticalSystem, wl: float = None,
+                n_zones: int = TABOC_ZONES_N) -> list:
+    """Остаточные аберрации осевого пучка по зонам зрачка (TABOC1, §11.3).
+
+    Форма ``*TABOC1(f6.3,f12.5,2f11.5)`` (0x505f8), шапка 0x50619
+    «Отн.зр│ Продольные аберрации (мм)│ Поперечные аберрации (мм)».
+    Строки — зоны зрачка равной площади √(k/n) (:func:`field_zones`,
+    эталон RT__2236: 1.000/.866/.707/.500 + осевая .000):
+
+    * ``longitudinal_mm`` — продольная аберрация DSA (мм) = −dy/slope
+      (как ``trace_aberration_fan`` → ``ds``);
+    * ``transverse_mer_mm`` — поперечная меридиональная Δy′ (мм) = dy;
+    * ``transverse_sag_mm`` — поперечная сагиттальная (мм): в осевом
+      меридиональном веере вырождается в 0 по симметрии (ср.
+      ``compute_oblique_fan`` на осевом поле: dy_sag ≡ 0).
+
+    Эталон RT__2236 печатает дальний вариант (продольные в дптр,
+    поперечную в гр.мнсек — конверсии :func:`units.mm_to_dioptres` /
+    :func:`units.deg_to_gms`); здесь — статический мм-вариант формы
+    (ближний тип).
+
+    Args:
+        system: Оптическая система (не изменяется).
+        wl: Длина волны (мкм); None → основная λ системы.
+        n_zones: Число зон зрачка (осевая строка добавляется сверх).
+
+    Returns:
+        Список словарей ``zone, longitudinal_mm, transverse_mer_mm,
+        transverse_sag_mm`` (``None`` — луч зоны не дошёл); замыкает
+        осевая строка из нулей (эталон).
+    """
+    zero = {'zone': 0.0, 'longitudinal_mm': 0.0,
+            'transverse_mer_mm': 0.0, 'transverse_sag_mm': 0.0}
+    if wl is None:
+        wl = get_primary_wl(system)
+    if not system.surfaces:
+        return [dict(zero)]
+    rows = []
+    for ray_data in _axial_zone_fan(system, wl, field_zones(n_zones)):
+        ok = ray_data['dy'] is not None
+        rows.append({
+            'zone': ray_data['zone'],
+            'longitudinal_mm': ray_data['ds'],
+            'transverse_mer_mm': ray_data['dy'],
+            'transverse_sag_mm': 0.0 if ok else None,
+        })
+    rows.append(dict(zero))
+    return rows
+
+
+def taboc2_rows(system: OpticalSystem, wl: float = None,
+                n_zones: int = TABOC_ZONES_N, num_rays: int = 20) -> list:
+    """Волновые/остаточные аберрации осевого пучка (TABOC2, §11.3+§19.1).
+
+    Форма ``*TABOC2(F7.3,3F10.4)`` (0x506a8); строки — те же зоны
+    зрачка, метка строки — выходная зрачковая координата:
+
+    * ``tg_prime100`` — Tg'*100 = 100·tg u′ выходного наклона
+      зонального луча (§19.1.3; ближнему типу изображения отвечает
+      угловая координата, дальнему — H' ЗР в мм);
+    * ``wave`` — волновая аберрация W (дл. волн, ``_ray_wavefront``);
+    * ``iso_pct`` — неизопланатизм осевой зоны (%,
+      ``compute_isoplanatism`` с линейной интерполяцией на зону);
+    * ``h_zr_mm`` — H ЗР (мм) = зона × Ax (§19.1, :func:
+      ``units.pupil_h_mm``) — номинальная входная координата;
+    * ``z_m`` — Z'm (мм) и ``c_s`` — C's (мм): след Коддингтона
+      (:func:`coddington_trace`) и радиус каустики (:func:
+      `caustic_radii`) осевого пучка — характеристики всего пучка,
+      зонально не зависят [ГИПОТЕЗА: зональный разброс этих колонок —
+      внеосевой вариант таблицы; осевой эталон RT__2236 их не печатает].
+
+    Args:
+        system: Оптическая система (не изменяется).
+        wl: Длина волны (мкм); None → основная λ системы.
+        n_zones: Число зон зрачка (осевая строка добавляется сверх).
+        num_rays: Число лучей веера неизопланатизма.
+
+    Returns:
+        Список словарей ``zone, tg_prime100, wave, iso_pct, h_zr_mm,
+        z_m, c_s``; замыкает осевая строка из нулей (эталон: «.000 /
+        .0000 / .0000 / .0000»).
+    """
+    zero = {'zone': 0.0, 'tg_prime100': 0.0, 'wave': 0.0, 'iso_pct': 0.0,
+            'h_zr_mm': 0.0, 'z_m': 0.0, 'c_s': 0.0}
+    if wl is None:
+        wl = get_primary_wl(system)
+    if not system.surfaces:
+        return [dict(zero)]
+
+    ax_mm = get_effective_aperture(system, default=10.0) / 2.0
+    cod = coddington_trace(system, wl=wl, field_y=0.0)
+    cau = caustic_radii(system, wl=wl, field_y=0.0)
+    z_m = cod.get('delta_zm') if cod else None
+    c_s = cau.get('r_s') if cau else None
+
+    iso_pupils, iso_vals = compute_isoplanatism(system, wl=wl,
+                                                num_rays=num_rays)
+    rows = []
+    for ray_data in _axial_zone_fan(system, wl, field_zones(n_zones)):
+        iso = (_interp_at(iso_pupils, iso_vals, ray_data['zone'])
+               if iso_pupils else None)
+        rows.append({
+            'zone': ray_data['zone'],
+            'tg_prime100': (ray_data['tg_prime'] * 100.0
+                            if ray_data['tg_prime'] is not None else None),
+            'wave': ray_data['wave'],
+            'iso_pct': iso * 100.0 if iso is not None else None,
+            'h_zr_mm': pupil_h_mm(ray_data['zone'], ax_mm),
+            'z_m': z_m,
+            'c_s': c_s,
+        })
+    rows.append(dict(zero))
+    return rows
+
+
+def format_taboc1(rows) -> str:
+    """Таблица TABOC1 целиком: шапка формы (мм) + строки данных.
+
+    Строка данных — «1x» печатальщика + формат формы: f6.3 отн.зр,
+    f12.5 продольная, 2×f11.5 поперечные (:func:`_fwo` — без ведущего
+    нуля, как эталон).
+    """
+    lines = list(TABOC1_HEADER)
+    for row in rows:
+        values = (row.get('zone'), row.get('longitudinal_mm'),
+                  row.get('transverse_mer_mm'), row.get('transverse_sag_mm'))
+        line = ' ' + ''.join(
+            _fwo(v, w, d) for v, (w, d) in zip(values, TABOC1_FIELD_SPECS))
+        lines.append(line.rstrip())
+    return '\n'.join(lines)
+
+
+def format_taboc2(rows, columns=('wave', 'iso', 'h_zr')) -> str:
+    """Таблица TABOC2 целиком: шапка + строки «1x + F7.3,3F10.4».
+
+    Печатается метка-строка Tg'*100 + 3 величины из 5 по селектору
+    ``columns`` (ветвление [0x34b8] §11.2; осевой эталон RT__2236 —
+    «Волновые, Неизопл., Н ЗР» — заголовок эталонный, прочие наборы —
+    реконструкция из слотов формы).
+
+    Raises:
+        ValueError: в ``columns`` нет ключа из :data:`TABOC2_COLUMNS`.
+    """
+    cols = tuple(columns)
+    row_keys = dict((key, row_key) for key, row_key, _, _ in TABOC2_COLUMNS)
+    known = set(row_keys)
+    unknown = [key for key in cols if key not in known]
+    if unknown or len(cols) != 3:
+        raise ValueError(
+            f"селектор TABOC2 — ровно 3 ключа из {sorted(known)}; "
+            f"получено: {list(cols)}")
+    lines = _taboc2_header(cols)
+    for row in rows:
+        values = ((row.get('tg_prime100'),)
+                  + tuple(row.get(row_keys[key]) for key in cols))
+        line = ' ' + ''.join(
+            _fwo(v, w, d) for v, (w, d) in zip(values, TABOC2_FIELD_SPECS))
+        lines.append(line.rstrip())
+    return '\n'.join(lines)

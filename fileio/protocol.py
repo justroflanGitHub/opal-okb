@@ -71,6 +71,21 @@ def export_protocol(system: OpticalSystem, paraxial: dict, seidel: dict, filepat
         lines.append("")
         lines.append(f"  Экранирование: {system.obscuration_ratio*100:.1f}%")
 
+    # Таблицы OPAL по полю (реверс §15): TABGL + TABPR2 — только когда
+    # в системе есть поле > 0; экспорт протокола не должен падать из-за
+    # табличного расчёта (луч может не пройти — секции пропускаются)
+    try:
+        from analysis.tables import (
+            format_tabgl, format_tabpr2, max_field, tabgl_rows, tabpr2_rows,
+        )
+        if max_field(system) > 0:
+            lines.append("")
+            lines.append(format_tabgl(tabgl_rows(system)))
+            lines.append("")
+            lines.append(format_tabpr2(tabpr2_rows(system)))
+    except Exception:
+        pass
+
     lines.append("")
     lines.append("=" * 72)
     lines.append("  Конец протокола")

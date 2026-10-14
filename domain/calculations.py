@@ -188,10 +188,13 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
     for i in range(ns):
         s = sys.surfaces[i]
         if s.is_reflective:
-            # Зеркало: после отражения n меняет знак
+            # Зеркало: после отражения n меняет знак (среда не меняется)
             n_medium.append(-n_medium[-1])
         else:
-            n_medium.append(refractive_index(s.glass, wl_used, catalog, getattr(s, 'n_override', None)))
+            # Знак n при обратном ходе (после нечётного числа отражений)
+            # сохраняется: n_medium = sign(предыдущей среды) * |n|
+            n_next = refractive_index(s.glass, wl_used, catalog, getattr(s, 'n_override', None))
+            n_medium.append((1.0 if n_medium[-1] > 0 else -1.0) * n_next)
 
     # ===== Длина системы =====
     L = sum(s.thickness for s in sys.surfaces)

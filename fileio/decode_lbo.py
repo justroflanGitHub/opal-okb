@@ -354,9 +354,13 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     # 1. Кривизны: num_surf × float64 от 0xA8; при мусоре — сдвиг заголовка;
     #    если и это не нашлось — raw-чтение (совместимость со старым поведением:
     # мусорные ~0 кривизны дают плоские поверхности вместо пустой системы)
+    # Для записей с кодом [0x36]==5 перед блоком кривизн стоит лишний double
+    # (константа ~7.2e-06), кривизны начинаются с 0xB0 (Киноруссары-1/4/5а/10а/11)
+    hdr_code = struct.unpack_from('<H', data, 0x36)[0] if len(data) > 0x38 else 0
+    curv_start = 0xB0 if hdr_code == 5 else 0xA8
     curvatures = []
-    curv_off = 0xA8
-    for attempt_off in range(0xA8, 0xA8 + 0xE0, 8):
+    curv_off = curv_start
+    for attempt_off in range(curv_start, curv_start + 0xE0, 8):
         vals = []
         ok = True
         for i in range(num_surf):
@@ -455,6 +459,51 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
     idx_end = ri_start if ri_start > 0 else (
         names_start if names_start >= 0 else thick_end + (num_surf + 1) * 2)
     glass_idx = _scan_indices(data, thick_end, idx_end, num_surf, idx_limit)
+
+    # 5a. Зеркала: маркеры 0xFFFE/0xFFFF в массиве индексов отмечают гэпы
+    #     ОБРАТНОГО хода (после отражения). Максимальная серия маркеров
+    #     a..b означает зеркала на поверхностях a-1 и b: направление меняется
+    #     на S_{a-1}, интервал проходится назад, на S_b — снова вперёд
+    #     (проверено на Инфракрасном з-л f'=44, MIRR F'=280, з-л f'=55 —
+    #     z-положения дважды посещаемых поверхностей совпадают).
+    #     Условия применимости: маркеры не с нулевой позиции, зеркала в
+    #     диапазоне поверхностей, чётное число зеркал; иначе — старое правило.
+    marks = [g in MIRROR_INDEXES for g in glass_idx]
+    mirror_runs = []
+    _j = 0
+    while _j < len(marks):
+        if marks[_j]:
+            _k = _j
+            while _k + 1 < len(marks) and marks[_k + 1]:
+                _k += 1
+            mirror_runs.append((_j, _k))
+            _j = _k + 1
+        else:
+            _j += 1
+    mirror_set = set()
+    for _a, _b in mirror_runs:
+        if _a < 1 or _b >= num_surf:
+            mirror_set = None
+            break
+        mirror_set.add(_a - 1)
+        mirror_set.add(_b)
+    if mirror_set is not None and len(mirror_set) % 2:
+        mirror_set = None  # нечётное число отражений — не доверяем рунам
+
+    def _resolve_marker_gi(pos):
+        """Среда маркированного гэпа: 0xFFFF — воздух, 0xFFFE — стекло
+        ближайшего немаркированного стеклянного индекса."""
+        v = glass_idx[pos] if pos < len(glass_idx) else 1
+        if v not in MIRROR_INDEXES:
+            return v
+        if v == 0xFFFF:
+            return 1
+        for t in list(range(pos - 1, -1, -1)) + list(range(pos + 1, len(glass_idx))):
+            g = glass_idx[t]
+            if g not in MIRROR_INDEXES and g >= 2:
+                return g
+        return 1
+
     max_gi = max((g for g in glass_idx if g not in MIRROR_INDEXES), default=1)
     ng = max(max_gi - 1, 0)
 
@@ -556,7 +605,13 @@ def decode_lbo_opj(data: bytes) -> OpticalSystem:
 
         gi = glass_idx[i + 1] if i + 1 < len(glass_idx) else 1
         gi_before = glass_idx[i] if i < len(glass_idx) else 1
-        is_mirror = gi in MIRROR_INDEXES or gi_before in MIRROR_INDEXES
+        if mirror_set is not None:
+            # новое правило: зеркала из рун маркеров; маркированный гэп —
+            # реальная среда (воздух/стекло соседа)
+            is_mirror = i in mirror_set
+            gi = _resolve_marker_gi(i + 1)
+        else:
+            is_mirror = gi in MIRROR_INDEXES or gi_before in MIRROR_INDEXES
 
         glass = ''
         if is_mirror:

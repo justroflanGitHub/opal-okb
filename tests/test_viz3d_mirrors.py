@@ -280,9 +280,16 @@ class TestReflectedRays:
 
 class TestRealMirrorLens:
     def test_decoder_marks_mirrors(self, lbo_mirror):
-        """Декодер LBO помечает зеркала is_reflective (4 поверхности)."""
+        """Декодер LBO помечает зеркала is_reflective.
+
+        Правильная топология «Инфракрасного з-л» — 2 зеркала (S3 и S6):
+        серия маркеров 0xFFFE/0xFFFF (гэпы обратного хода) a..b даёт
+        зеркала на a-1 и b. Промежуточные поверхности S4/S5 — обычные
+        рефрактивные (z-совпадения S2=S4, S5=S7; f' = 44.03 при
+        каталогном 44, TASK_RUSSAR / docs/LBO_FORMAT.md «Особые случаи»).
+        """
         _, n_mirrors = lbo_mirror
-        assert n_mirrors >= 3
+        assert n_mirrors == 2
 
     def test_paint_mirrors_no_glass_volume(self, lbo_mirror):
         """Сцена «з-л» рисуется: подложек столько же, сколько зеркал;

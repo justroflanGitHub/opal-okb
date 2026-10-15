@@ -1,0 +1,1297 @@
+080000: enter 0x54e, 0
+080004: push di
+080005: push si
+080006: mov es, word ptr [0x34f2]
+08000a: mov ax, word ptr es:[2]
+08000e: mov dx, word ptr es:[4]
+080013: mov word ptr [0x9d86], ax
+080016: mov word ptr [0x9d88], dx
+08001a: mov ax, 0x9d86
+08001d: push ds
+08001e: push ax
+08001f: lcall 0x71f4, 0x30
+080024: mov word ptr [bp - 0x51e], ax
+080028: lea di, [bp - 0x50a]
+08002c: mov si, 0x9dc2
+08002f: push ss
+080030: pop es
+080031: movsw word ptr es:[di], word ptr [si]
+080032: movsw word ptr es:[di], word ptr [si]
+080033: movsw word ptr es:[di], word ptr [si]
+080034: movsw word ptr es:[di], word ptr [si]
+080035: lea di, [bp - 0x502]
+080039: mov si, 0x9dca
+08003c: movsw word ptr es:[di], word ptr [si]
+08003d: movsw word ptr es:[di], word ptr [si]
+08003e: movsw word ptr es:[di], word ptr [si]
+08003f: movsw word ptr es:[di], word ptr [si]
+080040: mov word ptr [bp - 0x514], 5
+080046: mov word ptr [bp - 0x512], 0
+08004c: mov word ptr [bp - 0xe], 1
+080051: mov word ptr [bp - 0xc], 0
+080056: mov ax, word ptr [bp - 0xe]
+080059: mov word ptr [0x9d78], ax
+08005c: sub ax, ax
+08005e: mov word ptr [bp - 8], ax
+080061: mov word ptr [bp - 0xa], ax
+080064: lcall 0x7200, 0xf8
+080069: push 0
+08006b: push 0xb
+08006d: lcall 0x502e, 0x384
+080072: add sp, 4
+080075: mov word ptr [bp - 0x510], ax
+080079: mov word ptr [bp - 0x50e], dx
+08007d: mov word ptr [bp - 0x4fa], 1
+080083: push 0xf
+080085: lcall 0x502e, 0x1ea
+08008a: add sp, 2
+08008d: mov word ptr [bp - 0x50c], ax
+080091: mov word ptr [bp - 4], 1
+080096: mov ax, word ptr [bp - 0x4fa]
+08009a: cdq 
+08009b: sub ax, 1
+08009e: sbb dx, 0
+0800a1: mov cl, 3
+0800a3: lcall 0x5516, 0xe3e
+0800a8: add ax, 1
+0800ab: adc dx, 0
+0800ae: mov word ptr [bp - 0x526], ax
+0800b2: mov word ptr [bp - 0x524], dx
+0800b6: mov word ptr [bp - 0x522], 0x19
+0800bc: mov word ptr [bp - 0x520], 0
+0800c2: lea ax, [bp - 0x522]
+0800c6: push ss
+0800c7: push ax
+0800c8: lea ax, [bp - 0x526]
+0800cc: push ss
+0800cd: push ax
+0800ce: mov ax, word ptr [bp - 0x4fa]
+0800d2: add ax, 0x8d9
+0800d5: push ds
+0800d6: push ax
+0800d7: lea ax, [bp - 6]
+0800da: mov word ptr [0x1d60], ax
+0800dd: mov word ptr [0x1d62], ss
+0800e1: lcall 0x6c90, 8
+0800e6: push 0
+0800e8: lcall 0x502e, 0x1ea
+0800ed: add sp, 2
+0800f0: mov word ptr [bp - 0x50c], ax
+0800f4: mov word ptr [bp - 4], 6
+0800f9: mov ax, word ptr [bp - 0x4fa]
+0800fd: cdq 
+0800fe: sub ax, 1
+080101: sbb dx, 0
+080104: mov cl, 3
+080106: lcall 0x5516, 0xe3e
+08010b: add ax, 2
+08010e: adc dx, 0
+080111: mov word ptr [bp - 0x522], ax
+080115: mov word ptr [bp - 0x520], dx
+080119: mov word ptr [bp - 0x526], 0x19
+08011f: mov word ptr [bp - 0x524], 0
+080125: lea ax, [bp - 0x526]
+080129: push ss
+08012a: push ax
+08012b: lea ax, [bp - 0x522]
+08012f: push ss
+080130: push ax
+080131: mov ax, word ptr [bp - 0x4fa]
+080135: mov cx, ax
+080137: shl ax, 1
+080139: add ax, cx
+08013b: shl ax, 1
+08013d: add ax, 0x8de
+080140: push ds
+080141: push ax
+080142: lea ax, [bp - 6]
+080145: mov word ptr [0x1d60], ax
+080148: mov word ptr [0x1d62], ss
+08014c: lcall 0x6c90, 8
+080151: inc word ptr [bp - 0x4fa]
+080155: cmp word ptr [bp - 0x4fa], 0xa
+08015a: jg 0x8015f
+08015c: jmp 0x80083
+08015f: lcall 0x691a, 4
+080164: mov word ptr [bp - 0x4fa], 1
+08016a: imul si, word ptr [bp - 0x4fa], 0x4a
+08016f: lea ax, [bp + si - 0x542]
+080173: push ss
+080174: push ax
+080175: mov ax, word ptr [bp - 0x4fa]
+080179: cdq 
+08017a: add ax, 0x21
+08017d: adc dx, 0
+080180: push dx
+080181: push ax
+080182: push 0x920
+080185: lcall 0x5516, 0x28e2
+08018a: add sp, 0xa
+08018d: mov word ptr [bp - 0x526], 0x4a
+080193: mov word ptr [bp - 0x524], 0
+080199: mov word ptr [bp - 4], 0x4a
+08019e: imul si, word ptr [bp - 0x4fa], 0x4a
+0801a3: lea ax, [bp + si - 0x542]
+0801a7: push ss
+0801a8: push ax
+0801a9: lea ax, [bp - 0x526]
+0801ad: push ss
+0801ae: push ax
+0801af: lea ax, [bp - 6]
+0801b2: mov word ptr [0x1d60], ax
+0801b5: mov word ptr [0x1d62], ss
+0801b9: lcall 0x6928, 9
+0801be: inc word ptr [bp - 0x4fa]
+0801c2: cmp word ptr [bp - 0x4fa], 0x11
+0801c7: jle 0x8016a
+0801c9: les bx, ptr [bp + 6]
+0801cc: cmp word ptr es:[bx], 1
+0801d0: je 0x801d5
+0801d2: jmp 0x8035e
+0801d5: mov word ptr [0x40ec], 1
+0801db: mov word ptr [0x40ee], 0
+0801e1: mov word ptr [0x40e4], 0x32
+0801e7: mov word ptr [0x40e6], 0
+0801ed: mov word ptr [0x411c], 7
+0801f3: mov word ptr [0x411e], 0
+0801f9: mov word ptr [0x4130], 1
+0801ff: mov word ptr [0x4132], 0
+080205: mov word ptr [0x4134], 1
+08020b: mov word ptr [0x4136], 0
+080211: sub ax, ax
+080213: mov word ptr [0x4186], ax
+080216: mov word ptr [0x4184], ax
+080219: mov word ptr [0x40e8], 1
+08021f: mov word ptr [0x40ea], ax
+080222: mov word ptr [0x40dc], 3
+080228: mov word ptr [0x40de], ax
+08022b: mov word ptr [0x40e0], 1
+080231: mov word ptr [0x40e2], ax
+080234: mov word ptr [0x40f0], 0x14
+08023a: mov word ptr [0x40f2], ax
+08023d: mov word ptr [0x40f6], ax
+080240: mov word ptr [0x40f4], ax
+080243: mov word ptr [0x40f8], 1
+080249: mov word ptr [0x40fa], ax
+08024c: fld dword [34f4]
+080251: fst dword [40fc]
+080256: fstp dword [4100]
+08025b: fld dword [34f8]
+080260: fstp dword [4104]
+080265: fld dword [34fc]
+08026a: fstp dword [4108]
+08026f: fld dword [3500]
+080274: fstp dword [410c]
+080279: fld dword [34f4]
+08027e: fstp dword [4110]
+080283: fld dword [3504]
+080288: fstp dword [4114]
+08028d: fld dword [34f8]
+080292: fstp dword [4118]
+080297: fistp dx:ax (emu)
+080299: push 0x926
+08029c: lcall 0x5516, 0x302e
+0802a1: add sp, 2
+0802a4: cmp byte ptr [0x9de6], 0
+0802a9: je 0x802b6
+0802ab: push 0x930
+0802ae: lcall 0x5516, 0x282c
+0802b3: add sp, 2
+0802b6: mov ax, 0x8b0
+0802b9: push ds
+0802ba: push ax
+0802bb: push 2
+0802bd: mov ax, 0x5c
+0802c0: mov dx, 0x8e07
+0802c3: push dx
+0802c4: push ax
+0802c5: push 0xc
+0802c7: mov ax, 2
+0802ca: mov dx, 0x8df2
+0802cd: push dx
+0802ce: push ax
+0802cf: mov es, word ptr [0x3508]
+0802d3: push word ptr es:[0]
+0802d8: lea ax, [bp - 4]
+0802db: push ss
+0802dc: push ax
+0802dd: push 3
+0802df: lcall 0x5516, 0x3a18
+0802e4: add sp, 0x18
+0802e7: push dx
+0802e8: push ax
+0802e9: lea ax, [bp - 6]
+0802ec: mov word ptr [0x1d60], ax
+0802ef: mov word ptr [0x1d62], ss
+0802f3: lcall 0x5516, 0x5b7e
+0802f8: add sp, 4
+0802fb: lcall 0x5516, 0x3a89
+080300: mov word ptr [bp - 0x50c], ax
+080304: mov ax, 0x5c
+080307: mov dx, 0x8e07
+08030a: push dx
+08030b: push ax
+08030c: push 0xc
+08030e: mov ax, 2
+080311: mov dx, 0x8df2
+080314: push dx
+080315: push ax
+080316: mov es, word ptr [0x3508]
+08031a: push word ptr es:[0]
+08031f: mov ax, 0x938
+080322: push ds
+080323: push ax
+080324: push 2
+080326: lcall 0x5516, 0x3a18
+08032b: add sp, 0x12
+08032e: push dx
+08032f: push ax
+080330: push 0x934
+080333: lcall 0x5516, 0x1ef2
+080338: add sp, 6
+08033b: lcall 0x5516, 0x3a89
+080340: push 0xb8
+080343: push 0x942
+080346: lcall 0x5516, 0x28e2
+08034b: add sp, 4
+08034e: push 0x94e
+080351: lcall 0x5516, 0x282c
+080356: add sp, 2
+080359: lcall 0x84ee, 6
+08035e: mov word ptr [bp - 4], 0x4a
+080363: lea ax, [bp - 0x4f8]
+080367: push ss
+080368: push ax
+080369: lea ax, [bp - 6]
+08036c: mov word ptr [0x1d60], ax
+08036f: mov word ptr [0x1d62], ss
+080373: lcall 0x8000, 0x10f1
+080378: mov word ptr [bp - 0x542], 2
+08037e: mov word ptr [bp - 0x540], 0
+080384: sub ax, ax
+080386: mov word ptr [bp - 0x53c], ax
+08038a: mov word ptr [bp - 0x53e], ax
+08038e: mov word ptr [bp - 0x538], ax
+080392: mov word ptr [bp - 0x53a], ax
+080396: mov word ptr [bp - 0x534], ax
+08039a: mov word ptr [bp - 0x536], ax
+08039e: mov word ptr [bp - 0x532], 1
+0803a4: mov word ptr [bp - 0x530], ax
+0803a8: mov word ptr [bp - 0x52e], 0xf
+0803ae: mov word ptr [bp - 0x52c], ax
+0803b2: mov word ptr [bp - 0x52a], 0x4c
+0803b8: mov word ptr [bp - 0x528], ax
+0803bc: mov ax, word ptr [bp - 0x514]
+0803c0: mov dx, word ptr [bp - 0x512]
+0803c4: add ax, 0xf
+0803c7: adc dx, 0
+0803ca: mov word ptr [bp - 0x522], ax
+0803ce: mov word ptr [bp - 0x520], dx
+0803d2: mov word ptr [bp - 0x526], 3
+0803d8: mov word ptr [bp - 0x524], 0
+0803de: lea ax, [bp - 0x514]
+0803e2: push ss
+0803e3: push ax
+0803e4: lea ax, [bp - 0x526]
+0803e8: push ss
+0803e9: push ax
+0803ea: lea ax, [bp - 0x522]
+0803ee: push ss
+0803ef: push ax
+0803f0: lea ax, [bp - 0x52a]
+0803f4: push ss
+0803f5: push ax
+0803f6: lea ax, [bp - 0x52e]
+0803fa: push ss
+0803fb: push ax
+0803fc: lea ax, [bp - 0x532]
+080400: push ss
+080401: push ax
+080402: lea ax, [bp - 0x536]
+080406: push ss
+080407: push ax
+080408: lea ax, [bp - 0x53a]
+08040c: push ss
+08040d: push ax
+08040e: lea ax, [bp - 0x53e]
+080412: push ss
+080413: push ax
+080414: lea ax, [bp - 0x542]
+080418: push ss
+080419: push ax
+08041a: lcall 0x6b38, 0xe
+08041f: push 0xb
+080421: lcall 0x502e, 0x1ea
+080426: add sp, 2
+080429: mov word ptr [bp - 0x50c], ax
+08042d: mov word ptr [bp - 0x4fa], 1
+080433: mov word ptr [bp - 4], 0x4a
+080438: mov word ptr [bp - 0x53e], 3
+08043e: mov word ptr [bp - 0x53c], 0
+080444: mov ax, word ptr [bp - 0x4fa]
+080448: cdq 
+080449: add ax, word ptr [bp - 0x514]
+08044d: adc dx, word ptr [bp - 0x512]
+080451: sub ax, 1
+080454: sbb dx, 0
+080457: mov word ptr [bp - 0x542], ax
+08045b: mov word ptr [bp - 0x540], dx
+08045f: lea ax, [bp - 0x542]
+080463: push ss
+080464: push ax
+080465: lea ax, [bp - 0x53e]
+080469: push ss
+08046a: push ax
+08046b: imul si, word ptr [bp - 0x4fa], 0x4a
+080470: lea ax, [bp + si - 0x542]
+080474: push ss
+080475: push ax
+080476: lea ax, [bp - 6]
+080479: mov word ptr [0x1d60], ax
+08047c: mov word ptr [0x1d62], ss
+080480: lcall 0x6c90, 8
+080485: inc word ptr [bp - 0x4fa]
+080489: cmp word ptr [bp - 0x4fa], 0x10
+08048e: jle 0x80433
+080490: push 0xe
+080492: lcall 0x502e, 0x1ea
+080497: add sp, 2
+08049a: mov word ptr [bp - 0x50c], ax
+08049e: mov word ptr [bp - 4], 0x23
+0804a3: mov word ptr [bp - 0x53e], 0xd
+0804a9: mov word ptr [bp - 0x53c], 0
+0804af: mov ax, word ptr [bp - 0x514]
+0804b3: mov dx, word ptr [bp - 0x512]
+0804b7: add ax, 1
+0804ba: adc dx, 0
+0804bd: mov word ptr [bp - 0x542], ax
+0804c1: mov word ptr [bp - 0x540], dx
+0804c5: lea ax, [bp - 0x542]
+0804c9: push ss
+0804ca: push ax
+0804cb: lea ax, [bp - 0x53e]
+0804cf: push ss
+0804d0: push ax
+0804d1: lea ax, [bp - 0x4e]
+0804d4: push ss
+0804d5: push ax
+0804d6: lea ax, [bp - 6]
+0804d9: mov word ptr [0x1d60], ax
+0804dc: mov word ptr [0x1d62], ss
+0804e0: lcall 0x6c90, 8
+0804e5: mov word ptr [bp - 4], 8
+0804ea: mov word ptr [bp - 0x53e], 0x40
+0804f0: mov word ptr [bp - 0x53c], 0
+0804f6: mov ax, word ptr [bp - 0x514]
+0804fa: mov dx, word ptr [bp - 0x512]
+0804fe: add ax, 1
+080501: adc dx, 0
+080504: mov word ptr [bp - 0x542], ax
+080508: mov word ptr [bp - 0x540], dx
+08050c: lea ax, [bp - 0x542]
+080510: push ss
+080511: push ax
+080512: lea ax, [bp - 0x53e]
+080516: push ss
+080517: push ax
+080518: lea ax, [bp - 0x1b]
+08051b: push ss
+08051c: push ax
+08051d: lea ax, [bp - 6]
+080520: mov word ptr [0x1d60], ax
+080523: mov word ptr [0x1d62], ss
+080527: lcall 0x6c90, 8
+08052c: push 0xf
+08052e: lcall 0x502e, 0x1ea
+080533: add sp, 2
+080536: mov word ptr [bp - 0x50c], ax
+08053a: mov word ptr [bp - 4], 8
+08053f: mov word ptr [bp - 0x53e], 0x42
+080545: mov word ptr [bp - 0x53c], 0
+08054b: mov ax, word ptr [bp - 0x514]
+08054f: mov dx, word ptr [bp - 0x512]
+080553: add ax, 3
+080556: adc dx, 0
+080559: mov word ptr [bp - 0x542], ax
+08055d: mov word ptr [bp - 0x540], dx
+080561: lea ax, [bp - 0x542]
+080565: push ss
+080566: push ax
+080567: lea ax, [bp - 0x53e]
+08056b: push ss
+08056c: push ax
+08056d: lea ax, [bp - 0x50a]
+080571: push ss
+080572: push ax
+080573: lea ax, [bp - 6]
+080576: mov word ptr [0x1d60], ax
+080579: mov word ptr [0x1d62], ss
+08057d: lcall 0x6c90, 8
+080582: mov word ptr [bp - 4], 8
+080587: mov word ptr [bp - 0x53e], 0x42
+08058d: mov word ptr [bp - 0x53c], 0
+080593: mov ax, word ptr [bp - 0x514]
+080597: mov dx, word ptr [bp - 0x512]
+08059b: add ax, 4
+08059e: adc dx, 0
+0805a1: mov word ptr [bp - 0x542], ax
+0805a5: mov word ptr [bp - 0x540], dx
+0805a9: lea ax, [bp - 0x542]
+0805ad: push ss
+0805ae: push ax
+0805af: lea ax, [bp - 0x53e]
+0805b3: push ss
+0805b4: push ax
+0805b5: lea ax, [bp - 0x502]
+0805b9: push ss
+0805ba: push ax
+0805bb: lea ax, [bp - 6]
+0805be: mov word ptr [0x1d60], ax
+0805c1: mov word ptr [0x1d62], ss
+0805c5: lcall 0x6c90, 8
+0805ca: mov ax, word ptr [bp - 0x514]
+0805ce: mov dx, word ptr [bp - 0x512]
+0805d2: add ax, word ptr [0x8c2]
+0805d6: adc dx, word ptr [0x8c4]
+0805da: mov word ptr [bp - 0x542], ax
+0805de: mov word ptr [bp - 0x540], dx
+0805e2: lea ax, [bp - 0x542]
+0805e6: push ss
+0805e7: push ax
+0805e8: mov ax, 0x411c
+0805eb: push ds
+0805ec: push ax
+0805ed: lcall 0x8317, 9
+0805f2: lcall 0x7200, 0xeb
+0805f7: push 0
+0805f9: lcall 0x502e, 0x1ea
+0805fe: add sp, 2
+080601: mov word ptr [bp - 0x50c], ax
+080605: push 0
+080607: push 7
+080609: lcall 0x502e, 0x384
+08060e: add sp, 4
+080611: mov word ptr [bp - 0x510], ax
+080615: mov word ptr [bp - 0x50e], dx
+080619: mov word ptr [bp - 4], 0x36
+08061e: mov word ptr [bp - 0x53e], 4
+080624: mov word ptr [bp - 0x53c], 0
+08062a: mov bx, word ptr [bp - 0xe]
+08062d: shl bx, 2
+080630: mov ax, word ptr [bx + 0x8ae]
+080634: mov dx, word ptr [bx + 0x8b0]
+080638: mov word ptr [bp - 0x546], ax
+08063c: mov word ptr [bp - 0x544], dx
+080640: add ax, word ptr [bp - 0x514]
+080644: adc dx, word ptr [bp - 0x512]
+080648: mov word ptr [bp - 0x542], ax
+08064c: mov word ptr [bp - 0x540], dx
+080650: lea ax, [bp - 0x542]
+080654: push ss
+080655: push ax
+080656: lea ax, [bp - 0x53e]
+08065a: push ss
+08065b: push ax
+08065c: imul si, word ptr [bp - 0x546], 0x4a
+080661: lea ax, [bp + si - 0x4f7]
+080665: push ss
+080666: push ax
+080667: lea ax, [bp - 6]
+08066a: mov word ptr [0x1d60], ax
+08066d: mov word ptr [0x1d62], ss
+080671: lcall 0x6c90, 8
+080676: mov ax, 0x9d7a
+080679: push ds
+08067a: push ax
+08067b: mov ax, 0x9d7e
+08067e: push ds
+08067f: push ax
+080680: lcall 0x71e0, 0x28
+080685: mov ax, 0x9dee
+080688: push ds
+080689: push ax
+08068a: mov ax, 0x9dec
+08068d: push ds
+08068e: push ax
+08068f: lcall 0x7200, 0xa3
+080694: add sp, 8
+080697: mov ax, 0x9d84
+08069a: push ds
+08069b: push ax
+08069c: mov ax, 0x9dea
+08069f: push ds
+0806a0: push ax
+0806a1: mov ax, 0x9d82
+0806a4: push ds
+0806a5: push ax
+0806a6: lcall 0x7200, 0x1f
+0806ab: add sp, 0xc
+0806ae: mov word ptr [bp - 0x50c], ax
+0806b2: mov ax, word ptr [0x9dec]
+0806b5: cdq 
+0806b6: mov cx, ax
+0806b8: mov ax, word ptr [0x9d82]
+0806bb: mov bx, dx
+0806bd: cdq 
+0806be: add ax, cx
+0806c0: adc dx, bx
+0806c2: mov cx, ax
+0806c4: mov ax, word ptr [0x9dee]
+0806c7: mov bx, dx
+0806c9: cdq 
+0806ca: add cx, ax
+0806cc: adc bx, dx
+0806ce: add cx, word ptr [0x9d7a]
+0806d2: adc bx, word ptr [0x9d7c]
+0806d6: add cx, word ptr [0x9d7e]
+0806da: adc bx, word ptr [0x9d80]
+0806de: or bx, cx
+0806e0: je 0x80676
+0806e2: mov word ptr [0x9d7e], 0x64
+0806e8: mov word ptr [0x9d80], 0
+0806ee: mov ax, 0x9d76
+0806f1: push ds
+0806f2: push ax
+0806f3: mov ax, 0x9d6a
+0806f6: push ds
+0806f7: push ax
+0806f8: lcall 0x7200, 0x107
+0806fd: add sp, 8
+080700: mov word ptr [bp - 0x50c], ax
+080704: cmp word ptr [0x9d7a], 0x1c
+080709: jne 0x80715
+08070b: cmp word ptr [0x9d7c], 0
+080710: jne 0x80715
+080712: jmp 0x80b30
+080715: cmp word ptr [0x9d7a], 0xf
+08071a: jne 0x80726
+08071c: cmp word ptr [0x9d7c], 0
+080721: jne 0x80726
+080723: jmp 0x80b30
+080726: cmp word ptr [0x9d7a], 1
+08072b: jne 0x80737
+08072d: cmp word ptr [0x9d7c], 0
+080732: jne 0x80737
+080734: jmp 0x81039
+080737: cmp word ptr [0x9d7a], 0x44
+08073c: jne 0x80748
+08073e: cmp word ptr [0x9d7c], 0
+080743: jne 0x80748
+080745: jmp 0x81039
+080748: cmp word ptr [0x9d7a], 0x3c
+08074d: jne 0x80759
+08074f: cmp word ptr [0x9d7c], 0
+080754: jne 0x80759
+080756: jmp 0x81039
+080759: cmp word ptr [0x9d7a], 0x3b
+08075e: jne 0x807d0
+080760: cmp word ptr [0x9d7c], 0
+080765: jne 0x807d0
+080767: cmp word ptr [bp - 0xe], 0xa
+08076b: jne 0x80781
+08076d: cmp word ptr [bp - 0xc], 0
+080771: jne 0x80781
+080773: mov word ptr [0x9d7a], 0x30
+080779: mov word ptr [0x9d7c], 0
+08077f: jmp 0x80794
+080781: mov ax, word ptr [bp - 0xe]
+080784: mov dx, word ptr [bp - 0xc]
+080787: add ax, 0x30
+08078a: adc dx, 0
+08078d: mov word ptr [0x9d7a], ax
+080790: mov word ptr [0x9d7c], dx
+080794: mov di, 0x9d6c
+080797: mov si, 0x8ad
+08079a: push ds
+08079b: pop es
+08079c: movsw word ptr es:[di], word ptr [si]
+08079d: movsb byte ptr es:[di], byte ptr [si]
+08079e: mov word ptr [bp - 0x548], es
+0807a2: mov si, 0x9d7a
+0807a5: movsb byte ptr es:[di], byte ptr [si]
+0807a6: mov word ptr [bp - 0x54a], es
+0807aa: mov si, 0x8ac
+0807ad: movsb byte ptr es:[di], byte ptr [si]
+0807ae: mov ax, 0x2020
+0807b1: stosw word ptr es:[di], ax
+0807b2: stosw word ptr es:[di], ax
+0807b3: stosb byte ptr es:[di], al
+0807b4: mov word ptr [bp - 4], 0xa
+0807b9: mov ax, 0x9d6c
+0807bc: push ds
+0807bd: push ax
+0807be: lea ax, [bp - 6]
+0807c1: mov word ptr [0x1d60], ax
+0807c4: mov word ptr [0x1d62], ss
+0807c8: int 0x3f
+0807ca: and cl, byte ptr [0xe900]
+0807ce: cmpsb byte ptr [si], byte ptr es:[di]
+0807cf: inc byte ptr [bp + di + 0x7a3e]
+0807d3: popf 
+0807d4: dec ax
+0807d5: jne 0x80806
+0807d7: cmp word ptr [0x9d7c], 0
+0807dc: jne 0x80806
+0807de: mov ax, word ptr [bp - 0xe]
+0807e1: mov dx, word ptr [bp - 0xc]
+0807e4: mov word ptr [0x9d7e], ax
+0807e7: mov word ptr [0x9d80], dx
+0807eb: cmp ax, 1
+0807ee: jne 0x807fb
+0807f0: or dx, dx
+0807f2: jne 0x807fb
+0807f4: mov word ptr [bp - 0xe], 0xa
+0807f9: jmp 0x8082f
+0807fb: sub word ptr [bp - 0xe], 1
+0807ff: sbb word ptr [bp - 0xc], 0
+080803: jmp 0x80a20
+080806: cmp word ptr [0x9d7a], 0x50
+08080b: jne 0x80842
+08080d: cmp word ptr [0x9d7c], 0
+080812: jne 0x80842
+080814: mov ax, word ptr [bp - 0xe]
+080817: mov dx, word ptr [bp - 0xc]
+08081a: mov word ptr [0x9d7e], ax
+08081d: mov word ptr [0x9d80], dx
+080821: cmp ax, 0xa
+080824: jne 0x80837
+080826: or dx, dx
+080828: jne 0x80837
+08082a: mov word ptr [bp - 0xe], 1
+08082f: mov word ptr [bp - 0xc], 0
+080834: jmp 0x80a20
+080837: add word ptr [bp - 0xe], 1
+08083b: adc word ptr [bp - 0xc], 0
+08083f: jmp 0x80a20
+080842: cmp word ptr [0x9d7c], 0
+080847: jl 0x8087f
+080849: jg 0x80852
+08084b: cmp word ptr [0x9d7a], 2
+080850: jb 0x8087f
+080852: cmp word ptr [0x9d7c], 0
+080857: jg 0x8087f
+080859: jl 0x80862
+08085b: cmp word ptr [0x9d7a], 0xb
+080860: ja 0x8087f
+080862: mov ax, word ptr [bp - 0xe]
+080865: mov dx, word ptr [bp - 0xc]
+080868: mov word ptr [0x9d7e], ax
+08086b: mov word ptr [0x9d80], dx
+08086f: mov ax, word ptr [0x9d7a]
+080872: mov dx, word ptr [0x9d7c]
+080876: sub ax, 1
+080879: sbb dx, 0
+08087c: jmp 0x80a1a
+08087f: cmp word ptr [0x9d7a], 0x42
+080884: jne 0x808ec
+080886: cmp word ptr [0x9d7c], 0
+08088b: jne 0x808ec
+08088d: mov word ptr [0x40ec], 1
+080893: mov word ptr [0x40ee], 0
+080899: mov word ptr [0x40e4], 0x32
+08089f: mov word ptr [0x40e6], 0
+0808a5: mov word ptr [0x411c], 7
+0808ab: mov word ptr [0x411e], 0
+0808b1: mov word ptr [0x4130], 1
+0808b7: mov word ptr [0x4132], 0
+0808bd: mov word ptr [0x4134], 1
+0808c3: mov word ptr [0x4136], 0
+0808c9: sub ax, ax
+0808cb: mov word ptr [0x4186], ax
+0808ce: mov word ptr [0x4184], ax
+0808d1: mov word ptr [0x40e8], 1
+0808d7: mov word ptr [0x40ea], ax
+0808da: lcall 0x8281, 0xd
+0808df: mov word ptr [bp - 0xa], 1
+0808e4: mov word ptr [bp - 8], 0
+0808e9: jmp 0x8035e
+0808ec: cmp word ptr [0x9d7a], 0x43
+0808f1: jne 0x8095c
+0808f3: cmp word ptr [0x9d7c], 0
+0808f8: jne 0x8095c
+0808fa: mov ax, 0x5c
+0808fd: mov dx, 0x8e07
+080900: push dx
+080901: push ax
+080902: push 0xc
+080904: mov ax, 2
+080907: mov dx, 0x8df2
+08090a: push dx
+08090b: push ax
+08090c: mov es, word ptr [0x3508]
+080910: push word ptr es:[0]
+080915: mov ax, 0x956
+080918: push ds
+080919: push ax
+08091a: push 2
+08091c: lcall 0x5516, 0x3a18
+080921: add sp, 0x12
+080924: push dx
+080925: push ax
+080926: push 0x952
+080929: lcall 0x5516, 0x1ef2
+08092e: add sp, 6
+080931: lcall 0x5516, 0x3a89
+080936: push 0xb8
+080939: push 0x960
+08093c: lcall 0x5516, 0x28e2
+080941: add sp, 4
+080944: push 0x96c
+080947: lcall 0x5516, 0x282c
+08094c: add sp, 2
+08094f: lcall 0x81da, 0xf
+080954: sub ax, ax
+080956: mov word ptr [bp - 8], ax
+080959: mov word ptr [bp - 0xa], ax
+08095c: mov ax, word ptr [0x9d6a]
+08095f: cdq 
+080960: mov cx, 8
+080963: idiv cx
+080965: cmp ax, 3
+080968: jge 0x8096d
+08096a: jmp 0x80a20
+08096d: mov ax, word ptr [0x9d6a]
+080970: cdq 
+080971: idiv cx
+080973: cmp ax, 0x4a
+080976: jle 0x8097b
+080978: jmp 0x80a20
+08097b: mov ax, word ptr [0x9d76]
+08097e: cdq 
+08097f: idiv cx
+080981: cmp ax, 7
+080984: jge 0x80989
+080986: jmp 0x80a20
+080989: mov ax, word ptr [0x9d76]
+08098c: cdq 
+08098d: idiv cx
+08098f: cmp ax, 0x12
+080992: jle 0x80997
+080994: jmp 0x80a20
+080997: cmp word ptr [0x9d82], 0
+08099c: je 0x809a1
+08099e: jmp 0x80b30
+0809a1: mov ax, word ptr [bp - 0xe]
+0809a4: mov dx, word ptr [bp - 0xc]
+0809a7: mov word ptr [0x9d7e], ax
+0809aa: mov word ptr [0x9d80], dx
+0809ae: mov ax, word ptr [0x9d76]
+0809b1: cdq 
+0809b2: idiv cx
+0809b4: cdq 
+0809b5: add ax, 1
+0809b8: adc dx, 0
+0809bb: mov word ptr [bp - 0xe], ax
+0809be: mov word ptr [bp - 0xc], dx
+0809c1: mov word ptr [0x9d7a], 1
+0809c7: mov word ptr [0x9d7c], 0
+0809cd: jmp 0x809d9
+0809cf: add word ptr [0x9d7a], 1
+0809d4: adc word ptr [0x9d7c], 0
+0809d9: cmp word ptr [0x9d7c], 0
+0809de: jg 0x80a13
+0809e0: jl 0x809e9
+0809e2: cmp word ptr [0x9d7a], 0xa
+0809e7: ja 0x80a13
+0809e9: mov bx, word ptr [0x9d7a]
+0809ed: shl bx, 2
+0809f0: mov ax, word ptr [bx + 0x8ae]
+0809f4: mov dx, word ptr [bx + 0x8b0]
+0809f8: add ax, word ptr [bp - 0x514]
+0809fc: adc dx, word ptr [bp - 0x512]
+080a00: cmp ax, word ptr [bp - 0xe]
+080a03: jne 0x809cf
+080a05: cmp dx, word ptr [bp - 0xc]
+080a08: jne 0x809cf
+080a0a: mov ax, word ptr [0x9d7a]
+080a0d: mov dx, word ptr [0x9d7c]
+080a11: jmp 0x80a1a
+080a13: mov ax, word ptr [0x9d7e]
+080a16: mov dx, word ptr [0x9d80]
+080a1a: mov word ptr [bp - 0xe], ax
+080a1d: mov word ptr [bp - 0xc], dx
+080a20: cmp word ptr [0x9d80], 0
+080a25: jge 0x80a2a
+080a27: jmp 0x80676
+080a2a: jg 0x80a36
+080a2c: cmp word ptr [0x9d7e], 1
+080a31: jae 0x80a36
+080a33: jmp 0x80676
+080a36: cmp word ptr [0x9d80], 0
+080a3b: jle 0x80a40
+080a3d: jmp 0x80676
+080a40: jl 0x80a4c
+080a42: cmp word ptr [0x9d7e], 0xa
+080a47: jbe 0x80a4c
+080a49: jmp 0x80676
+080a4c: mov ax, word ptr [0x9d78]
+080a4f: cdq 
+080a50: cmp word ptr [bp - 0xe], ax
+080a53: jne 0x80a5d
+080a55: cmp word ptr [bp - 0xc], dx
+080a58: jne 0x80a5d
+080a5a: jmp 0x80676
+080a5d: mov word ptr [bp - 0x52a], 7
+080a63: mov word ptr [bp - 0x52e], 0
+080a69: mov word ptr [bp - 0x532], 1
+080a6f: mov word ptr [bp - 0x536], 0xb
+080a75: mov word ptr [bp - 2], 0x36
+080a7a: mov word ptr [bp - 4], 0x36
+080a7f: mov word ptr [bp - 0x53a], 4
+080a85: mov word ptr [bp - 0x538], 0
+080a8b: mov bx, word ptr [bp - 0xe]
+080a8e: shl bx, 2
+080a91: mov ax, word ptr [bx + 0x8ae]
+080a95: mov dx, word ptr [bx + 0x8b0]
+080a99: mov word ptr [bp - 0x546], ax
+080a9d: mov word ptr [bp - 0x544], dx
+080aa1: add ax, word ptr [bp - 0x514]
+080aa5: adc dx, word ptr [bp - 0x512]
+080aa9: mov word ptr [bp - 0x53e], ax
+080aad: mov word ptr [bp - 0x53c], dx
+080ab1: mov bx, word ptr [0x9d7e]
+080ab5: shl bx, 2
+080ab8: mov ax, word ptr [bx + 0x8ae]
+080abc: mov dx, word ptr [bx + 0x8b0]
+080ac0: mov word ptr [bp - 0x54e], ax
+080ac4: mov word ptr [bp - 0x54c], dx
+080ac8: add ax, word ptr [bp - 0x514]
+080acc: adc dx, word ptr [bp - 0x512]
+080ad0: mov word ptr [bp - 0x542], ax
+080ad4: mov word ptr [bp - 0x540], dx
+080ad8: lea ax, [bp - 0x542]
+080adc: push ss
+080add: push ax
+080ade: lea ax, [bp - 0x53e]
+080ae2: push ss
+080ae3: push ax
+080ae4: lea ax, [bp - 0x53a]
+080ae8: push ss
+080ae9: push ax
+080aea: imul si, word ptr [bp - 0x54e], 0x4a
+080aef: lea ax, [bp + si - 0x4f7]
+080af3: push ss
+080af4: push ax
+080af5: imul si, word ptr [bp - 0x546], 0x4a
+080afa: lea ax, [bp + si - 0x4f7]
+080afe: push ss
+080aff: push ax
+080b00: lea ax, [bp - 0x536]
+080b04: push ss
+080b05: push ax
+080b06: lea ax, [bp - 0x532]
+080b0a: push ss
+080b0b: push ax
+080b0c: lea ax, [bp - 0x52e]
+080b10: push ss
+080b11: push ax
+080b12: lea ax, [bp - 0x52a]
+080b16: push ss
+080b17: push ax
+080b18: lea ax, [bp - 6]
+080b1b: mov word ptr [0x1d60], ax
+080b1e: mov word ptr [0x1d62], ss
+080b22: lcall 0x6b2c, 9
+080b27: mov ax, word ptr [bp - 0xe]
+080b2a: mov word ptr [0x9d78], ax
+080b2d: jmp 0x80676
+080b30: mov ax, word ptr [bp - 0xe]
+080b33: mov dx, word ptr [bp - 0xc]
+080b36: or dx, dx
+080b38: jge 0x80b3d
+080b3a: jmp 0x805f7
+080b3d: jg 0x80b47
+080b3f: cmp ax, 1
+080b42: jae 0x80b47
+080b44: jmp 0x805f7
+080b47: or dx, dx
+080b49: jg 0x80b52
+080b4b: jl 0x80bb8
+080b4d: cmp ax, 2
+080b50: jbe 0x80bb8
+080b52: or dx, dx
+080b54: jne 0x80b5e
+080b56: cmp ax, 3
+080b59: jne 0x80b5e
+080b5b: jmp 0x80d29
+080b5e: or dx, dx
+080b60: jne 0x80b6a
+080b62: cmp ax, 4
+080b65: jne 0x80b6a
+080b67: jmp 0x80dcd
+080b6a: or dx, dx
+080b6c: jne 0x80b76
+080b6e: cmp ax, 5
+080b71: jne 0x80b76
+080b73: jmp 0x80e71
+080b76: or dx, dx
+080b78: jne 0x80b82
+080b7a: cmp ax, 6
+080b7d: jne 0x80b82
+080b7f: jmp 0x80eb1
+080b82: or dx, dx
+080b84: jne 0x80b8e
+080b86: cmp ax, 7
+080b89: jne 0x80b8e
+080b8b: jmp 0x80eed
+080b8e: or dx, dx
+080b90: jne 0x80b9a
+080b92: cmp ax, 8
+080b95: jne 0x80b9a
+080b97: jmp 0x80f29
+080b9a: or dx, dx
+080b9c: jne 0x80ba6
+080b9e: cmp ax, 9
+080ba1: jne 0x80ba6
+080ba3: jmp 0x80fe4
+080ba6: or dx, dx
+080ba8: je 0x80bad
+080baa: jmp 0x805f7
+080bad: cmp ax, 0xa
+080bb0: jne 0x80bb5
+080bb2: jmp 0x8102c
+080bb5: jmp 0x805f7
+080bb8: mov ax, word ptr [bp - 0xa]
+080bbb: mov dx, word ptr [bp - 8]
+080bbe: mov word ptr [bp - 0x510], ax
+080bc2: mov word ptr [bp - 0x50e], dx
+080bc6: mov word ptr [bp - 4], 8
+080bcb: mov word ptr [bp - 0x52a], 8
+080bd1: mov word ptr [bp - 0x528], 0
+080bd7: mov word ptr [bp - 0x52e], 1
+080bdd: mov word ptr [bp - 0x52c], 0
+080be3: mov word ptr [bp - 0x532], 0xf
+080be9: mov word ptr [bp - 0x530], 0
+080bef: mov word ptr [bp - 0x536], 3
+080bf5: mov word ptr [bp - 0x534], 0
+080bfb: mov word ptr [bp - 0x53a], 0xf
+080c01: mov word ptr [bp - 0x538], 0
+080c07: mov word ptr [bp - 0x53e], 0x42
+080c0d: mov word ptr [bp - 0x53c], 0
+080c13: mov bx, word ptr [bp - 0xe]
+080c16: shl bx, 2
+080c19: mov ax, word ptr [bx + 0x8ae]
+080c1d: mov dx, word ptr [bx + 0x8b0]
+080c21: add ax, word ptr [bp - 0x514]
+080c25: adc dx, word ptr [bp - 0x512]
+080c29: mov word ptr [bp - 0x542], ax
+080c2d: mov word ptr [bp - 0x540], dx
+080c31: lea ax, [bp - 0x542]
+080c35: push ss
+080c36: push ax
+080c37: lea ax, [bp - 0x53e]
+080c3b: push ss
+080c3c: push ax
+080c3d: lea ax, [bp - 0x53a]
+080c41: push ss
+080c42: push ax
+080c43: lea ax, [bp - 0x536]
+080c47: push ss
+080c48: push ax
+080c49: lea ax, [bp - 0x532]
+080c4d: push ss
+080c4e: push ax
+080c4f: lea ax, [bp - 0x52e]
+080c53: push ss
+080c54: push ax
+080c55: lea ax, [bp - 0x52a]
+080c59: push ss
+080c5a: push ax
+080c5b: mov si, word ptr [bp - 0xe]
+080c5e: shl si, 3
+080c61: lea ax, [bp + si - 0x512]
+080c65: push ss
+080c66: push ax
+080c67: lea ax, [bp - 0x510]
+080c6b: push ss
+080c6c: push ax
+080c6d: lea ax, [bp - 6]
+080c70: mov word ptr [0x1d60], ax
+080c73: mov word ptr [0x1d62], ss
+080c77: lcall 0x6ad9, 0xd
+080c7c: cmp word ptr [bp - 0x50e], 0
+080c81: jl 0x80c9a
+080c83: jg 0x80c8c
+080c85: cmp word ptr [bp - 0x510], 0
+080c8a: je 0x80c9a
+080c8c: mov ax, word ptr [bp - 0x510]
+080c90: mov dx, word ptr [bp - 0x50e]
+080c94: mov word ptr [bp - 0xa], ax
+080c97: mov word ptr [bp - 8], dx
+080c9a: mov si, word ptr [bp - 0xe]
+080c9d: shl si, 3
+080ca0: lea ax, [bp + si - 0x512]
+080ca4: push ss
+080ca5: push ax
+080ca6: push 8
+080ca8: mov ax, 0x8a4
+080cab: push ds
+080cac: push ax
+080cad: push 8
+080caf: lcall 0x5516, 0x398c
+080cb4: jne 0x80cb9
+080cb6: jmp 0x805f7
+080cb9: mov ax, 0x8a0
+080cbc: push ds
+080cbd: push ax
+080cbe: push 4
+080cc0: mov si, word ptr [bp - 0xe]
+080cc3: shl si, 3
+080cc6: lea ax, [bp + si - 0x512]
+080cca: push ss
+080ccb: push ax
+080ccc: push 8
+080cce: mov ax, 2
+080cd1: mov dx, 0x8df2
+080cd4: push dx
+080cd5: push ax
+080cd6: mov es, word ptr [0x3508]
+080cda: push word ptr es:[0]
+080cdf: mov ax, 0x974
+080ce2: push ds
+080ce3: push ax
+080ce4: push 3
+080ce6: lcall 0x5516, 0x3a18
+080ceb: add sp, 0x18
+080cee: push dx
+080cef: push ax
+080cf0: push 0x970
+080cf3: lcall 0x5516, 0x1ef2
+080cf8: add sp, 6
+080cfb: lcall 0x5516, 0x3a89
+080d00: cdq 
+080d01: mov word ptr [bp - 0x51c], ax
+080d05: mov word ptr [bp - 0x51a], dx
+080d09: push 0x978
+080d0c: lcall 0x5516, 0x282c
+080d11: add sp, 2
+080d14: mov ax, word ptr [bp - 0x51c]
+080d18: or ax, word ptr [bp - 0x51a]
+080d1c: jne 0x80d21
+080d1e: jmp 0x805f7
+080d21: lcall 0x81ac, 2
+080d26: jmp 0x80bc6
+080d29: sub ax, ax
+080d2b: mov word ptr [bp - 0x520], ax
+080d2f: mov word ptr [bp - 0x522], ax
+080d33: mov word ptr [bp - 0x526], 0x11
+080d39: mov word ptr [bp - 0x524], ax
+080d3d: mov word ptr [bp - 0x52a], 3
+080d43: mov word ptr [bp - 0x528], ax
+080d47: mov word ptr [bp - 0x52e], 1
+080d4d: mov word ptr [bp - 0x52c], ax
+080d51: mov word ptr [bp - 0x532], 0xb
+080d57: mov word ptr [bp - 0x530], ax
+080d5b: mov word ptr [bp - 0x536], 3
+080d61: mov word ptr [bp - 0x534], ax
+080d65: mov word ptr [bp - 0x53a], 0xf
+080d6b: mov word ptr [bp - 0x538], ax
+080d6f: mov word ptr [bp - 0x53e], 0x3b
+080d75: mov word ptr [bp - 0x53c], ax
+080d79: mov bx, word ptr [bp - 0xe]
+080d7c: shl bx, 2
+080d7f: mov ax, word ptr [bx + 0x8ae]
+080d83: mov dx, word ptr [bx + 0x8b0]
+080d87: add ax, word ptr [bp - 0x514]
+080d8b: adc dx, word ptr [bp - 0x512]
+080d8f: mov word ptr [bp - 0x542], ax
+080d93: mov word ptr [bp - 0x540], dx
+080d97: lea ax, [bp - 0x542]
+080d9b: push ss
+080d9c: push ax
+080d9d: lea ax, [bp - 0x53e]
+080da1: push ss
+080da2: push ax
+080da3: lea ax, [bp - 0x53a]
+080da7: push ss
+080da8: push ax
+080da9: lea ax, [bp - 0x536]
+080dad: push ss
+080dae: push ax
+080daf: lea ax, [bp - 0x532]
+080db3: push ss
+080db4: push ax
+080db5: lea ax, [bp - 0x52e]
+080db9: push ss
+080dba: push ax
+080dbb: lea ax, [bp - 0x52a]
+080dbf: push ss
+080dc0: push ax
+080dc1: lea ax, [bp - 0x526]
+080dc5: push ss
+080dc6: push ax
+080dc7: mov ax, 0x40ec
+080dca: jmp 0x80fca
+080dcd: sub ax, ax
+080dcf: mov word ptr [bp - 0x520], ax
+080dd3: mov word ptr [bp - 0x522], ax
+080dd7: mov word ptr [bp - 0x526], 0x11
+080ddd: mov word ptr [bp - 0x524], ax
+080de1: mov word ptr [bp - 0x52a], 3
+080de7: mov word ptr [bp - 0x528], ax
+080deb: mov word ptr [bp - 0x52e], 1
+080df1: mov word ptr [bp - 0x52c], ax
+080df5: mov word ptr [bp - 0x532], 0xb
+080dfb: mov word ptr [bp - 0x530], ax
+080dff: mov word ptr [bp - 0x536], 3
+080e05: mov word ptr [bp - 0x534], ax
+080e09: mov word ptr [bp - 0x53a], 0xf
+080e0f: mov word ptr [bp - 0x538], ax
+080e13: mov word ptr [bp - 0x53e], 0x3b
+080e19: mov word ptr [bp - 0x53c], ax
+080e1d: mov bx, word ptr [bp - 0xe]
+080e20: shl bx, 2
+080e23: mov ax, word ptr [bx + 0x8ae]
+080e27: mov dx, word ptr [bx + 0x8b0]
+080e2b: add ax, word ptr [bp - 0x514]
+080e2f: adc dx, word ptr [bp - 0x512]
+080e33: mov word ptr [bp - 0x542], ax
+080e37: mov word ptr [bp - 0x540], dx
+080e3b: lea ax, [bp - 0x542]
+080e3f: push ss
+080e40: push ax
+080e41: lea ax, [bp - 0x53e]
+080e45: push ss
+080e46: push ax
+080e47: lea ax, [bp - 0x53a]
+080e4b: push ss
+080e4c: push ax
+080e4d: lea ax, [bp - 0x536]
+080e51: push ss
+080e52: push ax
+080e53: lea ax, [bp - 0x532]
+080e57: push ss
+080e58: push ax
+080e59: lea ax, [bp - 0x52e]
+080e5d: push ss
+080e5e: push ax
+080e5f: lea ax, [bp - 0x52a]
+080e63: push ss
+080e64: push ax
+080e65: lea ax, [bp - 0x526]
+080e69: push ss
+080e6a: push ax
+080e6b: mov ax, 0x40e4
+080e6e: jmp 0x80fca
+080e71: mov ax, 0x411c
+080e74: push ds
+080e75: push ax
+080e76: lea ax, [bp - 0xa]
+080e79: push ss
+080e7a: push ax
+080e7b: lcall 0x82a5, 0xb
+080e80: mov bx, word ptr [bp - 0xe]
+080e83: shl bx, 2
+080e86: mov ax, word ptr [bx + 0x8ae]
+080e8a: mov dx, word ptr [bx + 0x8b0]
+080e8e: add ax, word ptr [bp - 0x514]
+080e92: adc dx, word ptr [bp - 0x512]
+080e96: mov word ptr [bp - 0x542], ax
+080e9a: mov word ptr [bp - 0x540], dx
+080e9e: lea ax, [bp - 0x542]
+080ea2: push ss
+080ea3: push ax
+080ea4: mov ax, 0x411c
+080ea7: push ds
+080ea8: push ax
+080ea9: lcall 0x8317, 9
+080eae: jmp 0x805f7
+080eb1: mov word ptr [bp - 0x53e], 1
+080eb7: mov word ptr [bp - 0x53c], 0
+080ebd: mov bx, word ptr [bp - 0xe]
+080ec0: shl bx, 2
+080ec3: mov ax, word ptr [bx + 0x8ae]
+080ec7: mov dx, word ptr [bx + 0x8b0]
+080ecb: add ax, word ptr [bp - 0x514]
+080ecf: adc dx, word ptr [bp - 0x512]
+080ed3: mov word ptr [bp - 0x542], ax
+080ed7: mov word ptr [bp - 0x540], dx
+080edb: lea ax, [bp - 0x542]
+080edf: push ss
+080ee0: push ax
+080ee1: lea ax, [bp - 0x53e]
+080ee5: push ss
+080ee6: push ax
+080ee7: mov ax, 0x4130
+080eea: jmp 0x8101d
+080eed: mov word ptr [bp - 0x53e], 2
+080ef3: mov word ptr [bp - 0x53c], 0
+080ef9: mov bx, word ptr [bp - 0xe]
+080efc: shl bx, 2
+080eff: mov ax, word ptr [bx + 0x8ae]
+080f03: mov dx, word ptr [bx + 0x8b0]
+080f07: add ax, word ptr [bp - 0x514]
+080f0b: adc dx, word ptr [bp - 0x512]
+080f0f: mov word ptr [bp - 0x542], ax
+080f13: mov word ptr [bp - 0x540], dx
+080f17: lea ax, [bp - 0x542]
+080f1b: push ss
+080f1c: push ax
+080f1d: lea ax, [bp - 0x53e]
+080f21: push ss
+080f22: push ax
+080f23: mov ax, 0x4134
+080f26: jmp 0x8101d
+080f29: sub ax, ax
+080f2b: mov word ptr [bp - 0x520], ax
+080f2f: mov word ptr [bp - 0x522], ax
+080f33: mov word ptr [bp - 0x526], 0x11
+080f39: mov word ptr [bp - 0x524], ax
+080f3d: mov word ptr [bp - 0x52a], 1
+080f43: mov word ptr [bp - 0x528], ax
+080f47: mov word ptr [bp - 0x52e], 1
+080f4d: mov word ptr [bp - 0x52c], ax
+080f51: mov word ptr [bp - 0x532], 0xb
+080f57: mov word ptr [bp - 0x530], ax
+080f5b: mov word ptr [bp - 0x536], 3
+080f61: mov word ptr [bp - 0x534], ax
+080f65: mov word ptr [bp - 0x53a], 0xf
+080f6b: mov word ptr [bp - 0x538], ax
+080f6f: mov word ptr [bp - 0x53e], 0x3b
+080f75: mov word ptr [bp - 0x53c], ax
+080f79: mov bx, word ptr [bp - 0xe]
+080f7c: shl bx, 2
+080f7f: mov ax, word ptr [bx + 0x8ae]
+080f83: mov dx, word ptr [bx + 0x8b0]
+080f87: add ax, word ptr [bp - 0x514]
+080f8b: adc dx, word ptr [bp - 0x512]
+080f8f: mov word ptr [bp - 0x542], ax
+080f93: mov word ptr [bp - 0x540], dx
+080f97: lea ax, [bp - 0x542]
+080f9b: push ss
+080f9c: push ax
+080f9d: lea ax, [bp - 0x53e]
+080fa1: push ss
+080fa2: push ax
+080fa3: lea ax, [bp - 0x53a]
+080fa7: push ss
+080fa8: push ax
+080fa9: lea ax, [bp - 0x536]
+080fad: push ss
+080fae: push ax
+080faf: lea ax, [bp - 0x532]
+080fb3: push ss
+080fb4: push ax
+080fb5: lea ax, [bp - 0x52e]
+080fb9: push ss
+080fba: push ax
+080fbb: lea ax, [bp - 0x52a]
+080fbf: push ss
+080fc0: push ax
+080fc1: lea ax, [bp - 0x526]
+080fc5: push ss
+080fc6: push ax
+080fc7: mov ax, 0x4184
+080fca: push ds
+080fcb: push ax
+080fcc: lea ax, [bp - 0xa]
+080fcf: push ss
+080fd0: push ax
+080fd1: lea ax, [bp - 0x522]
+080fd5: push ss
+080fd6: push ax
+080fd7: mov ax, 0x9df0
+080fda: push ds
+080fdb: push ax
+080fdc: lcall 0x812e, 0xa
+080fe1: db e9

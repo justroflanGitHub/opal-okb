@@ -1,0 +1,21 @@
+0a2259: enter 0, 0
+0a225d: les bx, ptr [bp + 6]
+0a2260: fld qword [337c]
+0a2265: jmp 0xa2291
+0a2267: cmp word ptr [0xa1aa], 1
+0a226c: jne 0xa2285
+0a226e: fld qword [338c]
+0a2273: fmul qword [bx]
+0a2277: fstp qword [bx]
+0a227b: fistp dx:ax (emu)
+0a227d: mov word ptr [0xa1aa], 2
+0a2283: jmp 0xa229d
+0a2285: les bx, ptr [bp + 6]
+0a2288: fld qword [3394]
+0a228d: fmul qword [bx]
+0a2291: fstp qword [bx]
+0a2295: fistp dx:ax (emu)
+0a2297: mov word ptr [0xa1aa], 1
+0a229d: les bx, ptr [bp + 0xa]
+0a22a0: fld qword [bx]
+0a22a4: les bx, ptr [bp + 6]

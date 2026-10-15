@@ -1,0 +1,47 @@
+0440e7: add bp, cx
+0440e9: lea ax, [bx + si]
+0440eb: les bx, ptr [bp + 0xa]
+0440ee: fld qword [bx]
+0440f2: fistp dx:ax (emu)
+0440f4: mov si, 0x8d20
+0440f7: mov di, 0x8c60
+0440fa: mov word ptr [bp - 0x10], 0x8d28
+0440ff: mov word ptr [bp - 0x12], 0x8c68
+044104: add word ptr [0xbdda], ax
+044108: fld qword [si]
+04410b: fmul st0, st1
+04410e: fmul qword [8bf8]
+044113: fld qword [di]
+044116: fmul qword [8eb0]
+04411b: fmul qword [8f30]
+044120: faddp st1, st0
+044123: fdiv qword [8c08]
+044128: fstp qword [si]
+04412b: fld qword [8c08]
+044130: fmul qword [di]
+044133: fstp qword [di]
+044136: fistp dx:ax (emu)
+044138: mov ax, word ptr [0x87a8]
+04413b: or ax, word ptr [0x87aa]
+04413f: je 0x44162
+044141: mov bx, word ptr [bp - 0x12]
+044144: fld qword [bx]
+044147: fmul qword [8eb0]
+04414c: fmul qword [8f38]
+044151: mov bx, word ptr [bp - 0x10]
+044154: fld qword [bx]
+044157: fmul st0, st2
+04415a: faddp st1, st0
+04415d: fstp qword [bx]
+044160: fistp dx:ax (emu)
+044162: add si, 0x18
+044165: add di, 0x18
+044168: add word ptr [bp - 0x10], 0x18
+04416c: add word ptr [bp - 0x12], 0x18
+044170: dec word ptr [bp - 2]
+044173: jne 0x44108
+044175: fstp st0
+044178: mov ax, word ptr [0x87ac]
+04417b: or ax, word ptr [0x87ae]
+04417f: jne 0x44184
+044181: jmp 0x442bf

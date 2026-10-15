@@ -1,0 +1,126 @@
+02a5a5: mov word ptr [bp - 0x1c], ax
+02a5a8: mov word ptr [bp - 0x1a], dx
+02a5ab: sub ax, ax
+02a5ad: mov word ptr [bp - 0x22], ax
+02a5b0: mov word ptr [bp - 0x24], ax
+02a5b3: jmp 0x2a5bd
+02a5b5: add word ptr [bp - 0x24], 1
+02a5b9: adc word ptr [bp - 0x22], 0
+02a5bd: cmp word ptr [bp - 0x22], 0
+02a5c1: jle 0x2a5c6
+02a5c3: jmp 0x2a6e8
+02a5c6: jl 0x2a5d1
+02a5c8: cmp word ptr [bp - 0x24], 1
+02a5cc: jbe 0x2a5d1
+02a5ce: jmp 0x2a6e8
+02a5d1: cmp word ptr [bp - 0x12], 0
+02a5d5: jg 0x2a5e7
+02a5d7: jl 0x2a5df
+02a5d9: cmp word ptr [bp - 0x14], 2
+02a5dd: ja 0x2a5e7
+02a5df: mov ax, word ptr [bp - 0x2c]
+02a5e2: or ax, word ptr [bp - 0x2a]
+02a5e5: jne 0x2a60f
+02a5e7: mov ax, word ptr [bp - 0x34]
+02a5ea: add ax, word ptr [bp - 0x24]
+02a5ed: imul si, ax, 0x30
+02a5f0: imul ax, word ptr [bp - 0x4c], 0x60
+02a5f4: add si, ax
+02a5f6: mov bx, word ptr [bp - 0x14]
+02a5f9: shl bx, 3
+02a5fc: fld qword [bx+si]+7690
+02a601: mov si, word ptr [bp - 0x24]
+02a604: shl si, 2
+02a607: fstp dword [bp+si]-c
+02a60b: fistp dx:ax (emu)
+02a60d: jmp 0x2a5b5
+02a60f: cmp word ptr [bp - 0x2a], 0
+02a613: jg 0x2a63e
+02a615: jl 0x2a61d
+02a617: cmp word ptr [bp - 0x2c], 4
+02a61b: ja 0x2a63e
+02a61d: mov ax, word ptr [bp - 0x34]
+02a620: add ax, word ptr [bp - 0x24]
+02a623: imul si, ax, 0xc0
+02a627: mov ax, word ptr [bp - 0x2c]
+02a62a: add ax, word ptr [bp - 0x1c]
+02a62d: shl ax, 3
+02a630: add si, ax
+02a632: imul bx, word ptr [bp - 0x4c], 0x180
+02a637: fld qword [bx+si]+76c0
+02a63c: jmp 0x2a601
+02a63e: cmp word ptr [bp - 0x2c], 5
+02a642: jne 0x2a688
+02a644: cmp word ptr [bp - 0x2a], 0
+02a648: jne 0x2a688
+02a64a: imul ax, word ptr [bp - 0x4c], 0x180
+02a64f: mov si, ax
+02a651: mov ax, word ptr [bp - 0x34]
+02a654: add ax, word ptr [bp - 0x24]
+02a657: imul ax, ax, 0xc0
+02a65b: mov di, ax
+02a65d: mov bx, word ptr [bp - 0x1c]
+02a660: shl bx, 3
+02a663: add bx, di
+02a665: fld qword [bx+si]+76c8
+02a66a: mov bx, word ptr [bp - 0x30]
+02a66d: add bx, word ptr [bp - 0x1c]
+02a670: shl bx, 3
+02a673: add bx, di
+02a675: fsub qword [bx+si]+76c0
+02a67a: mov bx, word ptr [bp - 0x24]
+02a67d: shl bx, 2
+02a680: add bx, bp
+02a682: fstp dword [bx]-c
+02a686: jmp 0x2a60b
+02a688: cmp word ptr [bp - 0x2c], 6
+02a68c: je 0x2a691
+02a68e: jmp 0x2a7c8
+02a691: cmp word ptr [bp - 0x2a], 0
+02a695: je 0x2a69a
+02a697: jmp 0x2a7c8
+02a69a: mov si, word ptr [bp - 0x34]
+02a69d: add si, word ptr [bp - 0x24]
+02a6a0: imul ax, word ptr [bp - 0x4c], 0x180
+02a6a5: mov di, ax
+02a6a7: imul ax, si, 0xc0
+02a6ab: mov word ptr [bp - 0x5e], ax
+02a6ae: mov bx, word ptr [bp - 0x30]
+02a6b1: add bx, word ptr [bp - 0x1c]
+02a6b4: shl bx, 3
+02a6b7: add bx, ax
+02a6b9: fld qword [bx+di]+76c0
+02a6be: mov bx, word ptr [bp - 0x1c]
+02a6c1: shl bx, 3
+02a6c4: add bx, ax
+02a6c6: fadd qword [bx+di]+76c8
+02a6cb: fdiv qword [3668]
+02a6d0: imul bx, word ptr [bp - 0x4c], 0x60
+02a6d4: mov ax, word ptr [bp - 0x14]
+02a6d7: shl ax, 3
+02a6da: add bx, ax
+02a6dc: imul ax, si, 0x30
+02a6df: add bx, ax
+02a6e1: fsub qword [bx]+7690
+02a6e6: jmp 0x2a67a
+02a6e8: mov ax, word ptr [bp - 0x28]
+02a6eb: mov dx, word ptr [bp - 0x26]
+02a6ee: or dx, dx
+02a6f0: jl 0x2a716
+02a6f2: jg 0x2a6f9
+02a6f4: cmp ax, 1
+02a6f7: jb 0x2a716
+02a6f9: or dx, dx
+02a6fb: jg 0x2a704
+02a6fd: jl 0x2a716
+02a6ff: cmp ax, 2
+02a702: jbe 0x2a716
+02a704: or dx, dx
+02a706: jne 0x2a70d
+02a708: cmp ax, 3
+02a70b: je 0x2a722
+02a70d: or dx, dx
+02a70f: jne 0x2a716
+02a711: cmp ax, 4
+02a714: je 0x2a72c
+02a716: mov si, word ptr [bp - 0x28]

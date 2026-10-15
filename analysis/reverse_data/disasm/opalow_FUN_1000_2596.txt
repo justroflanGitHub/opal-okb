@@ -1,0 +1,13 @@
+012596: mov ch, cl
+012598: xor al, 0xca
+01259a: fadd dword [136]
+01259f: fdivrp st1, st0
+0125a2: fstp dword [bx]
+0125a6: fld dword [bp]-20
+0125aa: fmulp st1, st0
+0125ad: add word ptr [bp - 0x8e], 4
+0125b2: dec si
+0125b3: jne 0x1258b
+0125b5: dec word ptr [bp - 0x96]
+0125b9: jns 0x1258b
+0125bb: jmp 0x12a81

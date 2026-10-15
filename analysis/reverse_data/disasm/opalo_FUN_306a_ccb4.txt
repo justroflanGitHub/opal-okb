@@ -1,0 +1,14 @@
+03d354: push bp
+03d355: mov bp, sp
+03d357: sub sp, 0x16
+03d35a: push di
+03d35b: push si
+03d35c: sub ax, ax
+03d35e: mov word ptr [0x8792], ax
+03d361: mov word ptr [0x8790], ax
+03d364: les bx, ptr [bp + 0x12]
+03d367: fld qword [bx]
+03d36b: fld st0
+03d36e: fstp tbyte [bp]-a
+03d372: fld qword [88c8]
+03d377: fdiv st0, st1

@@ -1,0 +1,114 @@
+036d00: enter 0x1c, 0
+036d04: push si
+036d05: push 0xe
+036d07: lcall 0x18e5, 0x204
+036d0c: add sp, 2
+036d0f: mov word ptr [0xb11e], ax
+036d12: les bx, ptr [bp + 0x16]
+036d15: push word ptr es:[bx]
+036d18: les bx, ptr [bp + 0x1a]
+036d1b: push word ptr es:[bx]
+036d1e: les bx, ptr [bp + 0x1e]
+036d21: push word ptr es:[bx]
+036d24: les bx, ptr [bp + 0x22]
+036d27: push word ptr es:[bx]
+036d2a: push 2
+036d2c: lcall 0x18e5, 0x606
+036d31: add sp, 0xa
+036d34: mov word ptr [0xb11e], ax
+036d37: les bx, ptr [bp + 6]
+036d3a: push word ptr es:[bx]
+036d3d: push 0x15ae
+036d40: lcall 0x1dcd, 0xf60
+036d45: add sp, 4
+036d48: mov word ptr [bp - 2], 0xa
+036d4d: les bx, ptr [bp + 0x22]
+036d50: mov si, word ptr es:[bx]
+036d53: push -0xe
+036d55: les bx, ptr [bp + 0x16]
+036d58: mov ax, word ptr es:[bx]
+036d5b: add ax, 8
+036d5e: push ax
+036d5f: les bx, ptr [bp + 0x1a]
+036d62: mov ax, word ptr es:[bx]
+036d65: sub ax, si
+036d67: add ax, si
+036d69: sub ax, 0x12
+036d6c: push ax
+036d6d: push 3
+036d6f: mov ax, 0xb120
+036d72: push ds
+036d73: push ax
+036d74: lea ax, [bp - 4]
+036d77: mov word ptr [0x1d60], ax
+036d7a: mov word ptr [0x1d62], ss
+036d7e: lcall 0x3508, 4
+036d83: add sp, 0xc
+036d86: les bx, ptr [bp + 0x16]
+036d89: push word ptr es:[bx]
+036d8c: les bx, ptr [bp + 0x1a]
+036d8f: push word ptr es:[bx]
+036d92: les bx, ptr [bp + 0x1e]
+036d95: push word ptr es:[bx]
+036d98: les bx, ptr [bp + 0x22]
+036d9b: push word ptr es:[bx]
+036d9e: lcall 0x18e5, 0xdad
+036da3: add sp, 8
+036da6: les bx, ptr [bp + 0xe]
+036da9: fld dword [bx]
+036dad: sub sp, 8
+036db0: mov bx, sp
+036db2: fstp qword [bx]
+036db5: fistp dx:ax (emu)
+036db7: les bx, ptr [bp + 6]
+036dba: fild word [bx]
+036dbe: sub sp, 8
+036dc1: mov bx, sp
+036dc3: fstp qword [bx]
+036dc6: fistp dx:ax (emu)
+036dc8: les bx, ptr [bp + 0x12]
+036dcb: fld dword [bx]
+036dcf: sub sp, 8
+036dd2: mov bx, sp
+036dd4: fstp qword [bx]
+036dd7: fistp dx:ax (emu)
+036dd9: les bx, ptr [bp + 0xa]
+036ddc: fild word [bx]
+036de0: sub sp, 8
+036de3: mov bx, sp
+036de5: fstp qword [bx]
+036de8: fistp dx:ax (emu)
+036dea: push 1
+036dec: lcall 0x1dcd, 0x415f
+036df1: add sp, 0x22
+036df4: mov word ptr [0xb11e], ax
+036df7: push 0xcccc
+036dfa: lcall 0x18e5, 0x239
+036dff: add sp, 2
+036e02: mov word ptr [0xb11c], 1
+036e08: mov ax, 0xb10c
+036e0b: push ds
+036e0c: push ax
+036e0d: les bx, ptr [bp + 0x12]
+036e10: fld dword [bx]
+036e14: sub sp, 8
+036e17: mov bx, sp
+036e19: fstp qword [bx]
+036e1c: fistp dx:ax (emu)
+036e1e: mov ax, word ptr [0xb11c]
+036e21: cdq 
+036e22: push dx
+036e23: push ax
+036e24: les bx, ptr [bp + 0xa]
+036e27: mov ax, word ptr es:[bx]
+036e2a: cdq 
+036e2b: les bx, ptr [bp + 6]
+036e2e: mov cx, ax
+036e30: mov ax, word ptr es:[bx]
+036e33: mov bx, dx
+036e35: cdq 
+036e36: sub ax, cx
+036e38: sbb dx, bx
+036e3a: push dx
+036e3b: push ax
+036e3c: lcall 0x1dcd, 0xd6c

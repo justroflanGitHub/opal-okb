@@ -1,0 +1,15 @@
+03be09: sub ax, word ptr [bp - 2]
+03be0c: add ax, si
+03be0e: mov word ptr [bp - 0x10], ax
+03be11: mov word ptr [bp - 0xe], dx
+03be14: les bx, ptr [bp - 0x10]
+03be17: fld qword [si]+8c18
+03be1c: fsub qword [si]+8890
+03be21: fstp qword [bx]
+03be25: fistp dx:ax (emu)
+03be27: imul ax, word ptr [0xb7c2], 0x18
+03be2c: mov di, ax
+03be2e: fld qword [di]+8ca8
+03be33: fdiv qword [88d0]
+03be38: int 0x39
+03be3a: push ds

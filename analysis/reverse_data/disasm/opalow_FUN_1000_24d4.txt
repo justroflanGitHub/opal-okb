@@ -1,0 +1,64 @@
+0124d4: loopne 0x124a3
+0124d6: xor al, 0x4e
+0124d8: loopne 0x124a7
+0124da: xor ax, 0xa05e
+0124dd: fistp dx:ax (emu)
+0124df: mov ax, word ptr [bp - 0x50]
+0124e2: mov dx, word ptr [bp - 0x4e]
+0124e5: add ax, 2
+0124e8: adc dx, 0
+0124eb: mov word ptr [bp - 0x4c], ax
+0124ee: mov word ptr [bp - 0x4a], dx
+0124f1: mov ax, word ptr [bp - 0x50]
+0124f4: mov dx, word ptr [bp - 0x4e]
+0124f7: add ax, word ptr [bp - 0x44]
+0124fa: adc dx, word ptr [bp - 0x42]
+0124fd: sub ax, 1
+012500: sbb dx, 0
+012503: mov word ptr [bp - 0x3c], ax
+012506: mov word ptr [bp - 0x3a], dx
+012509: mov ax, word ptr [bp - 0x4c]
+01250c: mov dx, word ptr [bp - 0x4a]
+01250f: mov word ptr [bp - 0x18], ax
+012512: mov word ptr [bp - 0x16], dx
+012515: mov ax, word ptr [bp - 0x3c]
+012518: mov dx, word ptr [bp - 0x3a]
+01251b: cmp word ptr [bp - 0x16], dx
+01251e: jle 0x12523
+012520: jmp 0x12a87
+012523: jl 0x1252d
+012525: cmp word ptr [bp - 0x18], ax
+012528: jbe 0x1252d
+01252a: jmp 0x12a87
+01252d: mov ax, word ptr [bp - 0x5c]
+012530: shl ax, 2
+012533: add ax, word ptr [bp + 0xa]
+012536: mov dx, word ptr [bp + 0xc]
+012539: sub ax, 4
+01253c: mov word ptr [bp - 0x8e], ax
+012540: mov word ptr [bp - 0x8c], dx
+012544: mov ax, word ptr [bp - 0x3c]
+012547: mov dx, word ptr [bp - 0x3a]
+01254a: sub ax, word ptr [bp - 0x4c]
+01254d: sbb dx, word ptr [bp - 0x4a]
+012550: add ax, 1
+012553: adc dx, 0
+012556: mov word ptr [bp - 0x92], ax
+01255a: mov word ptr [bp - 0x90], dx
+01255e: add word ptr [bp - 0x18], ax
+012561: adc word ptr [bp - 0x16], dx
+012564: add word ptr [bp - 0x5c], ax
+012567: adc word ptr [bp - 0x5a], dx
+01256a: mov word ptr [bp - 0x94], ax
+01256e: mov ax, dx
+012570: mov word ptr [bp - 0x96], ax
+012574: neg word ptr [bp - 0x94]
+012578: neg word ptr [bp - 0x94]
+01257c: adc word ptr [bp - 0x96], -1
+012581: mov si, word ptr [bp - 0x94]
+012585: fld dword [bp]-60
+012589: fistp dx:ax (emu)
+01258b: les bx, ptr [bp - 0x8e]
+01258f: fld dword [bp]-4
+012593: int 0x35
+012595: inc si

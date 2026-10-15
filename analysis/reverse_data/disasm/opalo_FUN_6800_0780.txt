@@ -1,0 +1,19 @@
+068780: les bx, ptr [bp + 0x62]
+068783: fld dword [bx+si]-4
+068788: les bx, ptr [bp + 0x66]
+06878b: fcom dword [bx+si]-4
+068790: fstp st0
+068793: df c/4 st0
+068796: sahf 
+068797: jb 0x6879c
+068799: jmp 0x6a3fb
+06879c: les bx, ptr [bp + 0x6a]
+06879f: fld dword [bx+si]-4
+0687a4: les bx, ptr [bp + 0x66]
+0687a7: fsub dword [bx+si]-4
+0687ac: fabs
+0687af: les bx, ptr [bp + 0x56]
+0687b2: fld dword [bx+si]-4
+0687b7: int 0x34
+0687b9: push cs
+0687ba: hlt 

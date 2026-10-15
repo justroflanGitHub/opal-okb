@@ -1,0 +1,34 @@
+0133d3: fld qword [31ac]
+0133d8: fstp qword [bp]-30
+0133dc: fld dword [3198]
+0133e1: fstp dword [bp]-18
+0133e5: fistp dx:ax (emu)
+0133e7: lea ax, [bp - 0x30]
+0133ea: push ss
+0133eb: push ax
+0133ec: mov ax, 0x5658
+0133ef: push ds
+0133f0: push ax
+0133f1: mov ax, 0x58d8
+0133f4: push ds
+0133f5: push ax
+0133f6: mov ax, 0x5b58
+0133f9: push ds
+0133fa: push ax
+0133fb: mov ax, 0x5dd8
+0133fe: push ds
+0133ff: push ax
+013400: mov ax, 0x4558
+013403: push ds
+013404: push ax
+013405: lea ax, [bp - 0x60]
+013408: push ss
+013409: push ax
+01340a: lea ax, [bp - 4]
+01340d: push ss
+01340e: push ax
+01340f: push word ptr [bp + 8]
+013412: push word ptr [bp + 6]
+013415: lcall 0x1378, 0xd
+01341a: fdecstp
+01341d: jmp 0x12cfa

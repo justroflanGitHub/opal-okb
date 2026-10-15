@@ -1,0 +1,172 @@
+02a7e8: enter 0x26, 0
+02a7ec: push di
+02a7ed: push si
+02a7ee: mov ax, 0x1172
+02a7f1: mov dx, 0x5eaa
+02a7f4: push dx
+02a7f5: push ax
+02a7f6: lcall 0x3bdd, 4
+02a7fb: mov ax, word ptr [0x4190]
+02a7fe: mov dx, word ptr [0x4192]
+02a802: add ax, 1
+02a805: adc dx, 0
+02a808: mov word ptr [bp - 8], ax
+02a80b: mov word ptr [bp - 6], dx
+02a80e: mov word ptr [bp - 4], 1
+02a813: mov word ptr [bp - 2], 0
+02a818: or dx, dx
+02a81a: jl 0x2a877
+02a81c: jg 0x2a823
+02a81e: cmp ax, 1
+02a821: jb 0x2a877
+02a823: mov ax, word ptr [bp - 4]
+02a826: shl ax, 2
+02a829: add ax, 0x770
+02a82c: mov si, ax
+02a82e: mov ax, word ptr [bp - 8]
+02a831: mov dx, word ptr [bp - 6]
+02a834: add word ptr [bp - 4], ax
+02a837: adc word ptr [bp - 2], dx
+02a83a: mov word ptr [bp - 0xc], ax
+02a83d: mov ax, dx
+02a83f: mov word ptr [bp - 0xe], ax
+02a842: neg word ptr [bp - 0xc]
+02a845: neg word ptr [bp - 0xc]
+02a848: adc word ptr [bp - 0xe], -1
+02a84c: mov cx, word ptr [bp - 0xc]
+02a84f: mov bx, si
+02a851: mov es, word ptr [0x3692]
+02a855: mov ax, word ptr es:[bx - 4]
+02a859: or ax, word ptr es:[bx - 2]
+02a85d: je 0x2a86d
+02a85f: les bx, ptr [bp + 6]
+02a862: mov word ptr es:[bx], 1
+02a867: mov word ptr es:[bx + 2], 0
+02a86d: add si, 4
+02a870: loop 0x2a84f
+02a872: dec word ptr [bp - 0xe]
+02a875: jns 0x2a84f
+02a877: les bx, ptr [bp + 6]
+02a87a: mov ax, word ptr es:[bx]
+02a87d: or ax, word ptr es:[bx + 2]
+02a881: je 0x2a886
+02a883: jmp 0x2a9f5
+02a886: mov word ptr [bp - 4], 1
+02a88b: mov word ptr [bp - 2], 0
+02a890: cmp word ptr [0x44b2], 0
+02a895: jge 0x2a89a
+02a897: jmp 0x2a935
+02a89a: jg 0x2a8a6
+02a89c: cmp word ptr [0x44b0], 1
+02a8a1: jae 0x2a8a6
+02a8a3: jmp 0x2a935
+02a8a6: mov ax, word ptr [bp - 4]
+02a8a9: shl ax, 2
+02a8ac: mov word ptr [bp - 0x1e], ax
+02a8af: add ax, 0x648c
+02a8b2: mov si, ax
+02a8b4: mov ax, word ptr [bp - 0x1e]
+02a8b7: add ax, 0xd64
+02a8ba: mov di, ax
+02a8bc: mov ax, word ptr [bp - 0x1e]
+02a8bf: add ax, 0x670c
+02a8c2: mov word ptr [bp - 0xa], ax
+02a8c5: mov ax, word ptr [bp - 0x1e]
+02a8c8: add ax, 0x1040
+02a8cb: mov word ptr [bp - 0x14], ax
+02a8ce: mov ax, word ptr [0x44b0]
+02a8d1: mov dx, word ptr [0x44b2]
+02a8d5: mov word ptr [bp - 0x18], ax
+02a8d8: mov word ptr [bp - 0x16], dx
+02a8db: add word ptr [bp - 4], ax
+02a8de: adc word ptr [bp - 2], dx
+02a8e1: mov word ptr [bp - 0x1a], ax
+02a8e4: mov ax, dx
+02a8e6: mov word ptr [bp - 0x1c], ax
+02a8e9: neg word ptr [bp - 0x1a]
+02a8ec: neg word ptr [bp - 0x1a]
+02a8ef: adc word ptr [bp - 0x1c], -1
+02a8f3: mov cx, word ptr [bp - 0x1a]
+02a8f6: mov bx, di
+02a8f8: mov es, word ptr [0x3692]
+02a8fc: mov ax, word ptr es:[bx - 0x148]
+02a901: mov dx, word ptr es:[bx - 0x146]
+02a906: mov word ptr [si], ax
+02a908: mov word ptr [si + 2], dx
+02a90b: mov bx, word ptr [bp - 0x14]
+02a90e: mov ax, word ptr es:[bx - 0x148]
+02a913: mov dx, word ptr es:[bx - 0x146]
+02a918: mov bx, word ptr [bp - 0xa]
+02a91b: mov word ptr [bx], ax
+02a91d: mov word ptr [bx + 2], dx
+02a920: add si, 4
+02a923: add di, 4
+02a926: add word ptr [bp - 0xa], 4
+02a92a: add word ptr [bp - 0x14], 4
+02a92e: loop 0x2a8f6
+02a930: dec word ptr [bp - 0x1c]
+02a933: jns 0x2a8f6
+02a935: mov word ptr [bp - 4], 1
+02a93a: mov word ptr [bp - 2], 0
+02a93f: cmp word ptr [0x4192], 0
+02a944: jge 0x2a949
+02a946: jmp 0x2a9f5
+02a949: jg 0x2a955
+02a94b: cmp word ptr [0x4190], 1
+02a950: jae 0x2a955
+02a952: jmp 0x2a9f5
+02a955: mov ax, word ptr [0x4190]
+02a958: shl ax, 2
+02a95b: mov word ptr [bp - 0xc], ax
+02a95e: mov bx, ax
+02a960: mov es, word ptr [0x3692]
+02a964: lea bx, [bx + 0x8c4]
+02a968: fld dword [bx]-1c
+02a96d: mov bx, ax
+02a96f: lea bx, [bx + 0x93c]
+02a973: fmul dword [bx]-1c
+02a978: fstp dword [bp]-22
+02a97c: fistp dx:ax (emu)
+02a97e: mov ax, word ptr [bp - 4]
+02a981: shl ax, 3
+02a984: add ax, 0x6988
+02a987: mov si, ax
+02a989: mov ax, word ptr [bp - 4]
+02a98c: shl ax, 2
+02a98f: mov word ptr [bp - 0xa], ax
+02a992: add ax, 0x8c0
+02a995: mov di, ax
+02a997: mov ax, word ptr [bp - 0xa]
+02a99a: add ax, 0x938
+02a99d: mov word ptr [bp - 0x1a], ax
+02a9a0: mov ax, word ptr [0x4190]
+02a9a3: mov dx, word ptr [0x4192]
+02a9a7: mov word ptr [bp - 0x26], ax
+02a9aa: mov word ptr [bp - 0x24], dx
+02a9ad: add word ptr [bp - 4], ax
+02a9b0: adc word ptr [bp - 2], dx
+02a9b3: mov word ptr [bp - 0x14], ax
+02a9b6: mov ax, dx
+02a9b8: mov word ptr [bp - 0xe], ax
+02a9bb: neg word ptr [bp - 0x14]
+02a9be: neg word ptr [bp - 0x14]
+02a9c1: adc word ptr [bp - 0xe], -1
+02a9c5: mov bx, di
+02a9c7: mov es, word ptr [0x3692]
+02a9cb: fld dword [bx]-1c
+02a9d0: mov bx, word ptr [bp - 0x1a]
+02a9d3: fmul dword [bx]-1c
+02a9d8: fdiv dword [bp]-22
+02a9dc: fstp qword [si]
+02a9df: fistp dx:ax (emu)
+02a9e1: add si, 8
+02a9e4: add di, 4
+02a9e7: add word ptr [bp - 0x1a], 4
+02a9eb: dec word ptr [bp - 0x14]
+02a9ee: jne 0x2a9c5
+02a9f0: dec word ptr [bp - 0xe]
+02a9f3: jns 0x2a9c5
+02a9f5: pop si
+02a9f6: pop di
+02a9f7: leave 
+02a9f8: retf 4

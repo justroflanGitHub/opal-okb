@@ -1,0 +1,80 @@
+068000: enter 0x30, 0
+068004: push si
+068005: les bx, ptr [bp + 0xe]
+068008: mov ax, word ptr es:[bx]
+06800b: or ax, word ptr es:[bx + 2]
+06800f: je 0x6801d
+068011: mov word ptr [bp - 0x10], 2
+068016: mov word ptr [bp - 0xe], 0
+06801b: jmp 0x68055
+06801d: mov ax, word ptr [0x3a78]
+068020: or ax, word ptr [0x3a7a]
+068024: je 0x6803d
+068026: mov ax, word ptr [0x3a58]
+068029: or ax, word ptr [0x3a5a]
+06802d: je 0x68036
+06802f: mov word ptr [bp - 0x10], 4
+068034: jmp 0x68016
+068036: mov word ptr [bp - 0x10], 1
+06803b: jmp 0x68016
+06803d: mov ax, word ptr [0x3a58]
+068040: or ax, word ptr [0x3a5a]
+068044: je 0x6804d
+068046: mov word ptr [bp - 0x10], 3
+06804b: jmp 0x68016
+06804d: sub ax, ax
+06804f: mov word ptr [bp - 0xe], ax
+068052: mov word ptr [bp - 0x10], ax
+068055: lea ax, [bp - 0x10]
+068058: push ss
+068059: push ax
+06805a: lcall 0x522a, 9
+06805f: les bx, ptr [bp + 0xe]
+068062: sub ax, ax
+068064: mov word ptr es:[bx + 2], ax
+068068: mov word ptr es:[bx], ax
+06806b: les bx, ptr [bp + 0x12]
+06806e: fld dword [bx]
+068072: fcom dword [30e8]
+068077: fstp st0
+06807a: df c/4 st0
+06807d: sahf 
+06807e: jne 0x68083
+068080: jmp 0x682d0
+068083: cmp word ptr [0x3a2c], 6
+068088: jne 0x68091
+06808a: cmp word ptr [0x3a2e], 0
+06808f: je 0x680a5
+068091: cmp word ptr [0x3a2c], 7
+068096: je 0x6809b
+068098: jmp 0x682d0
+06809b: cmp word ptr [0x3a2e], 0
+0680a0: je 0x680a5
+0680a2: jmp 0x682d0
+0680a5: push 0
+0680a7: push 2
+0680a9: push word ptr [0x3a4e]
+0680ad: push word ptr [0x3a4c]
+0680b1: mov ax, word ptr [0x3a4c]
+0680b4: mov dx, word ptr [0x3a4e]
+0680b8: add ax, 1
+0680bb: adc dx, 0
+0680be: push dx
+0680bf: push ax
+0680c0: lcall 0x3c59, 0xd6c
+0680c5: push dx
+0680c6: push ax
+0680c7: lcall 0x3c59, 0xcd2
+0680cc: add ax, 1
+0680cf: adc dx, 0
+0680d2: mov word ptr [bp - 8], ax
+0680d5: mov word ptr [bp - 6], dx
+0680d8: mov word ptr [bp - 0x14], 1
+0680dd: mov word ptr [bp - 0x12], 0
+0680e2: les bx, ptr [bp + 0x12]
+0680e5: fld dword [bx]
+0680e9: fld dword [3a84]
+0680ee: fmul dword [3a84]
+0680f3: fld st1
+0680f6: fmul st0, st2
+0680f9: int 0x3a

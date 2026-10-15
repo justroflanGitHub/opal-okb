@@ -1,0 +1,72 @@
+06822a: push ds
+06822b: push ax
+06822c: lea ax, [bp - 0x14]
+06822f: push ss
+068230: push ax
+068231: ffree st0
+068234: lcall 0x7085, 7
+068239: mov ax, word ptr [0x998a]
+06823c: or ax, word ptr [0x998c]
+068240: jne 0x682bf
+068242: cmp word ptr [0x3a42], 0
+068247: jl 0x68295
+068249: jg 0x68252
+06824b: cmp word ptr [0x3a40], 1
+068250: jb 0x68295
+068252: mov word ptr [bp - 0x2c], 0xffff
+068257: mov word ptr [bp - 0x2a], 0xffff
+06825c: mov word ptr [bp - 0x10], 1
+068261: mov word ptr [bp - 0xe], 0
+068266: mov word ptr [bp - 0x14], 1
+06826b: mov word ptr [bp - 0x12], 0
+068270: push word ptr [bp + 0x44]
+068273: push word ptr [bp + 0x42]
+068276: push word ptr [bp + 0x28]
+068279: push word ptr [bp + 0x26]
+06827c: mov ax, 0x3a4c
+06827f: push ds
+068280: push ax
+068281: lea ax, [bp - 0x14]
+068284: push ss
+068285: push ax
+068286: lea ax, [bp - 0x10]
+068289: push ss
+06828a: push ax
+06828b: lea ax, [bp - 0x2c]
+06828e: push ss
+06828f: push ax
+068290: lcall 0x71f2, 2
+068295: push word ptr [bp + 0x34]
+068298: push word ptr [bp + 0x32]
+06829b: push word ptr [bp + 0x44]
+06829e: push word ptr [bp + 0x42]
+0682a1: push word ptr [bp + 0x40]
+0682a4: push word ptr [bp + 0x3e]
+0682a7: push word ptr [bp + 0x18]
+0682aa: push word ptr [bp + 0x16]
+0682ad: lcall 0x7173, 0xe
+0682b2: fld dword [30f0]
+0682b7: fstp dword [bp]-c
+0682bb: fistp dx:ax (emu)
+0682bd: jmp 0x682f3
+0682bf: les bx, ptr [bp + 0xe]
+0682c2: mov word ptr es:[bx], 0x64
+0682c7: mov word ptr es:[bx + 2], 0
+0682cd: jmp 0x68502
+0682d0: les bx, ptr [bp + 0xa]
+0682d3: cmp word ptr es:[bx], -1
+0682d7: jne 0x682e3
+0682d9: cmp word ptr es:[bx + 2], -1
+0682de: jne 0x682e3
+0682e0: jmp 0x68657
+0682e3: les bx, ptr [bp + 0x12]
+0682e6: mov ax, word ptr es:[bx]
+0682e9: mov dx, word ptr es:[bx + 2]
+0682ed: mov word ptr [bp - 0xc], ax
+0682f0: mov word ptr [bp - 0xa], dx
+0682f3: fld dword [bp]-c
+0682f7: fcom dword [30e8]
+0682fc: fstp st0
+0682ff: df c/4 st0
+068302: sahf 
+068303: db 75

@@ -1,0 +1,18 @@
+042385: push es
+042386: push -0x79
+042388: je 0x4239e
+04238a: mov ax, word ptr [0x8768]
+04238d: mov dx, word ptr [0x876a]
+042391: add ax, 4
+042394: adc dx, 0
+042397: mov word ptr [0x8770], ax
+04239a: mov word ptr [0x8772], dx
+04239e: les bx, ptr [bp + 6]
+0423a1: fld qword [3a4e]
+0423a6: fst qword [bx]
+0423aa: fstp qword [bx]+8
+0423af: fistp dx:ax (emu)
+0423b1: mov sp, bp
+0423b3: pop bp
+0423b4: db ca
+0423b5: db 08

@@ -1,0 +1,102 @@
+046010: push bp
+046011: mov bp, sp
+046013: sub sp, 2
+046016: push word ptr [bp + 0x10]
+046019: push word ptr [bp + 0xe]
+04601c: lcall 0x454a, 7
+046021: mov ax, word ptr [0x8770]
+046024: or ax, word ptr [0x8772]
+046028: jne 0x4602d
+04602a: jmp 0x46121
+04602d: les bx, ptr [bp + 0x16]
+046030: mov ax, word ptr es:[bx]
+046033: or ax, word ptr es:[bx + 2]
+046037: jne 0x4603c
+046039: jmp 0x46121
+04603c: cmp word ptr es:[bx], -1
+046040: jne 0x4604c
+046042: cmp word ptr es:[bx + 2], -1
+046047: jne 0x4604c
+046049: jmp 0x46121
+04604c: les bx, ptr [bp + 0x16]
+04604f: cmp word ptr es:[bx], 2
+046053: jne 0x4605f
+046055: cmp word ptr es:[bx + 2], 0
+04605a: jne 0x4605f
+04605c: jmp 0x46121
+04605f: les bx, ptr [bp + 0x16]
+046062: cmp word ptr es:[bx + 2], -1
+046067: jg 0x460bf
+046069: jl 0x46071
+04606b: cmp word ptr es:[bx], -1
+04606f: ja 0x460bf
+046071: les bx, ptr [bp + 0x12]
+046074: cmp word ptr es:[bx], 1
+046078: jne 0x460bf
+04607a: cmp word ptr es:[bx + 2], 0
+04607f: jne 0x460bf
+046081: les bx, ptr [bp + 0xe]
+046084: fld qword [bx]
+046088: fcom qword [3bb4]
+04608d: fstp st0
+046090: fnstsw [bp]-2
+046094: fistp dx:ax (emu)
+046096: mov ah, byte ptr [bp - 1]
+046099: sahf 
+04609a: je 0x460bf
+04609c: mov word ptr [0x8b60], 0xf9f
+0460a2: mov word ptr [0x8b62], 0
+0460a8: push es
+0460a9: push bx
+0460aa: mov ax, 0x8be0
+0460ad: push ds
+0460ae: push ax
+0460af: mov ax, 0x8df0
+0460b2: push ds
+0460b3: push ax
+0460b4: lea ax, [0x3bbc]
+0460b8: push ds
+0460b9: push ax
+0460ba: lcall 0x453c, 8
+0460bf: mov word ptr [0x8b60], 0x1387
+0460c5: mov word ptr [0x8b62], 0
+0460cb: les bx, ptr [bp + 0x16]
+0460ce: mov ax, word ptr es:[bx]
+0460d1: mov dx, word ptr es:[bx + 2]
+0460d5: or dx, dx
+0460d7: jge 0x460e0
+0460d9: neg ax
+0460db: adc dx, 0
+0460de: neg dx
+0460e0: cmp ax, 4
+0460e3: jne 0x460e9
+0460e5: or dx, dx
+0460e7: je 0x4610b
+0460e9: push word ptr [bp + 0xc]
+0460ec: push word ptr [bp + 0xa]
+0460ef: mov ax, word ptr [bp + 6]
+0460f2: mov dx, word ptr [bp + 8]
+0460f5: add ax, 4
+0460f8: push dx
+0460f9: push ax
+0460fa: mov ax, 0x8b98
+0460fd: push ds
+0460fe: push ax
+0460ff: mov ax, 0x8e30
+046102: push ds
+046103: push ax
+046104: lcall 0x4532, 0xb
+046109: jmp 0x46121
+04610b: lea ax, [0x3bbc]
+04610f: push ds
+046110: push ax
+046111: push word ptr [bp + 8]
+046114: push word ptr [bp + 6]
+046117: mov ax, 0x8b90
+04611a: push ds
+04611b: push ax
+04611c: mov ax, 0x8e10
+04611f: jmp 0x46102
+046121: mov sp, bp
+046123: pop bp
+046124: retf 0x14

@@ -1,0 +1,26 @@
+04160e: push bp
+04160f: mov bp, sp
+041611: sub sp, 0x16
+041614: push di
+041615: push si
+041616: sub ax, ax
+041618: mov word ptr [0x8762], ax
+04161b: mov word ptr [0x8760], ax
+04161e: les bx, ptr [bp + 0x12]
+041621: fld qword [bx]
+041625: fld st0
+041628: fstp tbyte [bp]-a
+04162c: fld qword [8898]
+041631: fdiv st0, st1
+041634: fstp qword [baa8]
+041639: fld qword [88a0]
+04163e: fdiv st0, st1
+041641: fstp qword [bab0]
+041646: fistp dx:ax (emu)
+041648: les bx, ptr [bp + 0xe]
+04164b: mov ax, word ptr es:[bx]
+04164e: or ax, word ptr es:[bx + 2]
+041652: ffree st0
+041655: jne 0x4165a
+041657: jmp 0x41824
+04165a: db cd

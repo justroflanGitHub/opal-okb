@@ -1,0 +1,10 @@
+0414f0: mov word ptr [bx + di], es
+0414f2: push es
+0414f3: mov al, byte ptr [0x8bba]
+0414f6: enter 0x35cd, -0x12
+0414fa: fld qword [si]
+0414fd: fstp st1
+041500: fld qword [di]
+041503: fld qword [8838]
+041508: fmul st0, st2
+04150b: int 0x3a

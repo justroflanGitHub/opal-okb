@@ -1,0 +1,80 @@
+050e26: enter 0x74, 0
+050e2a: push di
+050e2b: push si
+050e2c: les bx, ptr [bp + 0x1a]
+050e2f: mov ax, word ptr es:[bx]
+050e32: shl ax, 3
+050e35: mov word ptr [bp - 4], ax
+050e38: add ax, 8
+050e3b: mov word ptr [bp - 2], ax
+050e3e: mov word ptr [0x961c], 4
+050e44: mov word ptr [0x961e], 4
+050e4a: mov di, 8
+050e4d: fdecstp
+050e50: fstp qword [di]+9660
+050e55: fistp dx:ax (emu)
+050e57: mov cx, di
+050e59: push di
+050e5a: lea si, [di - 0x69a0]
+050e5e: lea di, [di - 0x6998]
+050e62: push ds
+050e63: pop es
+050e64: repne movsw word ptr es:[di], word ptr [si]
+050e66: pop di
+050e67: mov word ptr [bp - 6], di
+050e6a: mov si, di
+050e6c: add si, 0x9618
+050e70: mov word ptr [bp - 0xa], 3
+050e75: mov cx, word ptr [bp - 0xa]
+050e78: fdecstp
+050e7b: fstp qword [si]
+050e7e: fistp dx:ax (emu)
+050e80: add si, 0x18
+050e83: loop 0x50e78
+050e85: add di, 8
+050e88: cmp di, 0x18
+050e8b: jle 0x50e67
+050e8d: les bx, ptr [bp + 0x12]
+050e90: mov ax, word ptr es:[bx]
+050e93: mov word ptr [bp - 0xc], ax
+050e96: mov word ptr [0x961c], 1
+050e9c: mov ax, word ptr [0x961c]
+050e9f: cmp word ptr [bp - 0xc], ax
+050ea2: jge 0x50ea7
+050ea4: jmp 0x50f7c
+050ea7: mov bx, ax
+050ea9: shl bx, 1
+050eab: les si, ptr [bp + 0x16]
+050eae: cmp word ptr es:[bx + si - 2], 0
+050eb3: je 0x50eb8
+050eb5: jmp 0x50f73
+050eb8: mov ax, word ptr [bp - 4]
+050ebb: mul word ptr [0x961c]
+050ebf: add ax, word ptr [bp + 0x1e]
+050ec2: mov dx, word ptr [bp + 0x20]
+050ec5: sub ax, word ptr [bp - 2]
+050ec8: mov word ptr [bp - 0x10], ax
+050ecb: mov word ptr [bp - 0xe], dx
+050ece: les bx, ptr [bp - 0x10]
+050ed1: fld qword [bx]+18
+050ed6: fadd qword [9668]
+050edb: fstp qword [9668]
+050ee0: fld qword [bx]+8
+050ee5: fmul qword [bx]+18
+050eea: fadd qword [9670]
+050eef: fstp qword [9670]
+050ef4: fld qword [bx]+10
+050ef9: fmul qword [bx]+18
+050efe: fadd qword [9678]
+050f03: fstp qword [9678]
+050f08: fld qword [32ea]
+050f0d: fadd qword [9620]
+050f12: fstp qword [9620]
+050f17: fld qword [bx]+8
+050f1c: fadd qword [9638]
+050f21: fstp qword [9638]
+050f26: fld qword [bx]+10
+050f2b: fadd qword [9650]
+050f30: fstp qword [9650]
+050f35: fld qword [bx]+8
+050f3a: fmul qword [bx]+8

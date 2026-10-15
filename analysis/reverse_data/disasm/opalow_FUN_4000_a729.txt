@@ -1,0 +1,45 @@
+04a729: push es
+04a72a: xchg byte ptr [bp + si], dh
+04a72c: lea bx, [si + 0x1420]
+04a730: fld dword [bx]-4
+04a735: mov bx, word ptr [bp - 8]
+04a738: shl bx, 3
+04a73b: mov es, dx
+04a73d: lea bx, [bx + 0xad8]
+04a741: fsub qword [bx]-8
+04a746: lea bx, [si + 0xcd8]
+04a74a: fdiv dword [bx]-4
+04a74f: mov es, word ptr [0x3294]
+04a753: lea bx, [si - 0x14a0]
+04a757: fstp dword [bx]-4
+04a75c: fistp dx:ax (emu)
+04a75e: mov bx, word ptr [bp - 8]
+04a761: shl bx, 2
+04a764: mov es, word ptr [0x329a]
+04a768: lea bx, [bx - 0x13a0]
+04a76c: fld dword [bx]-4
+04a771: fcom dword [329c]
+04a776: fstp st0
+04a779: df c/4 st0
+04a77c: sahf 
+04a77d: jae 0x4a7bd
+04a77f: mov si, word ptr [bp - 8]
+04a782: shl si, 2
+04a785: mov es, word ptr [0x3286]
+04a789: lea bx, [si + 0x1320]
+04a78d: fld dword [bx]-4
+04a792: mov bx, word ptr [bp - 8]
+04a795: shl bx, 3
+04a798: mov es, word ptr [0x32a0]
+04a79c: lea bx, [bx + 0xad8]
+04a7a0: fsub qword [bx]-8
+04a7a5: lea bx, [si + 0xcd8]
+04a7a9: fdiv dword [bx]-4
+04a7ae: mov es, word ptr [0x329a]
+04a7b2: lea bx, [si - 0x13a0]
+04a7b6: fstp dword [bx]-4
+04a7bb: fistp dx:ax (emu)
+04a7bd: add word ptr [bp - 8], 1
+04a7c1: adc word ptr [bp - 6], 0
+04a7c5: jo 0x4a7ca
+04a7c7: jmp 0x4a6bd

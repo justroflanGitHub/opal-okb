@@ -1,0 +1,21 @@
+012318: fabs
+01231b: fadd dword [13a]
+012320: fstp dword [bp]-78
+012324: fistp dx:ax (emu)
+012326: mov si, word ptr [bp - 0x64]
+012329: shl si, 3
+01232c: mov di, word ptr [bp - 0x5c]
+01232f: shl di, 2
+012332: les bx, ptr [bp + 0xa]
+012335: fld dword [bp]-6c
+012339: fld qword [si]+5b50
+01233e: fmul qword [si]+5b50
+012343: fmul dword [12e]
+012348: fld qword [si]+5650
+01234d: fmul qword [si]+5650
+012352: faddp st1, st0
+012355: fadd dword [132]
+01235a: fdivrp st1, st0
+01235d: fdiv dword [bp]-78
+012361: fstp dword [bx+di]-4
+012366: jmp 0x12a85

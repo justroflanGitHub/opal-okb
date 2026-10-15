@@ -1,0 +1,151 @@
+048590: push bp
+048591: mov bp, sp
+048593: sub sp, 0x18
+048596: push di
+048597: push si
+048598: mov word ptr [0xc01c], 0
+04859e: mov ax, word ptr [0x8770]
+0485a1: mov word ptr [bp - 2], ax
+0485a4: mov word ptr [0xc01a], 1
+0485aa: mov ax, word ptr [0xc01a]
+0485ad: cmp word ptr [bp - 2], ax
+0485b0: jge 0x485b5
+0485b2: jmp 0x48724
+0485b5: cmp ax, 5
+0485b8: jge 0x485cf
+0485ba: cdq 
+0485bb: cmp dx, word ptr [0x8776]
+0485bf: jle 0x485c4
+0485c1: jmp 0x4871b
+0485c4: jl 0x485cf
+0485c6: cmp ax, word ptr [0x8774]
+0485ca: jbe 0x485cf
+0485cc: jmp 0x4871b
+0485cf: fdecstp
+0485d2: fstp qword [c01e]
+0485d7: fistp dx:ax (emu)
+0485d9: mov word ptr [0xc018], 4
+0485df: mov ax, 0x18
+0485e2: imul word ptr [0xc01a]
+0485e6: mov word ptr [bp - 4], ax
+0485e9: mov word ptr [bp - 6], ax
+0485ec: add ax, 0x8c18
+0485ef: mov si, ax
+0485f1: mov ax, word ptr [bp - 6]
+0485f4: add ax, 0x8cd8
+0485f7: mov di, ax
+0485f9: mov ax, word ptr [bp - 4]
+0485fc: add ax, 0x8c18
+0485ff: mov word ptr [bp - 0xc], ax
+048602: mov word ptr [bp - 0xe], 0x8c10
+048607: mov cx, 3
+04860a: fld qword [di]
+04860d: fmul qword [8be0]
+048612: fadd qword [si]
+048615: fstp qword [si]
+048618: fistp dx:ax (emu)
+04861a: mov bx, word ptr [bp - 0xc]
+04861d: fld qword [bx]
+048620: mov bx, word ptr [bp - 0xe]
+048623: fmul qword [bx]
+048626: fadd qword [c01e]
+04862b: fstp qword [c01e]
+048630: fistp dx:ax (emu)
+048632: add si, 8
+048635: add di, 8
+048638: add word ptr [bp - 0xc], 8
+04863c: add word ptr [bp - 0xe], 8
+048640: loop 0x4860a
+048642: fld qword [8bc8]
+048647: fdivr qword [c01e]
+04864c: fstp qword [c01e]
+048651: fistp dx:ax (emu)
+048653: mov word ptr [0xc018], 4
+048659: mov ax, 0x18
+04865c: imul word ptr [0xc01a]
+048660: mov word ptr [bp - 0x12], ax
+048663: add ax, 0x8c18
+048666: mov si, ax
+048668: mov di, 0x8ba8
+04866b: mov word ptr [bp - 0x18], 3
+048670: mov cx, word ptr [bp - 0x18]
+048673: fld qword [di]
+048676: fmul qword [c01e]
+04867b: fadd qword [si]
+04867e: fstp qword [si]
+048681: fistp dx:ax (emu)
+048683: add si, 8
+048686: add di, 8
+048689: loop 0x48673
+04868b: mov ax, 0x18
+04868e: imul word ptr [0xc01a]
+048692: mov si, ax
+048694: fld qword [3c96]
+048699: fadd qword [si]+8c28
+04869e: fstp qword [si]+8c28
+0486a3: fistp dx:ax (emu)
+0486a5: mov ax, word ptr [0x878c]
+0486a8: or ax, word ptr [0x878e]
+0486ac: je 0x4871b
+0486ae: mov ax, word ptr [0xc01a]
+0486b1: cdq 
+0486b2: cmp dx, word ptr [0x8786]
+0486b6: jl 0x4871b
+0486b8: jg 0x486c0
+0486ba: cmp ax, word ptr [0x8784]
+0486be: jb 0x4871b
+0486c0: mov ax, word ptr [0xc01a]
+0486c3: cdq 
+0486c4: mov cx, word ptr [0x8784]
+0486c8: mov bx, word ptr [0x8786]
+0486cc: add cx, word ptr [0x8788]
+0486d0: adc bx, word ptr [0x878a]
+0486d4: cmp bx, dx
+0486d6: jl 0x4871b
+0486d8: jg 0x486de
+0486da: cmp cx, ax
+0486dc: jbe 0x4871b
+0486de: inc word ptr [0xc01c]
+0486e2: mov di, word ptr [0xc01c]
+0486e6: mov cl, 3
+0486e8: shl di, cl
+0486ea: push si
+0486eb: push di
+0486ec: lea di, [di - 0x7218]
+0486f0: mov si, 0xc01e
+0486f3: push ds
+0486f4: pop es
+0486f5: movsw word ptr es:[di], word ptr [si]
+0486f6: movsw word ptr es:[di], word ptr [si]
+0486f7: movsw word ptr es:[di], word ptr [si]
+0486f8: movsw word ptr es:[di], word ptr [si]
+0486f9: pop di
+0486fa: pop si
+0486fb: push si
+0486fc: push di
+0486fd: lea di, [di - 0x71d8]
+048701: lea si, [si - 0x73e0]
+048705: movsw word ptr es:[di], word ptr [si]
+048706: movsw word ptr es:[di], word ptr [si]
+048707: movsw word ptr es:[di], word ptr [si]
+048708: movsw word ptr es:[di], word ptr [si]
+048709: pop di
+04870a: pop si
+04870b: push si
+04870c: push di
+04870d: lea di, [di - 0x71f8]
+048711: lea si, [si - 0x73e8]
+048715: movsw word ptr es:[di], word ptr [si]
+048716: movsw word ptr es:[di], word ptr [si]
+048717: movsw word ptr es:[di], word ptr [si]
+048718: movsw word ptr es:[di], word ptr [si]
+048719: pop di
+04871a: pop si
+04871b: inc word ptr [0xc01a]
+04871f: jo 0x48724
+048721: jmp 0x485aa
+048724: pop si
+048725: pop di
+048726: mov sp, bp
+048728: pop bp
+048729: retf 

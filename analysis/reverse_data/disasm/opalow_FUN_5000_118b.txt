@@ -1,0 +1,57 @@
+05118b: mov si, ax
+05118d: push ss
+05118e: pop es
+05118f: push ds
+051190: mov ds, dx
+051192: movsw word ptr es:[di], word ptr [si]
+051193: movsw word ptr es:[di], word ptr [si]
+051194: movsw word ptr es:[di], word ptr [si]
+051195: movsw word ptr es:[di], word ptr [si]
+051196: pop ds
+051197: mov ax, word ptr [bp + 0x16]
+05119a: mov dx, word ptr [bp + 0x18]
+05119d: mov word ptr [bp - 0x64], ax
+0511a0: mov word ptr [bp - 0x62], dx
+0511a3: mov ax, word ptr [bp - 4]
+0511a6: mul word ptr [0x961c]
+0511aa: add ax, word ptr [bp + 0x1e]
+0511ad: mov dx, word ptr [bp + 0x20]
+0511b0: sub ax, word ptr [bp - 2]
+0511b3: mov word ptr [bp - 0x74], ax
+0511b6: mov word ptr [bp - 0x72], dx
+0511b9: add ax, 0x18
+0511bc: mov word ptr [bp - 0x68], ax
+0511bf: mov word ptr [bp - 0x66], dx
+0511c2: mov ax, word ptr [bp - 0x74]
+0511c5: add ax, 8
+0511c8: mov word ptr [bp - 0x6c], ax
+0511cb: mov word ptr [bp - 0x6a], dx
+0511ce: mov ax, word ptr [bp - 0x74]
+0511d1: add ax, 0x10
+0511d4: mov word ptr [bp - 0x70], ax
+0511d7: mov word ptr [bp - 0x6e], dx
+0511da: mov ax, word ptr [bp - 0xa]
+0511dd: add word ptr [0x961c], ax
+0511e1: mov cx, ax
+0511e3: mov si, word ptr [bp - 4]
+0511e6: fld qword [9680]
+0511eb: fistp dx:ax (emu)
+0511ed: les bx, ptr [bp - 0x64]
+0511f0: cmp word ptr es:[bx], 0
+0511f4: jne 0x5125c
+0511f6: les bx, ptr [bp - 0x68]
+0511f9: fld qword [bx]
+0511fd: les bx, ptr [bp + 0xe]
+051200: fld qword [bx]+8
+051205: les bx, ptr [bp - 0x6c]
+051208: fmul qword [bx]
+05120c: les bx, ptr [bp + 0xe]
+05120f: fld qword [bx]+10
+051214: les bx, ptr [bp - 0x70]
+051217: fmul qword [bx]
+05121b: faddp st1, st0
+05121e: fadd qword [bp]-60
+051222: fsubrp st1, st0
+051225: fstp st1
+051228: fistp dx:ax (emu)
+05122a: db c4

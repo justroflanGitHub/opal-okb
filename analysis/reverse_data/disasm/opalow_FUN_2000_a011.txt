@@ -1,0 +1,31 @@
+02a011: imul bx, word ptr [bp - 0x34], 0x18
+02a015: lea di, [bp - 0x3c]
+02a018: lea si, [bx - 0x7c58]
+02a01c: push ss
+02a01d: pop es
+02a01e: movsw word ptr es:[di], word ptr [si]
+02a01f: movsw word ptr es:[di], word ptr [si]
+02a020: movsw word ptr es:[di], word ptr [si]
+02a021: movsw word ptr es:[di], word ptr [si]
+02a022: mov ax, word ptr [0x44c4]
+02a025: or ax, word ptr [0x44c6]
+02a029: jne 0x2a038
+02a02b: fld qword [367c]
+02a030: fmul qword [bp]-3c
+02a034: fstp qword [bp]-3c
+02a038: fld dword [3684]
+02a03d: fstp dword [bp]-20
+02a041: jmp 0x29fe8
+02a043: imul bx, word ptr [bp - 0x34], 0x18
+02a047: lea di, [bp - 0x3c]
+02a04a: lea si, [bx - 0x7c50]
+02a04e: push ss
+02a04f: pop es
+02a050: movsw word ptr es:[di], word ptr [si]
+02a051: movsw word ptr es:[di], word ptr [si]
+02a052: movsw word ptr es:[di], word ptr [si]
+02a053: movsw word ptr es:[di], word ptr [si]
+02a054: jmp 0x29e6f
+02a057: db 8e
+02a058: push es
+02a059: db 88

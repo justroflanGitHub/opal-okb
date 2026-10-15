@@ -1,0 +1,24 @@
+025a68: cmp byte ptr [bp - 0x11], 0
+025a6c: jl 0x25a6f
+025a6e: ret 
+025a6f: fld tbyte [25a4]
+025a74: fld st1
+025a77: fabs
+025a7a: fcom st0, st1
+025a7d: fnstsw [2900]
+025a82: fstp st0
+025a85: fstp st0
+025a88: fistp dx:ax (emu)
+025a8a: and byte ptr [0x2901], 0x41
+025a8f: cmp byte ptr [0x2901], 0x40
+025a94: jne 0x25a9c
+025a96: mov byte ptr [bp - 0x11], 3
+025a9a: jmp 0x25a68
+025a9c: mov byte ptr [bp - 0x11], 0
+025aa0: jmp 0x25a68
+025aa2: fld st0
+025aa5: ftst
+025aa8: fnstsw [2738]
+025aad: fistp dx:ax (emu)
+025aaf: mov ch, byte ptr [0x2739]
+025ab3: db cd

@@ -1,0 +1,125 @@
+021164: push bp
+021165: mov bp, sp
+021167: sub sp, 0x2a
+02116a: mov byte ptr [bp - 2], 0
+02116e: mov ax, word ptr [bp + 8]
+021171: mov dx, word ptr [bp + 0xa]
+021174: mov word ptr [0xb630], ax
+021177: mov word ptr [0xb632], dx
+02117b: add ax, word ptr [bp + 6]
+02117e: dec ax
+02117f: mov word ptr [0xb626], ax
+021182: mov word ptr [0xb628], dx
+021186: mov ax, word ptr [bp + 6]
+021189: mov cx, 0x32
+02118c: sub dx, dx
+02118e: div cx
+021190: add ax, word ptr [bp + 6]
+021193: add ax, 3
+021196: push ax
+021197: call 0x231c4
+02119a: mov word ptr [0xb634], ax
+02119d: mov word ptr [bp - 8], ax
+0211a0: mov word ptr [bp - 0xe], ax
+0211a3: call 0x21010
+0211a6: cmp byte ptr [0xb622], 0xe
+0211ab: je 0x211c6
+0211ad: mov bx, word ptr [0xb634]
+0211b1: mov word ptr [0xb62e], bx
+0211b5: mov byte ptr [bx], 0x1f
+0211b8: inc word ptr [0xb62e]
+0211bc: mov word ptr [0xb624], 0x3d5
+0211c2: jmp 0x2164b
+0211c5: nop 
+0211c6: mov word ptr [bp - 0xa], 0
+0211cb: call 0x21010
+0211ce: mov ax, word ptr [0xb634]
+0211d1: inc word ptr [0xb634]
+0211d5: mov word ptr [0xb62e], ax
+0211d8: cmp byte ptr [0xb622], 0x29
+0211dd: jne 0x2121e
+0211df: mov ax, word ptr [0xb62a]
+0211e2: mov dx, word ptr [0xb62c]
+0211e6: mov word ptr [bp - 6], ax
+0211e9: mov word ptr [bp - 4], dx
+0211ec: push dx
+0211ed: push ax
+0211ee: call 0x210e0
+0211f1: call 0x21010
+0211f4: cmp word ptr [bp - 4], 0
+0211f8: jg 0x2120c
+0211fa: jl 0x21202
+0211fc: cmp word ptr [bp - 6], 1
+021200: jae 0x2120c
+021202: cmp byte ptr [0xb622], 3
+021207: je 0x2120c
+021209: jmp 0x215b0
+02120c: cmp byte ptr [0xb622], 0xf
+021211: jl 0x21216
+021213: jmp 0x21626
+021216: mov al, byte ptr [0xb622]
+021219: add al, 0x20
+02121b: jmp 0x2122b
+02121d: nop 
+02121e: cmp byte ptr [0xb622], 4
+021223: jge 0x21228
+021225: jmp 0x21614
+021228: mov al, byte ptr [0xb622]
+02122b: mov bx, word ptr [0xb62e]
+02122f: mov byte ptr [bx], al
+021231: cmp byte ptr [0xb622], 6
+021236: jl 0x21243
+021238: cmp byte ptr [0xb622], 0xd
+02123d: jg 0x21243
+02123f: or byte ptr [bp - 2], 1
+021243: mov al, byte ptr [0xb622]
+021246: cwde 
+021247: dec ax
+021248: cmp ax, 0x2a
+02124b: jbe 0x21250
+02124d: jmp 0x21600
+021250: shl ax, 1
+021252: xchg bx, ax
+021253: jmp word ptr cs:[bx + 0x3588]
+021258: fidiv word ptr [di]
+02125a: call 0x1c392
+02125d: cmp byte ptr [bx + si], dh
+02125f: cmp word ptr [bx + si], si
+021261: cmp word ptr [bx + si], di
+021263: dec ax
+021265: push si
+021267: mov dl, 0x36
+02126a: fidiv dword ptr [0x36b2]
+02126e: fidiv dword ptr [0x3638]
+021272: add byte ptr [bx], dh
+021274: xor byte ptr [bx + di], bh
+021276: xor byte ptr [bx + di], bh
+021278: sub al, 0x37
+02127a: sbb al, 0x37
+02127c: sbb al, 0x37
+02127e: mov dh, 0x37
+021280: xor byte ptr [bx + di], bh
+021282: xor byte ptr [bx + di], bh
+021284: xor byte ptr [bx + di], bh
+021286: fidiv word ptr [bx]
+021288: sbb al, 0x37
+02128a: adc byte ptr [bx + si], bh
+02128c: cmp byte ptr cs:[bx + si], dh
+02128f: cmp word ptr [bx + si], si
+021291: cmp word ptr [bx + si], si
+021293: cmp word ptr [bx + si], si
+021295: cmp word ptr [bx + si], si
+021297: cmp word ptr [bx + si], si
+021299: cmp word ptr [bp + si + 0x38], si
+02129c: jb 0x212d6
+02129e: xor byte ptr [bx + di], bh
+0212a0: xor byte ptr [bx + di], bh
+0212a2: xor byte ptr [bx + di], bh
+0212a4: xor byte ptr [bx + di], bh
+0212a6: xor byte ptr [bx + di], bh
+0212a8: xor byte ptr [bx + di], bh
+0212aa: xor byte ptr [bx + di], bh
+0212ac: push 0x39
+0212ae: db 8b
+0212af: push ds
+0212b0: db 2e

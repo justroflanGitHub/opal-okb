@@ -1,0 +1,104 @@
+0423b7: push bp
+0423b8: mov bp, sp
+0423ba: sub sp, 0x56
+0423bd: push di
+0423be: push si
+0423bf: mov ax, word ptr [0x8768]
+0423c2: inc ax
+0423c3: mov word ptr [0xbb82], ax
+0423c6: mov ax, word ptr [0x8770]
+0423c9: or ax, word ptr [0x8772]
+0423cd: jne 0x423d2
+0423cf: jmp 0x431b3
+0423d2: fld qword [3a56]
+0423d7: fstp qword [bb88]
+0423dc: fistp dx:ax (emu)
+0423de: les bx, ptr [bp + 0x1e]
+0423e1: mov ax, word ptr es:[bx]
+0423e4: or ax, word ptr es:[bx + 2]
+0423e8: je 0x42434
+0423ea: les bx, ptr [bp + 0x12]
+0423ed: fld dword [bx]
+0423f1: fmul qword [8ba8]
+0423f6: fcom qword [3a5e]
+0423fb: fstp st0
+0423fe: fnstsw [bp]-2
+042402: fistp dx:ax (emu)
+042404: mov ah, byte ptr [bp - 1]
+042407: sahf 
+042408: ja 0x42434
+04240a: fld dword [bx]+4
+04240f: fmul qword [8bb0]
+042414: fcom qword [3a5e]
+042419: fstp st0
+04241c: fnstsw [bp]-2
+042420: fistp dx:ax (emu)
+042422: mov ah, byte ptr [bp - 1]
+042425: sahf 
+042426: ja 0x42434
+042428: fld qword [3a66]
+04242d: fstp qword [bb88]
+042432: fistp dx:ax (emu)
+042434: cmp word ptr [0x8772], 0
+042439: jge 0x4243e
+04243b: jmp 0x42d29
+04243e: fld qword [8c60]
+042443: fmul qword [8c80]
+042448: fld qword [8c68]
+04244d: fmul qword [8c78]
+042452: fsubrp st1, st0
+042455: fst qword [bb5c]
+04245a: fcom qword [3a5e]
+04245f: fstp st0
+042462: fnstsw [bp]-2
+042466: fistp dx:ax (emu)
+042468: mov ah, byte ptr [bp - 1]
+04246b: sahf 
+04246c: jne 0x4247d
+04246e: les bx, ptr [bp + 0xe]
+042471: fld dword [3a6e]
+042476: fstp dword [bx]
+04247a: jmp 0x431b1
+04247d: fld qword [8c78]
+042482: fchs
+042485: fstp qword [8c78]
+04248a: fld qword [8c68]
+04248f: fchs
+042492: fstp qword [8c68]
+042497: fistp dx:ax (emu)
+042499: mov di, 0xbb64
+04249c: mov si, 0x8c80
+04249f: push ds
+0424a0: pop es
+0424a1: movsw word ptr es:[di], word ptr [si]
+0424a2: movsw word ptr es:[di], word ptr [si]
+0424a3: movsw word ptr es:[di], word ptr [si]
+0424a4: movsw word ptr es:[di], word ptr [si]
+0424a5: mov di, 0x8c80
+0424a8: mov si, 0x8c60
+0424ab: movsw word ptr es:[di], word ptr [si]
+0424ac: movsw word ptr es:[di], word ptr [si]
+0424ad: movsw word ptr es:[di], word ptr [si]
+0424ae: movsw word ptr es:[di], word ptr [si]
+0424af: mov di, 0x8c60
+0424b2: mov si, 0xbb64
+0424b5: movsw word ptr es:[di], word ptr [si]
+0424b6: movsw word ptr es:[di], word ptr [si]
+0424b7: movsw word ptr es:[di], word ptr [si]
+0424b8: movsw word ptr es:[di], word ptr [si]
+0424b9: mov word ptr [0xbb7c], 3
+0424bf: mov word ptr [0xbb80], 3
+0424c5: mov word ptr [0xbb7e], 5
+0424cb: mov word ptr [bp - 0x12], 8
+0424d0: mov bx, word ptr [bp - 0x12]
+0424d3: mov di, 0x8c10
+0424d6: lea si, [bx - 0x72e8]
+0424da: push ds
+0424db: pop es
+0424dc: movsw word ptr es:[di], word ptr [si]
+0424dd: movsw word ptr es:[di], word ptr [si]
+0424de: movsw word ptr es:[di], word ptr [si]
+0424df: movsw word ptr es:[di], word ptr [si]
+0424e0: mov di, 0x8c18
+0424e3: db 8d
+0424e4: db b7

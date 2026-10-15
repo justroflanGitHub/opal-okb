@@ -1,0 +1,117 @@
+046127: push bp
+046128: mov bp, sp
+04612a: sub sp, 0x2e
+04612d: push di
+04612e: push si
+04612f: mov word ptr [bp - 2], 0
+046134: mov word ptr [0xbe76], 0
+04613a: jmp 0x4614f
+04613c: push bp
+04613d: mov bp, sp
+04613f: sub sp, 0x2e
+046142: push di
+046143: push si
+046144: mov word ptr [bp - 2], 1
+046149: mov word ptr [0xbe76], 1
+04614f: mov word ptr [0xbdec], 0
+046155: les bx, ptr [bp + 0xe]
+046158: cmp word ptr es:[bx], 0
+04615c: jne 0x46163
+04615e: fdecstp
+046161: jmp 0x4617e
+046163: les bx, ptr [bp + 6]
+046166: add word ptr es:[bx], 1
+04616a: adc word ptr es:[bx + 2], 0
+04616f: mov si, word ptr es:[bx]
+046172: shl si, 1
+046174: shl si, 1
+046176: les bx, ptr [bp + 0xa]
+046179: fld dword [bx+si]-4
+04617e: fstp qword [be78]
+046183: fistp dx:ax (emu)
+046185: mov ax, word ptr [bp + 0x16]
+046188: mov dx, word ptr [bp + 0x18]
+04618b: push si
+04618c: push di
+04618d: mov di, 0xbe0e
+046190: mov si, ax
+046192: push ds
+046193: pop es
+046194: push ds
+046195: mov ds, dx
+046197: movsw word ptr es:[di], word ptr [si]
+046198: movsw word ptr es:[di], word ptr [si]
+046199: movsw word ptr es:[di], word ptr [si]
+04619a: movsw word ptr es:[di], word ptr [si]
+04619b: pop ds
+04619c: pop di
+04619d: pop si
+04619e: push si
+04619f: push di
+0461a0: mov di, 0xbe26
+0461a3: mov si, 0xbe0e
+0461a6: push ds
+0461a7: pop es
+0461a8: movsw word ptr es:[di], word ptr [si]
+0461a9: movsw word ptr es:[di], word ptr [si]
+0461aa: movsw word ptr es:[di], word ptr [si]
+0461ab: movsw word ptr es:[di], word ptr [si]
+0461ac: pop di
+0461ad: pop si
+0461ae: fld qword [be78]
+0461b3: fsubr qword [3bc0]
+0461b8: fmul qword [be0e]
+0461bd: fstp qword [be36]
+0461c2: fistp dx:ax (emu)
+0461c4: les bx, ptr [bp + 0xe]
+0461c7: mov si, word ptr es:[bx]
+0461ca: mov ax, si
+0461cc: cdq 
+0461cd: xor ax, dx
+0461cf: sub ax, dx
+0461d1: mov di, ax
+0461d3: cmp di, 0x64
+0461d6: jle 0x461db
+0461d8: jmp 0x46d35
+0461db: cmp di, 2
+0461de: jle 0x46252
+0461e0: mov word ptr [0xbdec], 1
+0461e6: les bx, ptr [bp + 6]
+0461e9: add word ptr es:[bx], 1
+0461ed: adc word ptr es:[bx + 2], 0
+0461f2: mov bx, word ptr es:[bx]
+0461f5: shl bx, 1
+0461f7: shl bx, 1
+0461f9: add bx, word ptr [bp + 0xa]
+0461fc: mov es, word ptr [bp + 0xc]
+0461ff: fld dword [bx]-4
+046204: fstp qword [bde0]
+046209: fistp dx:ax (emu)
+04620b: or si, si
+04620d: jg 0x4621e
+04620f: mov ax, si
+046211: neg ax
+046213: sub ax, 2
+046216: mov word ptr [0xbdea], ax
+046219: add ax, 3
+04621c: jmp 0x46241
+04621e: fld qword [bde0]
+046223: fmul qword [bde0]
+046228: fstp qword [bde0]
+04622d: fistp dx:ax (emu)
+04622f: les bx, ptr [bp + 0xe]
+046232: mov ax, word ptr es:[bx]
+046235: cdq 
+046236: sub ax, dx
+046238: sar ax, 1
+04623a: dec ax
+04623b: mov word ptr [0xbdea], ax
+04623e: add ax, 2
+046241: mov word ptr [0xbe88], ax
+046244: mov ax, word ptr [0xbdea]
+046247: cdq 
+046248: les bx, ptr [bp + 6]
+04624b: add word ptr es:[bx], ax
+04624e: adc word ptr es:[bx + 2], dx
+046252: mov word ptr [0xbde8], 0xa
+046258: db cd

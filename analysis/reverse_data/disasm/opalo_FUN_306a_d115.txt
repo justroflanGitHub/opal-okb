@@ -1,0 +1,82 @@
+03d7b5: les bx, ptr [bp + 0xa]
+03d7b8: cmp word ptr es:[bx + 2], 0
+03d7bd: jle 0x3d7c2
+03d7bf: jmp 0x3d870
+03d7c2: jl 0x3d7cd
+03d7c4: cmp word ptr es:[bx], 0xa
+03d7c8: jbe 0x3d7cd
+03d7ca: jmp 0x3d870
+03d7cd: les bx, ptr [bp + 0xa]
+03d7d0: mov ax, word ptr es:[bx]
+03d7d3: mov dx, word ptr es:[bx + 2]
+03d7d7: mov word ptr [0x87a4], ax
+03d7da: mov word ptr [0x87a6], dx
+03d7de: mov di, 0x8d20
+03d7e1: mov si, 0xb85e
+03d7e4: push ds
+03d7e5: pop es
+03d7e6: movsw word ptr es:[di], word ptr [si]
+03d7e7: movsw word ptr es:[di], word ptr [si]
+03d7e8: movsw word ptr es:[di], word ptr [si]
+03d7e9: movsw word ptr es:[di], word ptr [si]
+03d7ea: mov di, 0x8d40
+03d7ed: mov si, 0xb866
+03d7f0: movsw word ptr es:[di], word ptr [si]
+03d7f1: movsw word ptr es:[di], word ptr [si]
+03d7f2: movsw word ptr es:[di], word ptr [si]
+03d7f3: movsw word ptr es:[di], word ptr [si]
+03d7f4: or dx, dx
+03d7f6: jge 0x3d7fb
+03d7f8: jmp 0x3db62
+03d7fb: jg 0x3d805
+03d7fd: cmp ax, 2
+03d800: ja 0x3d805
+03d802: jmp 0x3db62
+03d805: mov di, 0x8c90
+03d808: mov si, 0x88d8
+03d80b: push ds
+03d80c: pop es
+03d80d: movsw word ptr es:[di], word ptr [si]
+03d80e: movsw word ptr es:[di], word ptr [si]
+03d80f: movsw word ptr es:[di], word ptr [si]
+03d810: movsw word ptr es:[di], word ptr [si]
+03d811: mov di, 0x8cb0
+03d814: mov si, 0x88e0
+03d817: movsw word ptr es:[di], word ptr [si]
+03d818: movsw word ptr es:[di], word ptr [si]
+03d819: movsw word ptr es:[di], word ptr [si]
+03d81a: movsw word ptr es:[di], word ptr [si]
+03d81b: fld qword [88e8]
+03d820: fadd qword [8810]
+03d825: fmul qword [88d8]
+03d82a: fstp qword [8d50]
+03d82f: fld qword [88f8]
+03d834: fadd qword [8810]
+03d839: fmul qword [88e0]
+03d83e: fstp qword [8d68]
+03d843: fld qword [88f0]
+03d848: fadd qword [8810]
+03d84d: fmul qword [88d8]
+03d852: fstp qword [8d58]
+03d857: fld qword [8900]
+03d85c: fadd qword [8810]
+03d861: fmul qword [88e0]
+03d866: fstp qword [8d70]
+03d86b: fistp dx:ax (emu)
+03d86d: jmp 0x3db62
+03d870: les bx, ptr [bp + 0xa]
+03d873: mov ax, word ptr es:[bx]
+03d876: mov dx, word ptr es:[bx + 2]
+03d87a: sub ax, 0xa
+03d87d: sbb dx, 0
+03d880: mov word ptr [0x87a4], ax
+03d883: mov word ptr [0x87a6], dx
+03d887: mov di, 0x8c60
+03d88a: mov si, 0x88d8
+03d88d: push ds
+03d88e: pop es
+03d88f: movsw word ptr es:[di], word ptr [si]
+03d890: movsw word ptr es:[di], word ptr [si]
+03d891: movsw word ptr es:[di], word ptr [si]
+03d892: movsw word ptr es:[di], word ptr [si]
+03d893: db bf

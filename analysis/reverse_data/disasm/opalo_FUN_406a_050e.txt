@@ -1,0 +1,26 @@
+040bae: push bp
+040baf: mov bp, sp
+040bb1: les bx, ptr [bp + 0xe]
+040bb4: fld qword [bx]
+040bb8: fsubr qword [3892]
+040bbd: lcall 0x1886, 0x3b56
+040bc2: fsubr qword [389a]
+040bc7: fstp qword [8b98]
+040bcc: fistp dx:ax (emu)
+040bce: les bx, ptr [bp + 0xa]
+040bd1: fld qword [bx]
+040bd5: fdiv qword [38a2]
+040bda: fld qword [8b98]
+040bdf: fsubr qword [389a]
+040be4: fdivrp st1, st0
+040be7: fstp qword [8ba8]
+040bec: fistp dx:ax (emu)
+040bee: les bx, ptr [bp + 6]
+040bf1: fld dword [bx]
+040bf5: fsubr qword [8b98]
+040bfa: fstp qword [8b98]
+040bff: fistp dx:ax (emu)
+040c01: lcall 0x42f6, 2
+040c06: mov sp, bp
+040c08: pop bp
+040c09: retf 0xc

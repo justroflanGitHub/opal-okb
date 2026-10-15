@@ -1,0 +1,27 @@
+03db62: mov ax, word ptr [0x87a4]
+03db65: mov word ptr [bp - 0x14], ax
+03db68: mov word ptr [0xb880], 1
+03db6e: cmp ax, 1
+03db71: jge 0x3db76
+03db73: jmp 0x3dc44
+03db76: mov si, 0x8d30
+03db79: mov di, 0x8d20
+03db7c: mov word ptr [bp - 0xe], 0x8d28
+03db81: add word ptr [0xb880], ax
+03db85: fld qword [di]
+03db88: fmul qword [8bd8]
+03db8d: mov bx, word ptr [bp - 0xe]
+03db90: fld qword [bx]
+03db93: fmul qword [8be0]
+03db98: faddp st1, st0
+03db9b: fdiv qword [8be8]
+03dba0: fchs
+03dba3: fstp qword [si]
+03dba6: fistp dx:ax (emu)
+03dba8: add si, 0x18
+03dbab: add di, 0x18
+03dbae: add word ptr [bp - 0xe], 0x18
+03dbb2: dec word ptr [bp - 0x14]
+03dbb5: jne 0x3dbba
+03dbb7: jmp 0x3dc44
+03dbba: jmp 0x3db85

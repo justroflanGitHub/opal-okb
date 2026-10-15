@@ -1,0 +1,13 @@
+03d32e: add si, 8
+03d331: add word ptr [bp - 0x22], 8
+03d335: loop 0x3d2fc
+03d337: les bx, ptr [bp + 0x22]
+03d33a: fld qword [8850]
+03d33f: fadd qword [bx]
+03d343: fstp qword [bx]
+03d347: fistp dx:ax (emu)
+03d349: pop si
+03d34a: pop di
+03d34b: mov sp, bp
+03d34d: pop bp
+03d34e: retf 0x30

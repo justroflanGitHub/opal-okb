@@ -1,0 +1,77 @@
+047357: push bp
+047358: mov bp, sp
+04735a: sub sp, 0x24
+04735d: push di
+04735e: push si
+04735f: mov ax, word ptr [0x8784]
+047362: mov dx, word ptr [0x8786]
+047366: mov word ptr [0xbe9c], ax
+047369: mov word ptr [0xbe9e], dx
+04736d: mov ax, word ptr [0x8788]
+047370: mov word ptr [bp - 2], ax
+047373: mov word ptr [0xbea0], 1
+047379: jmp 0x474d3
+04737c: fdecstp
+04737f: fdecstp
+047382: fst st1
+047385: fstp qword [be92]
+04738a: fistp dx:ax (emu)
+04738c: mov word ptr [0xbe9a], 4
+047392: mov ax, 0x18
+047395: imul word ptr [0xbe9c]
+047399: mov word ptr [bp - 0xe], ax
+04739c: mov word ptr [bp - 0x10], ax
+04739f: mov word ptr [bp - 4], ax
+0473a2: mov word ptr [0xbea2], 4
+0473a8: mov word ptr [bp - 6], 8
+0473ad: add ax, 0x8cd8
+0473b0: mov word ptr [bp - 0x12], ax
+0473b3: mov word ptr [bp - 0x14], 0x8c10
+0473b8: mov word ptr [bp - 0x16], 0x8ba8
+0473bd: mov word ptr [bp - 0x18], 0x8c10
+0473c2: mov word ptr [bp - 0x1a], 3
+0473c7: fdecstp
+0473ca: fdecstp
+0473cd: fstp st1
+0473d0: fistp dx:ax (emu)
+0473d2: mov si, word ptr [bp - 6]
+0473d5: add si, 0x8eb0
+0473d9: mov di, word ptr [bp - 4]
+0473dc: add di, 0x8c18
+0473e0: mov word ptr [bp - 0xc], 3
+0473e5: mov cx, word ptr [bp - 0xc]
+0473e8: fld qword [si]
+0473eb: fmul qword [di]
+0473ee: faddp st1, st0
+0473f1: add si, 0x18
+0473f4: add di, 8
+0473f7: loop 0x473e8
+0473f9: fld st1
+0473fc: mov bx, word ptr [bp - 0x12]
+0473ff: fld qword [bx]
+047402: mov bx, word ptr [bp - 0x14]
+047405: fmul qword [bx]
+047408: fsubrp st1, st0
+04740b: mov bx, word ptr [bp - 0x16]
+04740e: fld qword [bx]
+047411: fmul st0, st2
+047414: fsubrp st1, st0
+047417: fstp st2
+04741a: fistp dx:ax (emu)
+04741c: mov bx, word ptr [bp - 0x18]
+04741f: fld qword [bx]
+047422: fmul st0, st1
+047425: fadd qword [be92]
+04742a: fstp qword [be92]
+04742f: fistp dx:ax (emu)
+047431: add word ptr [bp - 6], 8
+047435: add word ptr [bp - 0x12], 8
+047439: add word ptr [bp - 0x14], 8
+04743d: add word ptr [bp - 0x16], 8
+047441: add word ptr [bp - 0x18], 8
+047445: dec word ptr [bp - 0x1a]
+047448: je 0x4744d
+04744a: jmp 0x473ca
+04744d: fstp qword [beac]
+047452: fstp qword [bea4]
+047457: fld qword [8eb0]

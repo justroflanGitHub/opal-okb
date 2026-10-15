@@ -1,0 +1,51 @@
+03bc7c: enter 0x2a, 0
+03bc80: push di
+03bc81: push si
+03bc82: mov es, word ptr [0x3706]
+03bc86: mov ax, word ptr es:[0]
+03bc8a: shl ax, 3
+03bc8d: mov word ptr [bp - 8], ax
+03bc90: add ax, 8
+03bc93: mov word ptr [bp - 6], ax
+03bc96: mov ax, word ptr es:[4]
+03bc9a: shl ax, 3
+03bc9d: mov word ptr [bp - 4], ax
+03bca0: add ax, 8
+03bca3: mov word ptr [bp - 2], ax
+03bca6: les bx, ptr [bp + 0x1a]
+03bca9: cmp word ptr es:[bx], 0xa
+03bcad: jne 0x3bcb9
+03bcaf: cmp word ptr es:[bx + 2], 0
+03bcb4: jne 0x3bcb9
+03bcb6: jmp 0x3be7c
+03bcb9: fld qword [8c18]
+03bcbe: fsub qword [8890]
+03bcc3: fstp qword [b7e6]
+03bcc8: fistp dx:ax (emu)
+03bcca: les bx, ptr [bp + 0xe]
+03bccd: mov ax, word ptr es:[bx]
+03bcd0: mul word ptr [bp - 8]
+03bcd3: mov bx, ax
+03bcd5: add bx, word ptr [bp + 0x16]
+03bcd8: mov es, word ptr [bp + 0x18]
+03bcdb: sub bx, word ptr [bp - 6]
+03bcde: lea di, [bx + 8]
+03bce1: mov si, 0xb7e6
+03bce4: movsw word ptr es:[di], word ptr [si]
+03bce5: movsw word ptr es:[di], word ptr [si]
+03bce6: movsw word ptr es:[di], word ptr [si]
+03bce7: movsw word ptr es:[di], word ptr [si]
+03bce8: fld qword [8bc8]
+03bced: fdiv qword [88d0]
+03bcf2: fstp qword [b7c6]
+03bcf7: fld qword [8c60]
+03bcfc: fdiv qword [88d0]
+03bd01: fdiv qword [88d0]
+03bd06: fstp qword [b7ce]
+03bd0b: fistp dx:ax (emu)
+03bd0d: les bx, ptr [bp + 0x1a]
+03bd10: cmp word ptr es:[bx], 0xb
+03bd14: jne 0x3bd1d
+03bd16: db 26
+03bd17: db 83
+03bd18: db 7f

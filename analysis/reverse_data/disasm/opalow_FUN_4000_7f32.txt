@@ -1,0 +1,17 @@
+047f32: cmp word ptr [0xbf52], 3
+047f37: jg 0x47f65
+047f39: mov si, word ptr [0xbf52]
+047f3d: mov cl, 3
+047f3f: shl si, cl
+047f41: fdecstp
+047f44: fst qword [si]+bf5a
+047f49: fstp qword [si]+bf8e
+047f4e: fistp dx:ax (emu)
+047f50: les bx, ptr [bp + 6]
+047f53: cmp word ptr es:[bx], 0
+047f57: jne 0x47f5c
+047f59: jmp 0x47e81
+047f5c: mov word ptr [0xbf5e], 1
+047f62: jmp 0x47e42
+047f65: mov word ptr [0xbf52], 1
+047f6b: mov si, word ptr [0xbf52]

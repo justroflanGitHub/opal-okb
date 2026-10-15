@@ -1,0 +1,20 @@
+044f88: push bp
+044f89: mov bp, sp
+044f8b: sub sp, 0x3c
+044f8e: push di
+044f8f: push si
+044f90: les bx, ptr [bp + 0xe]
+044f93: fld qword [bx]
+044f97: fld st0
+044f9a: fstp tbyte [bp]-c
+044f9e: fld qword [8b98]
+044fa3: fmul st0, st1
+044fa6: fld qword [bx]+8
+044fab: fmul qword [8ba0]
+044fb0: fsubrp st1, st0
+044fb3: fstp qword [bc60]
+044fb8: fld qword [bx]+8
+044fbd: fmul qword [8b98]
+044fc2: fld qword [8ba0]
+044fc7: fmul st0, st2
+044fca: int 0x3a

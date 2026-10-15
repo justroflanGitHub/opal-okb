@@ -1,0 +1,29 @@
+06fe80: add byte ptr [bx + si], al
+06fe82: add byte ptr [bx + si - 0x5f], ch
+06fe85: push ds
+06fe86: wait 
+06fe87: or ax, word ptr [0x9b20]
+06fe8b: jne 0x6fea8
+06fe8d: fld dword [3a6c]
+06fe92: fsub dword [9afe]
+06fe97: ftst
+06fe9a: df c/4 st0
+06fe9d: fstp st0
+06fea0: sahf 
+06fea1: jb 0x6fed3
+06fea3: ja 0x6fea8
+06fea5: jmp 0x704b7
+06fea8: add word ptr [bp - 4], 1
+06feac: adc word ptr [bp - 2], 0
+06feb0: cmp word ptr [bp - 2], 0
+06feb4: jg 0x6fec4
+06feb6: jge 0x6febb
+06feb8: jmp 0x6fdb7
+06febb: cmp word ptr [bp - 4], 0x14
+06febf: ja 0x6fec4
+06fec1: jmp 0x6fdb7
+06fec4: les bx, ptr [bp + 0x16]
+06fec7: fdecstp
+06feca: fstp dword [bx]
+06fece: fistp dx:ax (emu)
+06fed0: jmp 0x704b7

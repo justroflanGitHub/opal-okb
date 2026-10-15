@@ -1,0 +1,32 @@
+05687f: rol byte ptr [bx + si], cl
+056882: add bh, al
+056884: inc si
+056885: clc 
+056886: add word ptr [bx + si], ax
+056888: mov word ptr [bp - 6], 0
+05688d: jmp 0x56897
+05688f: add word ptr [bp - 8], 1
+056893: adc word ptr [bp - 6], 0
+056897: cmp word ptr [bp - 6], 0
+05689b: jg 0x568ea
+05689d: jl 0x568a6
+05689f: cmp word ptr [bp - 8], 0xc8
+0568a4: ja 0x568ea
+0568a6: mov bx, word ptr [bp - 8]
+0568a9: shl bx, 2
+0568ac: mov es, word ptr [0x3372]
+0568b0: lea bx, [bx + 0x33e0]
+0568b4: sub ax, ax
+0568b6: mov word ptr es:[bx - 2], ax
+0568ba: mov word ptr es:[bx - 4], ax
+0568be: mov bx, word ptr [bp - 8]
+0568c1: shl bx, 2
+0568c4: lea bx, [bx + 0x3700]
+0568c8: fdecstp
+0568cb: fstp dword [bx]-4
+0568d0: fistp dx:ax (emu)
+0568d2: mov bx, word ptr [bp - 8]
+0568d5: shl bx, 2
+0568d8: lea bx, [bx + 0x3a20]
+0568dc: fld dword [3374]
+0568e1: fstp dword [bx]-4

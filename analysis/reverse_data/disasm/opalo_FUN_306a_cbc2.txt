@@ -1,0 +1,87 @@
+03d262: pop es
+03d263: push ds
+03d264: mov ds, dx
+03d266: movsw word ptr es:[di], word ptr [si]
+03d267: movsw word ptr es:[di], word ptr [si]
+03d268: movsw word ptr es:[di], word ptr [si]
+03d269: movsw word ptr es:[di], word ptr [si]
+03d26a: pop ds
+03d26b: fld qword [bp]-2a
+03d26f: fmul qword [8c70]
+03d274: fstp qword [8c70]
+03d279: fld qword [bp]-2a
+03d27d: fmul qword [8c88]
+03d282: fstp qword [8c88]
+03d287: fistp dx:ax (emu)
+03d289: mov ax, word ptr [0x8798]
+03d28c: or ax, word ptr [0x879a]
+03d290: jne 0x3d295
+03d292: jmp 0x3d337
+03d295: mov ax, word ptr [0x8798]
+03d298: mov word ptr [bp - 0x12], ax
+03d29b: mov word ptr [0xb858], 1
+03d2a1: cmp ax, 1
+03d2a4: jge 0x3d2a9
+03d2a6: jmp 0x3d337
+03d2a9: mov ax, 0x18
+03d2ac: imul word ptr [0xb856]
+03d2b0: add ax, 0x8d68
+03d2b3: mov word ptr [bp - 6], ax
+03d2b6: mov ax, word ptr [bp + 0xa]
+03d2b9: mov dx, word ptr [bp + 0xc]
+03d2bc: mov bx, word ptr [0xb856]
+03d2c0: mov cl, 3
+03d2c2: shl bx, cl
+03d2c4: add ax, bx
+03d2c6: add ax, 4
+03d2c9: mov word ptr [bp - 0x16], ax
+03d2cc: mov word ptr [bp - 0x14], dx
+03d2cf: mov ax, word ptr [bp + 0x1e]
+03d2d2: mov dx, word ptr [bp + 0x20]
+03d2d5: push si
+03d2d6: lea di, [bp - 0x1e]
+03d2d9: mov si, ax
+03d2db: push ds
+03d2dc: mov ds, dx
+03d2de: movsw word ptr es:[di], word ptr [si]
+03d2df: movsw word ptr es:[di], word ptr [si]
+03d2e0: movsw word ptr es:[di], word ptr [si]
+03d2e1: movsw word ptr es:[di], word ptr [si]
+03d2e2: pop ds
+03d2e3: pop si
+03d2e4: mov si, 0x8c20
+03d2e7: mov ax, word ptr [bp + 0x1e]
+03d2ea: add ax, 8
+03d2ed: mov word ptr [bp - 0x22], ax
+03d2f0: mov word ptr [bp - 0x20], dx
+03d2f3: mov ax, word ptr [bp - 0x12]
+03d2f6: add word ptr [0xb858], ax
+03d2fa: mov cx, ax
+03d2fc: fld qword [si]
+03d2ff: fmul qword [bp]-1e
+03d303: les bx, ptr [bp - 0x22]
+03d306: fld qword [bx]
+03d30a: fmul qword [8c18]
+03d30f: faddp st1, st0
+03d312: fstp qword [si]
+03d315: fistp dx:ax (emu)
+03d317: les bx, ptr [bp - 0x16]
+03d31a: fld qword [8be0]
+03d31f: fchs
+03d322: mov di, word ptr [bp - 6]
+03d325: fsub qword [di]
+03d328: fstp dword [bx]
+03d32c: fistp dx:ax (emu)
+03d32e: add si, 8
+03d331: add word ptr [bp - 0x22], 8
+03d335: loop 0x3d2fc
+03d337: les bx, ptr [bp + 0x22]
+03d33a: fld qword [8850]
+03d33f: fadd qword [bx]
+03d343: fstp qword [bx]
+03d347: fistp dx:ax (emu)
+03d349: pop si
+03d34a: pop di
+03d34b: mov sp, bp
+03d34d: pop bp
+03d34e: retf 0x30

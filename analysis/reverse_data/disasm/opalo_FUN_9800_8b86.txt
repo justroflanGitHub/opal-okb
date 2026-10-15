@@ -1,0 +1,588 @@
+0a0b86: enter 0x30, 0
+0a0b8a: push di
+0a0b8b: push si
+0a0b8c: les bx, ptr [bp + 0xe]
+0a0b8f: mov ax, word ptr es:[bx]
+0a0b92: shl ax, 3
+0a0b95: mov word ptr [bp - 8], ax
+0a0b98: add ax, 8
+0a0b9b: mov word ptr [bp - 6], ax
+0a0b9e: mov ax, word ptr [bp - 8]
+0a0ba1: mov word ptr [bp - 4], ax
+0a0ba4: mov ax, word ptr [bp - 6]
+0a0ba7: mov word ptr [bp - 2], ax
+0a0baa: mov word ptr [0xa15c], 4
+0a0bb0: les bx, ptr [bp + 0x3e]
+0a0bb3: fld qword [334a]
+0a0bb8: fstp qword [bx]
+0a0bbc: fistp dx:ax (emu)
+0a0bbe: mov ax, bx
+0a0bc0: mov dx, es
+0a0bc2: mov cx, 8
+0a0bc5: lea di, [bx + 8]
+0a0bc8: mov si, ax
+0a0bca: push ds
+0a0bcb: mov ds, dx
+0a0bcd: repne movsw word ptr es:[di], word ptr [si]
+0a0bcf: pop ds
+0a0bd0: les bx, ptr [bp + 0x3a]
+0a0bd3: fld qword [3352]
+0a0bd8: fstp qword [bx]
+0a0bdc: fistp dx:ax (emu)
+0a0bde: mov ax, bx
+0a0be0: mov dx, es
+0a0be2: mov cx, 8
+0a0be5: lea di, [bx + 8]
+0a0be8: mov si, ax
+0a0bea: push ds
+0a0beb: mov ds, dx
+0a0bed: repne movsw word ptr es:[di], word ptr [si]
+0a0bef: pop ds
+0a0bf0: mov word ptr [0xa166], 0
+0a0bf6: les bx, ptr [bp + 0x2e]
+0a0bf9: mov ax, word ptr es:[bx]
+0a0bfc: mov word ptr [bp - 0x12], ax
+0a0bff: mov word ptr [0xa15c], 1
+0a0c05: jmp 0xa0c43
+0a0c07: inc word ptr [0xa166]
+0a0c0b: mov ax, word ptr [bp - 8]
+0a0c0e: mul word ptr [0xa15c]
+0a0c12: add ax, word ptr [bp + 0x42]
+0a0c15: mov dx, word ptr [bp + 0x44]
+0a0c18: sub ax, word ptr [bp - 6]
+0a0c1b: mov word ptr [bp - 0x1c], ax
+0a0c1e: mov word ptr [bp - 0x1a], dx
+0a0c21: les bx, ptr [bp - 0x1c]
+0a0c24: fld qword [335a]
+0a0c29: fst qword [bx]+8
+0a0c2e: fst qword [bx]+10
+0a0c33: fstp qword [bx]+18
+0a0c38: fistp dx:ax (emu)
+0a0c3a: inc word ptr [0xa15c]
+0a0c3e: jno 0xa0c43
+0a0c40: jmp 0xa0e05
+0a0c43: mov ax, word ptr [0xa15c]
+0a0c46: cmp word ptr [bp - 0x12], ax
+0a0c49: jge 0xa0c4e
+0a0c4b: jmp 0xa0e05
+0a0c4e: mov si, ax
+0a0c50: shl si, 1
+0a0c52: les bx, ptr [bp + 0x2a]
+0a0c55: mov word ptr es:[bx + si - 2], ax
+0a0c59: les bx, ptr [bp + 0x26]
+0a0c5c: mov word ptr es:[bx + si - 2], ax
+0a0c60: les bx, ptr [bp + 0x16]
+0a0c63: mov word ptr es:[bx + si - 2], ax
+0a0c67: les bx, ptr [bp + 0x22]
+0a0c6a: cmp word ptr es:[bx + si - 2], 0
+0a0c6f: jne 0xa0c07
+0a0c71: mov ax, word ptr [bp - 8]
+0a0c74: mul word ptr [0xa15c]
+0a0c78: mov bx, ax
+0a0c7a: add bx, word ptr [bp + 0x42]
+0a0c7d: mov es, word ptr [bp + 0x44]
+0a0c80: sub bx, word ptr [bp - 6]
+0a0c83: fld qword [bx]+8
+0a0c88: fld st0
+0a0c8b: fstp tbyte [bp]-1c
+0a0c8f: fistp dx:ax (emu)
+0a0c91: les bx, ptr [bp + 0x3a]
+0a0c94: fld qword [bx]
+0a0c98: fcom st0, st1
+0a0c9b: fstp st0
+0a0c9e: df c/4 st0
+0a0ca1: sahf 
+0a0ca2: ffree st0
+0a0ca5: jae 0xa0cb2
+0a0ca7: fld tbyte [bp]-1c
+0a0cab: fst qword [bx]
+0a0caf: ffree st0
+0a0cb2: mov ax, word ptr [bp - 8]
+0a0cb5: mul word ptr [0xa15c]
+0a0cb9: mov bx, ax
+0a0cbb: add bx, word ptr [bp + 0x42]
+0a0cbe: mov es, word ptr [bp + 0x44]
+0a0cc1: sub bx, word ptr [bp - 6]
+0a0cc4: fld qword [bx]+8
+0a0cc9: fld st0
+0a0ccc: fstp tbyte [bp]-1c
+0a0cd0: fistp dx:ax (emu)
+0a0cd2: les bx, ptr [bp + 0x3e]
+0a0cd5: fld qword [bx]
+0a0cd9: fcom st0, st1
+0a0cdc: fstp st0
+0a0cdf: df c/4 st0
+0a0ce2: sahf 
+0a0ce3: ffree st0
+0a0ce6: jbe 0xa0cf3
+0a0ce8: fld tbyte [bp]-1c
+0a0cec: fst qword [bx]
+0a0cf0: ffree st0
+0a0cf3: mov ax, word ptr [bp - 8]
+0a0cf6: mul word ptr [0xa15c]
+0a0cfa: mov bx, ax
+0a0cfc: add bx, word ptr [bp + 0x42]
+0a0cff: mov es, word ptr [bp + 0x44]
+0a0d02: sub bx, word ptr [bp - 6]
+0a0d05: fld qword [bx]+10
+0a0d0a: fld st0
+0a0d0d: fstp tbyte [bp]-1c
+0a0d11: fistp dx:ax (emu)
+0a0d13: les bx, ptr [bp + 0x3a]
+0a0d16: fld qword [bx]+8
+0a0d1b: fcom st0, st1
+0a0d1e: fstp st0
+0a0d21: df c/4 st0
+0a0d24: sahf 
+0a0d25: ffree st0
+0a0d28: jae 0xa0d36
+0a0d2a: fld tbyte [bp]-1c
+0a0d2e: fst qword [bx]+8
+0a0d33: ffree st0
+0a0d36: mov ax, word ptr [bp - 8]
+0a0d39: mul word ptr [0xa15c]
+0a0d3d: mov bx, ax
+0a0d3f: add bx, word ptr [bp + 0x42]
+0a0d42: mov es, word ptr [bp + 0x44]
+0a0d45: sub bx, word ptr [bp - 6]
+0a0d48: fld qword [bx]+10
+0a0d4d: fld st0
+0a0d50: fstp tbyte [bp]-1c
+0a0d54: fistp dx:ax (emu)
+0a0d56: les bx, ptr [bp + 0x3e]
+0a0d59: fld qword [bx]+8
+0a0d5e: fcom st0, st1
+0a0d61: fstp st0
+0a0d64: df c/4 st0
+0a0d67: sahf 
+0a0d68: ffree st0
+0a0d6b: jbe 0xa0d79
+0a0d6d: fld tbyte [bp]-1c
+0a0d71: fst qword [bx]+8
+0a0d76: ffree st0
+0a0d79: mov ax, word ptr [bp - 8]
+0a0d7c: mul word ptr [0xa15c]
+0a0d80: mov bx, ax
+0a0d82: add bx, word ptr [bp + 0x42]
+0a0d85: mov es, word ptr [bp + 0x44]
+0a0d88: sub bx, word ptr [bp - 6]
+0a0d8b: fld qword [bx]+18
+0a0d90: fld st0
+0a0d93: fstp tbyte [bp]-1c
+0a0d97: fistp dx:ax (emu)
+0a0d99: les bx, ptr [bp + 0x3a]
+0a0d9c: fld qword [bx]+10
+0a0da1: fcom st0, st1
+0a0da4: fstp st0
+0a0da7: df c/4 st0
+0a0daa: sahf 
+0a0dab: ffree st0
+0a0dae: jae 0xa0dbc
+0a0db0: fld tbyte [bp]-1c
+0a0db4: fst qword [bx]+10
+0a0db9: ffree st0
+0a0dbc: mov ax, word ptr [bp - 8]
+0a0dbf: mul word ptr [0xa15c]
+0a0dc3: mov bx, ax
+0a0dc5: add bx, word ptr [bp + 0x42]
+0a0dc8: mov es, word ptr [bp + 0x44]
+0a0dcb: sub bx, word ptr [bp - 6]
+0a0dce: fld qword [bx]+18
+0a0dd3: fld st0
+0a0dd6: fstp tbyte [bp]-1c
+0a0dda: fistp dx:ax (emu)
+0a0ddc: les bx, ptr [bp + 0x3e]
+0a0ddf: fld qword [bx]+10
+0a0de4: fcom st0, st1
+0a0de7: fstp st0
+0a0dea: df c/4 st0
+0a0ded: sahf 
+0a0dee: ffree st0
+0a0df1: ja 0xa0df6
+0a0df3: jmp 0xa0c3a
+0a0df6: fld tbyte [bp]-1c
+0a0dfa: fst qword [bx]+10
+0a0dff: ffree st0
+0a0e02: jmp 0xa0c3a
+0a0e05: les bx, ptr [bp + 0x2e]
+0a0e08: mov ax, word ptr es:[bx]
+0a0e0b: dec ax
+0a0e0c: mov word ptr [bp - 0x10], ax
+0a0e0f: mov word ptr [0xa15c], 1
+0a0e15: jmp 0xa0e20
+0a0e17: inc word ptr [0xa15c]
+0a0e1b: jno 0xa0e20
+0a0e1d: jmp 0xa0f96
+0a0e20: mov ax, word ptr [0xa15c]
+0a0e23: cmp word ptr [bp - 0x10], ax
+0a0e26: jge 0xa0e2b
+0a0e28: jmp 0xa0f96
+0a0e2b: mov byte ptr [0xa162], 1
+0a0e30: les bx, ptr [bp + 0x2e]
+0a0e33: mov ax, word ptr es:[bx]
+0a0e36: sub ax, word ptr [0xa15c]
+0a0e3a: mov word ptr [bp - 0xc], ax
+0a0e3d: mov word ptr [0xa15e], 1
+0a0e43: mov ax, word ptr [0xa15e]
+0a0e46: cmp word ptr [bp - 0xc], ax
+0a0e49: jge 0xa0e4e
+0a0e4b: jmp 0xa0f8c
+0a0e4e: mov ax, word ptr [bp + 0x2a]
+0a0e51: mov dx, word ptr [bp + 0x2c]
+0a0e54: mov cx, word ptr [0xa15e]
+0a0e58: shl cx, 1
+0a0e5a: add ax, cx
+0a0e5c: mov word ptr [bp - 0x1c], ax
+0a0e5f: mov word ptr [bp - 0x1a], dx
+0a0e62: les bx, ptr [bp - 0x1c]
+0a0e65: mov si, word ptr es:[bx]
+0a0e68: mov ax, word ptr es:[bx - 2]
+0a0e6c: mul word ptr [bp - 8]
+0a0e6f: mov bx, ax
+0a0e71: add bx, word ptr [bp + 0x42]
+0a0e74: mov es, word ptr [bp + 0x44]
+0a0e77: sub bx, word ptr [bp - 6]
+0a0e7a: fld qword [bx]+8
+0a0e7f: mov ax, word ptr [bp - 8]
+0a0e82: mov cx, si
+0a0e84: mul cx
+0a0e86: mov bx, ax
+0a0e88: add bx, word ptr [bp + 0x42]
+0a0e8b: sub bx, word ptr [bp - 6]
+0a0e8e: fcom qword [bx]+8
+0a0e93: fstp st0
+0a0e96: df c/4 st0
+0a0e99: sahf 
+0a0e9a: jbe 0xa0eb5
+0a0e9c: les bx, ptr [bp - 0x1c]
+0a0e9f: mov ax, word ptr es:[bx - 2]
+0a0ea3: mov word ptr [0xa160], ax
+0a0ea6: mov word ptr es:[bx - 2], si
+0a0eaa: mov ax, word ptr [0xa160]
+0a0ead: mov word ptr es:[bx], ax
+0a0eb0: mov byte ptr [0xa162], 0
+0a0eb5: mov ax, word ptr [bp + 0x26]
+0a0eb8: mov dx, word ptr [bp + 0x28]
+0a0ebb: mov cx, word ptr [0xa15e]
+0a0ebf: shl cx, 1
+0a0ec1: add ax, cx
+0a0ec3: mov word ptr [bp - 0x1c], ax
+0a0ec6: mov word ptr [bp - 0x1a], dx
+0a0ec9: les bx, ptr [bp - 0x1c]
+0a0ecc: mov si, word ptr es:[bx]
+0a0ecf: mov ax, word ptr es:[bx - 2]
+0a0ed3: mul word ptr [bp - 8]
+0a0ed6: mov bx, ax
+0a0ed8: add bx, word ptr [bp + 0x42]
+0a0edb: mov es, word ptr [bp + 0x44]
+0a0ede: sub bx, word ptr [bp - 6]
+0a0ee1: fld qword [bx]+10
+0a0ee6: mov ax, word ptr [bp - 8]
+0a0ee9: mov cx, si
+0a0eeb: mul cx
+0a0eed: mov bx, ax
+0a0eef: add bx, word ptr [bp + 0x42]
+0a0ef2: sub bx, word ptr [bp - 6]
+0a0ef5: fcom qword [bx]+10
+0a0efa: fstp st0
+0a0efd: df c/4 st0
+0a0f00: sahf 
+0a0f01: jbe 0xa0f1c
+0a0f03: les bx, ptr [bp - 0x1c]
+0a0f06: mov ax, word ptr es:[bx - 2]
+0a0f0a: mov word ptr [0xa160], ax
+0a0f0d: mov word ptr es:[bx - 2], si
+0a0f11: mov ax, word ptr [0xa160]
+0a0f14: mov word ptr es:[bx], ax
+0a0f17: mov byte ptr [0xa162], 0
+0a0f1c: mov ax, word ptr [bp + 0x16]
+0a0f1f: mov dx, word ptr [bp + 0x18]
+0a0f22: mov cx, word ptr [0xa15e]
+0a0f26: shl cx, 1
+0a0f28: add ax, cx
+0a0f2a: mov word ptr [bp - 0x1c], ax
+0a0f2d: mov word ptr [bp - 0x1a], dx
+0a0f30: les bx, ptr [bp - 0x1c]
+0a0f33: mov si, word ptr es:[bx]
+0a0f36: mov ax, word ptr es:[bx - 2]
+0a0f3a: mul word ptr [bp - 8]
+0a0f3d: mov bx, ax
+0a0f3f: add bx, word ptr [bp + 0x42]
+0a0f42: mov es, word ptr [bp + 0x44]
+0a0f45: sub bx, word ptr [bp - 6]
+0a0f48: fld qword [bx]+18
+0a0f4d: mov ax, word ptr [bp - 8]
+0a0f50: mov cx, si
+0a0f52: mul cx
+0a0f54: mov bx, ax
+0a0f56: add bx, word ptr [bp + 0x42]
+0a0f59: sub bx, word ptr [bp - 6]
+0a0f5c: fcom qword [bx]+18
+0a0f61: fstp st0
+0a0f64: df c/4 st0
+0a0f67: sahf 
+0a0f68: jbe 0xa0f83
+0a0f6a: les bx, ptr [bp - 0x1c]
+0a0f6d: mov ax, word ptr es:[bx - 2]
+0a0f71: mov word ptr [0xa160], ax
+0a0f74: mov word ptr es:[bx - 2], si
+0a0f78: mov ax, word ptr [0xa160]
+0a0f7b: mov word ptr es:[bx], ax
+0a0f7e: mov byte ptr [0xa162], 0
+0a0f83: inc word ptr [0xa15e]
+0a0f87: jo 0xa0f8c
+0a0f89: jmp 0xa0e43
+0a0f8c: cmp byte ptr [0xa162], 0
+0a0f91: jne 0xa0f96
+0a0f93: jmp 0xa0e17
+0a0f96: les bx, ptr [bp + 6]
+0a0f99: mov ax, word ptr es:[bx]
+0a0f9c: mov word ptr [bp - 0x1e], ax
+0a0f9f: mov word ptr [0xa15c], 1
+0a0fa5: mov ax, word ptr [0xa15c]
+0a0fa8: cmp word ptr [bp - 0x1e], ax
+0a0fab: jge 0xa0fb0
+0a0fad: jmp 0xa1147
+0a0fb0: mov ax, word ptr [bp - 4]
+0a0fb3: mul word ptr [0xa15c]
+0a0fb7: mov bx, ax
+0a0fb9: add bx, word ptr [bp + 0xa]
+0a0fbc: mov es, word ptr [bp + 0xc]
+0a0fbf: sub bx, word ptr [bp - 2]
+0a0fc2: fld qword [bx]+8
+0a0fc7: fld st0
+0a0fca: fstp tbyte [bp]-1c
+0a0fce: fistp dx:ax (emu)
+0a0fd0: les bx, ptr [bp + 0x3a]
+0a0fd3: fld qword [bx]
+0a0fd7: fcom st0, st1
+0a0fda: fstp st0
+0a0fdd: df c/4 st0
+0a0fe0: sahf 
+0a0fe1: ffree st0
+0a0fe4: jae 0xa0ff1
+0a0fe6: fld tbyte [bp]-1c
+0a0fea: fst qword [bx]
+0a0fee: ffree st0
+0a0ff1: mov ax, word ptr [bp - 4]
+0a0ff4: mul word ptr [0xa15c]
+0a0ff8: mov bx, ax
+0a0ffa: add bx, word ptr [bp + 0xa]
+0a0ffd: mov es, word ptr [bp + 0xc]
+0a1000: sub bx, word ptr [bp - 2]
+0a1003: fld qword [bx]+8
+0a1008: fld st0
+0a100b: fstp tbyte [bp]-1c
+0a100f: fistp dx:ax (emu)
+0a1011: les bx, ptr [bp + 0x3e]
+0a1014: fld qword [bx]
+0a1018: fcom st0, st1
+0a101b: fstp st0
+0a101e: df c/4 st0
+0a1021: sahf 
+0a1022: ffree st0
+0a1025: jbe 0xa1032
+0a1027: fld tbyte [bp]-1c
+0a102b: fst qword [bx]
+0a102f: ffree st0
+0a1032: mov ax, word ptr [bp - 4]
+0a1035: mul word ptr [0xa15c]
+0a1039: mov bx, ax
+0a103b: add bx, word ptr [bp + 0xa]
+0a103e: mov es, word ptr [bp + 0xc]
+0a1041: sub bx, word ptr [bp - 2]
+0a1044: fld qword [bx]+10
+0a1049: fld st0
+0a104c: fstp tbyte [bp]-1c
+0a1050: fistp dx:ax (emu)
+0a1052: les bx, ptr [bp + 0x3a]
+0a1055: fld qword [bx]+8
+0a105a: fcom st0, st1
+0a105d: fstp st0
+0a1060: df c/4 st0
+0a1063: sahf 
+0a1064: ffree st0
+0a1067: jae 0xa1075
+0a1069: fld tbyte [bp]-1c
+0a106d: fst qword [bx]+8
+0a1072: ffree st0
+0a1075: mov ax, word ptr [bp - 4]
+0a1078: mul word ptr [0xa15c]
+0a107c: mov bx, ax
+0a107e: add bx, word ptr [bp + 0xa]
+0a1081: mov es, word ptr [bp + 0xc]
+0a1084: sub bx, word ptr [bp - 2]
+0a1087: fld qword [bx]+10
+0a108c: fld st0
+0a108f: fstp tbyte [bp]-1c
+0a1093: fistp dx:ax (emu)
+0a1095: les bx, ptr [bp + 0x3e]
+0a1098: fld qword [bx]+8
+0a109d: fcom st0, st1
+0a10a0: fstp st0
+0a10a3: df c/4 st0
+0a10a6: sahf 
+0a10a7: ffree st0
+0a10aa: jbe 0xa10b8
+0a10ac: fld tbyte [bp]-1c
+0a10b0: fst qword [bx]+8
+0a10b5: ffree st0
+0a10b8: mov ax, word ptr [bp - 4]
+0a10bb: mul word ptr [0xa15c]
+0a10bf: mov bx, ax
+0a10c1: add bx, word ptr [bp + 0xa]
+0a10c4: mov es, word ptr [bp + 0xc]
+0a10c7: sub bx, word ptr [bp - 2]
+0a10ca: fld qword [bx]+18
+0a10cf: fld st0
+0a10d2: fstp tbyte [bp]-1c
+0a10d6: fistp dx:ax (emu)
+0a10d8: les bx, ptr [bp + 0x3a]
+0a10db: fld qword [bx]+10
+0a10e0: fcom st0, st1
+0a10e3: fstp st0
+0a10e6: df c/4 st0
+0a10e9: sahf 
+0a10ea: ffree st0
+0a10ed: jae 0xa10fb
+0a10ef: fld tbyte [bp]-1c
+0a10f3: fst qword [bx]+10
+0a10f8: ffree st0
+0a10fb: mov ax, word ptr [bp - 4]
+0a10fe: mul word ptr [0xa15c]
+0a1102: mov bx, ax
+0a1104: add bx, word ptr [bp + 0xa]
+0a1107: mov es, word ptr [bp + 0xc]
+0a110a: sub bx, word ptr [bp - 2]
+0a110d: fld qword [bx]+18
+0a1112: fld st0
+0a1115: fstp tbyte [bp]-1c
+0a1119: fistp dx:ax (emu)
+0a111b: les bx, ptr [bp + 0x3e]
+0a111e: fld qword [bx]+10
+0a1123: fcom st0, st1
+0a1126: fstp st0
+0a1129: df c/4 st0
+0a112c: sahf 
+0a112d: ffree st0
+0a1130: jbe 0xa113e
+0a1132: fld tbyte [bp]-1c
+0a1136: fst qword [bx]+10
+0a113b: ffree st0
+0a113e: inc word ptr [0xa15c]
+0a1142: jo 0xa1147
+0a1144: jmp 0xa0fa5
+0a1147: mov word ptr [0xa15c], 4
+0a114d: mov ax, word ptr [bp + 0x3a]
+0a1150: mov dx, word ptr [bp + 0x3c]
+0a1153: mov word ptr [bp - 0x22], ax
+0a1156: mov word ptr [bp - 0x20], dx
+0a1159: mov ax, word ptr [bp + 0x3e]
+0a115c: mov dx, word ptr [bp + 0x40]
+0a115f: mov word ptr [bp - 0x26], ax
+0a1162: mov word ptr [bp - 0x24], dx
+0a1165: mov ax, word ptr [bp + 0x32]
+0a1168: mov dx, word ptr [bp + 0x34]
+0a116b: mov word ptr [bp - 0x2a], ax
+0a116e: mov word ptr [bp - 0x28], dx
+0a1171: mov ax, word ptr [bp + 0x36]
+0a1174: mov dx, word ptr [bp + 0x38]
+0a1177: mov word ptr [bp - 0x2e], ax
+0a117a: mov word ptr [bp - 0x2c], dx
+0a117d: mov cx, 3
+0a1180: fdecstp
+0a1183: les bx, ptr [bp - 0x22]
+0a1186: fld qword [bx]
+0a118a: les bx, ptr [bp - 0x26]
+0a118d: fsub qword [bx]
+0a1191: fmul qword [3362]
+0a1196: fstp st1
+0a1199: fistp dx:ax (emu)
+0a119b: les bx, ptr [bp - 0x22]
+0a119e: fld st0
+0a11a1: fadd qword [bx]
+0a11a5: fstp qword [bx]
+0a11a9: fistp dx:ax (emu)
+0a11ab: les bx, ptr [bp - 0x26]
+0a11ae: fld st0
+0a11b1: fsubr qword [bx]
+0a11b5: fstp qword [bx]
+0a11b9: fistp dx:ax (emu)
+0a11bb: les bx, ptr [bp - 0x2a]
+0a11be: mov ax, word ptr [bp - 0x22]
+0a11c1: mov dx, word ptr [bp - 0x20]
+0a11c4: mov di, bx
+0a11c6: mov si, ax
+0a11c8: push ds
+0a11c9: mov ds, dx
+0a11cb: movsw word ptr es:[di], word ptr [si]
+0a11cc: movsw word ptr es:[di], word ptr [si]
+0a11cd: movsw word ptr es:[di], word ptr [si]
+0a11ce: movsw word ptr es:[di], word ptr [si]
+0a11cf: pop ds
+0a11d0: les bx, ptr [bp - 0x2e]
+0a11d3: mov ax, word ptr [bp - 0x26]
+0a11d6: mov dx, word ptr [bp - 0x24]
+0a11d9: mov di, bx
+0a11db: mov si, ax
+0a11dd: push ds
+0a11de: mov ds, dx
+0a11e0: movsw word ptr es:[di], word ptr [si]
+0a11e1: movsw word ptr es:[di], word ptr [si]
+0a11e2: movsw word ptr es:[di], word ptr [si]
+0a11e3: movsw word ptr es:[di], word ptr [si]
+0a11e4: pop ds
+0a11e5: add word ptr [bp - 0x22], 8
+0a11e9: add word ptr [bp - 0x26], 8
+0a11ed: add word ptr [bp - 0x2a], 8
+0a11f1: add word ptr [bp - 0x2e], 8
+0a11f5: loop 0xa1183
+0a11f7: fstp qword [a154]
+0a11fc: fistp dx:ax (emu)
+0a11fe: les bx, ptr [bp + 0x2e]
+0a1201: mov ax, word ptr es:[bx]
+0a1204: sub ax, word ptr [0xa166]
+0a1208: mov word ptr [bp - 0x30], ax
+0a120b: mov word ptr [0xa15c], 1
+0a1211: cmp ax, 1
+0a1214: jl 0xa1283
+0a1216: mov ax, word ptr [bp + 0x2a]
+0a1219: mov dx, word ptr [bp + 0x2c]
+0a121c: mov word ptr [bp - 0x2e], ax
+0a121f: mov word ptr [bp - 0x2c], dx
+0a1222: mov ax, word ptr [bp + 0x26]
+0a1225: mov dx, word ptr [bp + 0x28]
+0a1228: mov word ptr [bp - 0x2a], ax
+0a122b: mov word ptr [bp - 0x28], dx
+0a122e: mov ax, word ptr [bp + 0x16]
+0a1231: mov dx, word ptr [bp + 0x18]
+0a1234: mov word ptr [bp - 0x26], ax
+0a1237: mov word ptr [bp - 0x24], dx
+0a123a: mov si, word ptr [0xa15c]
+0a123e: les bx, ptr [bp - 0x2e]
+0a1241: mov di, word ptr es:[bx]
+0a1244: shl di, 1
+0a1246: les bx, ptr [bp + 0x1e]
+0a1249: mov word ptr es:[bx + di - 2], si
+0a124d: les bx, ptr [bp - 0x2a]
+0a1250: mov di, word ptr es:[bx]
+0a1253: shl di, 1
+0a1255: les bx, ptr [bp + 0x1a]
+0a1258: mov word ptr es:[bx + di - 2], si
+0a125c: les bx, ptr [bp - 0x26]
+0a125f: mov di, word ptr es:[bx]
+0a1262: shl di, 1
+0a1264: les bx, ptr [bp + 0x12]
+0a1267: mov word ptr es:[bx + di - 2], si
+0a126b: add word ptr [bp - 0x2e], 2
+0a126f: add word ptr [bp - 0x2a], 2
+0a1273: add word ptr [bp - 0x26], 2
+0a1277: inc si
+0a1278: jo 0xa127f
+0a127a: cmp word ptr [bp - 0x30], si
+0a127d: jge 0xa123e
+0a127f: mov word ptr [0xa15c], si
+0a1283: pop si
+0a1284: pop di
+0a1285: leave 
+0a1286: retf 0x40

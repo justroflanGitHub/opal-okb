@@ -1,0 +1,15 @@
+0406ed: push bp
+0406ee: mov bp, sp
+0406f0: sub sp, 0x3c
+0406f3: push di
+0406f4: push si
+0406f5: les bx, ptr [bp + 0xe]
+0406f8: fld qword [bx]
+0406fc: fld st0
+0406ff: fstp tbyte [bp]-c
+040703: fld qword [8bc8]
+040708: fmul st0, st1
+04070b: fld qword [bx]+8
+040710: fmul qword [8bd0]
+040715: fsubrp st1, st0
+040718: int 0x39

@@ -1,0 +1,18 @@
+034224: fld qword [b32e]
+034229: fabs
+03422c: fcom qword [169e]
+034231: fstp st0
+034234: fnstsw [bp]-32
+034238: fistp dx:ax (emu)
+03423a: mov ah, byte ptr [bp - 0x31]
+03423d: sahf 
+03423e: jb 0x34251
+034240: fld qword [b352]
+034245: fdiv qword [b32e]
+03424a: fstp qword [b306]
+03424f: jmp 0x34220
+034251: les bx, ptr [bp + 0x5a]
+034254: mov ax, word ptr es:[bx]
+034257: or ax, word ptr es:[bx + 2]
+03425b: jne 0x34260
+03425d: jmp 0x344f2

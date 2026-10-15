@@ -1,0 +1,77 @@
+03c356: push bp
+03c357: mov bp, sp
+03c359: sub sp, 0x18
+03c35c: fld dword [3712]
+03c361: fstp dword [b7f8]
+03c366: fistp dx:ax (emu)
+03c368: les bx, ptr [bp + 6]
+03c36b: cmp word ptr es:[bx + 2], 0
+03c370: jge 0x3c37e
+03c372: fld dword [3716]
+03c377: fstp dword [b7f8]
+03c37c: fistp dx:ax (emu)
+03c37e: les bx, ptr [bp + 0xa]
+03c381: mov ax, word ptr es:[bx]
+03c384: mov word ptr [bp - 2], ax
+03c387: mov word ptr [0xb7f6], 1
+03c38d: cmp ax, 1
+03c390: jge 0x3c395
+03c392: jmp 0x3c442
+03c395: les bx, ptr [bp + 6]
+03c398: mov ax, word ptr es:[bx]
+03c39b: mov dx, word ptr es:[bx + 2]
+03c39f: mov word ptr [bp - 6], ax
+03c3a2: mov word ptr [bp - 4], dx
+03c3a5: mov ax, word ptr [bp + 0x1a]
+03c3a8: mov dx, word ptr [bp + 0x1c]
+03c3ab: mov word ptr [bp - 0xa], ax
+03c3ae: mov word ptr [bp - 8], dx
+03c3b1: mov ax, word ptr [bp + 0x16]
+03c3b4: mov dx, word ptr [bp + 0x18]
+03c3b7: mov word ptr [bp - 0xe], ax
+03c3ba: mov word ptr [bp - 0xc], dx
+03c3bd: mov ax, word ptr [bp + 0x12]
+03c3c0: mov dx, word ptr [bp + 0x14]
+03c3c3: mov word ptr [bp - 0x12], ax
+03c3c6: mov word ptr [bp - 0x10], dx
+03c3c9: mov ax, word ptr [bp + 0xe]
+03c3cc: mov dx, word ptr [bp + 0x10]
+03c3cf: mov word ptr [bp - 0x16], ax
+03c3d2: mov word ptr [bp - 0x14], dx
+03c3d5: mov ax, word ptr [bp - 2]
+03c3d8: add word ptr [0xb7f6], ax
+03c3dc: mov cx, ax
+03c3de: les bx, ptr [bp - 0xa]
+03c3e1: fld dword [bx]
+03c3e5: les bx, ptr [bp - 0xe]
+03c3e8: fsub dword [bx]
+03c3ec: fmul dword [b7f8]
+03c3f1: fcom dword [371a]
+03c3f6: fstp st0
+03c3f9: fnstsw [bp]-18
+03c3fd: fistp dx:ax (emu)
+03c3ff: mov ah, byte ptr [bp - 0x17]
+03c402: sahf 
+03c403: ja 0x3c430
+03c405: mov ax, word ptr es:[bx]
+03c408: mov dx, word ptr es:[bx + 2]
+03c40c: les bx, ptr [bp - 0xa]
+03c40f: mov word ptr es:[bx], ax
+03c412: mov word ptr es:[bx + 2], dx
+03c416: cmp word ptr [bp - 4], 0
+03c41a: jl 0x3c430
+03c41c: les bx, ptr [bp - 0x16]
+03c41f: mov ax, word ptr es:[bx]
+03c422: mov dx, word ptr es:[bx + 2]
+03c426: les bx, ptr [bp - 0x12]
+03c429: mov word ptr es:[bx], ax
+03c42c: mov word ptr es:[bx + 2], dx
+03c430: add word ptr [bp - 0xa], 4
+03c434: add word ptr [bp - 0xe], 4
+03c438: add word ptr [bp - 0x12], 4
+03c43c: add word ptr [bp - 0x16], 4
+03c440: loop 0x3c3de
+03c442: mov sp, bp
+03c444: pop bp
+03c445: db ca
+03c446: db 18

@@ -1,0 +1,29 @@
+090259: enter 0, 0
+09025d: les bx, ptr [bp + 6]
+090260: fld qword [360e]
+090265: jmp 0x90291
+090267: cmp word ptr [0xa3a8], 1
+09026c: jne 0x90285
+09026e: fld qword [361e]
+090273: fmul qword [bx]
+090277: fstp qword [bx]
+09027b: fistp dx:ax (emu)
+09027d: mov word ptr [0xa3a8], 2
+090283: jmp 0x9029d
+090285: les bx, ptr [bp + 6]
+090288: fld qword [3626]
+09028d: fmul qword [bx]
+090291: fstp qword [bx]
+090295: fistp dx:ax (emu)
+090297: mov word ptr [0xa3a8], 1
+09029d: les bx, ptr [bp + 0xa]
+0902a0: fld qword [bx]
+0902a4: les bx, ptr [bp + 6]
+0902a7: fdiv qword [bx]
+0902ab: fcom qword [3616]
+0902b0: fstp st0
+0902b3: df c/4 st0
+0902b6: sahf 
+0902b7: ja 0x90267
+0902b9: leave 
+0902ba: retf 8

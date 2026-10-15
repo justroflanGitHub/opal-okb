@@ -1,0 +1,79 @@
+02e36a: mov ax, word ptr [bp - 0x30]
+02e36d: or ax, word ptr [bp - 0x2e]
+02e370: jne 0x2e375
+02e372: jmp 0x2ef00
+02e375: mov ax, word ptr [bp - 0x30]
+02e378: mov dx, word ptr [bp - 0x2e]
+02e37b: add ax, 1
+02e37e: adc dx, 0
+02e381: cmp dx, word ptr [0x44b2]
+02e385: jle 0x2e38a
+02e387: jmp 0x2ef00
+02e38a: jl 0x2e395
+02e38c: cmp ax, word ptr [0x44b0]
+02e390: jbe 0x2e395
+02e392: jmp 0x2ef00
+02e395: les bx, ptr [bp + 0xa]
+02e398: add word ptr es:[bx], 1
+02e39c: adc word ptr es:[bx + 2], 0
+02e3a1: mov bx, word ptr es:[bx]
+02e3a4: shl bx, 3
+02e3a7: mov es, word ptr [0x3734]
+02e3ab: lea bx, [bx + 0xad8]
+02e3af: mov si, word ptr [bp - 0x30]
+02e3b2: shl si, 3
+02e3b5: lea di, [bx - 8]
+02e3b8: lea si, [si + 0x4a50]
+02e3bc: movsw word ptr es:[di], word ptr [si]
+02e3bd: movsw word ptr es:[di], word ptr [si]
+02e3be: movsw word ptr es:[di], word ptr [si]
+02e3bf: movsw word ptr es:[di], word ptr [si]
+02e3c0: mov bx, word ptr [bp - 0x30]
+02e3c3: shl bx, 1
+02e3c5: cmp word ptr [bx + 0x4f58], 0
+02e3ca: jge 0x2e3f5
+02e3cc: les bx, ptr [bp + 0xa]
+02e3cf: mov bx, word ptr es:[bx]
+02e3d2: shl bx, 3
+02e3d5: lea ax, [bx + 0xad8]
+02e3d9: mov dx, 0x5eaa
+02e3dc: sub ax, 8
+02e3df: mov word ptr [bp - 0x64], ax
+02e3e2: mov word ptr [bp - 0x62], dx
+02e3e5: les bx, ptr [bp - 0x64]
+02e3e8: fld qword [bx]
+02e3ec: fchs
+02e3ef: fstp qword [bx]
+02e3f3: fistp dx:ax (emu)
+02e3f5: mov bx, word ptr [bp - 8]
+02e3f8: shl bx, 3
+02e3fb: lea ax, [bx + 4]
+02e3ff: mov dx, 0x56c5
+02e402: sub ax, 0xc
+02e405: push dx
+02e406: push ax
+02e407: mov ax, 0xcd8
+02e40a: mov dx, 0x5eaa
+02e40d: push dx
+02e40e: push ax
+02e40f: push word ptr [bp + 0xc]
+02e412: push word ptr [bp + 0xa]
+02e415: lcall 0x1211, 0xc
+02e41a: mov bx, word ptr [bp - 0x30]
+02e41d: shl bx, 2
+02e420: mov es, word ptr [0x373c]
+02e424: lea bx, [bx + 0xa00]
+02e428: mov ax, word ptr es:[bx - 4]
+02e42c: mov dx, word ptr es:[bx - 2]
+02e430: les bx, ptr [bp + 0xa]
+02e433: mov bx, word ptr es:[bx]
+02e436: shl bx, 2
+02e439: mov es, word ptr [0x3736]
+02e43d: lea bx, [bx + 0x1320]
+02e441: mov word ptr es:[bx - 4], ax
+02e445: mov word ptr es:[bx - 2], dx
+02e449: mov bx, word ptr [bp - 0x30]
+02e44c: shl bx, 2
+02e44f: mov es, word ptr [0x373e]
+02e453: lea bx, [bx + 0x780]
+02e457: jmp 0x2e552

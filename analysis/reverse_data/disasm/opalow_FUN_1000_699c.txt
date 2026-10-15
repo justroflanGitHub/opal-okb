@@ -1,0 +1,115 @@
+01699c: enter 6, 0
+0169a0: push di
+0169a1: push si
+0169a2: mov ax, word ptr [0x4120]
+0169a5: mov word ptr [bp - 2], ax
+0169a8: mov word ptr [0x9338], 1
+0169ae: mov ax, word ptr [0x9338]
+0169b1: cmp word ptr [bp - 2], ax
+0169b4: jge 0x169b9
+0169b6: jmp 0x16afa
+0169b9: mov si, ax
+0169bb: shl si, 3
+0169be: mov es, word ptr [0x31f2]
+0169c2: lea bx, [si]
+0169c6: lea ax, [bx - 8]
+0169c9: mov dx, es
+0169cb: lea bx, [si + 0xad8]
+0169cf: mov es, word ptr [0x31f4]
+0169d3: push si
+0169d4: lea di, [bx - 8]
+0169d7: mov si, ax
+0169d9: push ds
+0169da: mov ds, dx
+0169dc: movsw word ptr es:[di], word ptr [si]
+0169dd: movsw word ptr es:[di], word ptr [si]
+0169de: movsw word ptr es:[di], word ptr [si]
+0169df: movsw word ptr es:[di], word ptr [si]
+0169e0: pop ds
+0169e1: pop si
+0169e2: mov si, word ptr [0x9338]
+0169e6: shl si, 2
+0169e9: mov es, word ptr [0x31f6]
+0169ed: lea bx, [si - 0x14a0]
+0169f1: fld dword [bx]-4
+0169f6: fabs
+0169f9: fcom dword [31f8]
+0169fe: fstp st0
+016a01: df c/4 st0
+016a04: sahf 
+016a05: jae 0x16a28
+016a07: mov es, word ptr [0x31fc]
+016a0b: lea bx, [si - 0x15a0]
+016a0f: fld dword [bx]-4
+016a14: mov es, word ptr [0x31f6]
+016a18: lea bx, [si - 0x14a0]
+016a1c: fsubr dword [bx]-4
+016a21: fstp dword [bx]-4
+016a26: fistp dx:ax (emu)
+016a28: mov bx, word ptr [0x9338]
+016a2c: shl bx, 2
+016a2f: lea ax, [bx - 0x14a0]
+016a33: mov dx, 0x1aa
+016a36: sub ax, 4
+016a39: mov word ptr [bp - 6], ax
+016a3c: mov word ptr [bp - 4], dx
+016a3f: les bx, ptr [bp - 6]
+016a42: fld dword [bx]
+016a46: fcom dword [31fe]
+016a4b: fstp st0
+016a4e: df c/4 st0
+016a51: sahf 
+016a52: jbe 0x16a5d
+016a54: fdecstp
+016a57: fstp dword [bx]
+016a5b: fistp dx:ax (emu)
+016a5d: mov si, word ptr [0x9338]
+016a61: shl si, 2
+016a64: mov es, word ptr [0x3202]
+016a68: lea bx, [si - 0x13a0]
+016a6c: fld dword [bx]-4
+016a71: fabs
+016a74: fcom dword [31f8]
+016a79: fstp st0
+016a7c: df c/4 st0
+016a7f: sahf 
+016a80: jae 0x16aa3
+016a82: mov es, word ptr [0x31fc]
+016a86: lea bx, [si - 0x15a0]
+016a8a: fld dword [bx]-4
+016a8f: mov es, word ptr [0x3202]
+016a93: lea bx, [si - 0x13a0]
+016a97: fsubr dword [bx]-4
+016a9c: fstp dword [bx]-4
+016aa1: fistp dx:ax (emu)
+016aa3: mov bx, word ptr [0x9338]
+016aa7: shl bx, 2
+016aaa: lea ax, [bx - 0x13a0]
+016aae: mov dx, 0x1aa
+016ab1: sub ax, 4
+016ab4: mov word ptr [bp - 6], ax
+016ab7: mov word ptr [bp - 4], dx
+016aba: les bx, ptr [bp - 6]
+016abd: fld dword [bx]
+016ac1: fcom dword [31fe]
+016ac6: fstp st0
+016ac9: df c/4 st0
+016acc: sahf 
+016acd: jae 0x16ad8
+016acf: fdecstp
+016ad2: fstp dword [bx]
+016ad6: fistp dx:ax (emu)
+016ad8: mov bx, word ptr [0x9338]
+016adc: shl bx, 2
+016adf: mov es, word ptr [0x31fc]
+016ae3: lea bx, [bx - 0x15a0]
+016ae7: fdecstp
+016aea: fstp dword [bx]-4
+016aef: fistp dx:ax (emu)
+016af1: inc word ptr [0x9338]
+016af5: jo 0x16afa
+016af7: jmp 0x169ae
+016afa: pop si
+016afb: pop di
+016afc: leave 
+016afd: retf 8

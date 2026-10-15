@@ -1,0 +1,26 @@
+045449: push bp
+04544a: mov bp, sp
+04544c: les bx, ptr [bp + 0xe]
+04544f: fld qword [bx]
+045453: fsubr qword [3b68]
+045458: lcall 0x1dcd, 0x3f26
+04545d: fsubr qword [3b70]
+045462: fstp qword [8b68]
+045467: fistp dx:ax (emu)
+045469: les bx, ptr [bp + 0xa]
+04546c: fld qword [bx]
+045470: fdiv qword [3b78]
+045475: fld qword [8b68]
+04547a: fsubr qword [3b70]
+04547f: fdivrp st1, st0
+045482: fstp qword [8b78]
+045487: fistp dx:ax (emu)
+045489: les bx, ptr [bp + 6]
+04548c: fld dword [bx]
+045490: fsubr qword [8b68]
+045495: fstp qword [8b68]
+04549a: fistp dx:ax (emu)
+04549c: lcall 0x477f, 0xd
+0454a1: mov sp, bp
+0454a3: pop bp
+0454a4: retf 0xc

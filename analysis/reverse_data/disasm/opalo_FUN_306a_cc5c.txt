@@ -1,0 +1,12 @@
+03d2fc: fld qword [si]
+03d2ff: fmul qword [bp]-1e
+03d303: les bx, ptr [bp - 0x22]
+03d306: fld qword [bx]
+03d30a: fmul qword [8c18]
+03d30f: faddp st1, st0
+03d312: fstp qword [si]
+03d315: fistp dx:ax (emu)
+03d317: les bx, ptr [bp - 0x16]
+03d31a: int 0x39
+03d31c: push es
+03d31d: db e0

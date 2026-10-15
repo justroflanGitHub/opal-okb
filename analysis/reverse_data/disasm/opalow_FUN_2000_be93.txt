@@ -1,0 +1,55 @@
+02be93: enter 0x6e4, 0
+02be97: push di
+02be98: push si
+02be99: mov word ptr [bp - 6], 1
+02be9e: mov word ptr [bp - 4], 0
+02bea3: mov es, word ptr [0x370a]
+02bea7: mov bx, 0xd28
+02beaa: fld dword [bx]-4
+02beaf: les bx, ptr [bp + 0x1a]
+02beb2: fcom qword [bx]
+02beb6: fstp st0
+02beb9: df c/4 st0
+02bebc: sahf 
+02bebd: jae 0x2bf06
+02bebf: mov ax, bx
+02bec1: mov dx, es
+02bec3: lea di, [bp - 0x6bc]
+02bec7: mov si, ax
+02bec9: push ss
+02beca: pop es
+02becb: push ds
+02becc: mov ds, dx
+02bece: movsw word ptr es:[di], word ptr [si]
+02becf: movsw word ptr es:[di], word ptr [si]
+02bed0: movsw word ptr es:[di], word ptr [si]
+02bed1: movsw word ptr es:[di], word ptr [si]
+02bed2: pop ds
+02bed3: mov ax, word ptr [bp - 6]
+02bed6: shl ax, 2
+02bed9: add ax, 0xd24
+02bedc: mov word ptr [bp - 0x6be], ax
+02bee0: mov cx, ax
+02bee2: add cx, 4
+02bee5: add word ptr [bp - 6], 1
+02bee9: adc word ptr [bp - 4], 0
+02beed: mov bx, cx
+02beef: mov es, word ptr [0x370a]
+02bef3: fld dword [bx]-4
+02bef8: fcom qword [bp]+f944
+02befd: fstp st0
+02bf00: df c/4 st0
+02bf03: sahf 
+02bf04: jb 0x2bee2
+02bf06: les bx, ptr [bp + 0x1a]
+02bf09: fld qword [bx]
+02bf0d: fld st0
+02bf10: fstp tbyte [bp]+f938
+02bf15: fistp dx:ax (emu)
+02bf17: mov bx, word ptr [bp - 6]
+02bf1a: shl bx, 2
+02bf1d: mov es, word ptr [0x370a]
+02bf21: lea bx, [bx + 0xd20]
+02bf25: fld dword [bx]-4
+02bf2a: fsubr st0, st1
+02bf2d: int 0x39

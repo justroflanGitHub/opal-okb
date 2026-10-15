@@ -1,0 +1,236 @@
+04116a: push bp
+04116b: mov bp, sp
+04116d: sub sp, 0x3e
+041170: push di
+041171: push si
+041172: fld qword [8848]
+041177: fcom qword [3a24]
+04117c: fstp st0
+04117f: fnstsw [bp]-4
+041183: fistp dx:ax (emu)
+041185: mov ah, byte ptr [bp - 3]
+041188: sahf 
+041189: je 0x4119c
+04118b: mov ax, 0x8840
+04118e: push ds
+04118f: push ax
+041190: mov ax, 0x8770
+041193: push ds
+041194: push ax
+041195: push ds
+041196: push ax
+041197: lcall 0x44f8, 8
+04119c: mov ax, 0x8838
+04119f: push ds
+0411a0: push ax
+0411a1: push word ptr [bp + 0x20]
+0411a4: push word ptr [bp + 0x1e]
+0411a7: lcall 0x46d7, 0x1c
+0411ac: fld qword [8be8]
+0411b1: fadd qword [8be0]
+0411b6: les bx, ptr [bp + 0x1e]
+0411b9: fmul qword [bx]
+0411bd: fstp qword [8be8]
+0411c2: fistp dx:ax (emu)
+0411c4: mov ax, word ptr [0x8768]
+0411c7: or ax, word ptr [0x876a]
+0411cb: je 0x41243
+0411cd: mov ax, word ptr [0x8768]
+0411d0: mov word ptr [bp - 2], ax
+0411d3: mov word ptr [0xbaa2], 1
+0411d9: cmp ax, 1
+0411dc: jl 0x41243
+0411de: mov ax, bx
+0411e0: mov dx, es
+0411e2: push si
+0411e3: lea di, [bp - 0xc]
+0411e6: mov si, ax
+0411e8: push ss
+0411e9: pop es
+0411ea: push ds
+0411eb: mov ds, dx
+0411ed: movsw word ptr es:[di], word ptr [si]
+0411ee: movsw word ptr es:[di], word ptr [si]
+0411ef: movsw word ptr es:[di], word ptr [si]
+0411f0: movsw word ptr es:[di], word ptr [si]
+0411f1: pop ds
+0411f2: pop si
+0411f3: mov si, 0x8bf0
+0411f6: mov ax, word ptr [bp + 0x1e]
+0411f9: add ax, 8
+0411fc: mov word ptr [bp - 0x12], ax
+0411ff: mov word ptr [bp - 0x10], dx
+041202: mov ax, word ptr [bp - 2]
+041205: add word ptr [0xbaa2], ax
+041209: mov cx, ax
+04120b: fdecstp
+04120e: les bx, ptr [bp - 0x12]
+041211: fld qword [bx]
+041215: fstp st1
+041218: fld st0
+04121b: fadd qword [3a2c]
+041220: fmul qword [si]
+041223: fmul qword [bp]-c
+041227: fld st1
+04122a: fmul qword [8be8]
+04122f: faddp st1, st0
+041232: fstp qword [si]
+041235: fistp dx:ax (emu)
+041237: add si, 8
+04123a: add word ptr [bp - 0x12], 8
+04123e: loop 0x4120e
+041240: fstp st0
+041243: les bx, ptr [bp + 0xa]
+041246: fld qword [8b90]
+04124b: fchs
+04124e: fstp dword [bx]
+041252: fld qword [8b98]
+041257: fchs
+04125a: fstp dword [bx]+4
+04125f: fld qword [8b90]
+041264: fmul qword [8838]
+041269: fadd qword [8ba8]
+04126e: fchs
+041271: fstp qword [8b90]
+041276: fld qword [8b98]
+04127b: fmul qword [8838]
+041280: fadd qword [8bb0]
+041285: fchs
+041288: fstp qword [8b98]
+04128d: fld dword [bx]
+041291: fchs
+041294: fstp qword [8ba8]
+041299: fld dword [bx]+4
+04129e: fchs
+0412a1: fstp qword [8bb0]
+0412a6: fistp dx:ax (emu)
+0412a8: mov ax, word ptr [0x8770]
+0412ab: or ax, word ptr [0x8772]
+0412af: jne 0x412b4
+0412b1: jmp 0x41601
+0412b4: cmp word ptr [0x8772], 0
+0412b9: jge 0x412be
+0412bb: jmp 0x41404
+0412be: mov ax, word ptr [0x8770]
+0412c1: mov word ptr [bp - 0x1a], ax
+0412c4: mov word ptr [0xbaa0], 1
+0412ca: mov ax, word ptr [0xbaa0]
+0412cd: cmp word ptr [bp - 0x1a], ax
+0412d0: jge 0x412d5
+0412d2: jmp 0x4137e
+0412d5: mov word ptr [0xba9e], 3
+0412db: mov ax, 0x18
+0412de: imul word ptr [0xbaa0]
+0412e2: mov word ptr [bp - 0x12], ax
+0412e5: mov word ptr [bp - 0xe], ax
+0412e8: mov ax, word ptr [0xbaa0]
+0412eb: mov cl, 3
+0412ed: shl ax, cl
+0412ef: mov word ptr [bp - 0xc], ax
+0412f2: mov ax, word ptr [bp + 6]
+0412f5: mov dx, word ptr [bp + 8]
+0412f8: add ax, word ptr [bp - 0xc]
+0412fb: add ax, 0xfff8
+0412fe: mov word ptr [bp - 0x1e], ax
+041301: mov word ptr [bp - 0x1c], dx
+041304: mov ax, word ptr [bp - 0xe]
+041307: add ax, 0x8c18
+04130a: mov word ptr [bp - 4], ax
+04130d: mov ax, word ptr [bp - 0x12]
+041310: add ax, 0x8c18
+041313: mov si, ax
+041315: mov ax, word ptr [bp - 0x12]
+041318: add ax, 0x8cd8
+04131b: mov di, ax
+04131d: mov word ptr [bp - 0x24], 2
+041322: mov cx, word ptr [bp - 0x24]
+041325: fdecstp
+041328: cmp word ptr [0xbaa0], 2
+04132d: jg 0x4133f
+04132f: mov bx, word ptr [bp - 4]
+041332: fld qword [bx]
+041335: fchs
+041338: les bx, ptr [bp - 0x1e]
+04133b: fstp dword [bx]
+04133f: fld qword [si]
+041342: fstp st1
+041345: fld qword [di]
+041348: fld qword [8838]
+04134d: fmul st0, st2
+041350: faddp st1, st0
+041353: fchs
+041356: fstp qword [si]
+041359: fst qword [di]
+04135c: fistp dx:ax (emu)
+04135e: add word ptr [bp - 0x1e], 4
+041362: add word ptr [bp - 4], 8
+041366: add si, 8
+041369: add di, 8
+04136c: loop 0x41328
+04136e: fstp qword [ba96]
+041373: fistp dx:ax (emu)
+041375: inc word ptr [0xbaa0]
+041379: jo 0x4137e
+04137b: jmp 0x412ca
+04137e: mov ax, word ptr [0x8768]
+041381: or ax, word ptr [0x876a]
+041385: jne 0x4138a
+041387: jmp 0x41601
+04138a: mov ax, word ptr [0x8768]
+04138d: mov word ptr [bp - 0x24], ax
+041390: mov word ptr [0xbaa0], 1
+041396: cmp ax, 1
+041399: jge 0x4139e
+04139b: jmp 0x41601
+04139e: fld qword [8bb0]
+0413a3: fchs
+0413a6: fstp qword [bp]-c
+0413aa: fld qword [8ba8]
+0413af: fchs
+0413b2: fstp qword [bp]-2c
+0413b6: fistp dx:ax (emu)
+0413b8: mov ax, word ptr [bp + 0xa]
+0413bb: mov dx, word ptr [bp + 0xc]
+0413be: add ax, 8
+0413c1: mov word ptr [bp - 0x1e], ax
+0413c4: mov word ptr [bp - 0x1c], dx
+0413c7: mov si, 0x8d50
+0413ca: mov di, 0x8d58
+0413cd: mov ax, word ptr [bp - 0x24]
+0413d0: add word ptr [0xbaa0], ax
+0413d4: mov cx, ax
+0413d6: les bx, ptr [bp - 0x1e]
+0413d9: fld qword [bp]-2c
+0413dd: fsub qword [si]
+0413e0: fstp dword [bx]
+0413e4: fld qword [bp]-c
+0413e8: fsub qword [di]
+0413eb: fstp dword [bx]+4
+0413f0: fistp dx:ax (emu)
+0413f2: add word ptr [bp - 0x1e], 8
+0413f6: add si, 0x18
+0413f9: add di, 0x18
+0413fc: dec cx
+0413fd: jne 0x41402
+0413ff: jmp 0x41601
+041402: jmp 0x413d6
+041404: les bx, ptr [bp + 6]
+041407: fld qword [8c30]
+04140c: fmul qword [8bb8]
+041411: fchs
+041414: fstp dword [bx]
+041418: fld qword [8c38]
+04141d: fchs
+041420: fstp dword [bx]+4
+041425: fistp dx:ax (emu)
+041427: mov ax, word ptr [0x8770]
+04142a: mov dx, word ptr [0x8772]
+04142e: neg ax
+041430: adc dx, 0
+041433: neg dx
+041435: mov word ptr [0xbaa4], ax
+041438: mov word ptr [0xbaa6], dx
+04143c: mov word ptr [bp - 0x2c], ax
+04143f: db c7
+041440: push es
+041441: db a0

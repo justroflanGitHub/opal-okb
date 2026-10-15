@@ -1,0 +1,24 @@
+021a40: push bp
+021a41: mov bp, sp
+021a43: sub sp, 0xc
+021a46: push bx
+021a47: push cx
+021a48: push si
+021a49: push di
+021a4a: fnstcw [bp]-2
+021a4e: fistp dx:ax (emu)
+021a50: mov ax, word ptr [bp - 2]
+021a53: or ah, 0xc
+021a56: mov word ptr [bp - 4], ax
+021a59: fldcw [bp]-4
+021a5d: fstp qword [bp]-c
+021a61: fldcw [bp]-2
+021a65: mov ax, word ptr [bp - 0xc]
+021a68: mov dx, word ptr [bp - 0xa]
+021a6b: pop di
+021a6c: pop si
+021a6d: pop cx
+021a6e: pop bx
+021a6f: mov sp, bp
+021a71: pop bp
+021a72: retf 

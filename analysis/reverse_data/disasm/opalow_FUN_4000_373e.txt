@@ -1,0 +1,27 @@
+04373e: les bx, ptr [bp + 0x52]
+043741: mov si, word ptr es:[bx]
+043744: mov ax, si
+043746: cdq 
+043747: xor ax, dx
+043749: sub ax, dx
+04374b: mul word ptr [bp - 4]
+04374e: mov bx, ax
+043750: les di, ptr [bp + 0x82]
+043754: mov ax, word ptr es:[di]
+043757: mov cl, 3
+043759: shl ax, cl
+04375b: add bx, ax
+04375d: add bx, word ptr [bp + 0x4e]
+043760: mov es, word ptr [bp + 0x50]
+043763: sub bx, word ptr [bp - 2]
+043766: fld qword [bx]
+04376a: mov word ptr [bp - 0x66], si
+04376d: fild word [bp]-66
+043771: lcall 0x1dcd, 0x3eae
+043776: fstp qword [bp]-5a
+04377a: fistp dx:ax (emu)
+04377c: les bx, ptr [bp + 0x7e]
+04377f: mov ax, word ptr es:[bx]
+043782: mov word ptr [bp - 0x64], ax
+043785: mov word ptr [bp - 0xa], 1
+04378a: jmp 0x43fa5

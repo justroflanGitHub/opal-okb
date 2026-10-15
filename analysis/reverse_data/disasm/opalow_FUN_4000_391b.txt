@@ -1,0 +1,80 @@
+04391b: fld qword [8ba0]
+043920: fstp dword [bx+si]-4
+043925: fistp dx:ax (emu)
+043927: les bx, ptr [bp + 0x72]
+04392a: cmp word ptr es:[bx + 2], 0
+04392f: jge 0x43934
+043931: jmp 0x43a6e
+043934: fld qword [bbec]
+043939: fcom qword [3ac6]
+04393e: fstp st0
+043941: fnstsw [bp]-66
+043945: fistp dx:ax (emu)
+043947: mov ah, byte ptr [bp - 0x65]
+04394a: sahf 
+04394b: jae 0x43950
+04394d: jmp 0x43a3d
+043950: fld qword [8be0]
+043955: fadd qword [bbec]
+04395a: fstp qword [bbec]
+04395f: fld qword [8df0]
+043964: fadd qword [bbf8]
+043969: fstp qword [bbf8]
+04396e: fistp dx:ax (emu)
+043970: mov si, word ptr [bp - 0xa]
+043973: mov cl, 3
+043975: shl si, cl
+043977: les bx, ptr [bp + 0x56]
+04397a: fld qword [bx+si]-10
+04397f: fadd qword [bbc6]
+043984: fstp qword [bbc6]
+043989: fistp dx:ax (emu)
+04398b: mov ax, word ptr [bp - 0xa]
+04398e: shl ax, 1
+043990: add ax, word ptr [bp + 0x52]
+043993: mov dx, word ptr [bp + 0x54]
+043996: mov word ptr [bp - 0x70], ax
+043999: mov word ptr [bp - 0x6e], dx
+04399c: les bx, ptr [bp - 0x70]
+04399f: mov ax, word ptr es:[bx]
+0439a2: cmp word ptr es:[bx - 2], ax
+0439a6: jne 0x439ab
+0439a8: jmp 0x43a6e
+0439ab: fld qword [bbc6]
+0439b0: fcom qword [3ac6]
+0439b5: fstp st0
+0439b8: fnstsw [bp]-66
+0439bc: fistp dx:ax (emu)
+0439be: mov ah, byte ptr [bp - 0x65]
+0439c1: sahf 
+0439c2: je 0x43a3d
+0439c4: les bx, ptr [bp + 0x66]
+0439c7: cmp word ptr es:[bx + 2], 0
+0439cc: jge 0x43a04
+0439ce: les bx, ptr [bp + 0x6e]
+0439d1: mov ax, word ptr es:[bx]
+0439d4: or ax, word ptr es:[bx + 2]
+0439d8: je 0x43a04
+0439da: mov ax, word ptr [bp - 0xa]
+0439dd: cdq 
+0439de: add ax, 0xbb8
+0439e1: adc dx, 0
+0439e4: mov word ptr [0x8b60], ax
+0439e7: mov word ptr [0x8b62], dx
+0439eb: mov ax, 0xbbc6
+0439ee: push ds
+0439ef: push ax
+0439f0: mov ax, 0xbbec
+0439f3: push ds
+0439f4: push ax
+0439f5: mov ax, 0xbbf8
+0439f8: push ds
+0439f9: push ax
+0439fa: mov ax, 0x2f26
+0439fd: push ds
+0439fe: push ax
+0439ff: lcall 0x453c, 8
+043a04: fld qword [bbec]
+043a09: fdiv qword [bbc6]
+043a0e: int 0x38
+043a10: push ss

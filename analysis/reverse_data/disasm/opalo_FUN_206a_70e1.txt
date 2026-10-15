@@ -1,0 +1,89 @@
+027781: enter 0x32, 0
+027785: push di
+027786: push si
+027787: les bx, ptr [bp + 6]
+02778a: sub ax, ax
+02778c: mov word ptr es:[bx + 2], ax
+027790: mov word ptr es:[bx], ax
+027793: mov ax, 0x53dd
+027796: lea di, [bp - 8]
+027799: mov si, 0x288
+02779c: push ss
+02779d: pop es
+02779e: push ds
+02779f: mov ds, ax
+0277a1: movsw word ptr es:[di], word ptr [si]
+0277a2: movsw word ptr es:[di], word ptr [si]
+0277a3: movsw word ptr es:[di], word ptr [si]
+0277a4: movsw word ptr es:[di], word ptr [si]
+0277a5: pop ds
+0277a6: fdecstp
+0277a9: fstp qword [bp]-14
+0277ad: fistp dx:ax (emu)
+0277af: mov ax, word ptr [0x3eb0]
+0277b2: mov dx, word ptr [0x3eb2]
+0277b6: mov word ptr [bp - 0x28], ax
+0277b9: mov word ptr [bp - 0x26], dx
+0277bc: mov word ptr [bp - 0xc], 1
+0277c1: mov word ptr [bp - 0xa], 0
+0277c6: jmp 0x277d5
+0277c8: add word ptr [bp - 0xc], 1
+0277cc: adc word ptr [bp - 0xa], 0
+0277d0: jno 0x277d5
+0277d2: jmp 0x278e4
+0277d5: mov ax, word ptr [bp - 0x28]
+0277d8: mov dx, word ptr [bp - 0x26]
+0277db: cmp word ptr [bp - 0xa], dx
+0277de: jle 0x277e3
+0277e0: jmp 0x278e4
+0277e3: jl 0x277ed
+0277e5: cmp word ptr [bp - 0xc], ax
+0277e8: jbe 0x277ed
+0277ea: jmp 0x278e4
+0277ed: mov si, word ptr [bp - 0xc]
+0277f0: shl si, 3
+0277f3: mov es, word ptr [0x3446]
+0277f7: lea bx, [si]
+0277fb: fld qword [bx]-8
+027800: fld st0
+027803: fstp tbyte [bp]-32
+027807: fld qword [bp]-14
+02780b: fmul st0, st1
+02780e: fsubr qword [bp]-8
+027812: fstp qword [bp]-8
+027816: fistp dx:ax (emu)
+027818: mov di, word ptr [bp - 0xc]
+02781b: shl di, 1
+02781d: mov ax, word ptr [di + 0x4956]
+027821: cdq 
+027822: xor ax, dx
+027824: sub ax, dx
+027826: imul bx, ax, 0x28
+027829: fld qword [bx]+4a70
+02782e: fild word [di]+4956
+027833: lcall 0x1886, 0x3ade
+027838: mov ax, word ptr [di + 0x4958]
+02783c: cdq 
+02783d: xor ax, dx
+02783f: sub ax, dx
+027841: imul bx, ax, 0x28
+027844: fld qword [bx]+4a70
+027849: fild word [di]+4958
+02784e: lcall 0x1886, 0x3ade
+027853: fdivrp st1, st0
+027856: fst qword [bp]-24
+02785a: fsubr qword [3448]
+02785f: fmul qword [bp]-8
+027863: fst qword [bp]-1c
+027867: fabs
+02786a: fcom qword [3450]
+02786f: fstp st0
+027872: df c/4 st0
+027875: sahf 
+027876: ffree st0
+027879: jbe 0x278a8
+02787b: mov es, word ptr [0x3446]
+02787f: lea bx, [si + 8]
+027883: fld qword [bx]-8
+027888: fld qword [bp]-24
+02788c: int 0x37

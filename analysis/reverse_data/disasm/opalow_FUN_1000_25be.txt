@@ -1,0 +1,71 @@
+0125be: add word ptr [bp - 0x64], 1
+0125c2: adc word ptr [bp - 0x62], 0
+0125c6: mov si, word ptr [bp - 0x64]
+0125c9: shl si, 3
+0125cc: fld qword [si]+5b50
+0125d1: fmul qword [si]+5b50
+0125d6: fmul dword [12e]
+0125db: fld qword [si]+5650
+0125e0: fmul qword [si]+5650
+0125e5: faddp st1, st0
+0125e8: fstp tbyte [bp]+ff7a
+0125ed: fld qword [si]+5b58
+0125f2: fmul qword [si]+5b58
+0125f7: fmul dword [12e]
+0125fc: fld qword [si]+5658
+012601: fmul qword [si]+5658
+012606: faddp st1, st0
+012609: fstp tbyte [bp]+ff60
+01260e: fld qword [si]+58d0
+012613: fmul qword [si]+58d0
+012618: fstp tbyte [bp]+ff56
+01261d: fistp dx:ax (emu)
+01261f: mov si, word ptr [bp - 0x64]
+012622: shl si, 3
+012625: fld qword [si]+5dd0
+01262a: fmul qword [si]+5dd0
+01262f: fmul dword [12e]
+012634: fld tbyte [bp]+ff56
+012639: faddp st1, st0
+01263c: fstp tbyte [bp]+ff4c
+012641: fld qword [si]+4558
+012646: fabs
+012649: fld tbyte [bp]+ff60
+01264e: fmulp st1, st0
+012651: fld qword [si]+4550
+012656: fabs
+012659: fld tbyte [bp]+ff7a
+01265e: fmulp st1, st0
+012661: faddp st1, st0
+012664: fstp tbyte [bp]+ff42
+012669: fld qword [si]+4a50
+01266e: fabs
+012671: fadd qword [3188]
+012676: fld tbyte [bp]+ff4c
+01267b: fmulp st1, st0
+01267e: fld tbyte [bp]+ff42
+012683: faddp st1, st0
+012686: fadd dword [136]
+01268b: fstp dword [bp]-20
+01268f: fistp dx:ax (emu)
+012691: mov di, word ptr [bp - 0x5c]
+012694: shl di, 2
+012697: les bx, ptr [bp + 0xa]
+01269a: fld dword [bp]-38
+01269e: fdiv dword [bp]-20
+0126a2: fstp dword [bx+di]-4
+0126a7: fistp dx:ax (emu)
+0126a9: add word ptr [bp - 0x5c], 1
+0126ad: adc word ptr [bp - 0x5a], 0
+0126b1: mov di, word ptr [bp - 0x5c]
+0126b4: shl di, 2
+0126b7: fld dword [bp]-40
+0126bb: fdiv dword [bp]-20
+0126bf: fstp dword [bx+di]-4
+0126c4: fistp dx:ax (emu)
+0126c6: add word ptr [bp - 0x5c], 1
+0126ca: adc word ptr [bp - 0x5a], 0
+0126ce: mov di, word ptr [bp - 0x5c]
+0126d1: shl di, 2
+0126d4: int 0x35
+0126d6: inc si

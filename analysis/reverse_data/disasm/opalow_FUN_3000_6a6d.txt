@@ -1,0 +1,66 @@
+036a6d: enter 0xe, 0
+036a71: push di
+036a72: push si
+036a73: les bx, ptr [bp + 6]
+036a76: mov ax, word ptr es:[bx]
+036a79: mov word ptr [bp - 8], ax
+036a7c: mov word ptr [bp - 2], 1
+036a81: jmp 0x36b06
+036a84: inc word ptr [bp - 4]
+036a87: jo 0x36b01
+036a89: mov ax, word ptr [bp - 0xa]
+036a8c: cmp word ptr [bp - 4], ax
+036a8f: jg 0x36b01
+036a91: mov di, word ptr [bp - 2]
+036a94: shl di, 1
+036a96: les bx, ptr [bp + 0xa]
+036a99: mov si, word ptr es:[bx + di - 2]
+036a9d: mov di, word ptr [bp - 4]
+036aa0: shl di, 1
+036aa2: mov di, word ptr es:[bx + di - 2]
+036aa6: shl di, 3
+036aa9: les bx, ptr [bp + 0xe]
+036aac: fld qword [bx+di]-8
+036ab1: fabs
+036ab4: mov bx, si
+036ab6: shl bx, 3
+036ab9: mov di, word ptr [bp + 0xe]
+036abc: fld qword [bx+di]-8
+036ac1: fabs
+036ac4: fcompp
+036ac7: df c/4 st0
+036aca: sahf 
+036acb: jae 0x36a84
+036acd: mov word ptr [bp - 6], si
+036ad0: mov ax, word ptr [bp - 4]
+036ad3: shl ax, 1
+036ad5: add ax, word ptr [bp + 0xa]
+036ad8: mov dx, word ptr [bp + 0xc]
+036adb: sub ax, 2
+036ade: mov word ptr [bp - 0xe], ax
+036ae1: mov word ptr [bp - 0xc], dx
+036ae4: les bx, ptr [bp - 0xe]
+036ae7: mov ax, word ptr es:[bx]
+036aea: mov si, word ptr [bp - 2]
+036aed: shl si, 1
+036aef: les bx, ptr [bp + 0xa]
+036af2: mov word ptr es:[bx + si - 2], ax
+036af6: les bx, ptr [bp - 0xe]
+036af9: mov ax, word ptr [bp - 6]
+036afc: mov word ptr es:[bx], ax
+036aff: jmp 0x36a84
+036b01: inc word ptr [bp - 2]
+036b04: jo 0x36b20
+036b06: mov ax, word ptr [bp - 8]
+036b09: cmp word ptr [bp - 2], ax
+036b0c: jg 0x36b20
+036b0e: les bx, ptr [bp + 6]
+036b11: mov ax, word ptr es:[bx]
+036b14: mov word ptr [bp - 0xa], ax
+036b17: mov ax, word ptr [bp - 2]
+036b1a: mov word ptr [bp - 4], ax
+036b1d: jmp 0x36a89
+036b20: pop si
+036b21: pop di
+036b22: leave 
+036b23: retf 0xc

@@ -1,0 +1,116 @@
+013830: enter 6, 0
+013834: push di
+013835: push si
+013836: mov ax, word ptr [0x3a30]
+013839: mov word ptr [bp - 2], ax
+01383c: mov word ptr [0x92c2], 1
+013842: mov ax, word ptr [0x92c2]
+013845: cmp word ptr [bp - 2], ax
+013848: jge 0x1384d
+01384a: jmp 0x1398e
+01384d: mov si, ax
+01384f: shl si, 3
+013852: mov es, word ptr [0x2fd6]
+013856: lea bx, [si]
+01385a: lea ax, [bx - 8]
+01385d: mov dx, es
+01385f: lea bx, [si + 0xad8]
+013863: mov es, word ptr [0x2fd8]
+013867: push si
+013868: lea di, [bx - 8]
+01386b: mov si, ax
+01386d: push ds
+01386e: mov ds, dx
+013870: movsw word ptr es:[di], word ptr [si]
+013871: movsw word ptr es:[di], word ptr [si]
+013872: movsw word ptr es:[di], word ptr [si]
+013873: movsw word ptr es:[di], word ptr [si]
+013874: pop ds
+013875: pop si
+013876: mov si, word ptr [0x92c2]
+01387a: shl si, 2
+01387d: mov es, word ptr [0x2fda]
+013881: lea bx, [si - 0x14a0]
+013885: fld dword [bx]-4
+01388a: fabs
+01388d: fcom dword [2fdc]
+013892: fstp st0
+013895: df c/4 st0
+013898: sahf 
+013899: jae 0x138bc
+01389b: mov es, word ptr [0x2fe0]
+01389f: lea bx, [si - 0x15a0]
+0138a3: fld dword [bx]-4
+0138a8: mov es, word ptr [0x2fda]
+0138ac: lea bx, [si - 0x14a0]
+0138b0: fsubr dword [bx]-4
+0138b5: fstp dword [bx]-4
+0138ba: fistp dx:ax (emu)
+0138bc: mov bx, word ptr [0x92c2]
+0138c0: shl bx, 2
+0138c3: lea ax, [bx - 0x14a0]
+0138c7: mov dx, 2
+0138ca: sub ax, 4
+0138cd: mov word ptr [bp - 6], ax
+0138d0: mov word ptr [bp - 4], dx
+0138d3: les bx, ptr [bp - 6]
+0138d6: fld dword [bx]
+0138da: fcom dword [2fe2]
+0138df: fstp st0
+0138e2: df c/4 st0
+0138e5: sahf 
+0138e6: jbe 0x138f1
+0138e8: fdecstp
+0138eb: fstp dword [bx]
+0138ef: fistp dx:ax (emu)
+0138f1: mov si, word ptr [0x92c2]
+0138f5: shl si, 2
+0138f8: mov es, word ptr [0x2fe6]
+0138fc: lea bx, [si - 0x13a0]
+013900: fld dword [bx]-4
+013905: fabs
+013908: fcom dword [2fdc]
+01390d: fstp st0
+013910: df c/4 st0
+013913: sahf 
+013914: jae 0x13937
+013916: mov es, word ptr [0x2fe0]
+01391a: lea bx, [si - 0x15a0]
+01391e: fld dword [bx]-4
+013923: mov es, word ptr [0x2fe6]
+013927: lea bx, [si - 0x13a0]
+01392b: fsubr dword [bx]-4
+013930: fstp dword [bx]-4
+013935: fistp dx:ax (emu)
+013937: mov bx, word ptr [0x92c2]
+01393b: shl bx, 2
+01393e: lea ax, [bx - 0x13a0]
+013942: mov dx, 2
+013945: sub ax, 4
+013948: mov word ptr [bp - 6], ax
+01394b: mov word ptr [bp - 4], dx
+01394e: les bx, ptr [bp - 6]
+013951: fld dword [bx]
+013955: fcom dword [2fe2]
+01395a: fstp st0
+01395d: df c/4 st0
+013960: sahf 
+013961: jae 0x1396c
+013963: fdecstp
+013966: fstp dword [bx]
+01396a: fistp dx:ax (emu)
+01396c: mov bx, word ptr [0x92c2]
+013970: shl bx, 2
+013973: mov es, word ptr [0x2fe0]
+013977: lea bx, [bx - 0x15a0]
+01397b: fdecstp
+01397e: fstp dword [bx]-4
+013983: fistp dx:ax (emu)
+013985: inc word ptr [0x92c2]
+013989: jo 0x1398e
+01398b: jmp 0x13842
+01398e: pop si
+01398f: pop di
+013990: leave 
+013991: db ca
+013992: db 08

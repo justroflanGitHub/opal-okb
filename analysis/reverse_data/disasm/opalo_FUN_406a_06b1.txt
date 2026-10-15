@@ -1,0 +1,171 @@
+040d51: push bp
+040d52: mov bp, sp
+040d54: sub sp, 0x2e
+040d57: push di
+040d58: push si
+040d59: fld qword [8c18]
+040d5e: fadd qword [8c10]
+040d63: les bx, ptr [bp + 0x16]
+040d66: fmul qword [bx]
+040d6a: fstp qword [8c18]
+040d6f: fld qword [8bc0]
+040d74: fmul qword [8bc0]
+040d79: fstp qword [bb0a]
+040d7e: fld qword [8bc8]
+040d83: fmul qword [8bc8]
+040d88: fstp qword [bb12]
+040d8d: fld qword [8c48]
+040d92: fmul qword [8c48]
+040d97: fstp qword [ba18]
+040d9c: fld qword [8c50]
+040da1: fmul qword [8c50]
+040da6: fstp qword [ba28]
+040dab: fistp dx:ax (emu)
+040dad: mov word ptr [0xba58], 4
+040db3: mov word ptr [0xba5a], 4
+040db9: mov si, 0x18
+040dbc: fdecstp
+040dbf: fstp qword [si]+8fa0
+040dc4: fistp dx:ax (emu)
+040dc6: mov cx, 8
+040dc9: push si
+040dca: lea di, [si - 0x7058]
+040dce: lea si, [si - 0x7060]
+040dd2: push ds
+040dd3: pop es
+040dd4: repne movsw word ptr es:[di], word ptr [si]
+040dd6: pop si
+040dd7: add si, 0x18
+040dda: cmp si, 0x48
+040ddd: jle 0x40dbc
+040ddf: les bx, ptr [bp + 0xa]
+040de2: add word ptr es:[bx], 1
+040de6: adc word ptr es:[bx + 2], 0
+040deb: mov ax, word ptr es:[bx]
+040dee: shl ax, 1
+040df0: shl ax, 1
+040df2: add ax, word ptr [bp + 0xe]
+040df5: mov dx, word ptr [bp + 0x10]
+040df8: mov word ptr [bp - 0xa], ax
+040dfb: mov word ptr [bp - 8], dx
+040dfe: les bx, ptr [bp + 6]
+040e01: mov bx, word ptr es:[bx]
+040e04: shl bx, 1
+040e06: shl bx, 1
+040e08: mov es, word ptr [0x38bc]
+040e0c: lea bx, [bx + 4]
+040e10: fld dword [bx]-4
+040e15: les bx, ptr [bp - 0xa]
+040e18: fmul dword [bx]-4
+040e1d: les bx, ptr [bp + 0x1a]
+040e20: fdiv qword [bx]
+040e24: fchs
+040e27: fstp qword [8f78]
+040e2c: fistp dx:ax (emu)
+040e2e: les bx, ptr [bp - 0xa]
+040e31: fld dword [bx]
+040e35: fstp qword [bb32]
+040e3a: fld dword [bx]+4
+040e3f: fstp qword [bafa]
+040e44: fld dword [bx]+8
+040e49: fstp qword [bb02]
+040e4e: fdecstp
+040e51: fst qword [ba20]
+040e56: fst qword [ba30]
+040e5b: fst qword [ba38]
+040e60: fstp qword [bad2]
+040e65: fistp dx:ax (emu)
+040e67: les bx, ptr [bp + 0xa]
+040e6a: add word ptr es:[bx], 3
+040e6e: adc word ptr es:[bx + 2], 0
+040e73: les bx, ptr [bp + 0x12]
+040e76: cmp word ptr es:[bx], 2
+040e7a: jg 0x40e7f
+040e7c: jmp 0x40fb6
+040e7f: les bx, ptr [bp + 0xa]
+040e82: add word ptr es:[bx], 1
+040e86: adc word ptr es:[bx + 2], 0
+040e8b: mov si, word ptr es:[bx]
+040e8e: shl si, 1
+040e90: shl si, 1
+040e92: les bx, ptr [bp + 0xe]
+040e95: fld dword [bx+si]-4
+040e9a: fld st0
+040e9d: fmul st0, st1
+040ea0: fstp qword [ba50]
+040ea5: ffree st0
+040ea8: les bx, ptr [bp + 0x12]
+040eab: mov ax, word ptr es:[bx]
+040eae: cdq 
+040eaf: sub ax, dx
+040eb1: sar ax, 1
+040eb3: cdq 
+040eb4: sub ax, 1
+040eb7: sbb dx, 0
+040eba: mov word ptr [0xba5e], ax
+040ebd: mov word ptr [0xba60], dx
+040ec1: add ax, 1
+040ec4: adc dx, 0
+040ec7: mov word ptr [0xbb3a], ax
+040eca: mov word ptr [0xbb3c], dx
+040ece: les bx, ptr [bp + 0xa]
+040ed1: mov ax, word ptr [0xba5e]
+040ed4: mov dx, word ptr [0xba60]
+040ed8: add word ptr es:[bx], ax
+040edb: adc word ptr es:[bx + 2], dx
+040edf: fld qword [bb0a]
+040ee4: fadd qword [bb12]
+040ee9: fdiv qword [ba50]
+040eee: fstp qword [bada]
+040ef3: fistp dx:ax (emu)
+040ef5: mov ax, word ptr [0xbb3a]
+040ef8: mov word ptr [bp - 6], ax
+040efb: mov word ptr [0xba58], 1
+040f01: cmp ax, 1
+040f04: jge 0x40f09
+040f06: jmp 0x40f8b
+040f09: mov ax, word ptr es:[bx]
+040f0c: mov word ptr [bp - 4], ax
+040f0f: mov si, word ptr [0xba58]
+040f13: fld qword [bada]
+040f18: fld qword [ba20]
+040f1d: fld qword [bad2]
+040f22: fld qword [ba30]
+040f27: fld st0
+040f2a: fmul st0, st4
+040f2d: fadd st0, st3
+040f30: fstp st1
+040f33: fld st2
+040f36: fmul st0, st4
+040f39: fadd st0, st2
+040f3c: fstp st3
+040f3f: fld st3
+040f42: fmulp st2, st0
+040f45: mov ax, si
+040f47: cdq 
+040f48: cmp dx, word ptr [0xba60]
+040f4c: jg 0x40f69
+040f4e: jl 0x40f56
+040f50: cmp ax, word ptr [0xba5e]
+040f54: ja 0x40f69
+040f56: mov bx, word ptr [bp - 4]
+040f59: sub bx, si
+040f5b: shl bx, 1
+040f5d: shl bx, 1
+040f5f: les di, ptr [bp + 0xe]
+040f62: fld dword [bx+di]
+040f66: faddp st2, st0
+040f69: inc si
+040f6a: jo 0x40f71
+040f6c: cmp word ptr [bp - 6], si
+040f6f: jge 0x40f27
+040f71: fstp qword [ba30]
+040f76: fstp qword [bad2]
+040f7b: fstp qword [ba20]
+040f80: fstp qword [bada]
+040f85: fistp dx:ax (emu)
+040f87: mov word ptr [0xba58], si
+040f8b: fld qword [ba50]
+040f90: fdivr qword [ba20]
+040f95: fstp qword [ba20]
+040f9a: fld qword [ba30]

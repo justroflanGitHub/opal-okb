@@ -1,0 +1,10 @@
+02fed6: cmp al, 0xdd
+02fed8: inc ax
+02fed9: clc 
+02feda: les bx, ptr [bp + 0x3e]
+02fedd: fmul qword [bx+di]
+02fee1: fld qword [bx+si]-8
+02fee6: les bx, ptr [bp + 0x36]
+02fee9: fmul qword [bx+di]
+02feed: fsubrp st1, st0
+02fef0: int 0x38

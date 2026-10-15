@@ -1,0 +1,113 @@
+032062: enter 0x38, 0
+032066: push di
+032067: push si
+032068: les bx, ptr [bp + 0xe]
+03206b: cmp word ptr es:[bx + 2], 0
+032070: jl 0x3208c
+032072: jg 0x3207a
+032074: cmp word ptr es:[bx], 0xa
+032078: jb 0x3208c
+03207a: mov word ptr [bp - 0xe], 0xa
+03207f: mov word ptr [bp - 0xc], 0
+032084: lea di, [bp - 0xa]
+032087: mov si, 0x14db
+03208a: jmp 0x3209a
+03208c: sub ax, ax
+03208e: mov word ptr [bp - 0xc], ax
+032091: mov word ptr [bp - 0xe], ax
+032094: lea di, [bp - 0xa]
+032097: mov si, 0x14da
+03209a: push ss
+03209b: pop es
+03209c: movsb byte ptr es:[di], byte ptr [si]
+03209d: les bx, ptr [bp + 0xe]
+0320a0: mov ax, word ptr es:[bx]
+0320a3: mov dx, word ptr es:[bx + 2]
+0320a7: sub ax, word ptr [bp - 0xe]
+0320aa: sbb dx, word ptr [bp - 0xc]
+0320ad: add ax, 0x30
+0320b0: adc dx, 0
+0320b3: mov word ptr [bp - 4], ax
+0320b6: mov word ptr [bp - 2], dx
+0320b9: mov ax, word ptr es:[bx]
+0320bc: mov dx, word ptr es:[bx + 2]
+0320c0: les bx, ptr [bp + 0xa]
+0320c3: sub ax, word ptr es:[bx]
+0320c6: sbb dx, word ptr es:[bx + 2]
+0320ca: add ax, 0x2b
+0320cd: adc dx, 0
+0320d0: mov word ptr [bp - 8], ax
+0320d3: mov word ptr [bp - 6], dx
+0320d6: lea di, [bp - 0x12]
+0320d9: lea si, [bp - 0xa]
+0320dc: push ss
+0320dd: pop es
+0320de: movsb byte ptr es:[di], byte ptr [si]
+0320df: mov word ptr [bp - 0x32], es
+0320e2: lea si, [bp - 4]
+0320e5: movsb byte ptr es:[di], byte ptr [si]
+0320e6: mov word ptr [bp - 0x34], es
+0320e9: mov si, 0x14d9
+0320ec: movsb byte ptr es:[di], byte ptr [si]
+0320ed: les bx, ptr [bp + 0x12]
+0320f0: fld dword [bx]
+0320f4: fld st0
+0320f7: fstp tbyte [bp]-1c
+0320fb: fld dword [3608]
+032100: les bx, ptr [bp + 0xa]
+032103: mov ax, word ptr es:[bx]
+032106: mov dx, word ptr es:[bx + 2]
+03210a: les bx, ptr [bp + 0xe]
+03210d: sub ax, word ptr es:[bx]
+032110: sbb dx, word ptr es:[bx + 2]
+032114: add ax, 2
+032117: adc dx, 0
+03211a: mov word ptr [bp - 0x36], dx
+03211d: mov word ptr [bp - 0x38], ax
+032120: fild dword [bp]-38
+032124: lcall 0x1886, 0x3abd
+032129: fstp tbyte [bp]-26
+03212d: fld tbyte [bp]-26
+032131: fcom st0, st1
+032134: fstp st0
+032137: df c/4 st0
+03213a: sahf 
+03213b: ffree st0
+03213e: ja 0x3217e
+032140: fld dword [3608]
+032145: mov ax, word ptr [bp - 8]
+032148: mov dx, word ptr [bp - 6]
+03214b: sub ax, 0x30
+03214e: sbb dx, 0
+032151: mov word ptr [bp - 0x36], dx
+032154: mov word ptr [bp - 0x38], ax
+032157: fild dword [bp]-38
+03215b: lcall 0x1886, 0x3abd
+032160: fstp tbyte [bp]-30
+032164: fld tbyte [bp]-30
+032168: fld tbyte [bp]-1c
+03216c: fxch st1
+03216f: fcom st0, st1
+032172: fstp st0
+032175: df c/4 st0
+032178: sahf 
+032179: ffree st0
+03217c: jae 0x32189
+03217e: lea di, [bp - 0xa]
+032181: mov si, 0x14d8
+032184: push ss
+032185: pop es
+032186: movsb byte ptr es:[di], byte ptr [si]
+032187: jmp 0x321fc
+032189: les bx, ptr [bp + 0x12]
+03218c: fld dword [bx]
+032190: fcom dword [360c]
+032195: fstp st0
+032198: df c/4 st0
+03219b: sahf 
+03219c: jae 0x321b1
+03219e: lea di, [bp - 0xa]
+0321a1: mov si, 0x14d7
+0321a4: push ss
+0321a5: pop es
+0321a6: movsb byte ptr es:[di], byte ptr [si]

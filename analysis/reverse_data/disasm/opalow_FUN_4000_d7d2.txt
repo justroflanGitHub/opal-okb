@@ -1,0 +1,553 @@
+04d7d2: mov ax, word ptr [bp - 0x1d0]
+04d7d6: mov dx, word ptr [bp - 0x1ce]
+04d7da: cmp word ptr [bp - 0x16], dx
+04d7dd: jg 0x4d84f
+04d7df: jl 0x4d7e6
+04d7e1: cmp word ptr [bp - 0x18], ax
+04d7e4: ja 0x4d84f
+04d7e6: imul ax, word ptr [bp - 0x18], 0x18
+04d7ea: mov si, ax
+04d7ec: mov es, word ptr [0x32c0]
+04d7f0: lea bx, [si + 0x58]
+04d7f4: fld qword [bx]-20
+04d7f9: mov es, word ptr [0x32b2]
+04d7fd: fmul qword [798]
+04d803: mov es, word ptr [0x32c0]
+04d807: lea bx, [si + 0x60]
+04d80b: fld qword [bx]-20
+04d810: mov es, word ptr [0x32b2]
+04d814: fmul qword [7a0]
+04d81a: faddp st1, st0
+04d81d: fadd qword [790]
+04d823: mov es, word ptr [0x32c0]
+04d827: lea bx, [si + 0x68]
+04d82b: fsubr qword [bx]-20
+04d830: fstp qword [bx]-20
+04d835: fdecstp
+04d838: fst qword [bp]-c
+04d83c: fstp qword [bp]-14
+04d840: fistp dx:ax (emu)
+04d842: mov word ptr [bp - 0x20], 3
+04d847: mov word ptr [bp - 0x1e], 0
+04d84c: jmp 0x4d6db
+04d84f: mov es, word ptr [0x32c2]
+04d853: mov word ptr es:[0x1400], 0
+04d85a: mov word ptr [bp - 0x18], 1
+04d85f: mov word ptr [bp - 0x16], 0
+04d864: jmp 0x4d86e
+04d866: add word ptr [bp - 0x18], 1
+04d86a: adc word ptr [bp - 0x16], 0
+04d86e: cmp word ptr [bp - 0x16], 0
+04d872: jg 0x4d888
+04d874: jl 0x4d87c
+04d876: cmp word ptr [bp - 0x18], 0x18
+04d87a: ja 0x4d888
+04d87c: mov si, word ptr [bp - 0x18]
+04d87f: shl si, 1
+04d881: mov word ptr [bp + si - 0x62], 0
+04d886: jmp 0x4d866
+04d888: mov ax, word ptr [0x44b0]
+04d88b: mov dx, word ptr [0x44b2]
+04d88f: add ax, 1
+04d892: adc dx, 0
+04d895: mov word ptr [bp - 0x1d4], ax
+04d899: mov word ptr [bp - 0x1d2], dx
+04d89d: mov word ptr [bp - 0x18], 1
+04d8a2: mov word ptr [bp - 0x16], 0
+04d8a7: mov ax, word ptr [bp - 0x1d4]
+04d8ab: mov dx, word ptr [bp - 0x1d2]
+04d8af: cmp word ptr [bp - 0x16], dx
+04d8b2: jg 0x4d8da
+04d8b4: jl 0x4d8bb
+04d8b6: cmp word ptr [bp - 0x18], ax
+04d8b9: ja 0x4d8da
+04d8bb: mov bx, word ptr [bp - 0x18]
+04d8be: shl bx, 1
+04d8c0: mov ax, word ptr [bx + 0x4f56]
+04d8c4: cdq 
+04d8c5: xor ax, dx
+04d8c7: sub ax, dx
+04d8c9: mov si, ax
+04d8cb: shl si, 1
+04d8cd: inc word ptr [bp + si - 0x62]
+04d8d0: add word ptr [bp - 0x18], 1
+04d8d4: adc word ptr [bp - 0x16], 0
+04d8d8: jno 0x4d8a7
+04d8da: mov es, word ptr [0x32a6]
+04d8de: mov ax, word ptr es:[0x40f0]
+04d8e2: mov dx, word ptr es:[0x40f2]
+04d8e7: mov word ptr [bp - 0x1d8], ax
+04d8eb: mov word ptr [bp - 0x1d6], dx
+04d8ef: mov word ptr [bp - 0x18], 1
+04d8f4: mov word ptr [bp - 0x16], 0
+04d8f9: jmp 0x4dbac
+04d8fc: mov ax, word ptr [bp - 0x24]
+04d8ff: mov dx, word ptr [bp - 0x22]
+04d902: neg ax
+04d904: adc dx, 0
+04d907: neg dx
+04d909: mov word ptr [bp - 0x1ac], ax
+04d90d: mov es, word ptr [0x32a6]
+04d911: mov ax, word ptr es:[0x40f4]
+04d915: mov dx, word ptr es:[0x40f6]
+04d91a: mov word ptr [bp - 0x1dc], ax
+04d91e: mov word ptr [bp - 0x1da], dx
+04d922: mov word ptr [bp - 0x1c], 1
+04d927: mov word ptr [bp - 0x1a], 0
+04d92c: jmp 0x4d951
+04d92e: mov ax, word ptr [bp - 0x6c]
+04d931: mov dx, word ptr [bp - 0x6a]
+04d934: neg ax
+04d936: adc dx, 0
+04d939: neg dx
+04d93b: mov si, word ptr [bp - 0x68]
+04d93e: shl si, 1
+04d940: mov word ptr [bp + si - 0x1ae], ax
+04d944: add word ptr [bp - 0x1c], 1
+04d948: adc word ptr [bp - 0x1a], 0
+04d94c: jno 0x4d951
+04d94e: jmp 0x4da23
+04d951: mov ax, word ptr [bp - 0x1dc]
+04d955: mov dx, word ptr [bp - 0x1da]
+04d959: cmp word ptr [bp - 0x1a], dx
+04d95c: jle 0x4d961
+04d95e: jmp 0x4da23
+04d961: jl 0x4d96b
+04d963: cmp word ptr [bp - 0x1c], ax
+04d966: jbe 0x4d96b
+04d968: jmp 0x4da23
+04d96b: mov bx, word ptr [bp - 0x1c]
+04d96e: shl bx, 3
+04d971: lea ax, [bx + 0x404]
+04d975: mov dx, 0x56c5
+04d978: sub ax, 0xc
+04d97b: push dx
+04d97c: push ax
+04d97d: lea ax, [bp - 0x66]
+04d980: push ss
+04d981: push ax
+04d982: lea ax, [bp - 0x6c]
+04d985: push ss
+04d986: push ax
+04d987: lcall 0x2f8d, 6
+04d98c: cmp word ptr [bp - 0x66], 4
+04d990: jne 0x4d944
+04d992: cmp word ptr [bp - 0x64], 0
+04d996: jne 0x4d944
+04d998: mov bx, word ptr [bp - 0x1c]
+04d99b: shl bx, 3
+04d99e: lea ax, [bx + 0x204]
+04d9a2: mov dx, 0x56c5
+04d9a5: sub ax, 0xc
+04d9a8: push dx
+04d9a9: push ax
+04d9aa: lea ax, [bp - 0x66]
+04d9ad: push ss
+04d9ae: push ax
+04d9af: lea ax, [bp - 0x30]
+04d9b2: push ss
+04d9b3: push ax
+04d9b4: lcall 0x2f8d, 6
+04d9b9: cmp word ptr [bp - 0x66], 4
+04d9bd: jne 0x4d944
+04d9bf: cmp word ptr [bp - 0x64], 0
+04d9c3: je 0x4d9c8
+04d9c5: jmp 0x4d944
+04d9c8: mov ax, word ptr [bp - 0x24]
+04d9cb: mov dx, word ptr [bp - 0x22]
+04d9ce: cmp word ptr [bp - 0x30], ax
+04d9d1: je 0x4d9d6
+04d9d3: jmp 0x4d944
+04d9d6: cmp word ptr [bp - 0x2e], dx
+04d9d9: je 0x4d9de
+04d9db: jmp 0x4d944
+04d9de: mov bx, word ptr [bp - 0x6c]
+04d9e1: shl bx, 1
+04d9e3: mov ax, word ptr [bx + 0x4f58]
+04d9e7: cdq 
+04d9e8: xor ax, dx
+04d9ea: sub ax, dx
+04d9ec: mov bx, word ptr [bp - 0x30]
+04d9ef: shl bx, 1
+04d9f1: mov cx, ax
+04d9f3: mov ax, word ptr [bx + 0x4f58]
+04d9f7: cdq 
+04d9f8: xor ax, dx
+04d9fa: sub ax, dx
+04d9fc: cmp ax, cx
+04d9fe: je 0x4da03
+04da00: jmp 0x4d944
+04da03: inc word ptr [bp - 0x68]
+04da06: mov bx, word ptr [bp - 0x6c]
+04da09: shl bx, 1
+04da0b: mov ax, word ptr [bx + 0x4f58]
+04da0f: cdq 
+04da10: xor ax, word ptr [bp - 0x6c]
+04da13: xor dx, word ptr [bp - 0x6a]
+04da16: or dx, dx
+04da18: jge 0x4da1d
+04da1a: jmp 0x4d92e
+04da1d: mov ax, word ptr [bp - 0x6c]
+04da20: jmp 0x4d93b
+04da23: mov bx, word ptr [bp - 0x24]
+04da26: shl bx, 1
+04da28: mov ax, word ptr [bx + 0x4f58]
+04da2c: cdq 
+04da2d: xor ax, dx
+04da2f: sub ax, dx
+04da31: mov si, ax
+04da33: shl si, 1
+04da35: mov ax, word ptr [bp - 0x68]
+04da38: cmp word ptr [bp + si - 0x62], ax
+04da3b: jg 0x4da64
+04da3d: mov bx, word ptr [bp - 0x24]
+04da40: shl bx, 1
+04da42: mov ax, word ptr [bx + 0x4f58]
+04da46: cdq 
+04da47: xor ax, dx
+04da49: sub ax, dx
+04da4b: mov bx, ax
+04da4d: shl bx, 3
+04da50: lea di, [bx + 0x5450]
+04da54: mov si, 0x5ff
+04da57: push ds
+04da58: pop es
+04da59: movsb byte ptr es:[di], byte ptr [si]
+04da5a: mov ax, 0x2020
+04da5d: stosw word ptr es:[di], ax
+04da5e: stosw word ptr es:[di], ax
+04da5f: stosw word ptr es:[di], ax
+04da60: stosb byte ptr es:[di], al
+04da61: jmp 0x4dba2
+04da64: cmp word ptr [0x44ba], 0
+04da69: jle 0x4da6e
+04da6b: jmp 0x4db93
+04da6e: jl 0x4da7a
+04da70: cmp word ptr [0x44b8], 0x18
+04da75: jb 0x4da7a
+04da77: jmp 0x4db93
+04da7a: add word ptr [0x44b8], 1
+04da7f: adc word ptr [0x44ba], 0
+04da84: mov ax, word ptr [0x44b4]
+04da87: mov dx, word ptr [0x44b6]
+04da8b: mov word ptr [bp - 0x1e0], ax
+04da8f: mov word ptr [bp - 0x1de], dx
+04da93: mov word ptr [bp - 0x1c], 1
+04da98: mov word ptr [bp - 0x1a], 0
+04da9d: mov ax, word ptr [bp - 0x1e0]
+04daa1: mov dx, word ptr [bp - 0x1de]
+04daa5: cmp word ptr [bp - 0x1a], dx
+04daa8: jg 0x4dae9
+04daaa: jl 0x4dab1
+04daac: cmp word ptr [bp - 0x1c], ax
+04daaf: ja 0x4dae9
+04dab1: mov si, word ptr [bp - 0x1c]
+04dab4: shl si, 3
+04dab7: mov bx, word ptr [bp - 0x24]
+04daba: shl bx, 1
+04dabc: mov ax, word ptr [bx + 0x4f58]
+04dac0: cdq 
+04dac1: xor ax, dx
+04dac3: sub ax, dx
+04dac5: imul bx, ax, 0x28
+04dac8: lea ax, [bx + si + 0x5068]
+04dacc: imul bx, word ptr [0x44b8], 0x28
+04dad1: push si
+04dad2: lea di, [bx + si + 0x5068]
+04dad6: mov si, ax
+04dad8: push ds
+04dad9: pop es
+04dada: movsw word ptr es:[di], word ptr [si]
+04dadb: movsw word ptr es:[di], word ptr [si]
+04dadc: movsw word ptr es:[di], word ptr [si]
+04dadd: movsw word ptr es:[di], word ptr [si]
+04dade: pop si
+04dadf: add word ptr [bp - 0x1c], 1
+04dae3: adc word ptr [bp - 0x1a], 0
+04dae7: jno 0x4da9d
+04dae9: mov bx, word ptr [0x44b8]
+04daed: shl bx, 3
+04daf0: lea di, [bx + 0x5450]
+04daf4: mov si, 0x5fe
+04daf7: push ds
+04daf8: pop es
+04daf9: movsb byte ptr es:[di], byte ptr [si]
+04dafa: mov ax, 0x2020
+04dafd: stosw word ptr es:[di], ax
+04dafe: stosw word ptr es:[di], ax
+04daff: stosw word ptr es:[di], ax
+04db00: stosb byte ptr es:[di], al
+04db01: mov bx, word ptr [bp - 0x24]
+04db04: shl bx, 1
+04db06: mov ax, word ptr [bx + 0x4f58]
+04db0a: cdq 
+04db0b: xor ax, dx
+04db0d: sub ax, dx
+04db0f: mov word ptr [bp - 0x1b6], ax
+04db13: mov ax, word ptr [bp - 0x68]
+04db16: cdq 
+04db17: mov word ptr [bp - 0x1e4], ax
+04db1b: mov word ptr [bp - 0x1e2], dx
+04db1f: mov word ptr [bp - 0x20], 1
+04db24: mov word ptr [bp - 0x1e], 0
+04db29: jmp 0x4db54
+04db2b: mov ax, word ptr [0x44b8]
+04db2e: mov dx, word ptr [0x44ba]
+04db32: neg ax
+04db34: adc dx, 0
+04db37: neg dx
+04db39: mov cx, ax
+04db3b: mov ax, si
+04db3d: cdq 
+04db3e: xor ax, dx
+04db40: sub ax, dx
+04db42: mov bx, ax
+04db44: shl bx, 1
+04db46: mov word ptr [bx + 0x4f58], cx
+04db4a: add word ptr [bp - 0x20], 1
+04db4e: adc word ptr [bp - 0x1e], 0
+04db52: jo 0x4db85
+04db54: mov ax, word ptr [bp - 0x1e4]
+04db58: mov dx, word ptr [bp - 0x1e2]
+04db5c: cmp word ptr [bp - 0x1e], dx
+04db5f: jg 0x4db85
+04db61: jl 0x4db68
+04db63: cmp word ptr [bp - 0x20], ax
+04db66: ja 0x4db85
+04db68: mov di, word ptr [bp - 0x20]
+04db6b: shl di, 1
+04db6d: mov si, word ptr [bp + di - 0x1ae]
+04db71: mov ax, si
+04db73: cdq 
+04db74: xor ax, word ptr [0x44b8]
+04db78: xor dx, word ptr [0x44ba]
+04db7c: or dx, dx
+04db7e: jl 0x4db2b
+04db80: mov ax, word ptr [0x44b8]
+04db83: jmp 0x4db39
+04db85: mov si, word ptr [bp - 0x1b6]
+04db89: shl si, 1
+04db8b: mov ax, word ptr [bp - 0x68]
+04db8e: sub word ptr [bp + si - 0x62], ax
+04db91: jmp 0x4dba2
+04db93: mov ax, 0x5f4
+04db96: push ds
+04db97: push ax
+04db98: push 0xa
+04db9a: lcall 0x1dcd, 0x217e
+04db9f: add sp, 6
+04dba2: add word ptr [bp - 0x18], 1
+04dba6: adc word ptr [bp - 0x16], 0
+04dbaa: jo 0x4dc18
+04dbac: mov ax, word ptr [bp - 0x1d8]
+04dbb0: mov dx, word ptr [bp - 0x1d6]
+04dbb4: cmp word ptr [bp - 0x16], dx
+04dbb7: jg 0x4dc18
+04dbb9: jl 0x4dbc0
+04dbbb: cmp word ptr [bp - 0x18], ax
+04dbbe: ja 0x4dc18
+04dbc0: mov bx, word ptr [bp - 0x18]
+04dbc3: shl bx, 3
+04dbc6: lea ax, [bx + 4]
+04dbca: mov dx, 0x56c5
+04dbcd: sub ax, 0xc
+04dbd0: push dx
+04dbd1: push ax
+04dbd2: lea ax, [bp - 0x66]
+04dbd5: push ss
+04dbd6: push ax
+04dbd7: lea ax, [bp - 0x24]
+04dbda: push ss
+04dbdb: push ax
+04dbdc: lcall 0x2f8d, 6
+04dbe1: cmp word ptr [bp - 0x66], 4
+04dbe5: jne 0x4dba2
+04dbe7: cmp word ptr [bp - 0x64], 0
+04dbeb: jne 0x4dba2
+04dbed: mov es, word ptr [0x32c2]
+04dbf1: inc word ptr es:[0x1400]
+04dbf6: mov word ptr [bp - 0x68], 1
+04dbfb: mov bx, word ptr [bp - 0x24]
+04dbfe: shl bx, 1
+04dc00: mov ax, word ptr [bx + 0x4f58]
+04dc04: cdq 
+04dc05: xor ax, word ptr [bp - 0x24]
+04dc08: xor dx, word ptr [bp - 0x22]
+04dc0b: or dx, dx
+04dc0d: jge 0x4dc12
+04dc0f: jmp 0x4d8fc
+04dc12: mov ax, word ptr [bp - 0x24]
+04dc15: jmp 0x4d909
+04dc18: mov ax, word ptr [0x44b4]
+04dc1b: mov word ptr [bp - 0x62], ax
+04dc1e: cmp ax, 3
+04dc21: jle 0x4dc28
+04dc23: mov word ptr [bp - 0x62], 3
+04dc28: mov es, word ptr [0x32c4]
+04dc2c: mov word ptr es:[0x1642], 0
+04dc33: mov ax, word ptr [0x44b8]
+04dc36: mov dx, word ptr [0x44ba]
+04dc3a: mov word ptr [bp - 0x1e8], ax
+04dc3e: mov word ptr [bp - 0x1e6], dx
+04dc42: mov word ptr [bp - 0x18], 2
+04dc47: mov word ptr [bp - 0x16], 0
+04dc4c: jmp 0x4dc5b
+04dc4e: add word ptr [bp - 0x18], 1
+04dc52: adc word ptr [bp - 0x16], 0
+04dc56: jno 0x4dc5b
+04dc58: jmp 0x4dd49
+04dc5b: mov ax, word ptr [bp - 0x1e8]
+04dc5f: mov dx, word ptr [bp - 0x1e6]
+04dc63: cmp word ptr [bp - 0x16], dx
+04dc66: jle 0x4dc6b
+04dc68: jmp 0x4dd49
+04dc6b: jl 0x4dc75
+04dc6d: cmp word ptr [bp - 0x18], ax
+04dc70: jbe 0x4dc75
+04dc72: jmp 0x4dd49
+04dc75: mov ax, word ptr [0x44b0]
+04dc78: mov dx, word ptr [0x44b2]
+04dc7c: sub ax, 1
+04dc7f: sbb dx, 0
+04dc82: mov word ptr [bp - 0x1ec], ax
+04dc86: mov word ptr [bp - 0x1ea], dx
+04dc8a: mov word ptr [bp - 0x1c], 1
+04dc8f: mov word ptr [bp - 0x1a], 0
+04dc94: jmp 0x4dcea
+04dc96: add word ptr [bp - 0x20], 1
+04dc9a: adc word ptr [bp - 0x1e], 0
+04dc9e: cmp word ptr [bp - 0x1e], 0
+04dca2: jg 0x4dc4e
+04dca4: jl 0x4dcac
+04dca6: cmp word ptr [bp - 0x20], 3
+04dcaa: ja 0x4dc4e
+04dcac: mov si, word ptr [bp - 0x20]
+04dcaf: shl si, 3
+04dcb2: mov es, word ptr [0x32c4]
+04dcb6: imul bx, word ptr es:[0x1642], 0x18
+04dcbc: mov es, word ptr [0x32c8]
+04dcc0: lea bx, [bx + si + 0x1402]
+04dcc4: lea ax, [bx - 0x20]
+04dcc7: mov dx, es
+04dcc9: imul bx, word ptr [bp - 0x18], 0x28
+04dccd: push si
+04dcce: mov di, ax
+04dcd0: lea si, [bx + si + 0x5068]
+04dcd4: mov es, dx
+04dcd6: movsw word ptr es:[di], word ptr [si]
+04dcd7: movsw word ptr es:[di], word ptr [si]
+04dcd8: movsw word ptr es:[di], word ptr [si]
+04dcd9: movsw word ptr es:[di], word ptr [si]
+04dcda: pop si
+04dcdb: jmp 0x4dc96
+04dcdd: add word ptr [bp - 0x1c], 1
+04dce1: adc word ptr [bp - 0x1a], 0
+04dce5: jno 0x4dcea
+04dce7: jmp 0x4dc4e
+04dcea: mov ax, word ptr [bp - 0x1ec]
+04dcee: mov dx, word ptr [bp - 0x1ea]
+04dcf2: cmp word ptr [bp - 0x1a], dx
+04dcf5: jle 0x4dcfa
+04dcf7: jmp 0x4dc4e
+04dcfa: jl 0x4dd04
+04dcfc: cmp word ptr [bp - 0x1c], ax
+04dcff: jbe 0x4dd04
+04dd01: jmp 0x4dc4e
+04dd04: mov bx, word ptr [bp - 0x1c]
+04dd07: shl bx, 1
+04dd09: mov ax, word ptr [bx + 0x4f58]
+04dd0d: cdq 
+04dd0e: xor ax, dx
+04dd10: sub ax, dx
+04dd12: cdq 
+04dd13: cmp ax, word ptr [bp - 0x18]
+04dd16: jne 0x4dcdd
+04dd18: cmp dx, word ptr [bp - 0x16]
+04dd1b: jne 0x4dcdd
+04dd1d: mov es, word ptr [0x32c4]
+04dd21: inc word ptr es:[0x1642]
+04dd26: mov bx, word ptr es:[0x1642]
+04dd2b: shl bx, 1
+04dd2d: mov es, word ptr [0x32c6]
+04dd31: lea bx, [bx + 0x1770]
+04dd35: mov ax, word ptr [bp - 0x1c]
+04dd38: mov word ptr es:[bx - 2], ax
+04dd3c: mov word ptr [bp - 0x20], 1
+04dd41: mov word ptr [bp - 0x1e], 0
+04dd46: jmp 0x4dc9e
+04dd49: mov ax, word ptr [0x44b4]
+04dd4c: mov word ptr [bp - 0x1be], ax
+04dd50: mov word ptr [bp - 0x1c0], 2
+04dd56: mov ax, 0x4530
+04dd59: push ds
+04dd5a: push ax
+04dd5b: mov ax, 0x1402
+04dd5e: mov dx, 0x1080
+04dd61: push dx
+04dd62: push ax
+04dd63: mov ax, 0x1644
+04dd66: mov dx, 0x1080
+04dd69: push dx
+04dd6a: push ax
+04dd6b: lea ax, [bp - 0x62]
+04dd6e: push ss
+04dd6f: push ax
+04dd70: mov ax, 0x1642
+04dd73: mov dx, 0x1080
+04dd76: push dx
+04dd77: push ax
+04dd78: lea ax, [bp - 0x1c0]
+04dd7c: push ss
+04dd7d: push ax
+04dd7e: mov ax, 0x290
+04dd81: mov dx, 0x5eaa
+04dd84: push dx
+04dd85: push ax
+04dd86: lea ax, [bp - 0x1be]
+04dd8a: push ss
+04dd8b: push ax
+04dd8c: lcall 0x507b, 9
+04dd91: mov es, word ptr [0x32c4]
+04dd95: mov ax, word ptr es:[0x1642]
+04dd99: cdq 
+04dd9a: mov word ptr [bp - 0x1f0], ax
+04dd9e: mov word ptr [bp - 0x1ee], dx
+04dda2: mov word ptr [bp - 0x18], 1
+04dda7: mov word ptr [bp - 0x16], 0
+04ddac: jmp 0x4deae
+04ddaf: add word ptr [bp - 0x20], -1
+04ddb3: adc word ptr [bp - 0x1e], -1
+04ddb7: cmp word ptr [bp - 0x1e], 0
+04ddbb: jge 0x4ddc0
+04ddbd: jmp 0x4de6d
+04ddc0: jg 0x4ddcb
+04ddc2: cmp word ptr [bp - 0x20], 1
+04ddc6: jae 0x4ddcb
+04ddc8: jmp 0x4de6d
+04ddcb: imul si, word ptr [bp - 0x18], 0x18
+04ddcf: mov bx, word ptr [bp - 0x20]
+04ddd2: shl bx, 3
+04ddd5: mov es, word ptr [0x32c8]
+04ddd9: lea bx, [bx + si + 0x1402]
+04dddd: lea di, [bp - 0x2c]
+04dde0: lea si, [bx - 0x20]
+04dde3: push ds
+04dde4: push es
+04dde5: pop ds
+04dde6: push ss
+04dde7: pop es
+04dde8: movsw word ptr es:[di], word ptr [si]
+04dde9: movsw word ptr es:[di], word ptr [si]
+04ddea: movsw word ptr es:[di], word ptr [si]
+04ddeb: movsw word ptr es:[di], word ptr [si]
+04ddec: pop ds
+04dded: cmp word ptr [bp - 0x20], 3
+04ddf1: jne 0x4de40
+04ddf3: cmp word ptr [bp - 0x1e], 0
+04ddf7: jne 0x4de40
+04ddf9: imul ax, word ptr [bp - 0x18], 0x18
+04ddfd: mov si, ax
+04ddff: mov es, word ptr [0x32c8]
+04de03: db 8d
+04de04: pushf 
+04de05: db 0a

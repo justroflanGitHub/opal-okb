@@ -1,0 +1,13 @@
+04532b: push bp
+04532c: mov bp, sp
+04532e: sub sp, 0xc
+045331: les bx, ptr [bp + 0xe]
+045334: fld dword [bx]
+045338: fld st0
+04533b: fstp tbyte [bp]-a
+04533f: fistp dx:ax (emu)
+045341: les bx, ptr [bp + 0xa]
+045344: fld qword [bx]
+045348: les bx, ptr [bp + 0x12]
+04534b: fsub dword [bx]
+04534f: fdiv st0, st1

@@ -1,0 +1,15 @@
+04a934: enter 0x5c, 0
+04a938: push di
+04a939: push si
+04a93a: les bx, ptr [bp + 0xe]
+04a93d: mov ax, word ptr es:[bx]
+04a940: shl ax, 3
+04a943: mov word ptr [bp - 4], ax
+04a946: add ax, 8
+04a949: mov word ptr [bp - 2], ax
+04a94c: fdecstp
+04a94f: fst qword [bp]-e
+04a953: fstp qword [bp]-16
+04a957: fistp dx:ax (emu)
+04a959: db c4
+04a95a: pop si

@@ -1,0 +1,18 @@
+04d791: imul ax, word ptr [bp - 0x18], 0x18
+04d795: mov si, ax
+04d797: mov es, word ptr [0x32c0]
+04d79b: lea bx, [si + 0x58]
+04d79f: fld qword [bx]-20
+04d7a4: fsub qword [32b4]
+04d7a9: fabs
+04d7ac: fld qword [bp]-c
+04d7b0: fsub qword [bp]-14
+04d7b4: fabs
+04d7b7: fdivrp st1, st0
+04d7ba: fchs
+04d7bd: lea bx, [si + 0x60]
+04d7c1: fstp qword [bx]-20
+04d7c6: fistp dx:ax (emu)
+04d7c8: add word ptr [bp - 0x18], 1
+04d7cc: db 83
+04d7cd: push si

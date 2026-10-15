@@ -1,0 +1,85 @@
+07bd2c: enter 0x50, 0
+07bd30: push di
+07bd31: push si
+07bd32: les bx, ptr [bp + 6]
+07bd35: push word ptr es:[bx + 2]
+07bd39: push word ptr es:[bx]
+07bd3c: les bx, ptr [bp + 0xa]
+07bd3f: push word ptr es:[bx + 2]
+07bd43: push word ptr es:[bx]
+07bd46: lcall 0x4716, 0xd6c
+07bd4b: mov word ptr [bp - 0x20], ax
+07bd4e: mov word ptr [bp - 0x1e], dx
+07bd51: sub ax, ax
+07bd53: mov word ptr [bp - 2], ax
+07bd56: mov word ptr [bp - 4], ax
+07bd59: les bx, ptr [bp + 0xa]
+07bd5c: mov ax, word ptr es:[bx]
+07bd5f: mov dx, word ptr es:[bx + 2]
+07bd63: mov word ptr [bp - 0x24], ax
+07bd66: mov word ptr [bp - 0x22], dx
+07bd69: mov word ptr [bp - 8], 1
+07bd6e: mov word ptr [bp - 6], 0
+07bd73: or dx, dx
+07bd75: jge 0x7bd7a
+07bd77: jmp 0x7bf1c
+07bd7a: jg 0x7bd84
+07bd7c: cmp ax, 1
+07bd7f: jae 0x7bd84
+07bd81: jmp 0x7bf1c
+07bd84: les bx, ptr [bp + 0xa]
+07bd87: mov ax, word ptr es:[bx]
+07bd8a: mov dx, word ptr es:[bx + 2]
+07bd8e: mov word ptr [bp - 0x50], ax
+07bd91: mov word ptr [bp - 0x4e], dx
+07bd94: mov word ptr [bp - 0x10], 1
+07bd99: mov word ptr [bp - 0xe], 0
+07bd9e: cmp word ptr [bp - 6], 0
+07bda2: jge 0x7bda7
+07bda4: jmp 0x7befa
+07bda7: jg 0x7bdb2
+07bda9: cmp word ptr [bp - 8], 1
+07bdad: jae 0x7bdb2
+07bdaf: jmp 0x7befa
+07bdb2: mov ax, word ptr [bp - 0x20]
+07bdb5: mov dx, word ptr [bp - 0x1e]
+07bdb8: sub ax, word ptr [bp - 8]
+07bdbb: sbb dx, word ptr [bp - 6]
+07bdbe: mov word ptr [bp - 0x44], ax
+07bdc1: mov word ptr [bp - 0x42], dx
+07bdc4: mov ax, word ptr [bp - 0x50]
+07bdc7: mov dx, word ptr [bp - 0x4e]
+07bdca: mov word ptr [bp - 0x48], ax
+07bdcd: mov word ptr [bp - 0x46], dx
+07bdd0: mov ax, word ptr [bp - 4]
+07bdd3: shl ax, 2
+07bdd6: add ax, word ptr [bp + 0xe]
+07bdd9: mov dx, word ptr [bp + 0x10]
+07bddc: sub ax, 4
+07bddf: mov word ptr [bp - 0x4c], ax
+07bde2: mov word ptr [bp - 0x4a], dx
+07bde5: mov ax, word ptr [bp - 8]
+07bde8: mov dx, word ptr [bp - 6]
+07bdeb: add word ptr [bp - 4], ax
+07bdee: adc word ptr [bp - 2], dx
+07bdf1: fdecstp
+07bdf4: add word ptr [bp - 0x4c], 4
+07bdf8: fdecstp
+07bdfb: fstp st1
+07bdfe: fistp dx:ax (emu)
+07be00: mov ax, word ptr [bp - 0x10]
+07be03: mov dx, word ptr [bp - 0xe]
+07be06: sub ax, word ptr [bp - 8]
+07be09: sbb dx, word ptr [bp - 6]
+07be0c: mov word ptr [bp - 0x1c], ax
+07be0f: mov word ptr [bp - 0x1a], dx
+07be12: mov ax, word ptr [bp - 0x48]
+07be15: mov dx, word ptr [bp - 0x46]
+07be18: mov word ptr [bp - 0x2c], ax
+07be1b: mov word ptr [bp - 0x2a], dx
+07be1e: push dx
+07be1f: push ax
+07be20: mov ax, word ptr [bp - 0x44]
+07be23: mov dx, word ptr [bp - 0x42]
+07be26: add ax, word ptr [bp - 0x48]
+07be29: db 13

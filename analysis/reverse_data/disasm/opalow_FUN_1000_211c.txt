@@ -1,0 +1,167 @@
+01211c: enter 0xd0, 0
+012120: push di
+012121: push si
+012122: sub ax, ax
+012124: mov word ptr [bp - 0x1a], ax
+012127: mov word ptr [bp - 0x1c], ax
+01212a: mov ax, word ptr [0x3cb0]
+01212d: or ax, word ptr [0x3cb2]
+012131: je 0x1213c
+012133: mov ax, word ptr [0x3cb0]
+012136: dec ax
+012137: mov word ptr [bp - 0x7a], ax
+01213a: jmp 0x12141
+01213c: mov word ptr [bp - 0x7a], 0
+012141: fld dword [4530]
+012146: fmul dword [10a]
+01214b: fmul dword [3178]
+012150: fst dword [bp]-58
+012154: fmul dword [10e]
+012159: fmul dword [317c]
+01215e: fstp dword [bp]-6c
+012162: fld dword [bp]-58
+012166: fmul dword [112]
+01216b: fmul dword [317c]
+012170: fstp dword [bp]-14
+012174: fld dword [bp]-58
+012178: fmul dword [116]
+01217d: fstp dword [bp]-4
+012181: fld dword [bp]-58
+012185: fmul dword [11a]
+01218a: fst dword [bp]-38
+01218e: fdiv dword [3180]
+012193: fst dword [bp]-40
+012197: fdiv dword [3180]
+01219c: fstp dword [bp]-10
+0121a0: fld dword [bp]-58
+0121a4: fmul dword [11e]
+0121a9: fstp dword [bp]-2c
+0121ad: fld dword [bp]-58
+0121b1: fmul dword [122]
+0121b6: fmul dword [3180]
+0121bb: fstp dword [bp]-54
+0121bf: fld dword [bp]-58
+0121c3: fmul dword [126]
+0121c8: fmul dword [317c]
+0121cd: fstp dword [bp]-48
+0121d1: fld dword [bp]-58
+0121d5: fmul dword [12a]
+0121da: fstp dword [bp]-70
+0121de: fistp dx:ax (emu)
+0121e0: push word ptr [bp + 0x10]
+0121e3: push word ptr [bp + 0xe]
+0121e6: lea ax, [bp - 0x74]
+0121e9: push ss
+0121ea: push ax
+0121eb: lea ax, [bp - 0x64]
+0121ee: push ss
+0121ef: push ax
+0121f0: lcall 0x2f8d, 6
+0121f5: mov ax, word ptr [bp - 0x74]
+0121f8: mov dx, word ptr [bp - 0x72]
+0121fb: add ax, 1
+0121fe: adc dx, 0
+012201: mov word ptr [bp - 0x68], ax
+012204: mov word ptr [bp - 0x66], dx
+012207: les bx, ptr [bp + 6]
+01220a: mov ax, word ptr es:[bx]
+01220d: mov dx, word ptr es:[bx + 2]
+012211: mov word ptr [bp - 0x5c], ax
+012214: mov word ptr [bp - 0x5a], dx
+012217: mov ax, word ptr [0x44b0]
+01221a: mov dx, word ptr [0x44b2]
+01221e: cmp word ptr [bp - 0x62], dx
+012221: jg 0x1227e
+012223: jl 0x1222a
+012225: cmp word ptr [bp - 0x64], ax
+012228: ja 0x1227e
+01222a: mov bx, word ptr [bp - 0x64]
+01222d: shl bx, 1
+01222f: mov si, word ptr [bx + 0x4f56]
+012233: mov ax, si
+012235: cdq 
+012236: xor ax, dx
+012238: sub ax, dx
+01223a: imul bx, ax, 0x28
+01223d: fld qword [bx]+5070
+012242: mov word ptr [bp - 0x7c], si
+012245: fild word [bp]-7c
+012249: lcall 0x1dcd, 0x3eae
+01224e: fstp qword [bp]-28
+012252: fistp dx:ax (emu)
+012254: mov bx, word ptr [bp - 0x64]
+012257: shl bx, 1
+012259: mov si, word ptr [bx + 0x4f58]
+01225d: mov ax, si
+01225f: cdq 
+012260: xor ax, dx
+012262: sub ax, dx
+012264: imul bx, ax, 0x28
+012267: fld qword [bx]+5070
+01226c: mov word ptr [bp - 0x7c], si
+01226f: fild word [bp]-7c
+012273: lcall 0x1dcd, 0x3eae
+012278: fstp qword [bp]-34
+01227c: fistp dx:ax (emu)
+01227e: mov ax, word ptr [bp - 0x68]
+012281: mov dx, word ptr [bp - 0x66]
+012284: or dx, dx
+012286: jne 0x12290
+012288: cmp ax, 1
+01228b: jne 0x12290
+01228d: jmp 0x12310
+012290: or dx, dx
+012292: jne 0x1229c
+012294: cmp ax, 2
+012297: jne 0x1229c
+012299: jmp 0x12369
+01229c: or dx, dx
+01229e: jne 0x122a8
+0122a0: cmp ax, 3
+0122a3: jne 0x122a8
+0122a5: jmp 0x1239a
+0122a8: or dx, dx
+0122aa: jne 0x122b4
+0122ac: cmp ax, 4
+0122af: jne 0x122b4
+0122b1: jmp 0x1241b
+0122b4: or dx, dx
+0122b6: jl 0x12310
+0122b8: jg 0x122bf
+0122ba: cmp ax, 5
+0122bd: jb 0x12310
+0122bf: or dx, dx
+0122c1: jg 0x122d0
+0122c3: jge 0x122c8
+0122c5: jmp 0x125be
+0122c8: cmp ax, 7
+0122cb: ja 0x122d0
+0122cd: jmp 0x125be
+0122d0: or dx, dx
+0122d2: jne 0x122dc
+0122d4: cmp ax, 8
+0122d7: jne 0x122dc
+0122d9: jmp 0x126df
+0122dc: or dx, dx
+0122de: jne 0x122e8
+0122e0: cmp ax, 9
+0122e3: jne 0x122e8
+0122e5: jmp 0x12a87
+0122e8: or dx, dx
+0122ea: jne 0x122f4
+0122ec: cmp ax, 0xa
+0122ef: jne 0x122f4
+0122f1: jmp 0x12793
+0122f4: or dx, dx
+0122f6: jl 0x12310
+0122f8: jg 0x122ff
+0122fa: cmp ax, 0xb
+0122fd: jb 0x12310
+0122ff: or dx, dx
+012301: jg 0x12310
+012303: jge 0x12308
+012305: jmp 0x128e3
+012308: cmp ax, 0xe
+01230b: ja 0x12310
+01230d: jmp 0x128e3
+012310: int 0x39

@@ -1,0 +1,21 @@
+05114a: fstp qword ptr [bx + 0x10]
+05114d: fistp dx:ax (emu)
+05114f: les bx, ptr [bp + 0xa]
+051152: fld qword [32f2]
+051157: fstp qword [bx]
+05115b: fistp dx:ax (emu)
+05115d: les bx, ptr [bp + 6]
+051160: fld qword [32fa]
+051165: fstp qword [bx]
+051169: fistp dx:ax (emu)
+05116b: les bx, ptr [bp + 0x12]
+05116e: mov ax, word ptr es:[bx]
+051171: mov word ptr [bp - 0xa], ax
+051174: mov word ptr [0x961c], 1
+05117a: cmp ax, 1
+05117d: jge 0x51182
+05117f: jmp 0x51275
+051182: mov ax, word ptr [bp + 0xe]
+051185: mov dx, word ptr [bp + 0x10]
+051188: db 8d
+051189: db 7e

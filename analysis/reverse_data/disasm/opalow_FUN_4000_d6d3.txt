@@ -1,0 +1,50 @@
+04d6d3: add word ptr [bp - 0x20], -1
+04d6d7: adc word ptr [bp - 0x1e], -1
+04d6db: cmp word ptr [bp - 0x1e], 0
+04d6df: jge 0x4d6e4
+04d6e1: jmp 0x4d791
+04d6e4: jg 0x4d6ef
+04d6e6: cmp word ptr [bp - 0x20], 1
+04d6ea: jae 0x4d6ef
+04d6ec: jmp 0x4d791
+04d6ef: imul si, word ptr [bp - 0x18], 0x18
+04d6f3: mov bx, word ptr [bp - 0x20]
+04d6f6: shl bx, 3
+04d6f9: mov es, word ptr [0x32c0]
+04d6fd: lea bx, [bx + si + 0x50]
+04d701: lea di, [bp - 0x2c]
+04d704: lea si, [bx - 0x20]
+04d707: push ds
+04d708: push es
+04d709: pop ds
+04d70a: push ss
+04d70b: pop es
+04d70c: movsw word ptr es:[di], word ptr [si]
+04d70d: movsw word ptr es:[di], word ptr [si]
+04d70e: movsw word ptr es:[di], word ptr [si]
+04d70f: movsw word ptr es:[di], word ptr [si]
+04d710: pop ds
+04d711: cmp word ptr [bp - 0x20], 3
+04d715: jne 0x4d764
+04d717: cmp word ptr [bp - 0x1e], 0
+04d71b: jne 0x4d764
+04d71d: imul ax, word ptr [bp - 0x18], 0x18
+04d721: mov si, ax
+04d723: mov es, word ptr [0x32c0]
+04d727: lea bx, [si + 0x58]
+04d72b: fld qword [bx]-20
+04d730: mov es, word ptr [0x32b2]
+04d734: fmul qword [798]
+04d73a: mov es, word ptr [0x32c0]
+04d73e: lea bx, [si + 0x60]
+04d742: fld qword [bx]-20
+04d747: mov es, word ptr [0x32b2]
+04d74b: fmul qword [7a0]
+04d751: faddp st1, st0
+04d754: fadd qword [790]
+04d75a: fadd qword [bp]-2c
+04d75e: fstp qword [bp]-2c
+04d762: fistp dx:ax (emu)
+04d764: mov es, word ptr [0x32b2]
+04d768: fld qword [298]
+04d76e: fmul qword [bp]-c

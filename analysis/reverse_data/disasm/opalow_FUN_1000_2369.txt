@@ -1,0 +1,44 @@
+012369: mov si, word ptr [bp - 0x64]
+01236c: shl si, 3
+01236f: mov di, word ptr [bp - 0x5c]
+012372: shl di, 2
+012375: les bx, ptr [bp + 0xa]
+012378: fld dword [bp]-14
+01237c: fld qword [si]+5dd8
+012381: fmul qword [si]+5dd8
+012386: fmul dword [12e]
+01238b: fld qword [si]+58d8
+012390: fmul qword [si]+58d8
+012395: faddp st1, st0
+012398: jmp 0x12410
+01239a: fld qword [bp]-28
+01239e: fsub qword [bp]-34
+0123a2: fabs
+0123a5: fadd dword [13a]
+0123aa: fstp dword [bp]-78
+0123ae: fistp dx:ax (emu)
+0123b0: mov si, word ptr [bp - 0x64]
+0123b3: shl si, 3
+0123b6: fld qword [si]+5b50
+0123bb: fmul qword [si]+5b50
+0123c0: fmul dword [12e]
+0123c5: fld qword [si]+5650
+0123ca: fmul qword [si]+5650
+0123cf: faddp st1, st0
+0123d2: fmul qword [si]+4550
+0123d7: fst dword [bp]-20
+0123db: fmul qword [si]+4550
+0123e0: fmul dword [bp]-20
+0123e4: fst dword [bp]-20
+0123e8: fabs
+0123eb: fadd dword [132]
+0123f0: fstp dword [bp]-20
+0123f4: fistp dx:ax (emu)
+0123f6: mov di, word ptr [bp - 0x5c]
+0123f9: shl di, 2
+0123fc: les bx, ptr [bp + 0xa]
+0123ff: fld dword [bp]-4
+012403: fmul dword [3184]
+012408: fld dword [bp]-78
+01240c: fmul dword [bp]-20
+012410: db cd

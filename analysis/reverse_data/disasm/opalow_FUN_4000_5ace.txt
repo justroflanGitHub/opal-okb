@@ -1,0 +1,10 @@
+045ace: cmp word ptr [0xbcc2], 3
+045ad3: jle 0x45a72
+045ad5: fld qword [8f48]
+045ada: fmul qword [bd04]
+045adf: les bx, ptr [bp + 0x16]
+045ae2: fld qword [bx]
+045ae6: fmul qword [bd34]
+045aeb: int 0x38
+045aed: push cs
+045aee: xchg sp, ax

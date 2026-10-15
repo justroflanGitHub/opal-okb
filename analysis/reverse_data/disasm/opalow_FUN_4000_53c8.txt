@@ -1,0 +1,12 @@
+0453c8: push bp
+0453c9: mov bp, sp
+0453cb: sub sp, 2
+0453ce: les bx, ptr [bp + 0xe]
+0453d1: fld qword [bx]
+0453d5: les bx, ptr [bp + 0x12]
+0453d8: fdiv qword [bx]
+0453dc: fsubr qword [3b50]
+0453e1: fst qword [bc7a]
+0453e6: int 0x38
+0453e8: push ss
+0453e9: pop ax

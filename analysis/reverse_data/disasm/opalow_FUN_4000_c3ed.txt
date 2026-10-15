@@ -1,0 +1,31 @@
+04c3ed: push ss
+04c3ee: pop es
+04c3ef: movsw word ptr es:[di], word ptr [si]
+04c3f0: movsw word ptr es:[di], word ptr [si]
+04c3f1: movsw word ptr es:[di], word ptr [si]
+04c3f2: movsw word ptr es:[di], word ptr [si]
+04c3f3: pop ds
+04c3f4: cmp word ptr [bp - 0x20], 3
+04c3f8: jne 0x4c447
+04c3fa: cmp word ptr [bp - 0x1e], 0
+04c3fe: jne 0x4c447
+04c400: imul ax, word ptr [bp - 0x18], 0x18
+04c404: mov si, ax
+04c406: mov es, word ptr [0x326a]
+04c40a: lea bx, [si + 0x148]
+04c40e: fld qword [bx]-20
+04c413: mov es, word ptr [0x326c]
+04c417: fmul qword [798]
+04c41d: mov es, word ptr [0x326a]
+04c421: lea bx, [si + 0x150]
+04c425: fld qword [bx]-20
+04c42a: mov es, word ptr [0x326c]
+04c42e: fmul qword [7a0]
+04c434: faddp st1, st0
+04c437: fadd qword [790]
+04c43d: fadd qword [bp]-2c
+04c441: fstp qword [bp]-2c
+04c445: fistp dx:ax (emu)
+04c447: mov es, word ptr [0x326c]
+04c44b: fld qword [298]
+04c451: fmul qword [bp]-c

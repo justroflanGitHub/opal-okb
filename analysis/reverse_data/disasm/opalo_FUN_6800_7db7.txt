@@ -1,0 +1,68 @@
+06fdb7: push word ptr [bp + 0xc]
+06fdba: push word ptr [bp + 0xa]
+06fdbd: push word ptr [bp + 8]
+06fdc0: push word ptr [bp + 6]
+06fdc3: lcall 0x5248, 3
+06fdc8: les bx, ptr [bp + 0xa]
+06fdcb: mov ax, word ptr es:[bx]
+06fdce: or ax, word ptr es:[bx + 2]
+06fdd2: je 0x6fdd7
+06fdd4: jmp 0x70592
+06fdd7: les bx, ptr [bp + 0x16]
+06fdda: mov ax, word ptr es:[bx]
+06fddd: mov dx, word ptr es:[bx + 2]
+06fde1: mov word ptr [0x9af2], ax
+06fde4: mov word ptr [0x9af4], dx
+06fde8: mov ax, word ptr [0x3a6c]
+06fdeb: mov dx, word ptr [0x3a6e]
+06fdef: mov word ptr [0x9b02], ax
+06fdf2: mov word ptr [0x9b04], dx
+06fdf6: fld dword [31a6]
+06fdfb: fmul dword [bx]
+06fdff: fstp dword [bx]
+06fe03: fistp dx:ax (emu)
+06fe05: sub ax, ax
+06fe07: mov word ptr [bp - 0x12], ax
+06fe0a: mov word ptr [bp - 0x14], ax
+06fe0d: push word ptr [bp + 0x58]
+06fe10: push word ptr [bp + 0x56]
+06fe13: push word ptr [bp + 0x54]
+06fe16: push word ptr [bp + 0x52]
+06fe19: push word ptr [bp + 0x50]
+06fe1c: push word ptr [bp + 0x4e]
+06fe1f: push word ptr [bp + 0x4c]
+06fe22: push word ptr [bp + 0x4a]
+06fe25: push word ptr [bp + 0x48]
+06fe28: push word ptr [bp + 0x46]
+06fe2b: push word ptr [bp + 0x44]
+06fe2e: push word ptr [bp + 0x42]
+06fe31: push word ptr [bp + 0x40]
+06fe34: push word ptr [bp + 0x3e]
+06fe37: push word ptr [bp + 0x3c]
+06fe3a: push word ptr [bp + 0x3a]
+06fe3d: push word ptr [bp + 0x38]
+06fe40: push word ptr [bp + 0x36]
+06fe43: push word ptr [bp + 0x34]
+06fe46: push word ptr [bp + 0x32]
+06fe49: push word ptr [bp + 0x30]
+06fe4c: push word ptr [bp + 0x2e]
+06fe4f: push word ptr [bp + 0x2c]
+06fe52: push word ptr [bp + 0x2a]
+06fe55: push word ptr [bp + 0x28]
+06fe58: push word ptr [bp + 0x26]
+06fe5b: push word ptr [bp + 0x24]
+06fe5e: push word ptr [bp + 0x22]
+06fe61: push word ptr [bp + 0x20]
+06fe64: push word ptr [bp + 0x1e]
+06fe67: push word ptr [bp + 0x1c]
+06fe6a: push word ptr [bp + 0x1a]
+06fe6d: push es
+06fe6e: push bx
+06fe6f: mov ax, 0x9b1e
+06fe72: push ds
+06fe73: push ax
+06fe74: lea ax, [bp - 0x14]
+06fe77: push ss
+06fe78: push ax
+06fe79: push word ptr [bp + 0x10]
+06fe7c: push word ptr [bp + 0xe]

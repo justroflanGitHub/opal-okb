@@ -1,0 +1,142 @@
+0132d4: mov ax, word ptr es:[bx]
+0132d7: or ax, word ptr es:[bx + 2]
+0132db: je 0x132e0
+0132dd: jmp 0x13420
+0132e0: cmp word ptr [bp - 0x34], 1
+0132e4: jne 0x132fa
+0132e6: cmp word ptr [bp - 0x32], 0
+0132ea: jne 0x132fa
+0132ec: fld qword [bp]-20
+0132f0: fsubr qword [bp]-30
+0132f4: fstp qword [bp]-30
+0132f8: fistp dx:ax (emu)
+0132fa: mov ax, word ptr [bp - 0x34]
+0132fd: or ax, word ptr [bp - 0x32]
+013300: je 0x13305
+013302: jmp 0x13101
+013305: fld qword [bp]-40
+013309: fsubr qword [bp]-30
+01330d: fstp qword [bp]-30
+013311: fistp dx:ax (emu)
+013313: jmp 0x13101
+013316: mov word ptr [bp - 0x70], 1
+01331b: mov word ptr [bp - 0x6e], 0
+013320: mov word ptr [bp - 0x68], 0xffff
+013325: mov word ptr [bp - 0x66], 0xffff
+01332a: mov word ptr [bp - 0x6c], 0xffff
+01332f: mov word ptr [bp - 0x6a], 0xffff
+013334: mov ax, 0x5658
+013337: push ds
+013338: push ax
+013339: mov ax, 0x58d8
+01333c: push ds
+01333d: push ax
+01333e: mov ax, 0x5b58
+013341: push ds
+013342: push ax
+013343: mov ax, 0x5dd8
+013346: push ds
+013347: push ax
+013348: mov ax, 0x55e8
+01334b: push ds
+01334c: push ax
+01334d: lea ax, [bp - 0x20]
+013350: push ss
+013351: push ax
+013352: lea ax, [bp - 0x10]
+013355: push ss
+013356: push ax
+013357: lea ax, [bp - 0x40]
+01335a: push ss
+01335b: push ax
+01335c: lea ax, [bp - 0x28]
+01335f: push ss
+013360: push ax
+013361: lea ax, [bp - 0x50]
+013364: push ss
+013365: push ax
+013366: lea ax, [bp - 0x60]
+013369: push ss
+01336a: push ax
+01336b: lea ax, [bp - 4]
+01336e: push ss
+01336f: push ax
+013370: lea ax, [bp - 0x6c]
+013373: push ss
+013374: push ax
+013375: lea ax, [bp - 0x68]
+013378: push ss
+013379: push ax
+01337a: lea ax, [bp - 0x70]
+01337d: push ss
+01337e: push ax
+01337f: push word ptr [bp + 8]
+013382: push word ptr [bp + 6]
+013385: lcall 0x2fb8, 3
+01338a: les bx, ptr [bp + 6]
+01338d: mov ax, word ptr es:[bx]
+013390: or ax, word ptr es:[bx + 2]
+013394: je 0x13399
+013396: jmp 0x13420
+013399: mov bx, word ptr [bp - 4]
+01339c: shl bx, 1
+01339e: mov si, word ptr [bx + 0x4f58]
+0133a2: mov ax, si
+0133a4: cdq 
+0133a5: xor ax, dx
+0133a7: sub ax, dx
+0133a9: imul bx, ax, 0x28
+0133ac: fld qword [bx]+5070
+0133b1: mov word ptr [bp - 0x72], si
+0133b4: fild word [bp]-72
+0133b8: lcall 0x1dcd, 0x3eae
+0133bd: fmul qword [55f0]
+0133c2: fmul qword [319c]
+0133c7: fstp qword [bp]-30
+0133cb: fld dword [31a8]
+0133d0: jmp 0x12e4a
+0133d3: fld qword [31ac]
+0133d8: fstp qword [bp]-30
+0133dc: fld dword [3198]
+0133e1: fstp dword [bp]-18
+0133e5: fistp dx:ax (emu)
+0133e7: lea ax, [bp - 0x30]
+0133ea: push ss
+0133eb: push ax
+0133ec: mov ax, 0x5658
+0133ef: push ds
+0133f0: push ax
+0133f1: mov ax, 0x58d8
+0133f4: push ds
+0133f5: push ax
+0133f6: mov ax, 0x5b58
+0133f9: push ds
+0133fa: push ax
+0133fb: mov ax, 0x5dd8
+0133fe: push ds
+0133ff: push ax
+013400: mov ax, 0x4558
+013403: push ds
+013404: push ax
+013405: lea ax, [bp - 0x60]
+013408: push ss
+013409: push ax
+01340a: lea ax, [bp - 4]
+01340d: push ss
+01340e: push ax
+01340f: push word ptr [bp + 8]
+013412: push word ptr [bp + 6]
+013415: lcall 0x1378, 0xd
+01341a: fdecstp
+01341d: jmp 0x12cfa
+013420: les bx, ptr [bp + 6]
+013423: mov word ptr es:[bx], 2
+013428: mov word ptr es:[bx + 2], 0
+01342e: jmp 0x1343a
+013430: les bx, ptr [bp + 6]
+013433: mov word ptr es:[bx], 3
+013438: jmp 0x13428
+01343a: pop si
+01343b: pop di
+01343c: leave 
+01343d: retf 0x18

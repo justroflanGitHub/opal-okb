@@ -1,0 +1,346 @@
+030321: enter 0x34, 0
+030325: push di
+030326: push si
+030327: mov ax, word ptr [0x3cb0]
+03032a: or ax, word ptr [0x3cb2]
+03032e: jne 0x3033e
+030330: mov word ptr [0xa67e], 1
+030336: mov word ptr [0xa680], 0
+03033c: jmp 0x3034c
+03033e: mov ax, word ptr [0x3cb0]
+030341: mov dx, word ptr [0x3cb2]
+030345: mov word ptr [0xa67e], ax
+030348: mov word ptr [0xa680], dx
+03034c: les bx, ptr [bp + 6]
+03034f: sub ax, ax
+030351: mov word ptr es:[bx + 2], ax
+030355: mov word ptr es:[bx], ax
+030358: mov ax, word ptr [0x44bc]
+03035b: mov dx, word ptr [0x44be]
+03035f: mov word ptr [0xa67a], ax
+030362: mov word ptr [0xa67c], dx
+030366: or ax, dx
+030368: jne 0x30389
+03036a: fld qword [4500]
+03036f: fcom qword [37a2]
+030374: fstp st0
+030377: df c/4 st0
+03037a: sahf 
+03037b: jne 0x30389
+03037d: mov word ptr [0xa67a], 1
+030383: mov word ptr [0xa67c], 0
+030389: mov word ptr [bp - 0x2c], 5
+03038e: mov word ptr [bp - 0x2a], 0
+030393: mov ax, 0x44b0
+030396: push ds
+030397: push ax
+030398: mov ax, 0xa67a
+03039b: push ds
+03039c: push ax
+03039d: mov ax, 0x4500
+0303a0: push ds
+0303a1: push ax
+0303a2: mov ax, 0x44c0
+0303a5: push ds
+0303a6: push ax
+0303a7: mov ax, 0x44c4
+0303aa: push ds
+0303ab: push ax
+0303ac: mov ax, 0x44b4
+0303af: push ds
+0303b0: push ax
+0303b1: mov ax, 0x44e0
+0303b4: push ds
+0303b5: push ax
+0303b6: mov ax, 0x44d0
+0303b9: push ds
+0303ba: push ax
+0303bb: mov ax, 0x44e8
+0303be: push ds
+0303bf: push ax
+0303c0: mov ax, 0x4a58
+0303c3: push ds
+0303c4: push ax
+0303c5: mov ax, 0x4558
+0303c8: push ds
+0303c9: push ax
+0303ca: mov ax, 0x4f58
+0303cd: push ds
+0303ce: push ax
+0303cf: mov ax, 0x5098
+0303d2: push ds
+0303d3: push ax
+0303d4: lea ax, [bp - 0x2c]
+0303d7: push ss
+0303d8: push ax
+0303d9: mov ax, 0x55c0
+0303dc: push ds
+0303dd: push ax
+0303de: mov ax, 0x3df4
+0303e1: push ds
+0303e2: push ax
+0303e3: mov ax, word ptr [0xa67e]
+0303e6: shl ax, 2
+0303e9: add ax, 0x3f30
+0303ec: push ds
+0303ed: push ax
+0303ee: mov ax, 0x4530
+0303f1: push ds
+0303f2: push ax
+0303f3: mov ax, 0x5570
+0303f6: push ds
+0303f7: push ax
+0303f8: mov ax, 0x5520
+0303fb: push ds
+0303fc: push ax
+0303fd: mov ax, 0x5610
+030400: push ds
+030401: push ax
+030402: mov ax, 0x5598
+030405: push ds
+030406: push ax
+030407: mov ax, 0x5548
+03040a: push ds
+03040b: push ax
+03040c: mov ax, 0x5608
+03040f: push ds
+030410: push ax
+030411: mov ax, 0x5630
+030414: push ds
+030415: push ax
+030416: mov ax, 0x5638
+030419: push ds
+03041a: push ax
+03041b: mov ax, 0x5640
+03041e: push ds
+03041f: push ax
+030420: mov ax, 0x5648
+030423: push ds
+030424: push ax
+030425: push word ptr [bp + 8]
+030428: push word ptr [bp + 6]
+03042b: lcall 0x39fe, 3
+030430: les bx, ptr [bp + 6]
+030433: mov ax, word ptr es:[bx]
+030436: or ax, word ptr es:[bx + 2]
+03043a: je 0x3043f
+03043c: jmp 0x30678
+03043f: mov word ptr [bp - 0x34], 5
+030444: mov word ptr [bp - 0x32], 0
+030449: sub ax, ax
+03044b: mov word ptr [bp - 0x2e], ax
+03044e: mov word ptr [bp - 0x30], ax
+030451: mov word ptr [bp - 0x2c], 1
+030456: mov word ptr [bp - 0x2a], ax
+030459: mov ax, 0x44b0
+03045c: push ds
+03045d: push ax
+03045e: mov ax, 0xa67a
+030461: push ds
+030462: push ax
+030463: mov ax, 0x4500
+030466: push ds
+030467: push ax
+030468: mov ax, 0x44c0
+03046b: push ds
+03046c: push ax
+03046d: mov ax, 0x44c4
+030470: push ds
+030471: push ax
+030472: lea ax, [bp - 0x2c]
+030475: push ss
+030476: push ax
+030477: mov ax, 0x44e0
+03047a: push ds
+03047b: push ax
+03047c: lea ax, [bp - 0x30]
+03047f: push ss
+030480: push ax
+030481: lea ax, [0x37a2]
+030485: push ds
+030486: push ax
+030487: mov ax, 0x4a58
+03048a: push ds
+03048b: push ax
+03048c: mov ax, 0x4558
+03048f: push ds
+030490: push ax
+030491: mov ax, 0x4f58
+030494: push ds
+030495: push ax
+030496: mov ax, 0x5098
+030499: push ds
+03049a: push ax
+03049b: lea ax, [bp - 0x34]
+03049e: push ss
+03049f: push ax
+0304a0: lea ax, [bp - 0x28]
+0304a3: push ss
+0304a4: push ax
+0304a5: mov ax, 0x3df4
+0304a8: push ds
+0304a9: push ax
+0304aa: mov ax, word ptr [0xa67e]
+0304ad: shl ax, 2
+0304b0: add ax, 0x3f30
+0304b3: push ds
+0304b4: push ax
+0304b5: mov ax, 0x4530
+0304b8: push ds
+0304b9: push ax
+0304ba: mov ax, 0x5658
+0304bd: push ds
+0304be: push ax
+0304bf: mov ax, 0x58d8
+0304c2: push ds
+0304c3: push ax
+0304c4: mov ax, 0x5618
+0304c7: push ds
+0304c8: push ax
+0304c9: mov ax, 0x5b58
+0304cc: push ds
+0304cd: push ax
+0304ce: mov ax, 0x5548
+0304d1: push ds
+0304d2: push ax
+0304d3: mov ax, 0x5608
+0304d6: push ds
+0304d7: push ax
+0304d8: mov ax, 0x5630
+0304db: push ds
+0304dc: push ax
+0304dd: mov ax, 0x5638
+0304e0: push ds
+0304e1: push ax
+0304e2: mov ax, 0x5640
+0304e5: push ds
+0304e6: push ax
+0304e7: mov ax, 0x5648
+0304ea: push ds
+0304eb: push ax
+0304ec: push es
+0304ed: push bx
+0304ee: lcall 0x39fe, 3
+0304f3: mov di, 0x5628
+0304f6: mov si, 0x5658
+0304f9: push ds
+0304fa: pop es
+0304fb: movsw word ptr es:[di], word ptr [si]
+0304fc: movsw word ptr es:[di], word ptr [si]
+0304fd: movsw word ptr es:[di], word ptr [si]
+0304fe: movsw word ptr es:[di], word ptr [si]
+0304ff: mov di, 0x5620
+030502: mov si, 0x58d8
+030505: movsw word ptr es:[di], word ptr [si]
+030506: movsw word ptr es:[di], word ptr [si]
+030507: movsw word ptr es:[di], word ptr [si]
+030508: movsw word ptr es:[di], word ptr [si]
+030509: mov ax, word ptr [0x44d4]
+03050c: or ax, word ptr [0x44d6]
+030510: jne 0x30528
+030512: fld qword [44f0]
+030517: fcom qword [37a2]
+03051c: fstp st0
+03051f: df c/4 st0
+030522: sahf 
+030523: jne 0x30528
+030525: jmp 0x30688
+030528: mov di, 0x6068
+03052b: mov si, 0x44f0
+03052e: push ds
+03052f: pop es
+030530: movsw word ptr es:[di], word ptr [si]
+030531: movsw word ptr es:[di], word ptr [si]
+030532: movsw word ptr es:[di], word ptr [si]
+030533: movsw word ptr es:[di], word ptr [si]
+030534: mov ax, word ptr [0x44d4]
+030537: or ax, word ptr [0x44d6]
+03053b: jne 0x3054e
+03053d: fld qword [44f0]
+030542: fdiv qword [5608]
+030547: fstp qword [6068]
+03054c: fistp dx:ax (emu)
+03054e: cmp word ptr [0x44d4], 1
+030553: jne 0x3056b
+030555: cmp word ptr [0x44d6], 0
+03055a: jne 0x3056b
+03055c: fld qword [5520]
+030561: fmul qword [44f0]
+030566: fstp qword [6068]
+03056b: fld qword [6068]
+030570: fabs
+030573: fst qword [6068]
+030578: fdiv qword [5520]
+03057d: fabs
+030580: fstp qword [6070]
+030585: fld qword [6068]
+03058a: fmul qword [5608]
+03058f: fabs
+030592: fstp qword [6078]
+030597: fistp dx:ax (emu)
+030599: mov di, 0x6058
+03059c: mov si, 0x4508
+03059f: push ds
+0305a0: pop es
+0305a1: movsw word ptr es:[di], word ptr [si]
+0305a2: movsw word ptr es:[di], word ptr [si]
+0305a3: movsw word ptr es:[di], word ptr [si]
+0305a4: movsw word ptr es:[di], word ptr [si]
+0305a5: mov ax, word ptr [0x44d8]
+0305a8: or ax, word ptr [0x44da]
+0305ac: jne 0x305c0
+0305ae: mov ax, word ptr [0x44c0]
+0305b1: or ax, word ptr [0x44c2]
+0305b5: jne 0x305c0
+0305b7: mov ax, word ptr [0x44c8]
+0305ba: or ax, word ptr [0x44ca]
+0305be: je 0x305db
+0305c0: mov ax, word ptr [0x44d8]
+0305c3: or ax, word ptr [0x44da]
+0305c7: je 0x305ec
+0305c9: mov ax, word ptr [0x44c4]
+0305cc: or ax, word ptr [0x44c6]
+0305d0: jne 0x305ec
+0305d2: mov ax, word ptr [0x44cc]
+0305d5: or ax, word ptr [0x44ce]
+0305d9: jne 0x305ec
+0305db: fld qword [6058]
+0305e0: lcall 0x1dcd, 0x3f01
+0305e5: fstp qword [6058]
+0305ea: fistp dx:ax (emu)
+0305ec: mov ax, word ptr [0x44d8]
+0305ef: or ax, word ptr [0x44da]
+0305f3: jne 0x3060c
+0305f5: mov ax, word ptr [0x44c0]
+0305f8: or ax, word ptr [0x44c2]
+0305fc: jne 0x3060c
+0305fe: cmp word ptr [0x44c8], 2
+030603: jne 0x3060c
+030605: cmp word ptr [0x44ca], 0
+03060a: je 0x3062c
+03060c: mov ax, word ptr [0x44d8]
+03060f: or ax, word ptr [0x44da]
+030613: je 0x3063d
+030615: mov ax, word ptr [0x44c4]
+030618: or ax, word ptr [0x44c6]
+03061c: jne 0x3063d
+03061e: cmp word ptr [0x44cc], 2
+030623: jne 0x3063d
+030625: cmp word ptr [0x44ce], 0
+03062a: jne 0x3063d
+03062c: fld qword [6058]
+030631: lcall 0x1dcd, 0x3ef6
+030636: fstp qword [6058]
+03063b: fistp dx:ax (emu)
+03063d: mov ax, word ptr [0x44d8]
+030640: or ax, word ptr [0x44da]
+030644: je 0x30655
+030646: fld qword [5520]
+03064b: fdivr qword [6058]
+030650: fstp qword [6058]
+030655: fld qword [6058]
+03065a: fabs
+03065d: fst qword [6058]
+030662: fmul qword [5520]
+030667: fabs
+03066a: db cd

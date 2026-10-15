@@ -1,0 +1,10 @@
+044219: push bp
+04421a: mov bp, sp
+04421c: sub sp, 0x28
+04421f: push di
+044220: push si
+044221: fdecstp
+044224: fstp qword [8be0]
+044229: fld qword [8828]
+04422e: fcom qword [3aea]
+044233: fstp st0

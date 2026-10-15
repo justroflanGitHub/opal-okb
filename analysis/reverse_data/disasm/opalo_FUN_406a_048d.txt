@@ -1,0 +1,37 @@
+040b2d: push bp
+040b2e: mov bp, sp
+040b30: sub sp, 2
+040b33: les bx, ptr [bp + 0xe]
+040b36: fld qword [bx]
+040b3a: les bx, ptr [bp + 0x12]
+040b3d: fdiv qword [bx]
+040b41: fsubr qword [387a]
+040b46: fst qword [ba10]
+040b4b: fcom qword [3882]
+040b50: fstp st0
+040b53: fnstsw [bp]-2
+040b57: fistp dx:ax (emu)
+040b59: mov ah, byte ptr [bp - 1]
+040b5c: sahf 
+040b5d: jb 0x40ba8
+040b5f: fld qword [ba10]
+040b64: lcall 0x1886, 0x3b56
+040b69: fst qword [ba10]
+040b6e: fsubr qword [387a]
+040b73: les bx, ptr [bp + 6]
+040b76: fsub dword [bx]
+040b7a: fstp qword [8b98]
+040b7f: fistp dx:ax (emu)
+040b81: les bx, ptr [bp + 0xa]
+040b84: fld qword [bx]
+040b88: les bx, ptr [bp + 0x12]
+040b8b: fld qword [bx]
+040b8f: fmul qword [ba10]
+040b94: fmul qword [388a]
+040b99: fdivrp st1, st0
+040b9c: fstp qword [8ba8]
+040ba1: fistp dx:ax (emu)
+040ba3: lcall 0x42f6, 2
+040ba8: mov sp, bp
+040baa: pop bp
+040bab: retf 0x10

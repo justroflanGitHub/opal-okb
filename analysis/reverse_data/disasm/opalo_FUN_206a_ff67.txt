@@ -1,0 +1,66 @@
+030607: enter 0xe, 0
+03060b: push di
+03060c: push si
+03060d: les bx, ptr [bp + 6]
+030610: mov ax, word ptr es:[bx]
+030613: mov word ptr [bp - 8], ax
+030616: mov word ptr [bp - 2], 1
+03061b: jmp 0x306a0
+03061e: inc word ptr [bp - 4]
+030621: jo 0x3069b
+030623: mov ax, word ptr [bp - 0xa]
+030626: cmp word ptr [bp - 4], ax
+030629: jg 0x3069b
+03062b: mov di, word ptr [bp - 2]
+03062e: shl di, 1
+030630: les bx, ptr [bp + 0xa]
+030633: mov si, word ptr es:[bx + di - 2]
+030637: mov di, word ptr [bp - 4]
+03063a: shl di, 1
+03063c: mov di, word ptr es:[bx + di - 2]
+030640: shl di, 3
+030643: les bx, ptr [bp + 0xe]
+030646: fld qword [bx+di]-8
+03064b: fabs
+03064e: mov bx, si
+030650: shl bx, 3
+030653: mov di, word ptr [bp + 0xe]
+030656: fld qword [bx+di]-8
+03065b: fabs
+03065e: fcompp
+030661: df c/4 st0
+030664: sahf 
+030665: jae 0x3061e
+030667: mov word ptr [bp - 6], si
+03066a: mov ax, word ptr [bp - 4]
+03066d: shl ax, 1
+03066f: add ax, word ptr [bp + 0xa]
+030672: mov dx, word ptr [bp + 0xc]
+030675: sub ax, 2
+030678: mov word ptr [bp - 0xe], ax
+03067b: mov word ptr [bp - 0xc], dx
+03067e: les bx, ptr [bp - 0xe]
+030681: mov ax, word ptr es:[bx]
+030684: mov si, word ptr [bp - 2]
+030687: shl si, 1
+030689: les bx, ptr [bp + 0xa]
+03068c: mov word ptr es:[bx + si - 2], ax
+030690: les bx, ptr [bp - 0xe]
+030693: mov ax, word ptr [bp - 6]
+030696: mov word ptr es:[bx], ax
+030699: jmp 0x3061e
+03069b: inc word ptr [bp - 2]
+03069e: jo 0x306ba
+0306a0: mov ax, word ptr [bp - 8]
+0306a3: cmp word ptr [bp - 2], ax
+0306a6: jg 0x306ba
+0306a8: les bx, ptr [bp + 6]
+0306ab: mov ax, word ptr es:[bx]
+0306ae: mov word ptr [bp - 0xa], ax
+0306b1: mov ax, word ptr [bp - 2]
+0306b4: mov word ptr [bp - 4], ax
+0306b7: jmp 0x30623
+0306ba: pop si
+0306bb: pop di
+0306bc: leave 
+0306bd: retf 0xc

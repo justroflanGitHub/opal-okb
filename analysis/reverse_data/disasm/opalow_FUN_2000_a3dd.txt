@@ -1,0 +1,144 @@
+02a3dd: mov es, word ptr [0x3688]
+02a3e1: mov ax, word ptr es:[0x40e4]
+02a3e5: mov dx, word ptr es:[0x40e6]
+02a3ea: shl ax, 1
+02a3ec: rcl dx, 1
+02a3ee: add ax, 1
+02a3f1: adc dx, 0
+02a3f4: mov word ptr [bp - 0x18], ax
+02a3f7: mov word ptr [bp - 0x16], dx
+02a3fa: mov ax, word ptr [bp - 0x34]
+02a3fd: mov dx, word ptr [bp - 0x32]
+02a400: shl ax, 1
+02a402: rcl dx, 1
+02a404: sub ax, 1
+02a407: sbb dx, 0
+02a40a: mov word ptr [bp - 0x34], ax
+02a40d: mov word ptr [bp - 0x32], dx
+02a410: sub ax, ax
+02a412: mov word ptr [bp - 0x22], ax
+02a415: mov word ptr [bp - 0x24], ax
+02a418: jmp 0x2a422
+02a41a: add word ptr [bp - 0x24], 1
+02a41e: adc word ptr [bp - 0x22], 0
+02a422: cmp word ptr [bp - 0x22], 0
+02a426: jle 0x2a42b
+02a428: jmp 0x2a6e8
+02a42b: jl 0x2a436
+02a42d: cmp word ptr [bp - 0x24], 1
+02a431: jbe 0x2a436
+02a433: jmp 0x2a6e8
+02a436: cmp word ptr [bp - 0x12], 0
+02a43a: jg 0x2a44c
+02a43c: jl 0x2a444
+02a43e: cmp word ptr [bp - 0x14], 2
+02a442: jae 0x2a44c
+02a444: mov ax, word ptr [bp - 0x2c]
+02a447: or ax, word ptr [bp - 0x2a]
+02a44a: jne 0x2a475
+02a44c: mov si, word ptr [bp - 0x34]
+02a44f: add si, word ptr [bp - 0x24]
+02a452: shl si, 5
+02a455: imul ax, word ptr [bp - 0x4c], 0xa0
+02a45a: add si, ax
+02a45c: mov bx, word ptr [bp - 0x14]
+02a45f: shl bx, 3
+02a462: fld qword [bx+si]+7fc0
+02a467: mov si, word ptr [bp - 0x24]
+02a46a: shl si, 2
+02a46d: fstp dword [bp+si]-c
+02a471: fistp dx:ax (emu)
+02a473: jmp 0x2a41a
+02a475: cmp word ptr [bp - 0x2a], 0
+02a479: jg 0x2a4a0
+02a47b: jl 0x2a483
+02a47d: cmp word ptr [bp - 0x2c], 4
+02a481: ja 0x2a4a0
+02a483: mov si, word ptr [bp - 0x34]
+02a486: add si, word ptr [bp - 0x24]
+02a489: shl si, 7
+02a48c: imul ax, word ptr [bp - 0x4c], 0x280
+02a491: add si, ax
+02a493: mov bx, word ptr [bp - 0x2c]
+02a496: shl bx, 3
+02a499: fld qword [bx+si]+67a0
+02a49e: jmp 0x2a467
+02a4a0: cmp word ptr [bp - 0x2c], 5
+02a4a4: jne 0x2a4e0
+02a4a6: cmp word ptr [bp - 0x2a], 0
+02a4aa: jne 0x2a4e0
+02a4ac: imul ax, word ptr [bp - 0x4c], 0x280
+02a4b1: mov si, ax
+02a4b3: mov di, word ptr [bp - 0x34]
+02a4b6: add di, word ptr [bp - 0x24]
+02a4b9: shl di, 7
+02a4bc: mov bx, di
+02a4be: add bx, si
+02a4c0: fld qword [bx]+67a8
+02a4c5: mov bx, word ptr [bp - 0x30]
+02a4c8: shl bx, 3
+02a4cb: add bx, di
+02a4cd: fsub qword [bx+si]+67a0
+02a4d2: mov bx, word ptr [bp - 0x24]
+02a4d5: shl bx, 2
+02a4d8: add bx, bp
+02a4da: fstp dword [bx]-c
+02a4de: jmp 0x2a471
+02a4e0: cmp word ptr [bp - 0x2c], 6
+02a4e4: je 0x2a4e9
+02a4e6: jmp 0x2a7c8
+02a4e9: cmp word ptr [bp - 0x2a], 0
+02a4ed: je 0x2a4f2
+02a4ef: jmp 0x2a7c8
+02a4f2: mov si, word ptr [bp - 0x34]
+02a4f5: add si, word ptr [bp - 0x24]
+02a4f8: imul ax, word ptr [bp - 0x4c], 0x280
+02a4fd: mov di, ax
+02a4ff: mov ax, si
+02a501: shl ax, 7
+02a504: mov word ptr [bp - 0x5e], ax
+02a507: mov bx, word ptr [bp - 0x30]
+02a50a: shl bx, 3
+02a50d: add bx, ax
+02a50f: fld qword [bx+di]+67a0
+02a514: mov bx, ax
+02a516: fadd qword [bx+di]+67a8
+02a51b: fdiv qword [3668]
+02a520: imul bx, word ptr [bp - 0x4c], 0xa0
+02a525: mov ax, si
+02a527: shl ax, 5
+02a52a: add bx, ax
+02a52c: fsub qword [bx]+7fc8
+02a531: jmp 0x2a4d2
+02a533: mov es, word ptr [0x3688]
+02a537: mov ax, word ptr es:[0x40e4]
+02a53b: mov dx, word ptr es:[0x40e6]
+02a540: shl ax, 1
+02a542: rcl dx, 1
+02a544: add ax, 1
+02a547: adc dx, 0
+02a54a: mov word ptr [bp - 0x18], ax
+02a54d: mov word ptr [bp - 0x16], dx
+02a550: cmp word ptr [bp - 0x50], 4
+02a554: jne 0x2a57c
+02a556: cmp word ptr [bp - 0x4e], 0
+02a55a: jne 0x2a57c
+02a55c: mov ax, word ptr [bp - 0x34]
+02a55f: mov dx, word ptr [bp - 0x32]
+02a562: shl ax, 1
+02a564: rcl dx, 1
+02a566: add ax, word ptr es:[0x40e8]
+02a56b: adc dx, word ptr es:[0x40ea]
+02a570: sub ax, 1
+02a573: sbb dx, 0
+02a576: mov word ptr [bp - 0x34], ax
+02a579: mov word ptr [bp - 0x32], dx
+02a57c: cmp word ptr [bp - 0x50], 3
+02a580: jne 0x2a592
+02a582: cmp word ptr [bp - 0x4e], 0
+02a586: jne 0x2a592
+02a588: mov word ptr [bp - 0x28], 1
+02a58d: mov word ptr [bp - 0x26], 0
+02a592: mov ax, word ptr [bp - 0x14]
+02a595: db 8b
+02a596: push si

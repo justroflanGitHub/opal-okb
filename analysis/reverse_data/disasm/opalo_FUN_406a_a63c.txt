@@ -1,0 +1,82 @@
+04acdc: enter 0x74, 0
+04ace0: push di
+04ace1: push si
+04ace2: les bx, ptr [bp + 0x1a]
+04ace5: mov ax, word ptr es:[bx]
+04ace8: shl ax, 3
+04aceb: mov word ptr [bp - 4], ax
+04acee: add ax, 8
+04acf1: mov word ptr [bp - 2], ax
+04acf4: mov word ptr [0x94c8], 4
+04acfa: mov word ptr [0x94ca], 4
+04ad00: mov di, 8
+04ad03: fdecstp
+04ad06: fstp qword [di]+950c
+04ad0b: fistp dx:ax (emu)
+04ad0d: mov cx, di
+04ad0f: push di
+04ad10: lea si, [di - 0x6af4]
+04ad14: lea di, [di - 0x6aec]
+04ad18: push ds
+04ad19: pop es
+04ad1a: repne movsw word ptr es:[di], word ptr [si]
+04ad1c: pop di
+04ad1d: mov word ptr [bp - 6], di
+04ad20: mov si, di
+04ad22: add si, 0x94c4
+04ad26: mov word ptr [bp - 0xa], 3
+04ad2b: mov cx, word ptr [bp - 0xa]
+04ad2e: fdecstp
+04ad31: fstp qword [si]
+04ad34: fistp dx:ax (emu)
+04ad36: add si, 0x18
+04ad39: loop 0x4ad2e
+04ad3b: add di, 8
+04ad3e: cmp di, 0x18
+04ad41: jle 0x4ad1d
+04ad43: les bx, ptr [bp + 0x12]
+04ad46: mov ax, word ptr es:[bx]
+04ad49: mov word ptr [bp - 0xc], ax
+04ad4c: mov word ptr [0x94c8], 1
+04ad52: mov ax, word ptr [0x94c8]
+04ad55: cmp word ptr [bp - 0xc], ax
+04ad58: jge 0x4ad5d
+04ad5a: jmp 0x4ae32
+04ad5d: mov bx, ax
+04ad5f: shl bx, 1
+04ad61: les si, ptr [bp + 0x16]
+04ad64: cmp word ptr es:[bx + si - 2], 0
+04ad69: je 0x4ad6e
+04ad6b: jmp 0x4ae29
+04ad6e: mov ax, word ptr [bp - 4]
+04ad71: mul word ptr [0x94c8]
+04ad75: add ax, word ptr [bp + 0x1e]
+04ad78: mov dx, word ptr [bp + 0x20]
+04ad7b: sub ax, word ptr [bp - 2]
+04ad7e: mov word ptr [bp - 0x10], ax
+04ad81: mov word ptr [bp - 0xe], dx
+04ad84: les bx, ptr [bp - 0x10]
+04ad87: fld qword [bx]+18
+04ad8c: fadd qword [9514]
+04ad91: fstp qword [9514]
+04ad96: fld qword [bx]+8
+04ad9b: fmul qword [bx]+18
+04ada0: fadd qword [951c]
+04ada5: fstp qword [951c]
+04adaa: fld qword [bx]+10
+04adaf: fmul qword [bx]+18
+04adb4: fadd qword [9524]
+04adb9: fstp qword [9524]
+04adbe: fld qword [3068]
+04adc3: fadd qword [94cc]
+04adc8: fstp qword [94cc]
+04adcd: fld qword [bx]+8
+04add2: fadd qword [94e4]
+04add7: fstp qword [94e4]
+04addc: fld qword [bx]+10
+04ade1: fadd qword [94fc]
+04ade6: fstp qword [94fc]
+04adeb: fld qword [bx]+8
+04adf0: fmul qword [bx]+8
+04adf5: fadd qword [94ec]
+04adfa: db cd

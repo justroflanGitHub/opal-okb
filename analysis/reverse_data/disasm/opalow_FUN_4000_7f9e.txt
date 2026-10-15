@@ -1,0 +1,48 @@
+047f9e: loopne 0x47f6d
+047fa0: cmp word ptr [0xbf8e], bx
+047fa4: fistp dx:ax (emu)
+047fa6: mov ax, word ptr [0x878c]
+047fa9: or ax, word ptr [0x878e]
+047fad: jne 0x47fb2
+047faf: jmp 0x48040
+047fb2: mov ax, word ptr [0xbf54]
+047fb5: cdq 
+047fb6: cmp dx, word ptr [0x8786]
+047fba: jge 0x47fbf
+047fbc: jmp 0x48040
+047fbf: jg 0x47fc7
+047fc1: cmp ax, word ptr [0x8784]
+047fc5: jb 0x48040
+047fc7: mov ax, word ptr [0xbf60]
+047fca: cdq 
+047fcb: cmp ax, word ptr [0x8788]
+047fcf: jne 0x47fd7
+047fd1: cmp dx, word ptr [0x878a]
+047fd5: je 0x48040
+047fd7: inc word ptr [0xbf60]
+047fdb: fld qword [si]+8f48
+047fe0: fmul qword [8f48]
+047fe5: fmul qword [bf8e]
+047fea: mov ax, 0x18
+047fed: imul word ptr [0xbf54]
+047ff1: mov bx, ax
+047ff3: fld qword [bx+si]+8cd0
+047ff8: fmul qword [si]+8f48
+047ffd: fmul qword [8f48]
+048002: fld qword [si]+8e88
+048007: fmul qword [bf8e]
+04800c: faddp st1, st0
+04800f: les bx, ptr [bp + 0xa]
+048012: fmul qword [bx]
+048016: fsubrp st1, st0
+048019: fmul qword [3c76]
+04801e: mov bx, word ptr [0xbf60]
+048022: mov cl, 3
+048024: shl bx, cl
+048026: fsubr qword [bx]+8dc8
+04802b: fstp qword [bx]+8dc8
+048030: fistp dx:ax (emu)
+048032: cmp word ptr [0x8760], 2
+048037: jne 0x48040
+048039: db 83
+04803a: db 3e

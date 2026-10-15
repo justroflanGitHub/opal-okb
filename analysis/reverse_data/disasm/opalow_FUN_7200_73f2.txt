@@ -1,0 +1,62 @@
+0793f2: enter 0x52, 0
+0793f6: push si
+0793f7: les bx, ptr [bp + 0x1a]
+0793fa: mov ax, word ptr es:[bx]
+0793fd: or ax, word ptr es:[bx + 2]
+079401: jne 0x79412
+079403: les bx, ptr [bp + 0x16]
+079406: mov ax, word ptr es:[bx]
+079409: or ax, word ptr es:[bx + 2]
+07940d: jne 0x79412
+07940f: jmp 0x797f9
+079412: les bx, ptr [bp + 6]
+079415: cmp word ptr es:[bx + 2], 0
+07941a: jle 0x7941f
+07941c: jmp 0x795ee
+07941f: jl 0x7942a
+079421: cmp word ptr es:[bx], 3
+079425: jb 0x7942a
+079427: jmp 0x795ee
+07942a: les bx, ptr [bp + 0x16]
+07942d: mov ax, word ptr es:[bx]
+079430: mov dx, word ptr es:[bx + 2]
+079434: mov word ptr [bp - 0x10], ax
+079437: mov word ptr [bp - 0xe], dx
+07943a: les bx, ptr [bp + 0x1a]
+07943d: mov ax, word ptr es:[bx]
+079440: or ax, word ptr es:[bx + 2]
+079444: jne 0x79449
+079446: jmp 0x794ca
+079449: mov ax, word ptr es:[bx]
+07944c: mov dx, word ptr es:[bx + 2]
+079450: mov word ptr [bp - 0x18], ax
+079453: mov word ptr [bp - 0x16], dx
+079456: mov word ptr [bp - 8], 1
+07945b: mov word ptr [bp - 6], 0
+079460: or dx, dx
+079462: jl 0x794ca
+079464: jg 0x7946b
+079466: cmp ax, 1
+079469: jb 0x794ca
+07946b: les bx, ptr [bp + 0x16]
+07946e: mov ax, word ptr es:[bx]
+079471: mov dx, word ptr es:[bx + 2]
+079475: mov word ptr [bp - 0x1c], ax
+079478: mov word ptr [bp - 0x1a], dx
+07947b: mov ax, word ptr [bp - 0x1c]
+07947e: mov dx, word ptr [bp - 0x1a]
+079481: add ax, word ptr [bp - 8]
+079484: adc dx, word ptr [bp - 6]
+079487: mov word ptr [bp - 0x10], ax
+07948a: mov word ptr [bp - 0xe], dx
+07948d: shl ax, 2
+079490: mov si, ax
+079492: les bx, ptr [bp + 0x26]
+079495: fld dword [341c]
+07949a: fstp dword [bx+si]-4
+07949f: fistp dx:ax (emu)
+0794a1: les bx, ptr [bp + 0x22]
+0794a4: fdecstp
+0794a7: fstp dword [bx+si]-4
+0794ac: fistp dx:ax (emu)
+0794ae: add word ptr [bp - 8], 1

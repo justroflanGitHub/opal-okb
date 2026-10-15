@@ -1,0 +1,89 @@
+030698: enter 0x32, 0
+03069c: push di
+03069d: push si
+03069e: les bx, ptr [bp + 6]
+0306a1: sub ax, ax
+0306a3: mov word ptr es:[bx + 2], ax
+0306a7: mov word ptr es:[bx], ax
+0306aa: mov ax, 0x5eaa
+0306ad: lea di, [bp - 8]
+0306b0: mov si, 0x288
+0306b3: push ss
+0306b4: pop es
+0306b5: push ds
+0306b6: mov ds, ax
+0306b8: movsw word ptr es:[di], word ptr [si]
+0306b9: movsw word ptr es:[di], word ptr [si]
+0306ba: movsw word ptr es:[di], word ptr [si]
+0306bb: movsw word ptr es:[di], word ptr [si]
+0306bc: pop ds
+0306bd: fdecstp
+0306c0: fstp qword [bp]-14
+0306c4: fistp dx:ax (emu)
+0306c6: mov ax, word ptr [0x44b0]
+0306c9: mov dx, word ptr [0x44b2]
+0306cd: mov word ptr [bp - 0x28], ax
+0306d0: mov word ptr [bp - 0x26], dx
+0306d3: mov word ptr [bp - 0xc], 1
+0306d8: mov word ptr [bp - 0xa], 0
+0306dd: jmp 0x306ec
+0306df: add word ptr [bp - 0xc], 1
+0306e3: adc word ptr [bp - 0xa], 0
+0306e7: jno 0x306ec
+0306e9: jmp 0x307fb
+0306ec: mov ax, word ptr [bp - 0x28]
+0306ef: mov dx, word ptr [bp - 0x26]
+0306f2: cmp word ptr [bp - 0xa], dx
+0306f5: jle 0x306fa
+0306f7: jmp 0x307fb
+0306fa: jl 0x30704
+0306fc: cmp word ptr [bp - 0xc], ax
+0306ff: jbe 0x30704
+030701: jmp 0x307fb
+030704: mov si, word ptr [bp - 0xc]
+030707: shl si, 3
+03070a: mov es, word ptr [0x37aa]
+03070e: lea bx, [si]
+030712: fld qword [bx]-8
+030717: fld st0
+03071a: fstp tbyte [bp]-32
+03071e: fld qword [bp]-14
+030722: fmul st0, st1
+030725: fsubr qword [bp]-8
+030729: fstp qword [bp]-8
+03072d: fistp dx:ax (emu)
+03072f: mov di, word ptr [bp - 0xc]
+030732: shl di, 1
+030734: mov ax, word ptr [di + 0x4f56]
+030738: cdq 
+030739: xor ax, dx
+03073b: sub ax, dx
+03073d: imul bx, ax, 0x28
+030740: fld qword [bx]+5070
+030745: fild word [di]+4f56
+03074a: lcall 0x1dcd, 0x3eae
+03074f: mov ax, word ptr [di + 0x4f58]
+030753: cdq 
+030754: xor ax, dx
+030756: sub ax, dx
+030758: imul bx, ax, 0x28
+03075b: fld qword [bx]+5070
+030760: fild word [di]+4f58
+030765: lcall 0x1dcd, 0x3eae
+03076a: fdivrp st1, st0
+03076d: fst qword [bp]-24
+030771: fsubr qword [37ac]
+030776: fmul qword [bp]-8
+03077a: fst qword [bp]-1c
+03077e: fabs
+030781: fcom qword [37b4]
+030786: fstp st0
+030789: df c/4 st0
+03078c: sahf 
+03078d: ffree st0
+030790: jbe 0x307bf
+030792: mov es, word ptr [0x37aa]
+030796: lea bx, [si + 8]
+03079a: fld qword [bx]-8
+03079f: fld qword [bp]-24
+0307a3: int 0x37

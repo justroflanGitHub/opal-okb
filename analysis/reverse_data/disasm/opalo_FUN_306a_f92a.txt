@@ -1,0 +1,80 @@
+03ffca: fmul qword [si]
+03ffcd: fstp qword [si]
+03ffd0: fistp dx:ax (emu)
+03ffd2: add si, 0x18
+03ffd5: loop 0x3ffc5
+03ffd7: fld qword [8c18]
+03ffdc: fadd qword [8c10]
+03ffe1: les bx, ptr [bp + 0x1e]
+03ffe4: fmul qword [bx]
+03ffe8: fstp qword [8c18]
+03ffed: fld qword [8878]
+03fff2: fcom qword [3834]
+03fff7: fstp st0
+03fffa: fnstsw [bp]-8
+03fffe: fistp dx:ax (emu)
+040000: mov ah, byte ptr [bp - 7]
+040003: sahf 
+040004: je 0x40017
+040006: mov ax, 0x8870
+040009: push ds
+04000a: push ax
+04000b: mov ax, 0x87a0
+04000e: push ds
+04000f: push ax
+040010: push ds
+040011: push ax
+040012: lcall 0x406e, 0xd
+040017: les bx, ptr [bp + 0xa]
+04001a: fld qword [8bd8]
+04001f: fdiv qword [8be8]
+040024: fstp dword [bx]
+040028: fld qword [8be0]
+04002d: fdiv qword [8be8]
+040032: fstp dword [bx]+4
+040037: fld qword [8860]
+04003c: fsubr qword [8bc8]
+040041: fstp qword [8bc8]
+040046: fld qword [8868]
+04004b: fsubr qword [8bd0]
+040050: fstp qword [8bd0]
+040055: fld qword [8bc0]
+04005a: fmul qword [8bd8]
+04005f: fld qword [8bc8]
+040064: fmul qword [8be0]
+040069: faddp st1, st0
+04006c: fld qword [8bd0]
+040071: fmul qword [8be8]
+040076: faddp st1, st0
+040079: les bx, ptr [bp + 0x1e]
+04007c: fmul qword [bx]
+040080: fsubr qword [8c18]
+040085: fstp qword [8c18]
+04008a: fistp dx:ax (emu)
+04008c: mov ax, word ptr [0x87a0]
+04008f: or ax, word ptr [0x87a2]
+040093: jne 0x40098
+040095: jmp 0x402b7
+040098: cmp word ptr [0x87a2], 0
+04009d: jge 0x400a2
+04009f: jmp 0x40142
+0400a2: jg 0x400ae
+0400a4: cmp word ptr [0x87a0], 0
+0400a9: jne 0x400ae
+0400ab: jmp 0x40142
+0400ae: mov word ptr [0xb9ce], 3
+0400b4: mov word ptr [0xb9d0], 3
+0400ba: mov word ptr [bp - 0x1e], 8
+0400bf: mov ax, word ptr [bp + 6]
+0400c2: mov dx, word ptr [bp + 8]
+0400c5: add ax, 4
+0400c8: mov word ptr [bp - 0x14], ax
+0400cb: mov word ptr [bp - 0x12], dx
+0400ce: fdecstp
+0400d1: mov bx, word ptr [bp - 0x1e]
+0400d4: fld qword [bx]+8bd0
+0400d9: fstp st1
+0400dc: fistp dx:ax (emu)
+0400de: mov ax, bx
+0400e0: mov word ptr [bp - 6], ax
+0400e3: mov ax, word ptr [bp - 0x14]

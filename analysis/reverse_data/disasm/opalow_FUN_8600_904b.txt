@@ -1,0 +1,131 @@
+08f04b: ror ch, 0x37
+08f04e: jle 0x8f034
+08f050: fistp dx:ax (emu)
+08f052: les bx, ptr [bp + 0x3a]
+08f055: fld qword [bx]+8
+08f05a: fcom st0, st1
+08f05d: fstp st0
+08f060: df c/4 st0
+08f063: sahf 
+08f064: ffree st0
+08f067: jae 0x8f075
+08f069: fld tbyte [bp]-1c
+08f06d: fst qword [bx]+8
+08f072: ffree st0
+08f075: mov ax, word ptr [bp - 4]
+08f078: mul word ptr [0xa35a]
+08f07c: mov bx, ax
+08f07e: add bx, word ptr [bp + 0xa]
+08f081: mov es, word ptr [bp + 0xc]
+08f084: sub bx, word ptr [bp - 2]
+08f087: fld qword [bx]+10
+08f08c: fld st0
+08f08f: fstp tbyte [bp]-1c
+08f093: fistp dx:ax (emu)
+08f095: les bx, ptr [bp + 0x3e]
+08f098: fld qword [bx]+8
+08f09d: fcom st0, st1
+08f0a0: fstp st0
+08f0a3: df c/4 st0
+08f0a6: sahf 
+08f0a7: ffree st0
+08f0aa: jbe 0x8f0b8
+08f0ac: fld tbyte [bp]-1c
+08f0b0: fst qword [bx]+8
+08f0b5: ffree st0
+08f0b8: mov ax, word ptr [bp - 4]
+08f0bb: mul word ptr [0xa35a]
+08f0bf: mov bx, ax
+08f0c1: add bx, word ptr [bp + 0xa]
+08f0c4: mov es, word ptr [bp + 0xc]
+08f0c7: sub bx, word ptr [bp - 2]
+08f0ca: fld qword [bx]+18
+08f0cf: fld st0
+08f0d2: fstp tbyte [bp]-1c
+08f0d6: fistp dx:ax (emu)
+08f0d8: les bx, ptr [bp + 0x3a]
+08f0db: fld qword [bx]+10
+08f0e0: fcom st0, st1
+08f0e3: fstp st0
+08f0e6: df c/4 st0
+08f0e9: sahf 
+08f0ea: ffree st0
+08f0ed: jae 0x8f0fb
+08f0ef: fld tbyte [bp]-1c
+08f0f3: fst qword [bx]+10
+08f0f8: ffree st0
+08f0fb: mov ax, word ptr [bp - 4]
+08f0fe: mul word ptr [0xa35a]
+08f102: mov bx, ax
+08f104: add bx, word ptr [bp + 0xa]
+08f107: mov es, word ptr [bp + 0xc]
+08f10a: sub bx, word ptr [bp - 2]
+08f10d: fld qword [bx]+18
+08f112: fld st0
+08f115: fstp tbyte [bp]-1c
+08f119: fistp dx:ax (emu)
+08f11b: les bx, ptr [bp + 0x3e]
+08f11e: fld qword [bx]+10
+08f123: fcom st0, st1
+08f126: fstp st0
+08f129: df c/4 st0
+08f12c: sahf 
+08f12d: ffree st0
+08f130: jbe 0x8f13e
+08f132: fld tbyte [bp]-1c
+08f136: fst qword [bx]+10
+08f13b: ffree st0
+08f13e: inc word ptr [0xa35a]
+08f142: jo 0x8f147
+08f144: jmp 0x8efa5
+08f147: mov word ptr [0xa35a], 4
+08f14d: mov ax, word ptr [bp + 0x3a]
+08f150: mov dx, word ptr [bp + 0x3c]
+08f153: mov word ptr [bp - 0x22], ax
+08f156: mov word ptr [bp - 0x20], dx
+08f159: mov ax, word ptr [bp + 0x3e]
+08f15c: mov dx, word ptr [bp + 0x40]
+08f15f: mov word ptr [bp - 0x26], ax
+08f162: mov word ptr [bp - 0x24], dx
+08f165: mov ax, word ptr [bp + 0x32]
+08f168: mov dx, word ptr [bp + 0x34]
+08f16b: mov word ptr [bp - 0x2a], ax
+08f16e: mov word ptr [bp - 0x28], dx
+08f171: mov ax, word ptr [bp + 0x36]
+08f174: mov dx, word ptr [bp + 0x38]
+08f177: mov word ptr [bp - 0x2e], ax
+08f17a: mov word ptr [bp - 0x2c], dx
+08f17d: mov cx, 3
+08f180: fdecstp
+08f183: les bx, ptr [bp - 0x22]
+08f186: fld qword [bx]
+08f18a: les bx, ptr [bp - 0x26]
+08f18d: fsub qword [bx]
+08f191: fmul qword [35f4]
+08f196: fstp st1
+08f199: fistp dx:ax (emu)
+08f19b: les bx, ptr [bp - 0x22]
+08f19e: fld st0
+08f1a1: fadd qword [bx]
+08f1a5: fstp qword [bx]
+08f1a9: fistp dx:ax (emu)
+08f1ab: les bx, ptr [bp - 0x26]
+08f1ae: fld st0
+08f1b1: fsubr qword [bx]
+08f1b5: fstp qword [bx]
+08f1b9: fistp dx:ax (emu)
+08f1bb: les bx, ptr [bp - 0x2a]
+08f1be: mov ax, word ptr [bp - 0x22]
+08f1c1: mov dx, word ptr [bp - 0x20]
+08f1c4: mov di, bx
+08f1c6: mov si, ax
+08f1c8: push ds
+08f1c9: mov ds, dx
+08f1cb: movsw word ptr es:[di], word ptr [si]
+08f1cc: movsw word ptr es:[di], word ptr [si]
+08f1cd: movsw word ptr es:[di], word ptr [si]
+08f1ce: movsw word ptr es:[di], word ptr [si]
+08f1cf: pop ds
+08f1d0: les bx, ptr [bp - 0x2e]
+08f1d3: mov ax, word ptr [bp - 0x26]
+08f1d6: mov dx, word ptr [bp - 0x24]

@@ -1,0 +1,187 @@
+043ca2: fld qword [8b90]
+043ca7: fmul qword [8b90]
+043cac: fld qword [8b98]
+043cb1: fmul qword [8b98]
+043cb6: faddp st1, st0
+043cb9: lcall 0x1dcd, 0x3f26
+043cbe: fstp qword [bbbe]
+043cc3: fld qword [8e10]
+043cc8: fmul qword [8b90]
+043ccd: fld qword [8e30]
+043cd2: fmul qword [8b98]
+043cd7: faddp st1, st0
+043cda: fdiv qword [bbbe]
+043cdf: fstp qword [bbd8]
+043ce4: fistp dx:ax (emu)
+043ce6: lea ax, [0x3aa6]
+043cea: push ds
+043ceb: push ax
+043cec: mov ax, word ptr [bp - 0xa]
+043cef: shl ax, 1
+043cf1: shl ax, 1
+043cf3: add ax, word ptr [bp + 0x3a]
+043cf6: mov dx, word ptr [bp + 0x3c]
+043cf9: sub ax, 4
+043cfc: push dx
+043cfd: push ax
+043cfe: mov ax, 0xbbbe
+043d01: push ds
+043d02: push ax
+043d03: mov ax, 0xbbd8
+043d06: push ds
+043d07: push ax
+043d08: lcall 0x4532, 0xb
+043d0d: mov si, word ptr [bp - 0xa]
+043d10: shl si, 1
+043d12: shl si, 1
+043d14: les bx, ptr [bp + 0x3a]
+043d17: fld dword [bx+si]-4
+043d1c: fcom qword [8c28]
+043d21: fstp st0
+043d24: fnstsw [bp]-66
+043d28: fistp dx:ax (emu)
+043d2a: mov ah, byte ptr [bp - 0x65]
+043d2d: sahf 
+043d2e: ja 0x43d4b
+043d30: mov si, word ptr [bp - 0xa]
+043d33: les bx, ptr [bp + 0xe]
+043d36: mov al, byte ptr [0x909f]
+043d39: mov byte ptr es:[bx + si - 1], al
+043d3d: les bx, ptr [bp + 6]
+043d40: mov word ptr es:[bx], 1
+043d45: mov word ptr es:[bx + 2], 0
+043d4b: les bx, ptr [bp + 0x66]
+043d4e: cmp word ptr es:[bx + 2], 0
+043d53: jge 0x43d72
+043d55: fld qword [bp]-62
+043d59: fabs
+043d5c: fcom qword [3ad2]
+043d61: fstp st0
+043d64: fnstsw [bp]-66
+043d68: fistp dx:ax (emu)
+043d6a: mov ah, byte ptr [bp - 0x65]
+043d6d: sahf 
+043d6e: jbe 0x43ddc
+043d70: jmp 0x43d9c
+043d72: cmp word ptr [0x8760], 2
+043d77: jne 0x43ddc
+043d79: cmp word ptr [0x8762], 0
+043d7e: jne 0x43ddc
+043d80: mov si, word ptr [bp - 0xa]
+043d83: les bx, ptr [bp + 0xe]
+043d86: mov al, byte ptr [0x909d]
+043d89: mov byte ptr es:[bx + si - 1], al
+043d8d: les bx, ptr [bp + 0x66]
+043d90: mov ax, word ptr es:[bx]
+043d93: or ax, word ptr es:[bx + 2]
+043d97: jne 0x43d9c
+043d99: jmp 0x441cb
+043d9c: mov ax, word ptr [bp - 0xa]
+043d9f: cdq 
+043da0: add ax, 0x7d0
+043da3: adc dx, 0
+043da6: mov word ptr [0x8b60], ax
+043da9: mov word ptr [0x8b62], dx
+043dad: les bx, ptr [bp + 0x72]
+043db0: cmp word ptr es:[bx + 2], 0
+043db5: jl 0x43dcb
+043db7: mov ax, 0x8bd0
+043dba: push ds
+043dbb: push ax
+043dbc: mov ax, 0x8dd0
+043dbf: push ds
+043dc0: push ax
+043dc1: mov ax, 0xbbf4
+043dc4: push ds
+043dc5: push ax
+043dc6: lcall 0x4544, 9
+043dcb: cmp word ptr [0x8760], 2
+043dd0: jne 0x43ddc
+043dd2: cmp word ptr [0x8762], 0
+043dd7: jne 0x43ddc
+043dd9: jmp 0x44052
+043ddc: mov ax, word ptr [bp - 0xa]
+043ddf: cdq 
+043de0: les bx, ptr [bp + 0x7a]
+043de3: cmp word ptr es:[bx], ax
+043de6: je 0x43deb
+043de8: jmp 0x43f76
+043deb: cmp word ptr es:[bx + 2], dx
+043def: je 0x43df4
+043df1: jmp 0x43f76
+043df4: push word ptr [bp + 0x68]
+043df7: push word ptr [bp + 0x66]
+043dfa: push word ptr [bp + 0x70]
+043dfd: push word ptr [bp + 0x6e]
+043e00: push word ptr [bp + 0x30]
+043e03: push word ptr [bp + 0x2e]
+043e06: mov ax, word ptr [bp + 0x22]
+043e09: mov dx, word ptr [bp + 0x24]
+043e0c: add ax, 4
+043e0f: push dx
+043e10: push ax
+043e11: push word ptr [bp + 0x28]
+043e14: push word ptr [bp + 0x26]
+043e17: lcall 0x4601, 0
+043e1c: les bx, ptr [bp + 0x66]
+043e1f: cmp word ptr es:[bx], 1
+043e23: jne 0x43e8f
+043e25: cmp word ptr es:[bx + 2], 0
+043e2a: jne 0x43e8f
+043e2c: les bx, ptr [bp + 0x6a]
+043e2f: mov ax, word ptr es:[bx]
+043e32: or ax, word ptr es:[bx + 2]
+043e36: jne 0x43e8f
+043e38: les bx, ptr [bp + 0x32]
+043e3b: fld dword [bx]
+043e3f: fmul qword [88a0]
+043e44: fmul qword [8b80]
+043e49: fmul qword [3ada]
+043e4e: fst qword [bc10]
+043e53: fcom qword [3ac6]
+043e58: fstp st0
+043e5b: fnstsw [bp]-66
+043e5f: fistp dx:ax (emu)
+043e61: mov ah, byte ptr [bp - 0x65]
+043e64: sahf 
+043e65: jbe 0x43e8f
+043e67: fld qword [8b70]
+043e6c: fcom qword [3ac6]
+043e71: fstp st0
+043e74: fnstsw [bp]-66
+043e78: fistp dx:ax (emu)
+043e7a: mov ah, byte ptr [bp - 0x65]
+043e7d: sahf 
+043e7e: jae 0x43e8f
+043e80: fld qword [bc10]
+043e85: fchs
+043e88: fstp qword [8b80]
+043e8d: fistp dx:ax (emu)
+043e8f: mov si, word ptr [0xbbb0]
+043e93: mov cl, 2
+043e95: shl si, cl
+043e97: les bx, ptr [bp + 0x1a]
+043e9a: fld qword [8b98]
+043e9f: fstp dword [bx+si]-4
+043ea4: fistp dx:ax (emu)
+043ea6: les bx, ptr [bp + 0x12]
+043ea9: fld dword [bx+si]-4
+043eae: fcom qword [8be0]
+043eb3: fstp st0
+043eb6: fnstsw [bp]-66
+043eba: fistp dx:ax (emu)
+043ebc: mov ah, byte ptr [bp - 0x65]
+043ebf: sahf 
+043ec0: jbe 0x43ece
+043ec2: fld qword [8be0]
+043ec7: fstp dword [bx+si]-4
+043ecc: fistp dx:ax (emu)
+043ece: mov bx, word ptr [0xbbb0]
+043ed2: shl bx, 1
+043ed4: shl bx, 1
+043ed6: les si, ptr [bp + 0x16]
+043ed9: fld qword [8c28]
+043ede: fstp dword [bx+si]-4
+043ee3: fdecstp
+043ee6: int 0x39
+043ee8: push ss

@@ -1,0 +1,66 @@
+02ff45: enter 0x10, 0
+02ff49: les bx, ptr [bp + 0xe]
+02ff4c: fdecstp
+02ff4f: fstp qword [bx]
+02ff53: fistp dx:ax (emu)
+02ff55: les bx, ptr [bp + 0xa]
+02ff58: mov ax, word ptr es:[bx]
+02ff5b: mov dx, word ptr es:[bx + 2]
+02ff5f: les bx, ptr [bp + 6]
+02ff62: cmp word ptr es:[bx + 2], dx
+02ff66: jg 0x2ff75
+02ff68: jge 0x2ff6d
+02ff6a: jmp 0x2fff8
+02ff6d: cmp word ptr es:[bx], ax
+02ff70: ja 0x2ff75
+02ff72: jmp 0x2fff8
+02ff75: les bx, ptr [bp + 6]
+02ff78: mov ax, word ptr es:[bx]
+02ff7b: dec ax
+02ff7c: mov word ptr [bp - 4], ax
+02ff7f: les bx, ptr [bp + 0xa]
+02ff82: mov ax, word ptr es:[bx]
+02ff85: mov word ptr [bp - 2], ax
+02ff88: mov ax, word ptr [bp - 4]
+02ff8b: cmp word ptr [bp - 2], ax
+02ff8e: jg 0x2fff8
+02ff90: mov ax, word ptr [bp - 2]
+02ff93: shl ax, 3
+02ff96: add ax, word ptr [bp + 0x12]
+02ff99: mov dx, word ptr [bp + 0x14]
+02ff9c: sub ax, 8
+02ff9f: mov word ptr [bp - 8], ax
+02ffa2: mov word ptr [bp - 6], dx
+02ffa5: mov ax, word ptr [bp - 2]
+02ffa8: cdq 
+02ffa9: mov cx, ax
+02ffab: mov ax, word ptr [bp - 4]
+02ffae: mov bx, dx
+02ffb0: cdq 
+02ffb1: sub ax, cx
+02ffb3: sbb dx, bx
+02ffb5: add ax, 1
+02ffb8: adc dx, 0
+02ffbb: mov word ptr [bp - 0xc], ax
+02ffbe: mov word ptr [bp - 0xa], dx
+02ffc1: add word ptr [bp - 2], ax
+02ffc4: mov word ptr [bp - 0xe], ax
+02ffc7: mov ax, dx
+02ffc9: mov word ptr [bp - 0x10], ax
+02ffcc: neg word ptr [bp - 0xe]
+02ffcf: neg word ptr [bp - 0xe]
+02ffd2: adc word ptr [bp - 0x10], -1
+02ffd6: mov cx, word ptr [bp - 0xe]
+02ffd9: les bx, ptr [bp - 8]
+02ffdc: fld qword [bx]
+02ffe0: les bx, ptr [bp + 0xe]
+02ffe3: fadd qword [bx]
+02ffe7: fstp qword [bx]
+02ffeb: fistp dx:ax (emu)
+02ffed: add word ptr [bp - 8], 8
+02fff1: loop 0x2ffd9
+02fff3: dec word ptr [bp - 0x10]
+02fff6: jns 0x2ffd9
+02fff8: leave 
+02fff9: db ca
+02fffa: db 10

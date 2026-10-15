@@ -1,0 +1,24 @@
+07cfc0: enter 0, 0
+07cfc4: push word ptr [bp + 0x14]
+07cfc7: push word ptr [bp + 0x12]
+07cfca: push word ptr [bp + 0x10]
+07cfcd: push word ptr [bp + 0xe]
+07cfd0: push word ptr [bp + 0xc]
+07cfd3: push word ptr [bp + 0xa]
+07cfd6: lcall 0x7da5, 0xc
+07cfdb: les bx, ptr [bp + 0xa]
+07cfde: fld dword [bx]
+07cfe2: fcom dword [3490]
+07cfe7: fstp st0
+07cfea: df c/4 st0
+07cfed: sahf 
+07cfee: ja 0x7cffb
+07cff0: fld dword [3494]
+07cff5: fstp dword [bx]
+07cff9: fistp dx:ax (emu)
+07cffb: les bx, ptr [bp + 6]
+07cffe: fld dword [bx]
+07d002: les bx, ptr [bp + 0xa]
+07d005: fld dword [bx]
+07d009: lcall 0x4716, 0x3f26
+07d00e: int 0x3a

@@ -1,0 +1,12 @@
+013101: cmp word ptr [bp - 0x38], 1
+013105: jne 0x1311b
+013107: cmp word ptr [bp - 0x36], 0
+01310b: jne 0x1311b
+01310d: fld qword [bp]-10
+013111: fadd qword [bp]-30
+013115: fstp qword [bp]-30
+013119: fistp dx:ax (emu)
+01311b: mov ax, word ptr [bp - 0x38]
+01311e: or ax, word ptr [bp - 0x36]
+013121: je 0x13126
+013123: jmp 0x12e45

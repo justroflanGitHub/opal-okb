@@ -1,0 +1,87 @@
+043804: mov si, word ptr [bp - 0xa]
+043807: shl si, 1
+043809: les bx, ptr [bp + 0x52]
+04380c: mov ax, word ptr es:[bx + si]
+04380f: cmp word ptr es:[bx + si - 2], ax
+043813: je 0x43818
+043815: jmp 0x43b0a
+043818: fld qword [3ab2]
+04381d: fstp qword [8c28]
+043822: fdecstp
+043825: fstp qword [8be0]
+04382a: fistp dx:ax (emu)
+04382c: les bx, ptr [bp + 0x4a]
+04382f: cmp word ptr es:[bx + si - 2], 0
+043834: jne 0x43854
+043836: mov ax, word ptr [bp - 0xa]
+043839: mov cl, 3
+04383b: shl ax, cl
+04383d: add ax, word ptr [bp + 0x5a]
+043840: mov dx, word ptr [bp + 0x5c]
+043843: sub ax, 8
+043846: push dx
+043847: push ax
+043848: lea ax, [bp - 0x62]
+04384b: push ss
+04384c: push ax
+04384d: lcall 0x46d7, 0x1c
+043852: jmp 0x4388b
+043854: mov ax, word ptr [bp - 0xa]
+043857: mov cl, 3
+043859: shl ax, cl
+04385b: add ax, word ptr [bp + 0x5a]
+04385e: mov dx, word ptr [bp + 0x5c]
+043861: sub ax, 8
+043864: push dx
+043865: push ax
+043866: lea ax, [bp - 0x62]
+043869: push ss
+04386a: push ax
+04386b: mov ax, word ptr [bp - 0xa]
+04386e: shl ax, 1
+043870: add ax, word ptr [bp + 0x4a]
+043873: mov dx, word ptr [bp + 0x4c]
+043876: sub ax, 2
+043879: push dx
+04387a: push ax
+04387b: push word ptr [bp + 0x40]
+04387e: push word ptr [bp + 0x3e]
+043881: mov ax, 0xbba2
+043884: push ds
+043885: push ax
+043886: lcall 0x4612, 0x1c
+04388b: mov ax, word ptr [0x8760]
+04388e: or ax, word ptr [0x8762]
+043892: jne 0x438eb
+043894: fld qword [8be0]
+043899: fadd qword [8be8]
+04389e: fstp qword [8be8]
+0438a3: fistp dx:ax (emu)
+0438a5: cmp word ptr [0x8772], 0
+0438aa: jge 0x438eb
+0438ac: mov ax, word ptr [0x8770]
+0438af: mov dx, word ptr [0x8772]
+0438b3: neg ax
+0438b5: adc dx, 0
+0438b8: neg dx
+0438ba: mov word ptr [0xbbce], ax
+0438bd: mov word ptr [bp - 0x72], ax
+0438c0: mov word ptr [bp - 6], 1
+0438c5: mov ax, word ptr [bp - 0x72]
+0438c8: cmp word ptr [bp - 6], ax
+0438cb: jg 0x438eb
+0438cd: mov ax, 0x18
+0438d0: imul word ptr [bp - 6]
+0438d3: mov bx, ax
+0438d5: fld qword [8bc8]
+0438da: fmul qword [bx]+8c18
+0438df: fstp qword [bx]+8c18
+0438e4: fistp dx:ax (emu)
+0438e6: inc word ptr [bp - 6]
+0438e9: jno 0x438c5
+0438eb: sub ax, ax
+0438ed: mov word ptr [0x8762], ax
+0438f0: mov word ptr [0x8760], ax
+0438f3: mov si, word ptr [bp - 0xa]
+0438f6: mov cl, 2
+0438f8: shl si, cl

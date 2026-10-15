@@ -1,0 +1,26 @@
+01378d: enter 2, 0
+013791: push di
+013792: push si
+013793: les bx, ptr [bp + 0xa]
+013796: mov si, word ptr es:[bx]
+013799: lea ax, [si + 1]
+01379c: mov word ptr [0x9158], ax
+01379f: les bx, ptr [bp + 6]
+0137a2: sub ax, ax
+0137a4: mov word ptr es:[bx + 2], ax
+0137a8: mov word ptr es:[bx], ax
+0137ab: mov di, si
+0137ad: shl di, 3
+0137b0: mov ax, word ptr [0x9158]
+0137b3: shl ax, 3
+0137b6: mov word ptr [bp - 2], ax
+0137b9: les bx, ptr [bp + 0x16]
+0137bc: add bx, ax
+0137be: fld qword [bx]-8
+0137c3: les bx, ptr [bp + 0x1a]
+0137c6: fld qword [bx+di]-8
+0137cb: les bx, ptr [bp + 0x12]
+0137ce: fmul qword [bx+di]-8
+0137d3: fsubrp st1, st0
+0137d6: db c4
+0137d7: pop si

@@ -1,0 +1,10 @@
+03ff30: jle 0x3ff3a
+03ff32: mov word ptr [0x8790], 6
+03ff38: jmp 0x3ff0b
+03ff3a: fld qword [8bb0]
+03ff3f: fmul qword [b986]
+03ff44: fadd qword [b95e]
+03ff49: fstp qword [b95e]
+03ff4e: fistp dx:ax (emu)
+03ff50: inc word ptr [0xb956]
+03ff54: jmp 0x3f088

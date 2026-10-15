@@ -1,0 +1,24 @@
+01c200: push bp
+01c201: mov bp, sp
+01c203: sub sp, 0xc
+01c206: push bx
+01c207: push cx
+01c208: push si
+01c209: push di
+01c20a: fnstcw [bp]-2
+01c20e: fistp dx:ax (emu)
+01c210: mov ax, word ptr [bp - 2]
+01c213: or ah, 0xc
+01c216: mov word ptr [bp - 4], ax
+01c219: fldcw [bp]-4
+01c21d: fstp qword [bp]-c
+01c221: fldcw [bp]-2
+01c225: mov ax, word ptr [bp - 0xc]
+01c228: mov dx, word ptr [bp - 0xa]
+01c22b: pop di
+01c22c: pop si
+01c22d: pop cx
+01c22e: pop bx
+01c22f: mov sp, bp
+01c231: pop bp
+01c232: retf 

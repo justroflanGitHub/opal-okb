@@ -1,0 +1,111 @@
+0424f1: push bp
+0424f2: mov bp, sp
+0424f4: sub sp, 0x4c
+0424f7: push di
+0424f8: push si
+0424f9: mov word ptr [bp - 2], 1
+0424fe: mov word ptr [bp - 0x20], 1
+042503: les bx, ptr [bp + 0xa]
+042506: fld qword [bx]
+04250a: fcom qword [3944]
+04250f: fstp st0
+042512: fnstsw [bp]-22
+042516: fistp dx:ax (emu)
+042518: mov ah, byte ptr [bp - 0x21]
+04251b: sahf 
+04251c: jne 0x4258f
+04251e: fld qword [8be8]
+042523: fmul qword [8be8]
+042528: fstp qword [8bf0]
+04252d: fld qword [8be8]
+042532: fabs
+042535: fstp qword [8bf8]
+04253a: fistp dx:ax (emu)
+04253c: cmp word ptr [0x87be], 0
+042541: jl 0x42557
+042543: jg 0x4254c
+042545: cmp word ptr [0x87bc], 0
+04254a: je 0x42557
+04254c: push word ptr [bp + 0xc]
+04254f: push word ptr [bp + 0xa]
+042552: lcall 0x4309, 0
+042557: fld qword [8be8]
+04255c: fcom qword [3944]
+042561: fstp st0
+042564: fnstsw [bp]-22
+042568: fistp dx:ax (emu)
+04256a: mov ah, byte ptr [bp - 0x21]
+04256d: sahf 
+04256e: jne 0x42573
+042570: jmp 0x42660
+042573: fld qword [8bd0]
+042578: fdiv qword [8be8]
+04257d: fchs
+042580: fstp qword [8c10]
+042585: fdecstp
+042588: fstp qword [bp]-1e
+04258c: jmp 0x4277f
+04258f: fld qword [8bc0]
+042594: fmul qword [8bd8]
+042599: fld qword [8bc8]
+04259e: fmul qword [8be0]
+0425a3: faddp st1, st0
+0425a6: fld qword [8bd0]
+0425ab: fmul qword [8be8]
+0425b0: faddp st1, st0
+0425b3: fstp qword [bp]-1e
+0425b7: fistp dx:ax (emu)
+0425b9: mov word ptr [bp - 0xc], 4
+0425be: mov si, 0x8bc0
+0425c1: mov di, 0x8bd8
+0425c4: mov cx, 3
+0425c7: fld qword [di]
+0425ca: fmul qword [bp]-1e
+0425ce: fsubr qword [si]
+0425d1: fstp qword [si]
+0425d4: fistp dx:ax (emu)
+0425d6: add si, 8
+0425d9: add di, 8
+0425dc: loop 0x425c7
+0425de: mov di, 0x8eb8
+0425e1: mov si, 0x8be8
+0425e4: push ds
+0425e5: pop es
+0425e6: movsw word ptr es:[di], word ptr [si]
+0425e7: movsw word ptr es:[di], word ptr [si]
+0425e8: movsw word ptr es:[di], word ptr [si]
+0425e9: movsw word ptr es:[di], word ptr [si]
+0425ea: les bx, ptr [bp + 0xa]
+0425ed: fld qword [bx]
+0425f1: fld st0
+0425f4: fstp tbyte [bp]-32
+0425f8: fld qword [8bc0]
+0425fd: fmul qword [8bc0]
+042602: fld qword [8bc8]
+042607: fmul qword [8bc8]
+04260c: faddp st1, st0
+04260f: fld qword [8bd0]
+042614: fmul qword [8bd0]
+042619: faddp st1, st0
+04261c: fmul st0, st1
+04261f: fsub qword [8bd0]
+042624: fsub qword [8bd0]
+042629: fstp qword [bp]-a
+04262d: fld qword [8eb8]
+042632: fmul qword [8eb8]
+042637: fld qword [bp]-a
+04263b: fmul st0, st2
+04263e: fsubrp st1, st0
+042641: fst qword [8bf0]
+042646: fcom qword [3944]
+04264b: fstp st0
+04264e: fnstsw [bp]-28
+042652: fistp dx:ax (emu)
+042654: mov ah, byte ptr [bp - 0x27]
+042657: sahf 
+042658: ffree st0
+04265b: jbe 0x42660
+04265d: jmp 0x4272e
+042660: db c7
+042661: push es
+042662: nop 

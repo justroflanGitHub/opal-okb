@@ -1,0 +1,16 @@
+0278ea: enter 0xce, 0
+0278ee: push di
+0278ef: push si
+0278f0: sub ax, ax
+0278f2: mov word ptr [bp - 0x1a], ax
+0278f5: mov word ptr [bp - 0x1c], ax
+0278f8: fld dword [3f30]
+0278fd: fmul dword [ce8]
+027902: fmul dword [3460]
+027907: fst dword [bp]-58
+02790b: fmul dword [cec]
+027910: fmul dword [3464]
+027915: fstp dword [bp]-6c
+027919: fld dword [bp]-58
+02791d: int 0x34
+02791f: push cs

@@ -1,0 +1,21 @@
+025c4b: fld qword [b72e]
+025c50: fsubr qword [b73e]
+025c55: esc?
+025c5a: fst qword [b71e]
+025c5f: fdivr dword [3630]
+025c64: fstp qword [b70e]
+025c69: fld qword [b736]
+025c6e: fsubr qword [b746]
+025c73: esc?
+025c78: fst qword [b726]
+025c7d: fdivr dword [3630]
+025c82: fstp qword [b716]
+025c87: ret 
+025c88: mov cx, 0xb72e
+025c8b: mov dx, 0xb70e
+025c8e: push cx
+025c8f: call 0x25cb3
+025c92: jmp 0x25cae
+025c94: mov cx, 0xb736
+025c97: db e8
+025c98: db 22

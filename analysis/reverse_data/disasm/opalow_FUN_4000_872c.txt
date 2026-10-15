@@ -1,0 +1,81 @@
+04872c: push bp
+04872d: mov bp, sp
+04872f: sub sp, 0x2e
+048732: push di
+048733: push si
+048734: mov ax, word ptr [0x8774]
+048737: or ax, word ptr [0x8776]
+04873b: jne 0x48740
+04873d: jmp 0x488d5
+048740: les bx, ptr [bp + 0xe]
+048743: fld qword [bx]
+048747: fmul qword [8e80]
+04874c: fstp qword [c034]
+048751: fistp dx:ax (emu)
+048753: mov ax, word ptr [0x8774]
+048756: mov word ptr [bp - 2], ax
+048759: mov word ptr [0xc028], 1
+04875f: jmp 0x48808
+048762: mov bx, word ptr [bp - 0x20]
+048765: fld qword [bx]
+048768: fmul st0, st2
+04876b: fstp st1
+04876e: fistp dx:ax (emu)
+048770: mov bx, word ptr [bp - 0x22]
+048773: mov si, bx
+048775: fld qword [si]
+048778: fmul qword [bp]-16
+04877c: fadd st0, st1
+04877f: fst qword [bx]
+048782: mov bx, word ptr [bp - 0x24]
+048785: fmul qword [bx]
+048788: fadd qword [c02a]
+04878d: fstp qword [c02a]
+048792: fistp dx:ax (emu)
+048794: add word ptr [bp - 6], 8
+048798: add word ptr [bp - 0x20], 8
+04879c: add word ptr [bp - 0x22], 8
+0487a0: add word ptr [bp - 0x24], 8
+0487a4: dec word ptr [bp - 0x26]
+0487a7: je 0x487ac
+0487a9: jmp 0x48888
+0487ac: fstp qword [c03c]
+0487b1: fstp qword [c034]
+0487b6: fld qword [8bd8]
+0487bb: fdivr qword [c02a]
+0487c0: fstp qword [c02a]
+0487c5: fistp dx:ax (emu)
+0487c7: mov word ptr [0xc026], 4
+0487cd: mov ax, 0x18
+0487d0: imul word ptr [0xc028]
+0487d4: mov word ptr [bp - 0x28], ax
+0487d7: add ax, 0x8cd8
+0487da: mov si, ax
+0487dc: mov di, 0x8c10
+0487df: mov word ptr [bp - 0x2e], 3
+0487e4: mov cx, word ptr [bp - 0x2e]
+0487e7: fld qword [di]
+0487ea: fmul qword [c02a]
+0487ef: fadd qword [si]
+0487f2: fstp qword [si]
+0487f5: fistp dx:ax (emu)
+0487f7: add si, 8
+0487fa: add di, 8
+0487fd: loop 0x487e7
+0487ff: inc word ptr [0xc028]
+048803: jno 0x48808
+048805: jmp 0x488d5
+048808: mov ax, word ptr [0xc028]
+04880b: cmp word ptr [bp - 2], ax
+04880e: jge 0x48813
+048810: jmp 0x488d5
+048813: fdecstp
+048816: fstp qword [c02a]
+04881b: fistp dx:ax (emu)
+04881d: mov word ptr [0xc026], 4
+048823: mov ax, 0x18
+048826: imul word ptr [0xc028]
+04882a: mov word ptr [bp - 0xe], ax
+04882d: mov ax, word ptr [bp + 0xa]
+048830: mov dx, word ptr [bp + 0xc]
+048833: db 8d

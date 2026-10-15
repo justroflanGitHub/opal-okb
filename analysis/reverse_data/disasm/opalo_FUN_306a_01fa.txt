@@ -1,0 +1,118 @@
+03089a: enter 0x1c, 0
+03089e: push si
+03089f: push 0xe
+0308a1: lcall 0x139e, 0x1fe
+0308a6: add sp, 2
+0308a9: mov word ptr [0xaeba], ax
+0308ac: les bx, ptr [bp + 0x16]
+0308af: push word ptr es:[bx]
+0308b2: les bx, ptr [bp + 0x1a]
+0308b5: push word ptr es:[bx]
+0308b8: les bx, ptr [bp + 0x1e]
+0308bb: push word ptr es:[bx]
+0308be: les bx, ptr [bp + 0x22]
+0308c1: push word ptr es:[bx]
+0308c4: push 2
+0308c6: lcall 0x139e, 0x600
+0308cb: add sp, 0xa
+0308ce: mov word ptr [0xaeba], ax
+0308d1: les bx, ptr [bp + 6]
+0308d4: push word ptr es:[bx]
+0308d7: push 0x13fc
+0308da: lcall 0x1886, 0xf60
+0308df: add sp, 4
+0308e2: mov word ptr [bp - 2], 0xa
+0308e7: les bx, ptr [bp + 0x22]
+0308ea: mov si, word ptr es:[bx]
+0308ed: push -0xe
+0308ef: les bx, ptr [bp + 0x16]
+0308f2: mov ax, word ptr es:[bx]
+0308f5: add ax, 8
+0308f8: push ax
+0308f9: les bx, ptr [bp + 0x1a]
+0308fc: mov ax, word ptr es:[bx]
+0308ff: sub ax, si
+030901: add ax, si
+030903: sub ax, 0x12
+030906: push ax
+030907: push 3
+030909: mov ax, 0xaebc
+03090c: push ds
+03090d: push ax
+03090e: lea ax, [bp - 4]
+030911: mov word ptr [0x1bae], ax
+030914: mov word ptr [0x1bb0], ss
+030918: lcall 0x2ec1, 0xe
+03091d: add sp, 0xc
+030920: les bx, ptr [bp + 0x16]
+030923: push word ptr es:[bx]
+030926: les bx, ptr [bp + 0x1a]
+030929: push word ptr es:[bx]
+03092c: les bx, ptr [bp + 0x1e]
+03092f: push word ptr es:[bx]
+030932: les bx, ptr [bp + 0x22]
+030935: push word ptr es:[bx]
+030938: lcall 0x139e, 0xda7
+03093d: add sp, 8
+030940: les bx, ptr [bp + 0xe]
+030943: fld dword [bx]
+030947: sub sp, 8
+03094a: mov bx, sp
+03094c: fstp qword [bx]
+03094f: fistp dx:ax (emu)
+030951: les bx, ptr [bp + 6]
+030954: fild word [bx]
+030958: sub sp, 8
+03095b: mov bx, sp
+03095d: fstp qword [bx]
+030960: fistp dx:ax (emu)
+030962: les bx, ptr [bp + 0x12]
+030965: fld dword [bx]
+030969: sub sp, 8
+03096c: mov bx, sp
+03096e: fstp qword [bx]
+030971: fistp dx:ax (emu)
+030973: les bx, ptr [bp + 0xa]
+030976: fild word [bx]
+03097a: sub sp, 8
+03097d: mov bx, sp
+03097f: fstp qword [bx]
+030982: fistp dx:ax (emu)
+030984: push 1
+030986: lcall 0x1886, 0x3d8f
+03098b: add sp, 0x22
+03098e: mov word ptr [0xaeba], ax
+030991: push 0xcccc
+030994: lcall 0x139e, 0x233
+030999: add sp, 2
+03099c: mov word ptr [0xaeb8], 1
+0309a2: mov ax, 0xaea8
+0309a5: push ds
+0309a6: push ax
+0309a7: les bx, ptr [bp + 0x12]
+0309aa: fld dword [bx]
+0309ae: sub sp, 8
+0309b1: mov bx, sp
+0309b3: fstp qword [bx]
+0309b6: fistp dx:ax (emu)
+0309b8: mov ax, word ptr [0xaeb8]
+0309bb: cdq 
+0309bc: push dx
+0309bd: push ax
+0309be: les bx, ptr [bp + 0xa]
+0309c1: mov ax, word ptr es:[bx]
+0309c4: cdq 
+0309c5: les bx, ptr [bp + 6]
+0309c8: mov cx, ax
+0309ca: mov ax, word ptr es:[bx]
+0309cd: mov bx, dx
+0309cf: cdq 
+0309d0: sub ax, cx
+0309d2: sbb dx, bx
+0309d4: push dx
+0309d5: push ax
+0309d6: lcall 0x1886, 0xd6c
+0309db: mov word ptr [bp - 0x10], dx
+0309de: mov word ptr [bp - 0x12], ax
+0309e1: fild dword [bp]-12
+0309e5: int 0x38

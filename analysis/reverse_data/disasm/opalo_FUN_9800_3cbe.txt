@@ -1,0 +1,150 @@
+09bcbe: enter 0x62, 0
+09bcc2: push di
+09bcc3: push si
+09bcc4: mov ax, 0x9e9a
+09bcc7: push ds
+09bcc8: push ax
+09bcc9: lcall 0x6771, 0x188
+09bcce: add sp, 4
+09bcd1: les bx, ptr [bp + 0x5a]
+09bcd4: cmp word ptr es:[bx], 0
+09bcd8: jne 0x9bcdd
+09bcda: jmp 0x9c05c
+09bcdd: push 0x1111
+09bce0: lcall 0x6771, 0x233
+09bce5: add sp, 2
+09bce8: push 0xe
+09bcea: lcall 0x6771, 0x1fe
+09bcef: add sp, 2
+09bcf2: mov word ptr [0x9e98], ax
+09bcf5: mov ax, word ptr [bp + 0x4e]
+09bcf8: mov dx, word ptr [bp + 0x50]
+09bcfb: lea di, [bp - 0x18]
+09bcfe: mov si, ax
+09bd00: push ss
+09bd01: pop es
+09bd02: push ds
+09bd03: mov ds, dx
+09bd05: movsw word ptr es:[di], word ptr [si]
+09bd06: movsw word ptr es:[di], word ptr [si]
+09bd07: movsw word ptr es:[di], word ptr [si]
+09bd08: movsw word ptr es:[di], word ptr [si]
+09bd09: pop ds
+09bd0a: mov ax, word ptr [bp + 0x42]
+09bd0d: mov dx, word ptr [bp + 0x44]
+09bd10: lea di, [bp - 0x10]
+09bd13: mov si, ax
+09bd15: push ds
+09bd16: mov ds, dx
+09bd18: movsw word ptr es:[di], word ptr [si]
+09bd19: movsw word ptr es:[di], word ptr [si]
+09bd1a: movsw word ptr es:[di], word ptr [si]
+09bd1b: movsw word ptr es:[di], word ptr [si]
+09bd1c: pop ds
+09bd1d: les bx, ptr [bp + 0x56]
+09bd20: fld qword [bx]
+09bd24: fld st0
+09bd27: fstp tbyte [bp]-26
+09bd2b: fld qword [bp]-18
+09bd2f: fadd qword [bp]-10
+09bd33: fsub st0, st1
+09bd36: fdiv qword [bp]-10
+09bd3a: lcall 0x6c59, 0x39a0
+09bd3f: mov word ptr [bp - 0x1c], ax
+09bd42: mov word ptr [bp - 0x1a], dx
+09bd45: fst qword [9ed4]
+09bd4a: ffree st0
+09bd4d: jmp 0x9bd67
+09bd4f: fld qword [bp]-10
+09bd53: fadd qword [9ed4]
+09bd58: fstp qword [9ed4]
+09bd5d: fistp dx:ax (emu)
+09bd5f: sub word ptr [bp - 0x1c], 1
+09bd63: sbb word ptr [bp - 0x1a], 0
+09bd67: cmp word ptr [bp - 0x1a], 0
+09bd6b: jl 0x9bdd6
+09bd6d: jg 0x9bd75
+09bd6f: cmp word ptr [bp - 0x1c], 0
+09bd73: je 0x9bdd6
+09bd75: mov ax, 0x9e80
+09bd78: push ds
+09bd79: push ax
+09bd7a: mov ax, word ptr [bp + 0x4a]
+09bd7d: mov dx, word ptr [bp + 0x4c]
+09bd80: sub sp, 8
+09bd83: mov si, ax
+09bd85: mov di, sp
+09bd87: push ss
+09bd88: pop es
+09bd89: push ds
+09bd8a: mov ds, dx
+09bd8c: movsw word ptr es:[di], word ptr [si]
+09bd8d: movsw word ptr es:[di], word ptr [si]
+09bd8e: movsw word ptr es:[di], word ptr [si]
+09bd8f: movsw word ptr es:[di], word ptr [si]
+09bd90: pop ds
+09bd91: sub sp, 8
+09bd94: mov si, 0x9ed4
+09bd97: mov di, sp
+09bd99: movsw word ptr es:[di], word ptr [si]
+09bd9a: movsw word ptr es:[di], word ptr [si]
+09bd9b: movsw word ptr es:[di], word ptr [si]
+09bd9c: movsw word ptr es:[di], word ptr [si]
+09bd9d: lcall 0x6771, 0x1070
+09bda2: add sp, 0x14
+09bda5: mov ax, word ptr [bp + 0x46]
+09bda8: mov dx, word ptr [bp + 0x48]
+09bdab: sub sp, 8
+09bdae: mov si, ax
+09bdb0: mov di, sp
+09bdb2: push ss
+09bdb3: pop es
+09bdb4: push ds
+09bdb5: mov ds, dx
+09bdb7: movsw word ptr es:[di], word ptr [si]
+09bdb8: movsw word ptr es:[di], word ptr [si]
+09bdb9: movsw word ptr es:[di], word ptr [si]
+09bdba: movsw word ptr es:[di], word ptr [si]
+09bdbb: pop ds
+09bdbc: sub sp, 8
+09bdbf: mov si, 0x9ed4
+09bdc2: mov di, sp
+09bdc4: movsw word ptr es:[di], word ptr [si]
+09bdc5: movsw word ptr es:[di], word ptr [si]
+09bdc6: movsw word ptr es:[di], word ptr [si]
+09bdc7: movsw word ptr es:[di], word ptr [si]
+09bdc8: lcall 0x6771, 0xf5e
+09bdcd: add sp, 0x10
+09bdd0: mov word ptr [0x9e98], ax
+09bdd3: jmp 0x9bd4f
+09bdd6: mov ax, word ptr [bp + 0x52]
+09bdd9: mov dx, word ptr [bp + 0x54]
+09bddc: lea di, [bp - 0x36]
+09bddf: mov si, ax
+09bde1: push ss
+09bde2: pop es
+09bde3: push ds
+09bde4: mov ds, dx
+09bde6: movsw word ptr es:[di], word ptr [si]
+09bde7: movsw word ptr es:[di], word ptr [si]
+09bde8: movsw word ptr es:[di], word ptr [si]
+09bde9: movsw word ptr es:[di], word ptr [si]
+09bdea: pop ds
+09bdeb: les bx, ptr [bp + 0x42]
+09bdee: fld qword [bx]
+09bdf2: fchs
+09bdf5: fstp qword [bp]-2e
+09bdf9: fistp dx:ax (emu)
+09bdfb: les bx, ptr [bp + 0x56]
+09bdfe: fld qword [bx]
+09be02: fld st0
+09be05: fstp tbyte [bp]-26
+09be09: fld qword [bp]-36
+09be0d: fadd qword [bp]-2e
+09be11: fsub st0, st1
+09be14: fdiv qword [bp]-2e
+09be18: lcall 0x6c59, 0x39a0
+09be1d: mov word ptr [bp - 0x3a], ax
+09be20: mov word ptr [bp - 0x38], dx
+09be23: fst qword [9ed4]
+09be28: int 0x39

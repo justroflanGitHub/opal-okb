@@ -1,0 +1,30 @@
+04c494: mov ax, word ptr [0x9678]
+04c497: cmp word ptr [bp - 0x18], ax
+04c49a: jl 0x4c4e1
+04c49c: cdq 
+04c49d: mov es, word ptr [0x3096]
+04c4a1: mov cx, word ptr es:[0x40ec]
+04c4a6: mov bx, word ptr es:[0x40ee]
+04c4ab: sub cx, ax
+04c4ad: sbb bx, dx
+04c4af: mov word ptr [bp - 0xa], bx
+04c4b2: mov word ptr [bp - 0xc], cx
+04c4b5: fild dword [bp]-c
+04c4b9: fadd dword [30a2]
+04c4be: fidiv dword [40ec]
+04c4c4: lcall 0x1886, 0x3b56
+04c4c9: mov bx, word ptr [0x9678]
+04c4cd: shl bx, 2
+04c4d0: mov es, word ptr [0x3096]
+04c4d4: lea bx, [bx + 0x40cc]
+04c4d8: fstp dword [bx]-4
+04c4dd: fistp dx:ax (emu)
+04c4df: jmp 0x4c48e
+04c4e1: mov es, word ptr [0x3096]
+04c4e5: fld dword [40dc]
+04c4eb: fmul dword [30a6]
+04c4f0: fdiv dword [30aa]
+04c4f5: fstp dword [40dc]
+04c4fb: fistp dx:ax (emu)
+04c4fd: sub ax, ax
+04c4ff: mov word ptr es:[0x410a], ax

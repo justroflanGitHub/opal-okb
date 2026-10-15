@@ -1,0 +1,21 @@
+047ecc: mov word ptr [bp - 0xc], 3
+047ed1: mov cx, word ptr [bp - 0xc]
+047ed4: mov bx, word ptr [bp - 6]
+047ed7: fld qword [si]
+047eda: fmul qword [di]
+047edd: fadd qword [bx]+bf8e
+047ee2: fstp qword [bx]+bf8e
+047ee7: fistp dx:ax (emu)
+047ee9: add si, 0x18
+047eec: add di, 8
+047eef: loop 0x47ed4
+047ef1: mov si, word ptr [0xbf52]
+047ef5: mov cl, 3
+047ef7: shl si, cl
+047ef9: fld qword [si]+bf8e
+047efe: fld qword [si]+bf5a
+047f03: fmul qword [8f80]
+047f08: fmul qword [3c76]
+047f0d: fsubrp st1, st0
+047f10: int 0x38
+047f12: mov word ptr [bx + si], cs

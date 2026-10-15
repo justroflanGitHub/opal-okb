@@ -1,0 +1,103 @@
+034105: push cs
+034106: pushf 
+034107: mov dl, 0xcd
+034109: cmp word ptr [0xb294], ax
+03410d: fmul qword [b26c]
+034112: faddp st1, st0
+034115: fstp qword [b32e]
+03411a: fistp dx:ax (emu)
+03411c: mov ax, word ptr [bp + 0x1e]
+03411f: mov dx, word ptr [bp + 0x20]
+034122: mov di, 0xb2ee
+034125: mov si, ax
+034127: push ds
+034128: pop es
+034129: push ds
+03412a: mov ds, dx
+03412c: movsw word ptr es:[di], word ptr [si]
+03412d: movsw word ptr es:[di], word ptr [si]
+03412e: movsw word ptr es:[di], word ptr [si]
+03412f: movsw word ptr es:[di], word ptr [si]
+034130: pop ds
+034131: les bx, ptr [bp + 0x6a]
+034134: mov ax, word ptr es:[bx]
+034137: or ax, word ptr es:[bx + 2]
+03413b: je 0x34152
+03413d: mov ax, word ptr [bp + 0x5e]
+034140: mov dx, word ptr [bp + 0x60]
+034143: mov di, 0xb2ee
+034146: mov si, ax
+034148: push ds
+034149: pop es
+03414a: push ds
+03414b: mov ds, dx
+03414d: movsw word ptr es:[di], word ptr [si]
+03414e: movsw word ptr es:[di], word ptr [si]
+03414f: movsw word ptr es:[di], word ptr [si]
+034150: movsw word ptr es:[di], word ptr [si]
+034151: pop ds
+034152: fld qword [b2ee]
+034157: fmul qword [b2be]
+03415c: fsubr qword [b326]
+034161: fstp qword [b326]
+034166: fistp dx:ax (emu)
+034168: mov di, 0xb306
+03416b: mov si, 0x1696
+03416e: push ds
+03416f: pop es
+034170: movsw word ptr es:[di], word ptr [si]
+034171: movsw word ptr es:[di], word ptr [si]
+034172: movsw word ptr es:[di], word ptr [si]
+034173: movsw word ptr es:[di], word ptr [si]
+034174: mov di, 0xb2d6
+034177: mov si, 0x1696
+03417a: movsw word ptr es:[di], word ptr [si]
+03417b: movsw word ptr es:[di], word ptr [si]
+03417c: movsw word ptr es:[di], word ptr [si]
+03417d: movsw word ptr es:[di], word ptr [si]
+03417e: les bx, ptr [bp + 0x66]
+034181: mov ax, word ptr es:[bx]
+034184: or ax, word ptr es:[bx + 2]
+034188: je 0x3418d
+03418a: jmp 0x34224
+03418d: fld qword [b336]
+034192: fabs
+034195: fcom qword [169e]
+03419a: fstp st0
+03419d: fnstsw [bp]-32
+0341a1: fistp dx:ax (emu)
+0341a3: mov ah, byte ptr [bp - 0x31]
+0341a6: sahf 
+0341a7: jae 0x341ac
+0341a9: jmp 0x344e2
+0341ac: fld qword [b2a6]
+0341b1: fdiv qword [b336]
+0341b6: fstp qword [b2ce]
+0341bb: fistp dx:ax (emu)
+0341bd: mov bx, word ptr [0xb2ae]
+0341c1: mov cl, 3
+0341c3: shl bx, cl
+0341c5: les si, ptr [bp + 0x2e]
+0341c8: lea di, [bx + si - 8]
+0341cb: mov si, 0xb2ce
+0341ce: movsw word ptr es:[di], word ptr [si]
+0341cf: movsw word ptr es:[di], word ptr [si]
+0341d0: movsw word ptr es:[di], word ptr [si]
+0341d1: movsw word ptr es:[di], word ptr [si]
+0341d2: mov bx, word ptr [bp + 0x2e]
+0341d5: fld qword [bx]
+0341d9: fmul qword [b32e]
+0341de: fsubr qword [b352]
+0341e3: fst qword [b352]
+0341e8: fabs
+0341eb: fcom qword [169e]
+0341f0: fstp st0
+0341f3: fnstsw [bp]-32
+0341f7: fistp dx:ax (emu)
+0341f9: mov ah, byte ptr [bp - 0x31]
+0341fc: sahf 
+0341fd: jae 0x34202
+0341ff: jmp 0x344f2
+034202: fld qword [b32e]
+034207: fdiv qword [b352]
+03420c: int 0x39

@@ -1,0 +1,57 @@
+012422: cmp al, 0x1e
+012424: push ax
+012425: lea ax, [bp - 0x64]
+012428: push ss
+012429: push ax
+01242a: lea ax, [bp - 0x50]
+01242d: push ss
+01242e: push ax
+01242f: lea ax, [bp - 0x44]
+012432: push ss
+012433: push ax
+012434: lcall 0x2df0, 0xe
+012439: fld qword [bp]-28
+01243d: fsub qword [bp]-34
+012441: fabs
+012444: fstp dword [bp]-78
+012448: fistp dx:ax (emu)
+01244a: mov si, word ptr [bp - 0x64]
+01244d: shl si, 3
+012450: fld qword [si]+5650
+012455: fmul qword [si]+5650
+01245a: fld qword [si]+5b50
+01245f: fmul qword [si]+5b50
+012464: faddp st1, st0
+012467: fadd dword [132]
+01246c: fstp dword [bp]-20
+012470: fistp dx:ax (emu)
+012472: mov bx, word ptr [bp - 0x64]
+012475: shl bx, 1
+012477: cmp word ptr [bx + 0x3cb2], 0
+01247c: jl 0x124ac
+01247e: mov bx, word ptr [bp - 0x50]
+012481: shl bx, 2
+012484: fld dword [bx]+3f34
+012489: fld st0
+01248c: fstp tbyte [bp]+ff7a
+012491: fld st0
+012494: fmul st0, st1
+012497: fdivr dword [bp]-20
+01249b: fst dword [bp]-20
+01249f: fmul dword [bp]-20
+0124a3: fstp dword [bp]-60
+0124a7: ffree st0
+0124aa: jmp 0x124df
+0124ac: mov bx, word ptr [bp - 0x64]
+0124af: shl bx, 3
+0124b2: fld qword [bx]+4550
+0124b7: fmul dword [bp]-20
+0124bb: mov bx, word ptr [bp - 0x50]
+0124be: shl bx, 2
+0124c1: fdiv dword [bx]+3f34
+0124c6: fst dword [bp]-20
+0124ca: fabs
+0124cd: fst dword [bp]-20
+0124d1: fmul dword [bp]-20
+0124d5: fmul dword [bp]-20
+0124d9: fstp dword [bp]-60

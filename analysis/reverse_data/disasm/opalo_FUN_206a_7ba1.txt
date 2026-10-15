@@ -1,0 +1,50 @@
+028241: enter 0x5e, 0
+028245: push di
+028246: push si
+028247: cmp word ptr [0x4f22], 0
+02824c: jl 0x28260
+02824e: jg 0x28257
+028250: cmp word ptr [0x4f20], 0
+028255: je 0x28260
+028257: mov ax, word ptr [0x4f20]
+02825a: dec ax
+02825b: mov word ptr [bp - 0x46], ax
+02825e: jmp 0x28265
+028260: mov word ptr [bp - 0x46], 0
+028265: mov ax, word ptr [0x3ec0]
+028268: or ax, word ptr [0x3ec2]
+02826c: je 0x282be
+02826e: fld qword [7a08]
+028273: fmul qword [8518]
+028278: fstp qword [bp]-1c
+02827c: fistp dx:ax (emu)
+02827e: lea di, [bp - 0x3c]
+028281: mov si, 0x8518
+028284: push ss
+028285: pop es
+028286: movsw word ptr es:[di], word ptr [si]
+028287: movsw word ptr es:[di], word ptr [si]
+028288: movsw word ptr es:[di], word ptr [si]
+028289: movsw word ptr es:[di], word ptr [si]
+02828a: fld qword [8528]
+02828f: mov ax, word ptr [0x4958]
+028292: cdq 
+028293: xor ax, dx
+028295: sub ax, dx
+028297: imul bx, ax, 0x28
+02829a: fld qword [bx]+4a70
+02829f: fild word [4958]
+0282a4: lcall 0x1886, 0x3ade
+0282a9: fdivrp st1, st0
+0282ac: fstp qword [bp]-14
+0282b0: fdecstp
+0282b3: fstp qword [bp]-34
+0282b7: fld qword [3ee0]
+0282bc: jmp 0x28308
+0282be: lea di, [bp - 0x1c]
+0282c1: mov si, 0x8518
+0282c4: push ss
+0282c5: pop es
+0282c6: movsw word ptr es:[di], word ptr [si]
+0282c7: movsw word ptr es:[di], word ptr [si]
+0282c8: movsw word ptr es:[di], word ptr [si]

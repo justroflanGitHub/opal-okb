@@ -1,0 +1,377 @@
+01197c Error during programm run    :
+01199b Error during DISK_SWAPPING   :
+0119ba Error during DISK_UNSWAPPING :
+011a04 Abort or Retry ??
+011a18 Write protect violation
+011a30 Unknown unit
+011a3d Unit not ready
+011a4c Unknown command
+011a5c CRC error
+011a66 Bad request length
+011a79 Seek error
+011a84 Unknown media
+011a92 Sector not found
+011aa3 Printer out of paper
+011ab8 Write fault
+011ac4 Read fault
+011acf General error
+011ae5 Invalid disk change
+011b02 UWVRQSP
+011b87 X[YZ^_]
+014f0a _^]XP$
+0152da 'SQPRJ
+015632 89:;<=>?
+015788 ,B9BPBbByB
+015795 ="=3=I=M=
+015ad5 SPQRVW
+015aea _^ZYX[
+016543 -(B9BPBbByB>-
+0165a7 <,B9BPBbByB
+016776 0DdDpD{D
+0167da :DdDpD{D
+016c2d VEt%MR
+016e7d !9E9W9
+016f45 !9E9O9
+016f61 9kDpD{D
+016f73 :I=M=/:p:
+016ffb    $$$(((---222888???
+01709e '?--?1-?6-?:-??-??-:?-6?-1?--?1-?6-?:-??-:?-6?-1?--?--?1-?6-?:-??-:?-6?-1?
+0174dc :a;\;f;
+017cca nC,B9BPBbByB
+018d5a PSQRVW
+018d92 upu0]fVf
+018e67 _^ZY[X]
+0193b1 PSQVWU3
+0193fa ]_^Y[X
+01a02f <,tU< t
+01a330 Ht!HHt
+01ad4e Ht+HtPH|sH~^
+01aea0 tM< t(<
+01b7ff 0"0.0<0L0r0
+01bc03 6F7F7N4^4l4
+01bc19 5F7F7B52525
+01bc25 5F7F7F7
+01bc2d 525&6D6F7F7F7F7F7F7
+01bc43 6F7F7F7F7F7F7F7
+01cba2 PCVC\CbChCnCtC
+01d521 HtbHHtpHHtZ
+01dfc2 PSQRWV
+01e022 ^_ZY[X
+01eb7e  c>cPcZc
+01eb89 c>cPcZc
+01ee33 f6f*e*e
+01ee49 h@f*e*e*e
+01f09a Th[hbhihphwh~h
+0207a9 tX<"t$<\t
+020879 t^<"t'<\t
+021825 toN<Dt@<Et3
+021c4e QSRUVP
+022ebf _^ZY[X
+02a735 86T5k~
+02acb3 86T5i^
+034890 MSEM87
+034898 gfw...GW\
+03517b $*$H#t#
+03769c RPRPRPRP
+05174c  INF (H
+05177a  INF<(H
+051798  INF>(H
+0517b6  INFW(H
+0517d4  INFT(H
+051804  INF      =.
+051b96  EQF(H
+051bd2  EQF#(H
+051bf0  EQFS(H
+0521a8 escriptor
+0521b2 xpected
+0521c1 ndefinite
+0521cc ninitialized
+0521d9 revious
+0521e7 nvalid
+0521f2 verflow
+0521fd llegal
+052206 erminal
+052220 ssociated
+05222f OFOCUS
+052236 on-window
+05224b eading
+05225d ncountered
+05226e runcation
+052293 nformatted
+0522a4 tructure
+0522ad xternal
+0522be NDFILE
+0522c5 NTEGER
+0522d1 ultiple
+0522de pecifiers
+0522e8 pecifier
+0522f4 OGICAL
+0522fb ormatted
+052304 onsistent
+052312 ptions
+052319 amelist
+052321 ist-directed
+052334 cratch
+052344 xceeded
+05234c ithout
+052353 uickwin
+052369 CRATCH
+052378 HARACTER
+052381 hreads
+052388 rgument
+052390 ariable
+05239d AMELIST
+0523b0 ubscript
+0523b9 xceeds
+0523c0 llocated
+0523d2 imensions
+0523dc ubrange
+0523e4 ubstring
+0523f2 pecified
+0523fb on-character
+05240c lready
+05241b egative
+052423 on-huge
+052437 ECORDS
+05243e OCKING
+052445 equential
+05244f nlocked
+052457 eadlocked
+052466 nstalled
+05246f xpression
+052495 OCKMODE
+05249d nknown
+0524a4 onnected
+0524b0 ifferent
+0524b9 arameter
+0524c2 ismatch
+0524ce ead-only
+0524d7 gainst
+0524de riting
+0524e5 nternal
+0524fd llowed
+05251a haracter
+052523 exadecimal
+05252e ACKSPACE
+052537 EQUENTIAL
+052541 rite-only
+052550 elimiter
+052559 isabled
+052566 epositioning
+052578 ssigned
+052588 nteger
+05258f nitial
+052596 arenthesis
+0525a1 ositive
+0525b4 onrepeatable
+0525c1 receding
+0525d0 esting
+0525da nexpected
+0525f6 postrophe
+052600 umeric
+052617 issing
+05261e OMPLEX
+052638  ISTOP,S(3),Q(3),T= H
+052666 Q2,Q12= 
+052674   W(5)= 
+052688 Q,Q1,N(3),N2,IT= 
+05271e f:\gmp\work\opalswap\oh.exe   
+059578 MS Run-Time Library - Copyright (c) 1990, Microsoft Corp
+0595b2 <<> *#NCP
+059995 **#NCP
+05999c                 1
+0599d3  > 24          KATEX.EXE
+0599ec  KATEXSAVE.TMP
+0599fb SS.TMP
+059a02 DD.TMP
+059a09 PR.TMP
+059a10  1--1 OPTopt-_D_O 
+059a23 optrus.datSAVE.TMP
+059a36  XXXXopaloc.cnsOPT OPT
+059a58 *#DdAP
+059a80 OPALTRAN.EXE
+059a9c SRT RT  AVTORT  AAVTOWA  I
+059ab7 \0*OPALFIND.EXE
+059ace 1  FindTransl
+059afa +- pr.tmpPR.TMP
+059b34 S .EXE
+059b3b OSEDIT$BAD COMMANDEXIT     EXIT MENUOPAL.EXE
+059b6c  .REG.REG  / $  \\
+059ba8 WRITEOC.EXE
+059bb4          
+059be7 OPTDOC.OH
+059bf7 OH.EXE
+059c14 SQRT in IAVPLD2
+059c3e .tmp        
+059c78 1234567890Help  Menu                                Load  Save  Quit  *#NCJ
+059d37  *#NCJ
+059d62     .                 (F14.8))(I 1 2 3 4 5 6 7 8 910
+059ddc *#DRCP
+059e27  (I1)(I2)(F14.8)
+059ed4 STEP =                 
+059f02 *#D`APL
+059f5a  ) )*#D^AP
+059fd0 *#D]AP\
+05a0a6 P=   A=   N=   GLASS:F4    - GLASSF5    - MAPSPACE - ZOOML(2)= L(1)= L(0)= LENGTH WAVE:
+05a148 **:*?*G*
+05a208 -DD.TMPSS.TMPSS.TMP
+05a2ae ERR.STOP <>     (1x,2(I3,3x),G 9.4,1x,G 9.4,1x,G 9.4,1x,2(I2,2x),2(I3,2x),2x,I4,5x)
+05a331 *NN,d:,h:/JNNN
+05a3c1 *NN,d:,h:/JNNNN
+05a3f0 ",049>IN%%*#DaAP
+05a412 -(+)*#DbAPR
+05a422            
+05a440 *#DcAP
+05a452 2     23  
+05a85e -PenaltyMerit Step Cycle 
+05a8ac  32/SRF.*#D_APV
+05a97c 2OPAL-PCJOB:SYSTEM:OPAL-PCJOB:SYSTEM:COMMAND
+05a9aa QuitSchemeAngleGlassTextAllINFMFLoopStepQuitGrafFullRandomQuitGlassCom...Help 1234567890*#DdAP
+05aa0e PR.TMPPR.TMP
+05aa38 *#DYCP
+05aa46 FFE. 1 
+05aa66 YESNO EXTRA  WORKINGOFFON norm=/   LM   DLSM-3 DLSM-2 DLSM-1  OBM  SDM+LSM  LSM    SDM  / 
+05ac14 q=                0123456789ABCDEF
+05ac50 ZZXXXXXX
+05ac5c SEQUENTIAL
+05ac68 DIRECT
+05ac70 APPEND
+05ac92 SCRATCH
+05ac9b UNKNOWN
+05aca6 FORMATTED
+05acb1 UNFORMATTED
+05acbe BINARY
+05acc8 COMPAT
+05acd0 DENYRW
+05acd8 DENYWR
+05ace0 DENYRD
+05ace8 DENYNONE
+05ad01 READWRITE
+05ad24 Stop - Program terminated.
+05ad4a DELETE
+05ae4c .........*......................*...
+05ae7c ))))))))))
+05ae87 ......
+05aef0 _C_FILE_INFO=
+05b18e internal
+05b1a4 File name missing or blank - please enter file name
+05b661 Incorrect DOS version
+05b67b Please insert diskette containing 
+05b6a0 in drive 
+05b6aa : and strike any key when ready.
+05b6cf Please restore original diskette.
+05b6f2 Strike any key when ready.
+05b711 Overlay not found
+05b725 Cannot find 
+05b734 Overlay Manager stack overflow
+05b757 Please enter new program spec: 
+05b779 Cannot load overlay:  too many open files
+05b7af CVDEBUG
+05b816 : CLOSE(
+05b81f : WRITE(
+05b828 : ENDFILE(
+05b833 : INQUIRE(
+05b83e : LOCKING(
+05b849 : OPEN(
+05b851 : READ(
+05b859 : REWIND(
+05b863 : BACKSPACE(
+05b870 : EOF(
+05b877 : $DEBUG
+05b884 : ALLOCATE
+05b893 : DEALLOCATE
+05b8a4 : BEGINTHREAD
+05b8fd #WY##WY4#WYF#WY
+05b99b m1l1lJl1l
+05b9bc jm0mil
+05b9d4 om0mil
+05ba16 6n0lil
+05ba46 Zn0lil
+05ba5e bnDmil
+05ba76 &o0lil[l
+05baa6 5o0lil
+05bacd o1l1lJl1l
+05bb7c 010203040506070809101112
+05bbfd mXlXl'l
+05bc86 #z#zil
+05bc9e 2z2zil
+05bcc7 z1l1lJl1l
+05bcf7 milililil
+05bd18 w{w{il
+05bd1f mw{Clil
+05bd4f mh{[lil
+05bdd8 .|.|il
+05bddf mg|l|il
+05be1c @(#)build.c:1.4
+05bf34 run-time error 
+05c042 1#SNAN
+05c049 1#QNAN
+05c0d4 COMSPEC
+05c0ec l+q+v+/c 
+05c131          (((((                  H
+05c27f -WYSunMonTueWedThuFriSat
+05c298 JanFebMarAprMayJunJulAugSepOctNovDec
+05c33e cR22222
+05c3a1 I*IGIOIbI
+05c3bb LVL^LfL~L
+05c3c5 L>McMwM
+05c3d7 N<ODOFOXOyOzO-D
+05c427 N?NjN{N)O.O
+05c43d PUQ-D[E
+05c45d IfI1J6J[JEL
+05c4f8 opalo.exe
+05c887 QAYmQ33
+05cba4 This program must be run under OPAL-PC
+05cbe5 ?WYWYWYCY
+05cc6e CYMYCYMYCYEY
+05d010 C   D   ES  CA  CN  N   DNR AL  SO  SD  SI  CHL CHR WLH CH  V0  VG0 SG' DSG'SP0'SG  SP0 L   LS' LS  LSS'OP  DE  DEO DEI DED AS  ID  DYA DSA ZA  RCA DPA AST DIS DIS%DVL DVL%ZM  ZS  RCM RCS DSP DSP'FCM DYM ZMM ZSM RCMMRCSMDXS DYS ZMS ZSS DXT DYT ZMT ZST                                                                                                                                                     
+05d3fc  *?//:-/FN'"UDEOLN0123456789ABCDEF
+061aea <<NMSG>>
+061af4 : MATH
+061afc - floating-point error: 
+061b17 invalid
+061b23 denormal
+061b30 divide by 0
+061b40 overflow
+061b4d underflow
+061b5b inexact
+061b67 unemulated
+061b76 square root
+061b8b stack overflow
+061b9e stack underflow
+061bb2 explicitly generated
+061bd2 - floating-point support not loaded
+061c01 - stack overflow
+061c1d - integer divide by 0
+061c3e - not enough space for environment
+061c83 - null pointer assignment
+061cae : DOMAIN error
+061cc1 : SING error
+061cd2 : OVERFLOW error
+061cea : TLOSS error
+0653aa Be:eRB
+0654bb !Packed file is corrupt
+06555b #!#;#B#W#i#
+06556b ,{,U,$,
+06557b +{+^+D+=+
+0655b7 5|5u5W5
+0655e4 7FFFzF
+0655ef I#I-I7IIISI|IfI
+065605 I"J:JpJeWiWC[
+065618 7cOcScvczc
+06563b hIiMiwn{n
+065647 n?oCoD
+0657cf 5m5`5X5K545$5
+065803 CZI6IfL\KHK)K
+06582b UzTmTbT3Z(Z
+06583b WvWB\7\,\t[g[\[?Z
+06584f `]^Q^F^
+065893 tcs(w!wQx6x
+065c3b !d!N!-!
+065c4f "s(b(?(.(
+065c9f /c/E/y0[0
+065ea9 ,w,i,,,
+065f0b 8w838C;(=
+065f3b J<J_K.O
+065f45 U<nUnpn
+06610d #U%6')'!'

@@ -1,0 +1,15 @@
+050a7e: enter 0x5c, 0
+050a82: push di
+050a83: push si
+050a84: les bx, ptr [bp + 0xe]
+050a87: mov ax, word ptr es:[bx]
+050a8a: shl ax, 3
+050a8d: mov word ptr [bp - 4], ax
+050a90: add ax, 8
+050a93: mov word ptr [bp - 2], ax
+050a96: fdecstp
+050a99: fst qword [bp]-e
+050a9d: fstp qword [bp]-16
+050aa1: fistp dx:ax (emu)
+050aa3: db c4
+050aa4: pop si

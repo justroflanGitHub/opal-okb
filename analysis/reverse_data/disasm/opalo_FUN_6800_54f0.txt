@@ -1,0 +1,53 @@
+06d4f0: mov ax, word ptr es:[bx]
+06d4f3: mov dx, word ptr es:[bx + 2]
+06d4f7: mov word ptr [bp - 0xde], ax
+06d4fb: mov word ptr [bp - 0xdc], dx
+06d4ff: push dx
+06d500: push ax
+06d501: mov ax, word ptr [bp - 0x38]
+06d504: mov dx, word ptr [bp - 0x36]
+06d507: sub ax, word ptr [bp - 0x28]
+06d50a: sbb dx, word ptr [bp - 0x26]
+06d50d: add ax, word ptr [bp - 0xde]
+06d511: adc dx, word ptr [bp - 0xdc]
+06d515: push dx
+06d516: push ax
+06d517: lcall 0x3c59, 0xcd2
+06d51c: mov word ptr [bp - 0xd2], ax
+06d520: mov word ptr [bp - 0xd0], dx
+06d524: mov ax, word ptr [bp - 0x28]
+06d527: mov dx, word ptr [bp - 0x26]
+06d52a: mov word ptr [bp - 8], ax
+06d52d: mov word ptr [bp - 6], dx
+06d530: cmp word ptr [bp - 0xd0], 0
+06d535: jl 0x6d4be
+06d537: jg 0x6d543
+06d539: cmp word ptr [bp - 0xd2], 0
+06d53e: jne 0x6d543
+06d540: jmp 0x6d4be
+06d543: les bx, ptr [bp + 0x1a]
+06d546: mov ax, word ptr es:[bx]
+06d549: mov dx, word ptr es:[bx + 2]
+06d54d: mov word ptr [bp - 0xbe], ax
+06d551: mov word ptr [bp - 0xbc], dx
+06d555: mov ax, word ptr [bp - 0xd2]
+06d559: mov word ptr [bp - 0xda], ax
+06d55d: mov ax, word ptr [bp - 0xd0]
+06d561: mov word ptr [bp - 0xd8], ax
+06d565: neg word ptr [bp - 0xda]
+06d569: neg word ptr [bp - 0xda]
+06d56d: adc word ptr [bp - 0xd8], -1
+06d572: mov si, word ptr [bp - 0xda]
+06d576: fdecstp
+06d579: mov ax, word ptr [bp - 0x34]
+06d57c: mov dx, word ptr [bp - 0x32]
+06d57f: mov word ptr [bp - 0x24], ax
+06d582: mov word ptr [bp - 0x22], dx
+06d585: mov ax, word ptr [bp - 8]
+06d588: mov dx, word ptr [bp - 6]
+06d58b: mov word ptr [bp - 0x2c], ax
+06d58e: mov word ptr [bp - 0x2a], dx
+06d591: fdecstp
+06d594: fstp st1
+06d597: fistp dx:ax (emu)
+06d599: mov ax, word ptr [bp - 0xc]

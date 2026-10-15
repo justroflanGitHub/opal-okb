@@ -1,0 +1,24 @@
+020342: cmp byte ptr [bp - 0x11], 0
+020346: jl 0x20349
+020348: ret 
+020349: fld tbyte [23da]
+02034e: fld st1
+020351: fabs
+020354: fcom st0, st1
+020357: fnstsw [2736]
+02035c: fstp st0
+02035f: fstp st0
+020362: fistp dx:ax (emu)
+020364: and byte ptr [0x2737], 0x41
+020369: cmp byte ptr [0x2737], 0x40
+02036e: jne 0x20376
+020370: mov byte ptr [bp - 0x11], 3
+020374: jmp 0x20342
+020376: mov byte ptr [bp - 0x11], 0
+02037a: jmp 0x20342
+02037c: fld st0
+02037f: ftst
+020382: fnstsw [256e]
+020387: fistp dx:ax (emu)
+020389: mov ch, byte ptr [0x256f]
+02038d: db cd

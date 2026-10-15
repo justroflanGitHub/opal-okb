@@ -1,0 +1,56 @@
+0418a1: push bp
+0418a2: mov bp, sp
+0418a4: sub sp, 0x2e
+0418a7: push di
+0418a8: push si
+0418a9: mov word ptr [bp - 2], 1
+0418ae: mov word ptr [0xbc0c], 1
+0418b4: mov word ptr [0xbb82], 0
+0418ba: les bx, ptr [bp + 0xe]
+0418bd: cmp word ptr es:[bx], 0
+0418c1: jne 0x418c8
+0418c3: fdecstp
+0418c6: jmp 0x418e3
+0418c8: les bx, ptr [bp + 6]
+0418cb: add word ptr es:[bx], 1
+0418cf: adc word ptr es:[bx + 2], 0
+0418d4: mov si, word ptr es:[bx]
+0418d7: shl si, 1
+0418d9: shl si, 1
+0418db: les bx, ptr [bp + 0xa]
+0418de: fld dword [bx+si]-4
+0418e3: fstp qword [bc0e]
+0418e8: fistp dx:ax (emu)
+0418ea: mov ax, word ptr [bp + 0x16]
+0418ed: mov dx, word ptr [bp + 0x18]
+0418f0: push si
+0418f1: push di
+0418f2: mov di, 0xbba4
+0418f5: mov si, ax
+0418f7: push ds
+0418f8: pop es
+0418f9: push ds
+0418fa: mov ds, dx
+0418fc: movsw word ptr es:[di], word ptr [si]
+0418fd: movsw word ptr es:[di], word ptr [si]
+0418fe: movsw word ptr es:[di], word ptr [si]
+0418ff: movsw word ptr es:[di], word ptr [si]
+041900: pop ds
+041901: pop di
+041902: pop si
+041903: push si
+041904: push di
+041905: mov di, 0xbbbc
+041908: mov si, 0xbba4
+04190b: push ds
+04190c: pop es
+04190d: movsw word ptr es:[di], word ptr [si]
+04190e: movsw word ptr es:[di], word ptr [si]
+04190f: movsw word ptr es:[di], word ptr [si]
+041910: movsw word ptr es:[di], word ptr [si]
+041911: pop di
+041912: pop si
+041913: fld qword [bc0e]
+041918: fsubr qword [38ea]
+04191d: int 0x38
+04191f: push cs

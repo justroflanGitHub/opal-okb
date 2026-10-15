@@ -1,0 +1,16 @@
+021a04: push bp
+021a05: mov bp, sp
+021a07: sub sp, 2
+021a0a: fxch st1
+021a0d: fcompp
+021a10: fnstsw [bp]-2
+021a14: fistp dx:ax (emu)
+021a16: mov ah, byte ptr [bp - 1]
+021a19: and ax, 0x4100
+021a1c: shr ax, 1
+021a1e: shl ah, 1
+021a20: or ah, al
+021a22: sahf 
+021a23: mov sp, bp
+021a25: pop bp
+021a26: retf 

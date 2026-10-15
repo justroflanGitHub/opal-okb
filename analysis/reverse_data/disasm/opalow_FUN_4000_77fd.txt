@@ -1,0 +1,111 @@
+0477fd: push bp
+0477fe: mov bp, sp
+047800: sub sp, 2
+047803: push di
+047804: push si
+047805: fld dword [8b88]
+04780a: fcom dword [3c4a]
+04780f: fstp st0
+047812: fnstsw [bp]-2
+047816: fistp dx:ax (emu)
+047818: mov ah, byte ptr [bp - 1]
+04781b: sahf 
+04781c: jne 0x47841
+04781e: mov di, 0x8b70
+047821: mov si, 0x8b68
+047824: push ds
+047825: pop es
+047826: movsw word ptr es:[di], word ptr [si]
+047827: movsw word ptr es:[di], word ptr [si]
+047828: movsw word ptr es:[di], word ptr [si]
+047829: movsw word ptr es:[di], word ptr [si]
+04782a: fld qword [8b68]
+04782f: fdiv qword [8b78]
+047834: fchs
+047837: fstp qword [bf0c]
+04783c: fistp dx:ax (emu)
+04783e: jmp 0x4790b
+047841: fld dword [8b8c]
+047846: fcom dword [3c4a]
+04784b: fstp st0
+04784e: fnstsw [bp]-2
+047852: fistp dx:ax (emu)
+047854: mov ah, byte ptr [bp - 1]
+047857: sahf 
+047858: jb 0x47889
+04785a: fld qword [8b70]
+04785f: fsub qword [8b68]
+047864: fmul dword [8b8c]
+047869: fcom qword [3c4e]
+04786e: fstp st0
+047871: fnstsw [bp]-2
+047875: fistp dx:ax (emu)
+047877: mov ah, byte ptr [bp - 1]
+04787a: sahf 
+04787b: jbe 0x47889
+04787d: mov di, 0x8b70
+047880: mov si, 0x8b68
+047883: push ds
+047884: pop es
+047885: movsw word ptr es:[di], word ptr [si]
+047886: movsw word ptr es:[di], word ptr [si]
+047887: movsw word ptr es:[di], word ptr [si]
+047888: movsw word ptr es:[di], word ptr [si]
+047889: fld dword [8b88]
+04788e: fmul qword [8b78]
+047893: fcom qword [3c56]
+047898: fstp st0
+04789b: fnstsw [bp]-2
+04789f: fistp dx:ax (emu)
+0478a1: mov ah, byte ptr [bp - 1]
+0478a4: sahf 
+0478a5: jae 0x47925
+0478a7: fld qword [8b70]
+0478ac: fsub qword [8b68]
+0478b1: fmul dword [8b8c]
+0478b6: fcom qword [3c4e]
+0478bb: fstp st0
+0478be: fnstsw [bp]-2
+0478c2: fistp dx:ax (emu)
+0478c4: mov ah, byte ptr [bp - 1]
+0478c7: sahf 
+0478c8: jbe 0x478d6
+0478ca: mov di, 0x8b70
+0478cd: mov si, 0x8b68
+0478d0: push ds
+0478d1: pop es
+0478d2: movsw word ptr es:[di], word ptr [si]
+0478d3: movsw word ptr es:[di], word ptr [si]
+0478d4: movsw word ptr es:[di], word ptr [si]
+0478d5: movsw word ptr es:[di], word ptr [si]
+0478d6: fld qword [8b68]
+0478db: fdiv qword [8b78]
+0478e0: fchs
+0478e3: fst qword [bf0c]
+0478e8: fsubr qword [8b80]
+0478ed: fmul dword [8b8c]
+0478f2: fmul dword [8b88]
+0478f7: fcom qword [3c4e]
+0478fc: fstp st0
+0478ff: fnstsw [bp]-2
+047903: fistp dx:ax (emu)
+047905: mov ah, byte ptr [bp - 1]
+047908: sahf 
+047909: jb 0x47925
+04790b: mov di, 0x8b80
+04790e: mov si, 0xbf0c
+047911: push ds
+047912: pop es
+047913: movsw word ptr es:[di], word ptr [si]
+047914: movsw word ptr es:[di], word ptr [si]
+047915: movsw word ptr es:[di], word ptr [si]
+047916: movsw word ptr es:[di], word ptr [si]
+047917: mov ax, word ptr [0x8b60]
+04791a: mov dx, word ptr [0x8b62]
+04791e: mov word ptr [0x8b64], ax
+047921: mov word ptr [0x8b66], dx
+047925: pop si
+047926: pop di
+047927: mov sp, bp
+047929: pop bp
+04792a: retf 

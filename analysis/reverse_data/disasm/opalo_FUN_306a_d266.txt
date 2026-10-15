@@ -1,0 +1,41 @@
+03d906: les bx, ptr [bp + 0xa]
+03d909: mov ax, word ptr es:[bx]
+03d90c: mov dx, word ptr es:[bx + 2]
+03d910: neg ax
+03d912: adc dx, 0
+03d915: neg dx
+03d917: sub ax, 0xa
+03d91a: sbb dx, 0
+03d91d: mov word ptr [0x87a4], ax
+03d920: mov word ptr [0x87a6], dx
+03d924: fld qword [88e0]
+03d929: fmul qword [8be8]
+03d92e: fstp qword [8c60]
+03d933: fld qword [88e8]
+03d938: fadd qword [8810]
+03d93d: fmul qword [88e0]
+03d942: fstp qword [8d20]
+03d947: fld qword [b866]
+03d94c: fdiv qword [8be8]
+03d951: fstp qword [8d38]
+03d956: fistp dx:ax (emu)
+03d958: mov di, 0x8d28
+03d95b: mov si, 0xb85e
+03d95e: push ds
+03d95f: pop es
+03d960: movsw word ptr es:[di], word ptr [si]
+03d961: movsw word ptr es:[di], word ptr [si]
+03d962: movsw word ptr es:[di], word ptr [si]
+03d963: movsw word ptr es:[di], word ptr [si]
+03d964: jmp 0x3dc44
+03d967: les bx, ptr [bp + 0xa]
+03d96a: cmp word ptr es:[bx + 2], 0
+03d96f: jle 0x3d974
+03d971: jmp 0x3da4b
+03d974: jl 0x3d97f
+03d976: cmp word ptr es:[bx], 0xa
+03d97a: jbe 0x3d97f
+03d97c: jmp 0x3da4b
+03d97f: les bx, ptr [bp + 0xa]
+03d982: mov ax, word ptr es:[bx]
+03d985: mov dx, word ptr es:[bx + 2]

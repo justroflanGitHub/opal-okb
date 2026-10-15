@@ -1,0 +1,9 @@
+02ff08: pop si
+02ff09: int 0x3c
+02ff0c: fmul qword ptr [bx + di]
+02ff0e: les bx, ptr [bp + 0x3a]
+02ff11: fld qword [bx+si]-8
+02ff16: les bx, ptr [bp + 0x3e]
+02ff19: fmul qword [bx+di]
+02ff1d: fsubrp st1, st0
+02ff20: int 0x38

@@ -1,0 +1,221 @@
+012793: cmp word ptr [bp - 0x64], 0x5a
+012797: je 0x1279c
+012799: jmp 0x1282d
+01279c: cmp word ptr [bp - 0x62], 0
+0127a0: je 0x127a5
+0127a2: jmp 0x1282d
+0127a5: cmp word ptr [0x44bc], 0x63
+0127aa: jne 0x127b3
+0127ac: cmp word ptr [0x44be], 0
+0127b1: je 0x127d8
+0127b3: mov si, word ptr [0x44bc]
+0127b7: shl si, 3
+0127ba: fld qword [si]+58d8
+0127bf: fmul qword [si]+58d8
+0127c4: fld qword [si]+5dd8
+0127c9: fmul qword [si]+5dd8
+0127ce: faddp st1, st0
+0127d1: fadd dword [136]
+0127d6: jmp 0x12813
+0127d8: cmp word ptr [0x44c0], 1
+0127dd: jne 0x127fb
+0127df: cmp word ptr [0x44c2], 0
+0127e4: jne 0x127fb
+0127e6: fld qword [6058]
+0127eb: fmul qword [6058]
+0127f0: fadd dword [132]
+0127f5: fstp dword [bp]-60
+0127f9: fistp dx:ax (emu)
+0127fb: mov ax, word ptr [0x44c0]
+0127fe: or ax, word ptr [0x44c2]
+012802: jne 0x12819
+012804: fld dword [136]
+012809: fadd qword [5dd8]
+01280e: fadd qword [5dd8]
+012813: fstp dword [bp]-60
+012817: fistp dx:ax (emu)
+012819: mov si, word ptr [bp - 0x5c]
+01281c: shl si, 2
+01281f: les bx, ptr [bp + 0xa]
+012822: fld dword [bp]-54
+012826: fdiv dword [bp]-60
+01282a: jmp 0x12970
+01282d: mov ax, word ptr [bp - 0x64]
+012830: or ax, word ptr [bp - 0x62]
+012833: jne 0x12885
+012835: mov ax, word ptr [0x44c0]
+012838: or ax, word ptr [0x44c2]
+01283c: jne 0x12853
+01283e: fld qword [6068]
+012843: fmul qword [6068]
+012848: fadd dword [132]
+01284d: fstp dword [bp]-60
+012851: fistp dx:ax (emu)
+012853: cmp word ptr [0x44c0], 1
+012858: jne 0x12876
+01285a: cmp word ptr [0x44c2], 0
+01285f: jne 0x12876
+012861: fld qword [58d8]
+012866: fmul qword [58d8]
+01286b: fadd dword [136]
+012870: fstp dword [bp]-60
+012874: fistp dx:ax (emu)
+012876: mov si, word ptr [bp - 0x5c]
+012879: shl si, 2
+01287c: les bx, ptr [bp + 0xa]
+01287f: fld dword [bp]-48
+012883: jmp 0x12826
+012885: cmp word ptr [bp - 0x64], 0x63
+012889: je 0x1288e
+01288b: jmp 0x12a87
+01288e: cmp word ptr [bp - 0x62], 0
+012892: je 0x12897
+012894: jmp 0x12a87
+012897: mov ax, word ptr [0x44c4]
+01289a: or ax, word ptr [0x44c6]
+01289e: jne 0x128b5
+0128a0: fld qword [6070]
+0128a5: fmul qword [6070]
+0128aa: fadd dword [132]
+0128af: fstp dword [bp]-60
+0128b3: fistp dx:ax (emu)
+0128b5: cmp word ptr [0x44c4], 1
+0128ba: jne 0x12876
+0128bc: cmp word ptr [0x44c6], 0
+0128c1: jne 0x12876
+0128c3: mov bx, word ptr [0x44b0]
+0128c7: shl bx, 3
+0128ca: fld qword [bx]+58d8
+0128cf: fld st0
+0128d2: fmul st0, st1
+0128d5: fadd dword [136]
+0128da: fstp dword [bp]-60
+0128de: ffree st0
+0128e1: jmp 0x12876
+0128e3: mov ax, 0x3df4
+0128e6: push ds
+0128e7: push ax
+0128e8: lea ax, [bp - 0x64]
+0128eb: push ss
+0128ec: push ax
+0128ed: lea ax, [bp - 0x50]
+0128f0: push ss
+0128f1: push ax
+0128f2: lea ax, [bp - 0x44]
+0128f5: push ss
+0128f6: push ax
+0128f7: lcall 0x2e00, 2
+0128fc: sub word ptr [bp - 0x68], 0xa
+012900: sbb word ptr [bp - 0x66], 0
+012904: mov si, word ptr [bp - 0x64]
+012907: shl si, 3
+01290a: fld qword [si]+5b50
+01290f: fmul qword [si]+5b50
+012914: fmul dword [12e]
+012919: fld qword [si]+5650
+01291e: fmul qword [si]+5650
+012923: faddp st1, st0
+012926: fadd dword [132]
+01292b: fstp dword [bp]-20
+01292f: fistp dx:ax (emu)
+012931: mov ax, word ptr [bp - 0x68]
+012934: mov dx, word ptr [bp - 0x66]
+012937: or dx, dx
+012939: jl 0x1295f
+01293b: jg 0x12942
+01293d: cmp ax, 1
+012940: jb 0x1295f
+012942: or dx, dx
+012944: jg 0x1294d
+012946: jl 0x1295f
+012948: cmp ax, 2
+01294b: jbe 0x1295f
+01294d: or dx, dx
+01294f: jne 0x12956
+012951: cmp ax, 3
+012954: je 0x1295f
+012956: or dx, dx
+012958: jne 0x1295f
+01295a: cmp ax, 4
+01295d: je 0x12978
+01295f: mov si, word ptr [bp - 0x5c]
+012962: shl si, 2
+012965: les bx, ptr [bp + 0xa]
+012968: fld dword [bp]-70
+01296c: fdiv dword [bp]-20
+012970: fstp dword [bx+si]-4
+012975: jmp 0x12a85
+012978: mov bx, word ptr [bp - 0x50]
+01297b: add bx, word ptr [bp - 0x7a]
+01297e: shl bx, 2
+012981: mov ax, word ptr [bx + 0x3f40]
+012985: mov dx, word ptr [bx + 0x3f42]
+012989: mov word ptr [bp - 0xd0], ax
+01298d: mov word ptr [bp - 0xce], dx
+012991: fld dword [bp]+ff30
+012996: fmul dword [bp]+ff30
+01299b: fdivr dword [bp]-20
+01299f: fstp dword [bp]-20
+0129a3: fistp dx:ax (emu)
+0129a5: mov ax, word ptr [bp - 0x20]
+0129a8: mov dx, word ptr [bp - 0x1e]
+0129ab: mov word ptr [bp - 0x60], ax
+0129ae: mov word ptr [bp - 0x5e], dx
+0129b1: mov ax, word ptr [bp - 0x50]
+0129b4: mov dx, word ptr [bp - 0x4e]
+0129b7: add ax, 5
+0129ba: adc dx, 0
+0129bd: mov word ptr [bp - 0x4c], ax
+0129c0: mov word ptr [bp - 0x4a], dx
+0129c3: mov ax, word ptr [bp - 0x50]
+0129c6: mov dx, word ptr [bp - 0x4e]
+0129c9: add ax, word ptr [bp - 0x44]
+0129cc: adc dx, word ptr [bp - 0x42]
+0129cf: sub ax, 1
+0129d2: sbb dx, 0
+0129d5: mov word ptr [bp - 0x3c], ax
+0129d8: mov word ptr [bp - 0x3a], dx
+0129db: mov ax, word ptr [bp - 0x4c]
+0129de: mov dx, word ptr [bp - 0x4a]
+0129e1: mov word ptr [bp - 0x18], ax
+0129e4: mov word ptr [bp - 0x16], dx
+0129e7: mov ax, word ptr [bp - 0x3c]
+0129ea: mov dx, word ptr [bp - 0x3a]
+0129ed: cmp word ptr [bp - 0x16], dx
+0129f0: jle 0x129f5
+0129f2: jmp 0x12a87
+0129f5: jl 0x129ff
+0129f7: cmp word ptr [bp - 0x18], ax
+0129fa: jbe 0x129ff
+0129fc: jmp 0x12a87
+0129ff: mov ax, word ptr [bp - 0x5c]
+012a02: shl ax, 2
+012a05: add ax, word ptr [bp + 0xa]
+012a08: mov dx, word ptr [bp + 0xc]
+012a0b: sub ax, 4
+012a0e: mov word ptr [bp - 0x8e], ax
+012a12: mov word ptr [bp - 0x8c], dx
+012a16: mov ax, word ptr [bp - 0x3c]
+012a19: mov dx, word ptr [bp - 0x3a]
+012a1c: sub ax, word ptr [bp - 0x4c]
+012a1f: sbb dx, word ptr [bp - 0x4a]
+012a22: add ax, 1
+012a25: adc dx, 0
+012a28: mov word ptr [bp - 0xcc], ax
+012a2c: mov word ptr [bp - 0xca], dx
+012a30: add word ptr [bp - 0x18], ax
+012a33: adc word ptr [bp - 0x16], dx
+012a36: add word ptr [bp - 0x5c], ax
+012a39: adc word ptr [bp - 0x5a], dx
+012a3c: mov word ptr [bp - 0x96], ax
+012a40: mov ax, dx
+012a42: mov word ptr [bp - 0x94], ax
+012a46: neg word ptr [bp - 0x96]
+012a4a: neg word ptr [bp - 0x96]
+012a4e: adc word ptr [bp - 0x94], -1
+012a53: mov si, word ptr [bp - 0x96]
+012a57: fld dword [bp]-60
+012a5b: fistp dx:ax (emu)
+012a5d: les bx, ptr [bp - 0x8e]
+012a61: fld dword [bp]-70
+012a65: db cd

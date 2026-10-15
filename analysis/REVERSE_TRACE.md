@@ -1310,3 +1310,18 @@ OPAL-семейства (OPALTOL/OPALCALC и т.п.). В OPALA.EXE многом�
 
 Реализации волн 5-6: analysis/vignetting.py (виньетирование, TABBEA),
 analysis/beam_heights.py (TABESB/TABEAP), analysis/units.py + tables.py::taboc1/taboc2 (единицы, H ЗР).
+
+---
+
+## Указатели волн 7-9 (полные тексты в отдельных файлах)
+
+- **§18-A1 EXEPACK-образ OPALA распакован+декомпилирован** → analysis/REVERSE_UNP.md
+- **§18-A2 Форматник FORTRAN RTL 0x2E73 (HALF_UP фикс)** → analysis/REVERSE_FMT.md
+- **§20 G1 DOSBox-стенд + архитектура запуска (OPAL.COM резидент)** → analysis/REVERSE_G1.md
+- **§21 OPALO/OPALOW — дифракционный движок** → analysis/REVERSE_OPALO.md
+- **§22 OPAVA — Цернике-базис 28 членов (n≤12!)** → analysis/REVERSE_OPAVA.md
+- **§23 OPALOPT/OPAL/OPALANG — методы оптимизации+язык (досье 50KB)** → analysis/REVERSE_OPTDOC.md
+- psf_mtf.py — ФРТ/ФРЛ/MTF/ФКЭ (B2 реализация)
+
+**Волна 9 недоделана (квота Claude 2026-10-15 ~23:55):** OPALLAP/OPALOS/GENIZE распакованы
+(OPALLAP_unp/OPALOS_full/GENIZE_unp+full.bin в reverse_data, тулзы _tools/), REVERSE_LAP/OS/O PCOM.md — писать заново при восстановлении квоты.

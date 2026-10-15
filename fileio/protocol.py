@@ -101,6 +101,19 @@ def export_protocol(system: OpticalSystem, paraxial: dict, seidel: dict, filepat
     except Exception:
         pass
 
+    # ФРТ/ОПФ — уровень-2 анализа (ANALIZE.DOC §9, работа DIA): Штрель
+    # (FFT), частота среза и ЧКХ по сечениям меридиональному/сагиттальному.
+    # Краткая секция; полный дифракционный анализ — GUI-диалог (волна GUI).
+    try:
+        from analysis.psf_mtf import format_psf_mtf_section
+        if system.surfaces:
+            section = format_psf_mtf_section(system)
+            if section:
+                lines.append("")
+                lines.append(section)
+    except Exception:
+        pass
+
     lines.append("")
     lines.append("=" * 72)
     lines.append("  Конец протокола")

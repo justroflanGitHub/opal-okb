@@ -8,4 +8,6 @@ Modules:
     diffraction:  Diffraction MTF via FFT.
     tables:       OPAL-таблицы TABGL/TABPR2 (реверс §15).
     vignetting:   Виньетирование, светораспределение, TABBEA (реверс §14/§17.6).
+    strehl:       Число Штреля: Марешаль + точный FFT-PSF.
+    psf_mtf:      ФРТ/ФРЛ/ОПФ/ФКЭ и миры — уровень-2 анализа (DIA, §9).
 """

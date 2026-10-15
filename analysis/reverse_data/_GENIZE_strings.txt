@@ -1,0 +1,2160 @@
+0038e1 a ?3> ^_
+00d26e a G.&+G*+
+00d27f a G,&+G(HP+
+00d29e a G.&+G*+
+00d2a9 a G,&+G(+
+00f04a a >&>@B~
+010089 a >V?Pu)
+0101d1 a >V?Iu!
+010907 a /RPRP+
+011a2c a t/<,t+<;t'
+013b58 a >4DUu*
+013cbb a >4DUu.
+013efd a >4DVu/
+014065 a >4DVu.
+0142a7 a >4DWu 
+0143d4 a >4DWu.
+018cb7 a *.RPj@j
+018ccb a *.RPj@j
+018d0a a *.RPj@
+018d2d a *.RPj@
+018d50 a *.RPj@
+01b172 a *.RPj@
+01b17c a *.RPj@
+01b186 a *.RPj@
+01bed5 a ![Xs[9
+01c818 a _^]XP$
+01ca24 a K$0<0u
+01cbe8 a 'SQPRJ
+01cda6 a yL*6wL
+01ce0a a 6:6{Lv
+01cf40 a 89:;<=>?
+01d1e7 a .&LSV6
+01d1ff a >,L]_^
+01d23e a 6,L]_^
+01d3e3 a SPQRVW
+01d3f8 a _^ZYX[
+01e547 a Co0*DFDrD
+01e5ab a Co05DFDrD
+01e673 a Co05DFDrD
+01e92b a VEt%MR
+01ec69 a CS9X9a9m9
+01ec85 a ;+>-;z;
+01ecf9 a    $$$(((---222888???
+01ed9c a '?--?1-?6-?:-??-??-:?-6?-1?--?1-?6-?:-??-:?-6?-1?--?--?1-?6-?:-??-:?-6?-1?
+01f435 a <1=,=6=8===2
+020eb3 a <,tU< t
+0211b4 a Ht!HHt
+021ba2 a Ht+HtPH|sH~^
+021cf4 a tM< t(<
+021e0f a ge> r1
+022f71 a >~M)u?
+022fef a ,f,p,9/
+022fff a ,:-b-:-b-
+0232e4 a >~M)ut
+024af1 a HtbHHtpHHtZ
+02544f a Dy> MM
+025b04 a &WDWVW`W
+025b0f a WDWVW`W
+025db9 a Z<Z0Y0Y
+025dcf a \FZ0Y0Y0Y
+026020 a Z\a\h\o\v\}\
+027499 a tX<"t$<\t
+027569 a t^<"t'<\t
+0284a5 a toN<Dt@<Et3
+0288ce a QSRUVP
+029dbe a HtAHt 
+02a5ad a <0r!<9w
+02a623 a <0r?<9w;-0
+02a631 a <0r$<9w ,0
+02ad70 a MSEM87
+02ad78 a gfw...GWU
+02bdaa a  - 0               X0    Y0    S0    H0 
+02bdd7 a . fi     
+02bf52 a .            X     Y               
+02bf7b a        
+02c0e8 a .                 X     Y     
+02c110 a               
+02c26c a         
+02c28d a .                 X     Y           I        
+02c2c2 a  000.0 000.0 000.0 000.0
+02c2db a       
+02c2e9 a  000.0 000.0 000.0 000.0
+02c302 a       
+02c310 a  000.0 000.0 000.0 000.0
+02c329 a       
+02c337 a  000.0 000.0 000.0 000.0
+02c350 a       
+02c35e a  000.0 000.0 000.0 000.0
+02c377 a       
+02c385 a  000.0 000.0 000.0 000.0
+02c39e a       
+02c3ac a  000.0 000.0 000.0 000.0
+02c3c5 a       
+02e808 a escriptor
+02e812 a xpected
+02e821 a ndefinite
+02e82c a ninitialized
+02e839 a revious
+02e847 a nvalid
+02e852 a verflow
+02e85d a llegal
+02e866 a erminal
+02e880 a ssociated
+02e88f a OFOCUS
+02e896 a on-window
+02e8ab a eading
+02e8bd a ncountered
+02e8ce a runcation
+02e8f3 a nformatted
+02e904 a tructure
+02e90d a xternal
+02e91e a NDFILE
+02e925 a NTEGER
+02e931 a ultiple
+02e93e a pecifiers
+02e948 a pecifier
+02e954 a OGICAL
+02e95b a ormatted
+02e964 a onsistent
+02e972 a ptions
+02e979 a amelist
+02e981 a ist-directed
+02e994 a cratch
+02e9a4 a xceeded
+02e9ac a ithout
+02e9b3 a uickwin
+02e9c9 a CRATCH
+02e9d8 a HARACTER
+02e9e1 a hreads
+02e9e8 a rgument
+02e9f0 a ariable
+02e9fd a AMELIST
+02ea10 a ubscript
+02ea19 a xceeds
+02ea20 a llocated
+02ea32 a imensions
+02ea3c a ubrange
+02ea44 a ubstring
+02ea52 a pecified
+02ea5b a on-character
+02ea6c a lready
+02ea7b a egative
+02ea83 a on-huge
+02ea97 a ECORDS
+02ea9e a OCKING
+02eaa5 a equential
+02eaaf a nlocked
+02eab7 a eadlocked
+02eac6 a nstalled
+02eacf a xpression
+02eaf5 a OCKMODE
+02eafd a nknown
+02eb04 a onnected
+02eb10 a ifferent
+02eb19 a arameter
+02eb22 a ismatch
+02eb2e a ead-only
+02eb37 a gainst
+02eb3e a riting
+02eb45 a nternal
+02eb5d a llowed
+02eb7a a haracter
+02eb83 a exadecimal
+02eb8e a ACKSPACE
+02eb97 a EQUENTIAL
+02eba1 a rite-only
+02ebb0 a elimiter
+02ebb9 a isabled
+02ebc6 a epositioning
+02ebd8 a ssigned
+02ebe8 a nteger
+02ebef a nitial
+02ebf6 a arenthesis
+02ec01 a ositive
+02ec14 a onrepeatable
+02ec21 a receding
+02ec30 a esting
+02ec3a a nexpected
+02ec56 a postrophe
+02ec60 a umeric
+02ec77 a issing
+02ec7e a OMPLEX
+02fdd0 a                         2.
+02fdf6 a                           3.
+02fe2b a              4.
+02fe49 a                        5.
+02fe67 a                                  6.
+02fe8f a                                  7.
+02febf a                          8.
+02feef a                  PSF EF  LSF EDGEBAR MTF SF  SF  
+0300b0 a Help  Menu                                Load  Save  Quit              
+030137 a -                                  
+030160 a -                       OPAL-PC 
+0302b4 a  ?    
+030748 a MS Run-Time Library - Copyright (c) 1990, Microsoft Corp
+030794 a    bpf300&HAR.TMPPROTOCOL.PRN
+0307b6 a GINIZ.OH
+0307c0 a &MTF.TMP      
+03083a a SETWIND
+030851 a prn0-WORKS
+030861 a *GRAPH
+030868 a    EDIT
+030870 a                                                GLOBAL
+0308ab a MONITOR.OH
+0308ba a Command-->MenuViewEditCalcHelpComm
+03099d a .frm\\ 
+0309aa a _ GNIM         Save objects Load objects            
+0309f4 a  Directory  -
+030a02 a                                                                  Name file  -
+030a50 a         
+030a59 a                                                        
+030ae4 a  - 0             X0    Y0    PX    PY 
+030b0f a . fi     
+030b35 a //////
+030b49 a +//////
+030b6f a //////
+030b83 a +//////
+030d0f a  -                          X0    Y0     R0  
+030d42 a .         
+030d91 a       
+030d9b a                
+030dcd a        X     Y      X     Y               
+030e09 a /////L
+030e68 a   000.0
+030e70 a                      
+030e96 a                
+030f03 a       
+030f10 a       
+030f1d a  log  
+030ff1 a  bpf100@
+031077 a                
+031099 a         
+0310bb a       
+03131c a  MENU-
+031325 a  EDIT-
+03132e a   GRAF-
+031338 a  TEXT-
+03139b a OH.EXE
+0313c5 a *LOADPR
+03150a a file2prn.ini
+031517 a OPALGRPH.EXE
+031524 a NOROTROTlSPACE
+031542 a PRINTER.REG 
+03156c a DAt0 (
+0315be a Backgraund: Backgraund: Backgraund: 
+031626 a  INT= INT= B  = A  = FI = X0 = X0 = Y0 = Y0 = FI = B  = A  = Y0 = X0 = INT=  
+0317bc a                 
+0317ce a  Computing  00% 
+0317e0 a                 
+031826 a Del - Delete objectENTER - SaveSPACE - NextShift<Fkey> - Slow
+031867 a  - MoveF10 - ExitF8 - Rotate (-)F7 - Rotate (+)F6 - B (-)F5 - B (+)F4 - A (-)F3 - A (+)
+0318d0 a Del - All deleteShift<Fkey> - New(GRAY-) - Backgr -(GRAY+) - Backgr +F10 - QuitF9 - Fill objectsF8 - Real imageF7 - Edit polyangleF6 - Edit rect. obF5 - Edit radial obF4 - Edit circleF3 - Edit triangleF2 - Edit rectangleF1 - Help (F8.4)(F8.0)
+0319fe a (/-/h/9/
+031aa4 a                 0123456789ABCDEF
+031ade a ZZXXXXXX
+031aea a SEQUENTIAL
+031af6 a DIRECT
+031afe a APPEND
+031b20 a SCRATCH
+031b29 a UNKNOWN
+031b34 a FORMATTED
+031b3f a UNFORMATTED
+031b4c a BINARY
+031b56 a COMPAT
+031b5e a DENYRW
+031b66 a DENYWR
+031b6e a DENYRD
+031b76 a DENYNONE
+031b8f a READWRITE
+031bba a DELETE
+031bcc a .........*......................*...
+031bfc a ))))))))))
+031c07 a ......
+031c84 a _C_FILE_INFO=
+031f22 a internal
+031f38 a File name missing or blank - please enter file name
+032064 a : CLOSE(
+03206d a : WRITE(
+032076 a : ENDFILE(
+032081 a : INQUIRE(
+03208c a : LOCKING(
+032097 a : OPEN(
+03209f a : READ(
+0320a7 a : REWIND(
+0320b1 a : BACKSPACE(
+0320be a : EOF(
+0320c5 a : $DEBUG
+0320d2 a : ALLOCATE
+0320e1 a : DEALLOCATE
+0320f2 a : BEGINTHREAD
+0321e9 a a7`7`P`7`
+03220a a pa6ao`
+032222 a ua6ao`
+032264 a <b6`o`
+03227c a #bI`o`
+032294 a `b6`o`
+0322ac a hbJao`
+0322c4 a ,c6`o`a`
+0322f4 a ;c6`o`
+03231b a c7`7`P`7`
+0323ca a 010203040506070809101112
+032414 a 6k6k-`
+03241b a a6k6k-`
+032423 a a7`7`P`7`
+032444 a ykyk-`
+03244b a a^`^`-`
+032453 a a7`7`P`7`
+032474 a UkUk-`
+03247b a aUkUk-`
+032483 a a7`7`P`7`
+0324a4 a ukuk-`
+0324ab a aukuk-`
+0324b3 a a7`7`P`7`
+032506 a @l@l-`@l@l@l-`@l7`7`P`7`
+032536 a GlGlo`
+03253d a aGlGlo`
+032545 a ao`o`o`o`
+032575 a ao`o`o`o`
+0325a5 a ao`o`o`o`
+0325d5 a ao`o`o`o`
+0325f6 a XmXmo`
+0325fd a aXmI`o`
+032605 a ao`o`o`o`
+032635 a ao`o`o`o`
+032651 a N@(#)build.c:1.4
+03276a a run-time error 
+032799 a a7`7`P`7`
+0327c9 a a7`7`P`7`
+0327eb a ~6`o`.
+03281b a ~6`o`:
+032878 a 1#SNAN
+03287f a 1#QNAN
+03291e a COMSPEC
+03297d a          (((((                  H
+032a88 a *9*9*9
+032a9c a ,.Tf> 
+032b2c a L?fffA
+032bab a A333?33
+032bb3 a @33kAR
+032db2 a This program must be run under OPAL-PC
+032dde a This program must be run under OPAL-PC
+0333a6 a <<NMSG>>
+0333b0 a : MATH
+0333b8 a - floating-point error: 
+0333d3 a invalid
+0333df a denormal
+0333ec a divide by 0
+0333fc a overflow
+033409 a underflow
+033417 a inexact
+033423 a unemulated
+033432 a square root
+033447 a stack overflow
+03345a a stack underflow
+03346e a explicitly generated
+03348e a - floating-point support not loaded
+0334bd a - stack overflow
+0334d9 a - integer divide by 0
+0334fa a - not enough space for environment
+033526 a run-time error 
+03353f a - null pointer assignment
+03355d a : MATH
+03356a a : DOMAIN error
+03357d a : SING error
+03358e a : OVERFLOW error
+0335a6 a : TLOSS error
+03561a a i5a5RB
+03572b a !Packed file is corruptR
+03582b a "2"]!,!s&a&:&+&
+03584b a $h$=$4$
+035877 a ,Z+c0X0O0D0;000'0
+0358a1 a /z/q///'/
+0358c3 a .w.n.f.[.R.J.?.:.
+0358e5 a -w-n-f-\-T-K-B-0-'-
+035911 a 8~8u8j8B87828-8%8
+03593b a 7|7w7o7d7[7;717(7
+03595b a 6z6q6l6c6Z6
+035967 a >p><>(>
+035977 a AsAHA%A
+035985 a @q@Y@$@
+035991 a ?r?N?'?
+0359b1 a E|EkE]ECE/E
+0359ef a IsI_IKI7I
+0359fd a LIN;N&N
+035a25 a SvS[S<S+S
+035a31 a UxUNU)U^V,VLYEY=Y5Y-Y%Y
+035a65 a XgXOX7X
+035a75 a WpW_WQW
+035a93 a Z|ZUZNZFZ>Z6Z.Z&Z
+035ac3 a Y{YsYQ[J[B[:[2[*["[
+035ae5 a c{cgc9c e
+035b2d a pEo>o6o.o&o
+035b6b a v}vuvmvev
+035b95 a }l}a}A}(}
+035bc1 a ~w~o~]~U~M~6~E
+0360f5 a 9]9C9'9
+03610b a 7t7i7 7
+036139 a HwH[HGH
+036149 a FzISLLL
+036151 a LuKkKXK7K
+036163 a J]J[OTO.O
+03617f a TwT]TJTyS
+0361bb a emd3c8f(fli/i
+036237 a yxy~x]xAx x
+0364cb a @>@E@3BRB
+03650f a M"N>NTN<OLO`O
+036535 a R>R+RQT
+036561 a asaaaJa<a'a
+036575 a `7jGj\jejqjvj
+00003e r гк.ги.Ъ
+00008c r Ў/HRPНFЇгr
+0000f6 r Ў/HRPНFЇгr
+000160 r Ў/HRPНFЇгr
+0001b7 r М. Г>М.
+000229 r бК.@&гд
+0005d3 r ЙG■&ЙG№Л
+0005ee r ЙG■&ЙG№Л
+00085e r гТ.гР.щ: 
+00086f r щЮўЛF■Щ^_Лх]
+00087d r ЛьГь>WVбr
+000926 r уЙЗ~/ЙЗ|/ 
+000aee r уЙЗt0ЙЧv0 
+000b2b r ЙД|/ЙФ~/ 
+000c15 r Є+FЎRP& w
+000c70 r Ц#бr+&г
+000e3b r бК+ЩЙFфЙVц
+000fee r ЛV$+FЎRP
+00110d r б`+HЙFф
+001201 r ЙF· v, v*
+001272 r ЙF· v, v*
+001325 r бК+ЩЙFрЙVт
+001460 r ў.*,ЛЁЛД4(ЛФ6(ЙД<(ЙФ>(Л
+0015d4 r ЙЗ<(ЙЧ>( v
+00160c r ў.*,ЛЁЛД4(ЛФ6(ЙД<(ЙФ>(
+001757 r Л^$+NЎSQЛ^ь& w
+0017b8 r ў.x/ЛЁН
+001845 r бx/ўfЄ&
+001852 r ЛV$+FЎRP v  v
+0018dc r бК+ЩЙFрЙVт
+001935 r щЎЎГ>j/
+001950 r ■Г>h/du
+001a61 r р.9З|/u
+001ae0 r бx/ўfЄ&
+001aed r ЛV$+FЎRPЛ
+001bbd r ЛЁЛД&(HPЛД$(HPЛД"(@PЛД (@PЪ
+001be1 r г■/г№/щ[
+001bf3 r ЛЗ8(ЛЧ:(г
+001c50 r ЛЗ0(ЛЧ2(г
+001cb2 r г~/г|/+
+001d64 r ЙF·бx/ўfЄ&
+001d74 r ЛV$+FЎRP
+001dcb r ЙЗВ/ЙЗА/бl/Л
+001e02 r г■/щ■∙б
+0022d1 r щYЎщT¤+
+0024e3 r щЧ√б&,ЩЙFрЙVт
+002525 r бx/ўfЄ&
+002532 r ЛV$+FЎRP
+0025d7 r бx/ўfЄ&
+0025e4 r ЛV$+FЎRPЛ
+00261a r щЧ№Г>&,
+002642 r б&,ЩЙFрЙVт+
+0026d3 r бx/ўfЄ&
+0026e0 r ЛV$+FЎRP
+002758 r бx/ўfЄ&
+002765 r ЛV$+FЎRP
+00285b r бx/ўfЄ&
+002868 r ЛV$+FЎRP
+002c93 r ·HRPНF№гr
+002cb9 r ЙFЎЙV°щq■^_Лх]
+002cfc r ЙF№ЙV■Н^№Ъ
+002d0c r Ъ#ЪЁ2> Н
+002d1c r Ъ$2> Н^№Ъф2> Н
+002d46 r в#ЪЁ2> Н
+002d74 r Ъф2> Н^°Ъ
+002d84 r ЛF°ЛV·&Й
+002dae r ЛF№ЛV■&Й
+002dc5 r ж#ЪЁ2> Н
+002e26 r ЛF°ЛV·&Й@
+002e47 r Ъ?3> Н^№Ъ
+002e63 r Ъ?3> Н^№Ъ
+002eea r Ъ03> Н^ЇЪ
+002ef9 r в#ЪЁ2> Н
+002f24 r Ъф2> Н^°Ъ
+002f34 r ЛF°ЛV·&Й
+002f5e r ЛFЇЛVЎ&Й
+002f75 r ж#ЪЁ2> Н
+002fd6 r ЛF°ЛV·&Й@
+002ff7 r Ъ?3> Н^ЇЪ
+003013 r Ъ?3> Н^ЇЪ
+00307a r ЛьГь,WV
+003112 r Й@№&ЙP■
+003198 r Й@№&ЙP■
+00364e r ЙF№ЙV■Н^№Ъ
+0036a8 r ЙFЇЙVЎН^ЇЪ
+0036b8 r ф0Ъф2> 
+0036e6 r ЛF№ЛV■&Й
+003738 r Ъ?3> бф0Л
+003747 r ЛF°ЛV·&Й@
+00375f r ф0Ъф2> 
+00376c r Ъ?3> Н^ЁЪ
+003784 r Ъ?3> Н^№Ъ
+003793 r ъ#ЪЁ2> 
+0037a0 r Ъ?3> Н^№Ъ
+0037af r ю#ЪЁ2> Н
+003808 r ЛF°ЛV·&Й@№&ЙP■Н^№Ъ
+00383c r НX№Ъ?3> 
+00385c r Й@№&ЙP■Н
+00386f r НX№Ъ?3> Н
+003883 r НXtЪ?3> 
+003895 r ЙFЁЙVЄН^ЁЪ
+0038a5 r Є#ЪЁ2> Н
+0038b8 r НX№Ъ?3> Н^ЁЪ
+0038ca r Ў#ЪЁ2> Н
+0038dd r НX№Ъ?3> ^_Лх]
+003975 r Й@Ё&ЙPЄ
+003a0b r Й@Ї&ЙPЎ
+003aeb r Й@°&ЙP·
+003b71 r Й@№&ЙP■
+003c76 r Й@°&ЙP·
+003cf3 r Й@№&ЙP■
+003d6b r Єебz+гЄ0
+003e14 r ЪфL>  6r1 6p1
+003e2d r  6v1 6t1
+004164 r ЙFЄЙFЁНFЁ
+004198 r бК+ЩЙFьЙVю
+0041db r щм¤бК+ЩЙFЁЙVЄ
+00428d r бК+ЩЙFьЙVю
+004318 r ЙFЇЙVЎщ5·^_Лх]
+004435 r ў.Ю1ЛЁО
+0046f6 r щz■щJ О
+004716 r Ю1 Г>Ю1
+004856 r Ю1 Г>Ю1
+0048cf r ў.Ю1ЛЁНG
+004b25 r Ю1 Г>Ю1
+004c94 r ў.Ю1ЛЁНG
+004ec5 r ЛG№&ЛW■
+004efa r ЛG№&ЛW■г
+004fd6 r Ь1&ЙG№&ЙW■б
+00508e r ЙG№&ЙW■Л
+0050b1 r ЙG№&ЙW■Л
+0050c9 r ЛG№&ЛW■Л
+0050e5 r ЙG№&ЙW■
+0051d2 r ЛG№&ЛW■
+00525f r ЙG■&ЙG№щ=√О
+0052b7 r ў.Ю1ЛЁНG
+005517 r Ф1&ЙG№&ЙW■
+0055d7 r ЙG№&ЙW■Л
+005696 r щ9■щ'¤О
+0056ea r ў.Ю1ЛЁНG
+005bc0 r НЯ№ &ЙG№&ЙW■О
+005c2f r ЙG№&ЙW■О
+005cf9 r ЙG№&ЙW■О
+005d63 r ЙG№&ЙW■О
+005e2d r ЙG№&ЙW■О
+005fbe r ЙG№&ЙW■О
+00602d r ЙG№&ЙW■
+006120 r ЙG№&ЙW■О
+00614a r ЙG№&ЙW■О
+0061ef r ЙG№&ЙW■О
+006219 r ЙG№&ЙW■О
+0062bd r ў.Ю1ЛЁО
+00652e r щв■щr О
+00654e r Ю1 Г>Ю1
+006619 r ў.Ю1ЛЁО
+006966 r ЙG№&ЙW■О
+006990 r ЙG№&ЙW■О
+0069ba r ЙG№&ЙW■щя¤щE
+0069f6 r ў.Ю1ЛЁО
+006d0e r №Ъ*6> Л
+006e02 r ДЪ*6> Л
+007198 r ЙF■ v( v& v$ v"
+0075ab r ЙF■ v( v& v$ v"
+007652 r ЙF■ v( v& v$ v"
+00769a r ЙFЇЙVЎщРїЛFЁЛVЄ^_Лх]
+007c01 r ∙Ъj4> г 4Й
+007c4d r Ъj4> г 4Й
+007cf1 r  6*3 6(3б 3Л
+007d2a r  6&3 6$3 6*3 6(3ЛЁЛ·ЪЎ
+007fd2 r  6F3 6D3б<3Л
+00800b r  6B3 6@3 6F3 6D3ЛЁЛ·ЪЎ
+00807b r  6r3 6p3бh3Л
+0080a6 r  6n3 6l3 6r3 6p3ЪЎ
+008121 r  6V3 6T3
+008139 r  6f3 6d3
+008151 r  6:3 683
+0082f0 r  6F3 6D3Л
+008306 r Ж3SQЛЁЛ·ЪЎ
+008354 r  6F3 6D3Л
+00836a r Ж3SQЛЁЛ·ЪЎ
+0083a9 r и$Ъj4> гZ9Г>Z9
+0083c3 r  6r3 6p3б
+00857d r ЩЙFшЙVъ
+0085a2 r ЛFшЛVъ9
+0085e2 r убО3ЙЗ^9щж щг
+008607 r ЩЙFьЙVю
+00862c r ЛFьЛVю9
+008656 r в3ЪЫ5> 
+008689 r О3@ЙЗ`9щК б^+ЩЛ
+00869e r ў.А3ЛЁЛДN(Щ+
+0086be r ў.А3ЛЁЛДL(Щ+
+0086de r ў.А3ЛЁЛДJ(Щ
+0086ed r ЙFЁЙVЄб^+ЩЛ
+0086fe r ў.А3ЛЁЛДH(Щ
+00889e r И3ОFЇеееМFв
+0088ac r ОFвееНFд
+00895d r ЙFЁЛFЁЩгО3Й
+0089db r ўf·ЙF№ЛF·@ЙF■
+008b17 r Ц9 6Ю9 6Ь9бФ9Л
+008b52 r  6Ъ9 6Ш9 6Ю9 6Ь9ЛЁЛ·ЪЎ
+008be0 r  6В9 6А9бx9Л
+008c19 r  6~9 6|9 6В9 6А9ЛЁЛ·ЪЎ
+008c8b r  6о9 6м9
+008ca3 r  6v9 6t9
+008cbb r  6Т9 6Р9
+008cff r гр9Г>р9
+008df3 r р9ЪЇ5> 
+008e3d r ∙Ъj4> Л
+008f43 r Ъj4> ЙV
+008f59 r ∙бр9ЩRP 6Ю9 6Ь9ЪЎ
+008fa5 r Ъj4> ЙV
+008fc0 r ∙бр9ЩRP 6Ю9 6Ь9ЪЎ
+0090cb r Ъj4> ЙV
+0090e1 r ∙бр9ЩRP 6В9 6А9ЪЎ
+00912d r Ъj4> ЙV
+009148 r ∙бр9ЩRP 6В9 6А9ЪЎ
+0091f9 r бр9ЩRP 6Ю9 6Ь9ЪЎ
+009238 r бф9ЩRP 6В9 6А9ЪЎ
+0092ad r ОFH+^■&К
+0092ca r бр9ЩRP 6Ю9 6Ь9ЪЎ
+009309 r бф9ЩRP 6В9 6А9ЪЎ
+0093ab r бр9ЩRP 6Ю9 6Ь9ЪЎ
+0093ea r бф9ЩRP 6В9 6А9ЪЎ
+00948c r бр9ЩRP 6Ю9 6Ь9ЪЎ
+0094cb r бф9ЩRP 6В9 6А9ЪЎ
+009590 r бр9ЩRP 6Ю9 6Ь9ЪЎ
+0095cf r бф9ЩRP 6В9 6А9ЪЎ
+00960e r бр9ЩRP 6Ю9 6Ь9ЪЎ
+00964d r бф9ЩRP 6В9 6А9ЪЎ
+00968f r бр9ЩRP 6Ю9 6Ь9ЪЎ
+0096ce r бф9ЩRP 6В9 6А9ЪЎ
+009710 r бр9ЩRP 6Ю9 6Ь9ЪЎ
+00974f r бф9ЩRP 6В9 6А9ЪЎ
+0097a0 r ш9Ъj4> гт9
+00982e r бт9ў.ц9RPЪ\
+009872 r гт9 6ф9 6р9Ъ
+009885 r гт9щY∙щ(∙
+0098dd r щьЁЛF°Щ^_Лх]
+0098ff r гю9гь9щ
+00995d r щЬ ^_Лх]
+0099a4 r ЙF№ЙV■щ
+0099af r  ЛF№ЛV■^_Лх]
+009b99 r щ2■^_Лх]
+009c5b r  6·9 6°9
+009c8f r г·:Г>·:
+009df7 r б:;ЙF■б4;гИ;щ
+009fd1 r Т;Б>Т;А
+00a02f r Т;Б>Т;А
+00a053 r Ъ46> Ъj4> г*;Й
+00a263 r Л@№&ЛP■г0;Й
+00a2ee r Л@№&ЛP■г6;Й
+00a6df r Л@№&ЛP■гd;Й
+00a6f9 r Л@№&ЛP■г
+00adf5 r щ[°бА;Л
+00aee7 r  vl vj vh vfЪ
+00af1c r Л@№&ЛP■Л
+00af38 r у&ЙА№¤&ЙР■¤Л
+00af6d r у&ЙА№¤&ЙР■¤щЖ Г
+00b069 r у&ЛА№Ў&ЛР■ЎЛ
+00b090 r ЙА№ї&ЙР■їб
+00b0ad r у&ЛА№Ў&ЛР■ЎЛ
+00b0d4 r ЙА№ї&ЙР■їб
+00b0f1 r у&ЛА№·&ЛР■·Л
+00b118 r ЙА№∙&ЙР■∙б
+00b135 r у&ЛА№·&ЛР■·Л
+00b15c r ЙА№∙&ЙР■∙щ
+00b218 r ЛА№¤&ЛР■¤
+00b3c9 r ц:Г>ц: ~
+00b415 r Й@№&ЙP■бp;Щ
+00b45c r Й@№&ЙP■Л
+00b46f r Л@№&ЛP■Л
+00b482 r Й@№&ЙP■Л
+00b63c r ц:Г>ц: ~
+00b688 r Й@№&ЙP■бF;Щ
+00b6cf r Й@№&ЙP■Л
+00b6e2 r Л@№&ЛP■Л
+00b6f5 r Й@№&ЙP■Л
+00b74d r ц:Г>ц: ~
+00b8b0 r  vd vb v` v^ vl vj vh vfЪ
+00b99c r Д;Б>Д;А
+00b9b4 r Ж;Г>Ж;@~
+00ba08 r у&ЛА№¤&ЛР■¤
+00ba65 r у&ЛА№¤&ЛР■¤
+00baaf r б\;гD;щ
+00bb42 r щoр^_Лх]
+00bd9f r  6и; vю vь
+00be35 r  6и; vЄ vЁ
+00beaf r  7 6и; vЎ vЇ
+00bf33 r  7 6и; v· v°
+00bfb7 r  7 6и; v■ v№
+00bfd9 r ЙFцЙVшщ
+00bffb r ЙFЄЙVЇЪ$
+00c062 r  7ЪмШ> Г
+00c077 r ЙFЁЙFющ
+00c0a8 r  v° v·Ъ
+00c0c5 r  v°ЛF·@PЪ
+00c147 r ЛF°HP v·Ъ
+00c166 r ЛF°HPЛF·@PЪ
+00c187 r ЛF°HPЛF·
+00c1ab r ЛF°HPЛF·
+00c1cf r ЛF°HPЛF·
+00c450 r фPЪ.Ш> Г
+00c4c8 r Ъb1> Hг
+00c814 r щЪ№^_Лх]
+00ca3a r  7 6т;Ъ
+00caa5 r ЙF°ЙV·Ъ¤
+00cb5b r ЙVюЙFьН^ьЪи2> Н
+00cbe9 r  6ю; 6ь;ЪЖ
+00cf66 r в)<в*<в+<в,<в(<б<<+
+00cf86 r б"<9F·|% v
+00d022 r б <HЙF°б
+00d02d r г><б><9F°|h
+00d03d r  6:< 6><Ъ
+00d06e r  6<< 6><Ъ
+00d0c5 r  6:< 6 <Ъ
+00d1f3 r ЛG,HP& w*& w(Ъщ
+00d22a r ЛG,HP& w*& w(Ъ
+00d26d r ЛG.&+G*+
+00d27e r ЛG,&+G(HP+
+00d29d r ЛG.&+G*+
+00d2a8 r ЛG,&+G(+
+00d2c0 r гТ< 6@<Ъ
+00d317 r  w0&ЛG*
+00d346 r  6<< 6 < 6:< 6
+00d358 r б<<HPб <HPб:<@Pб
+00d39c r  6&< 6$<ЪЖ
+00d3bc r ЛьГь4WVбr
+00d4d5 r дЛFюЙF№
+00d54d r ЛFюHЙFф
+00d584 r ЛFюHЙFт
+00d600 r РЛFюHЙF№
+00d65e r бЮ<9Fц}
+00d6eb r уЛFЄЙЗV=Л^ъ
+00d6f7 r убЮ<@ЙЗк< FъЛFю
+00d74c r щД¤ЛFюHЙF№
+00d76d r  FЄpdЛFш9FЄ
+00d7d3 r щИ■ЛFъHг
+00d801 r ЛьГь4WVбr
+00d887 r ЛFЄЙFъ FЄq
+00d89c r ЛДк<HP 
+00d8e6 r уЛЗк<HгЮ<щя
+00d918 r дЛFюЙF№
+00d982 r Ц<ЛFюHЙF№
+00daaa r щi■ЛFюHЙF№
+00daf6 r ЛFЄЙFъ FЄq
+00db1f r уЛЗк<го=HЙFЁ
+00dba5 r гж<гд<Г>д<
+00dbc9 r гж<гд<Г>д<
+00dbed r гж<гд<Г>д<
+00dc21 r ж<uDЛvЄ
+00dc45 r в<&9@№u
+00dc78 r бо=ЙFьЛFЁЙF
+00dc84 r ЛFьHЙFьщ[
+00dcfe r щk■Г>в<
+00dd08 r щa■ба<Л
+00ddf7 r бо=гЮ<щ
+00de35 r бо=ЙFЄы
+00de3d r ГFЄ Г~Є
+00deb5 r Ю<pqбЮ<9F
+00df2e r уЛЗк<HЙFЁЛ^ъ
+00df3b r уЛЗк<го=щг
+00df4a r убX=9ЗV=
+00df56 r № NъЛ^ъ
+00df9d r бо=гЮ<щ
+00dfdb r бо=ЙFЄы
+00dfe3 r ГFЄ Г~Є
+00e05b r Ю<pqбЮ<9F
+00e0d4 r уЛЗк<го=Л^ъ
+00e0e0 r уЛЗк<HЙFЁ
+00e10d r цЛДV=9ЗV=~
+00e124 r уЛЗк<го=Л^ъ
+00e130 r уЛЗк<HЙFЁЛ^ъ
+00e152 r  6о=Л^ъ
+00e165 r убX=9ЗV=}
+00e17b r уЛЗк<го=Л^ъ
+00e187 r уЛЗк<HЙFЁЛ^ъ
+00e1a9 r  6о=щE Л^ъ
+00e1e6 r о=щb бо=HгЮ<ы
+00e1f6 r Ю< Г>Ю<
+00e23b r бЮ<Hго=HЙFЁщ
+00e297 r о= Г>о=
+00e2d8 r щr■бо=гЮ<
+00e2eb r бо=бо=9F
+00e340 r бо=@гЮ< 
+00e349 r о=qббЮ<го=
+00e358 r  6Ю<щў¤Л^ъ
+00e3ce r бо=ЙFЄщ
+00e411 r  6о=Л^ъ
+00e43d r о=@ЙF№Л^ъ
+00e45e r о=HRPНF·гr
+00e5b5 r  6о=Л^ъ
+00e5ca r бо=HЙFЁщШї
+00e5e0 r щ(ўГFь pRЛF
+00e6b1 r о=HRPНF·гr
+00e716 r о=щ2· 6
+00e736 r  6Ь< 6Ъ<ЪЖ
+00e7d4 r ЙF·Щ^Лх]
+00e83a r ЎRPНF°гr
+00e938 r ЙFЎЙV°ЛF&ЛV(г
+00e94b r ЛF"ЛV$г
+00eb31 r  6№= 6·=
+00ebdb r  6ь= 6ъ=
+00ecab r  6№= 6·=
+00ed2a r  6ь= 6ъ=
+00ee45 r ЙF№ 6р= 6
+00ee5d r  6ф= 6т= 6ш= 6ц=НF·гr
+00ee94 r ЙFЎЙV°ЛF
+00eef8 r г">ыD 6
+00ef8e r г">ыD 6
+00f049 r Б>&>@B~
+00f05b r Ъt'> Лх]
+00f0f9 r гЦ>б\>г0>бX>Л
+00f1b6 r гЪ> 6T>Ъь
+00f1db r  6Z> 6X>ЪЖ
+00f201 r б8>9Fь|L
+00f23a r °RPНF·гr
+00f254 r м 6Ъ>Ъь
+00f26b r  6<> 6:>ЪЖ
+00f299 r ЙFЎЙV°+
+00f31e r о> 6&? 6$?ЪЖ
+00f335 r а>бz+гв>б$?Л
+00f412 r г(? 6"? 6 ?ЪЖ
+00f46f r г(? 6&? 6$?ЪЖ
+00f5bf r д>Б>д>ш
+00f6ce r г(? 6о> 6м>ЪЖ
+00f6e6 r а>ЛFЄЛVЇ^_Лх]
+00f775 r ў∙гf?&б
+00f7cb r гB?бB?9FЄ|N
+00f7fa r ЙF№ў.B?
+00f809 r °RPНF·гr
+00f830 r  6L? 6J?ЪЖ
+00f8e1 r ў.f?@@гH? 6l?P+
+00f93e r  6,? 6*?
+00fa05 r °RPНF·гr
+00fa26 r бj?ў.l?+
+00fa31 r гF?бj?ў.l?HгP?О
+00fa4e r  6H? 6F? 6D?Ъ!
+00fa74 r  6F? 6D?Ъ
+00fa94 r бj?ў.l?+
+00fab4 r  6F? 6D?Ъ
+00fb46 r гB?бB?9FЁ|N
+00fb75 r ЙF№ў.B?
+00fb84 r °RPНF·гr
+00fbf5 r °RPНF·гr
+00fc8b r щm■бh?9
+00fd22 r бh?гj?&Л
+00fd3f r щ# Г>j?
+00fdac r щL¤Г>j?
+00fe16 r щ[ бj?Щ
+00feb6 r бn?Щ&ЛO
+00ff63 r °RPНF·гr
+00ff78 r бj?ў.l?+
+00ff83 r гF?бj?ў.l?HгP?О
+00ffa0 r  6H? 6F? 6D?Ъ!
+00ffc6 r  6F? 6D?Ъ
+00fff6 r  6L? 6J?ЪЖ
+010087 r ИГ>V?Pu)Г>X?
+0100b5 r щX Г>Z?
+0100d6 r г\?гZ?Г>Z?
+0100fa r г\?гZ?Г>Z?
+01016f r Л@№&ЛP■ў
+01018c r щ■°бB?Щ
+0101d0 r Г>V?Iu!Г>X?
+010282 r °RPНF·гr
+0102f4 r Єебz+гv?
+010314 r д?бr(Hгx?
+01048c r ЛЁЛД (Щ
+010534 r ЙF·М^№ 6t?
+010553 r щн■Г>т?
+01055d r щг■Г>~?
+010567 r бт?г(,Г>~?
+010574 r бт?г*,Г>~?
+010581 r бт?г&,Г>~?
+01058e r бт?г$, 
+01064c r  6°? 6Ў?
+010722 r  6°? 6Ў?
+010860 r ллллЛF"ЛV$
+0108a0 r ЛV гJ@Й
+010906 r Ў/RPRP+
+01096c r гЪ@ы> 6
+0109fc r ЛьГь&WVбr
+010a27 r ЙG2&ЙG0
+010aea r би@&ЙG■+
+010af3 r ЙFьЙFъщT  
+010b26 r бК+ЩЙFтЙVф
+010b74 r Єебz+гЮ@бц+Л
+010dd8 r би@9Fр|
+010eeb r ЙF°ў.и@
+010efa r ЄRPНFЎгr
+010f73 r бв@Щ&ЙG
+0110ca r ЄRPНFЎгr
+01115a r бК+ЩЙFтЙVф
+0111c8 r ЙG0&ЙW2^_Лх]
+01122e r б*AHPЪi
+01127d r ЙF№ЙV■Лх]
+01129b r ЛЗH(г<AЛ^
+0112c3 r ЛЗL(г>AЛ^
+0112d5 r ЛЗN(гBAО
+0113a7 r КЗCA*ф+
+0116a6 r гpA^Лх]
+011789 r ЙF№ЛVъ+V№Г~Ї
+0117bb r ЛN№Ь№єеЭГ~
+01189f r ЙF№ЙV■Лх]
+0118dc r ЙFКЙVМЙЖv ЙЦx ЙFОЙVРЙFЦЙVШ+
+0118f8 r ЙFИЙFЖЙЖt Л^И
+01190b r ИЖr < t
+01193c r ЛvЖКЖr ИВ|  FЖ FИЛ^И
+011956 r ИЖr < u
+01195e r ЛFЖЙЖz ЛЁ
+01198f r щ? ЛFТ+F
+011998 r ЙFЖЙFИ NИx
+0119ac r ИЖr < t
+0119bc r  NИытГ~И
+0119ec r ИЖr < t
+011a12 r ИЖr < tя<
+011a40 r ЛvЖИBЪ FЖ FИЛ^И
+011a55 r ИЖr < u
+011a9e r Юv ГЖv 
+011ad0 r НЮj Ъ02> 
+011ae0 r Ъ?3> А~
+011b14 r ИЖj < t
+011b20 r  FИыцЛ^ИЛv
+011b43 r ИЖj < tь<
+011b4f r щ·■ыу^_Лх]
+011d0f r Л6@BЛ>^BЛ
+011d4c r Й6@BЙ>^B
+011dd8 r Л6\BЛ>@B
+011e1c r ееее_^VW
+011e2a r ееее_^Л
+011e6e r щo Й6\BЙ>@B
+011ee8 r цтяЙ6LB
+011f6e r Й6>B^_Лх]
+011f7c r ЛьГь0WV
+011f91 r  7Ъx6> гxB
+01200e r гВBбzBЙF°
+01201d r бvB9F°}
+012035 r ЛG№&ЛW■гЖBЙ
+01206e r ЛG№&ЛW■гКBЙ
+01208c r ЛG№&ЛW■гjBЙ
+0120a6 r Л@№&ЛP■гnBЙ
+0120b8 r Л@№&ЛP■гОBЙ
+012192 r Л@№&ЛP■гnBЙ
+0121a4 r Л@№&ЛP■гОBЙ
+01229c r щ~¤ v, v* v( v&
+012300 r ЛF"ЛV$ЙFЇЙVЎ
+012315 r ЛV ЙFюЙVЁ
+01232e r ЙFцЙVшЛF
+01233a r ЙFтЙVфбzBЙFр
+0123aa r Л^ь&ЛG№&ЛW■ЙF
+01245f r  7Ъx6> гвBЩ+
+012493 r ЙF·ЙV№ЛF
+01249f r ЙFЎЙV°ЙFЄЙVЇЛ6ЪBЛ>
+0125a8 r кB  бмBЩ+
+012625 r Л@№&ЛP■г
+01263e r ц&Л@№&ЛP■гТBЙ
+01265e r Л@№&ЛP■г
+012677 r ц&Л@№&ЛP■г
+0126cd r Л@№&ЛP■г
+0126e6 r ц&Л@№&ЛP■г
+012802 r ЛA№&ЛQ■г
+01281b r ч&ЛA№&ЛQ■гТBЙ
+01283b r Л@№&ЛP■г
+01284d r Л@№&ЛP■г
+0128a1 r Л@№&ЛP■г
+0128b3 r Л@№&ЛP■г
+0129ca r бдBЩў∙гдBбкBў
+0129dd r ЬBp:бЬB9Fш|2Г>кB
+012a18 r щ| ^_Лх]
+012aeb r ЬCЪ46> Л
+012b7a r З&CЛ6ШC
+012bcd r ЦCЛ6ШCЛ>жCЛ
+012c0c r Й6ШCЙ>жC
+012c98 r Л6дCЛ>ШC
+012cdc r ееее_^VW
+012ce8 r ОCееее_^Л
+012d2e r щo Й6дCЙ>ШC
+012d57 r щё■^_Лх]
+012d63 r ЛьГьLWV
+012d78 r  7Ъx6> г
+012daf r ЙF·ЙV№ЛF
+012dbb r ЙFЎЙV°ЙFЄЙVЇЛ6
+012f28 r б°C9FЁ}
+012f41 r Л@№&ЛP■гфCЙ
+012f5a r ц&Л@№&ЛP■гоCЙ
+012f7a r Л@№&ЛP■г
+012f93 r ц&Л@№&ЛP■г
+012fe9 r Л@№&ЛP■г
+013002 r ц&Л@№&ЛP■грCЙ
+0130eb r бЁC9Fь}
+013102 r щ#■б°C9FЎ}
+01311e r ЛA№&ЛQ■гфCЙ
+013137 r ч&ЛA№&ЛQ■гоCЙ
+013157 r Л@№&ЛP■г
+013169 r Л@№&ЛP■г
+0131bd r Л@№&ЛP■г
+0131cf r Л@№&ЛP■грCЙ
+0132b3 r бЁC9FЄ|
+013397 r ЙFфЙVцЛF
+0133a3 r ЙFрЙVтбкC
+013687 r щ, ^_Лх]
+013747 r ЛЖx№HЙЖ
+01374f r №ЛЖz№HЙЖ
+0137e2 r №Ъj4> ЙЖ
+013875 r №Л№ееее
+013948 r  vd vbНЖ>№
+013987 r  vP vN vL vJ vH vFНF·
+01399e r  vD vB v@ v> v< v: v8 v6 v4 v2 v, v* v( v& v$ v" v  v
+013a6b r  vd vbНЖ>№
+013aed r  vP vN vL vJ vH vFНF·
+013b04 r  vD vB v@ v> v< v: v8 v6 v4 v2 v, v* v( v& v$ v" v  v
+013b57 r Г>4DUu*Г>6D
+013c35 r ееееНFЎ
+013cb7 r щ.№Г>4DUu.Г>6D
+013ce9 r г6Dг4DГ~°
+013cfb r  vP vN vD vB v@ v> v< v: v8 v6 v4 v2 v0 v.Ъ
+013dcc r щЬ№ Жf№щХ№
+013e10 r  vd vbНЖ>№
+013e92 r  vP vN vL vJ vH vFНF·
+013ea9 r  vD vB v@ v> v< v: v8 v6 v4 v2 v, v* v( v& v$ v" v  v
+013efc r Г>4DVu/Г>6D
+013fdf r ееееНFЎ
+014061 r щД°Г>4DVu.Г>6D
+014093 r г6Dг4DГ~°
+0140a5 r  vL vJ v, v* v( v& v$ v" v  v
+014176 r щЧ№ Жf№щР№
+0141ba r  vd vbНЖ>№
+01423c r  vP vN vL vJ vH vFНF·
+014253 r  vD vB v@ v> v< v: v8 v6 v4 v2 v, v* v( v& v$ v" v  v
+0142a6 r Г>4DWu Г>6D
+01434e r ееееНFЎ
+0143d2 r їГ>4DWu.Г>6D
+014402 r г6Dг4DГ~°
+014414 r  vH vF v
+014699 r  vP vN vL vJ
+0146ac r  vD vB v@ v> v< v: v8 v6 v4 v2 v, v* v( v& v$ v" v  v
+014705 r  vh vf v` v^ vP vN vL vJ vH vFНF·
+014728 r  vD vB v@ v> v< v: v8 v6 v4 v2 v0 v. v, v* v( v& v$ v" v  v
+0147a1 r щDёА>2D
+014923 r  vP vN vL vJ vH vF vD vB v@ v> v< v: v8 v6 v, v* v( v& v$ v" v  v
+01499c r щсўщOЁ-C
+014a0a r ЙF°ЙFЎы
+014bde r  vP vN vL vJНFъ
+014c19 r ЙF°ЙFЎщЖ
+01534b r ыю vP vN vL vJ vH vF vD vB v< v: v8 v6
+01541a r щo  vP vN vL vJ vH vF vD vB v< v: v8 v6 v@ v>Ъ
+015450 r  7 vP vNj
+01547d r  7 vP vNj
+0154bc r щmўыЛ vP vN vL vJ vH vF vD vB v< v: v8 v6
+01558e r щo  vP vN vL vJ vH vF vD vB v< v: v8 v6 v@ v>Ъ
+0156ba r ыю vP vN vL vJ vH vF vD vB
+0156d9 r  v8 v6 v@ v>Ъ
+015792 r щf щЕ№ vP vN vL vJ vH vF vD vB
+0157b5 r  v8 v6 v@ v>Ъ
+015905 r  vP vN vL vJНF
+015a15 r  vP vN vL vJНF
+015ac3 r ыю vP vN vL vJ vH vF vD vB v< v:
+015ae8 r  v@ v>Ъ
+015b9b r щf щ|° vP vN vL vJ vH vF vD vB v< v:
+015bc4 r  v@ v>Ъ
+015d59 r ееееЛ^2
+015e17 r ееееЛ^2
+0160a3 r щ√■ v° vP vN vЇЪЖ
+0160ba r ЙFЎ F№q
+0160c5 r ЛFЄ9F№~
+016130 r  vP vNНF°
+01627f r щ√■ v° vP vN vЇЪЖ
+016296 r ЙFЎ F№q
+01630c r  vP vNНF°
+01645b r щ√■ v° vP vN vЇЪЖ
+016472 r ЙFЎ F№q
+0164fa r  vP vNНF°
+016565 r ЛF№ЛV■ЙВ, ЙТ. ы
+0165ac r ЁЛF№ЛV■ЙВ, ЙТ. ы
+0165e9 r ЙF·ЙF°ы
+01662a r ЙFЁЙVЄRP v°Ъi
+01663d r ЙFЁЙVЄым^
+016a0f r рЮweЛ^ъ
+016a27 r рЮrMЛ^ъ
+016a3f r рЮr5Л^ъ
+016b27 r рЮrAЛvъ
+016c0f r ЛЖ.¤ЛЦ0¤ЙЖ&¤ЙЦ(¤
+016c32 r ЛЖ.¤ЛЦ0¤ЙЖ*¤ЙЦ,¤
+016c5e r  Ж2¤pVЛЖ
+016cb9 r № Ж4¤p}ЛЖ
+016cca r б.FЩRPj
+016d36 r ЙЖ2¤щ' 
+016d59 r ЙЖ&¤ЙЦ(¤
+016d7d r ЙЖ*¤ЙЦ,¤
+016db1 r О>¤Ъj4> ЙЖ ¤PЪ
+016ece r ЛЖ·№9Ж4¤~
+016f24 r ЛЖ ¤г|IЛF
+016f4c r О>¤Ъj4> г
+016f82 r ЛЖ2¤HP 
+016f9a r г|IЛЖ2¤г
+016fad r ЛЖ°№9Ж2¤~
+017003 r ЛЖЎ№9Fъ~
+01708b r рЮweЛ^ъ
+0170a3 r рЮrMЛ^ъ
+0170bb r рЮr5Л^ъ
+01710b r ЛЖЇ№9Fъ~
+0171a3 r рЮrAЛvъ
+0171ff r ЛЖЄ№9Fъ
+01728b r щп№ЛЖ ¤щ
+017322 r юЪj4> ЙFтЙVф
+01737c r НvЎЛ№ееееЪ
+0173e3 r Ъj4> ЙF
+01743c r НvЎЛ№ееееЪ
+017477 r ЙF■щ| ЛF
+0174a5 r Ъj4> ЙF
+017565 r Ъj4> ЙFдЙVж
+0175f9 r ЙF■щ| j Ъ;
+0176cf r ЙF·ЙF°ы
+01790d r Єедлллл
+0179e8 r ЙF·ЙV№ЛF
+0179f7 r ЙFЎЙV°ЛF
+017a09 r ЙFЄЙVЇЛF
+017a18 r ЙFюЙVЁЛF
+017a2a r ЙFъЙVьЛF
+017a39 r ЙFцЙVшЛF
+017a4b r ЙFтЙVфЛF
+017bad r ЙF·ЙV№ЛF
+017bbc r ЙFЎЙV°ЛF
+017bce r ЙFЄЙVЇЛF
+017bdd r ЙFюЙVЁЛF
+017bef r ЙFъЙVьЛF
+017bfe r ЙFцЙVшЛF
+017c10 r ЙFтЙVфЛF
+017d72 r ЙF·ЙV№ЛF
+017d81 r ЙFЎЙV°ЛF
+017d93 r ЙFЄЙVЇЛF
+017da2 r ЙFюЙVЁЛF
+017db4 r ЙFъЙVьЛF
+017dc3 r ЙFцЙVшЛF
+017dd5 r ЙFтЙVфЛF
+017de7 r ЙVрЛF■+
+017f1a r ЙF·ЙF°Л6
+017f36 r ЙFЇЙVЎ v
+017ff9 r ЙF·ЙF°Л6
+018015 r ЙFЇЙVЎ v
+018297 r  6~K 6|Kj
+018366 r Ъj4> ЙFж
+018398 r ЙFюЛFш+FъЙFЬ
+0183af r юЪj4> ЙFь
+0183ee r ЛFь+FюHЙFоЛFш+FъHЙF
+018402 r  6~K 6|Kj
+018420 r ЙFЁ vш vь vъ vюj
+018439 r ЙFЁЛFшHPЛFьHPЛFъ@PЛFю@PЪщ
+018458 r  6~K 6|Kj
+0184b2 r ЙFШЛFь-2
+018536 r ЛFш+Fъ;F
+0185ca r ЙFЁ vЄ vЇ vЎ v°j
+0185e3 r ЙFЁЛFЄ+FиЙFЪЛFЇ
+0185f5 r ЙFШЛ6pK
+018627 r ЛFЄЙFЎГFЄ
+018631 r щd ЛFшHPЛFьHPЛFъ@PЛFю@PЪщ
+018664 r Л№ееееГь
+018670 r Л№ееееГь
+01867c r Л№ееееj
+0187ef r ЙFЁщl j Ъ;
+0187ff r  v` v^ v\ vZ vX vV vT vR vP vN vL vJ vH vFНFв
+01883d r  v4 v2 v0 v. v, v* v( v& v
+0189c0 r Ъj4> ЙFа
+0189dc r Ъj4> ЙFв
+0189f2 r фЪj4> ЙF·
+018a16 r Ъj4> ЙFЮ
+018a26 r ЮЙFЮЛFаHЙFЬ
+018a46 r ЛF·HЙFЬ
+018a5f r ЛFЮHЙFЬ
+018a7b r ЛFвHЙFЬ
+018b54 r ЩЙFтЙVф
+018b61 r ЩЙFцЙVш
+018cab r  6ШK 6ЦK
+018cbf r  6иK 6жK
+018e23 r  FтpPЛFо9Fт
+018e3e r  vD vBНFф
+018e61 r  vD vBНFф
+018ebd r ЛЁЛFтўf°Л
+018f0c r щЛFт@ўf°Л
+018f28 r ∙ЛFтHЙF
+018f7b r Л№ееееЪВ
+018faa r ЩЙFКЙVМб
+018fb4 r ЩЙFОЙVРб
+018fbe r ЩЙFТЙVФ
+019004 r ЛFк9Fт~
+01901d r  vD vBНFф
+019067 r ЛFтўf°Л
+0190be r ЛFт@ўf°Л
+019119 r ЛFтўf°Л
+019173 r ЛFт@ўf°Л
+0191a3 r ЛЁЛFтўf°Л
+0191f2 r щЛFт@ўf°Л
+01920e r ∙ЛFтHЙF
+019261 r Л№ееееЪ
+01927d r  vD vBНFф
+0192b8 r  vD vBНF
+019451 r ЛVL+F·ЙFаЙVв
+019503 r  vD vBНF
+019538 r щp∙ЛFт@ЙFЬЛFфHЙFЮО
+019557 r  vD vBНFЮ
+019570 r ЛFфHЙFЪО
+019585 r  vD vBНFЪ
+0195a7 r ЛЁЛFтўf°Л
+0195f6 r щЛFт@ўf°Л
+019612 r ∙ЛFтHЙF
+019665 r Л№ееееЪ
+019693 r  vD vBНF
+019827 r ЛVL+F·ЙFАЙVВ
+0198e4 r  vD vBНF
+019914 r ЩЙFЦЙVШб
+01991e r ЩЙFТЙVФб
+019928 r ЩЙFОЙVР
+019952 r НFЦщУЎО
+019966 r  vD vBНF
+019bb7 r  vD vBНF
+019bda r щи·щI∙О
+019bee r  vD vBНF
+019d82 r ЛVL+F·ЙFАЙVВ
+019e0d r Ж| щв·ЛF
+019e28 r  vD vBНFК
+019fc1 r  vD vBНF
+019fef r ЛVL+F·ЙFАЙVВ
+01a092 r ЙFрщСЇО
+01a0a6 r  vD vBНF
+01a0d3 r ЛVL+F·ЙFАЙVВ
+01a179 r  vD vBНFК
+01a231 r Ж| щ=■ЛF
+01a24c r  vD vBНFК
+01a3de r  vD vBНF
+01a56c r  vD vBНF
+01a701 r  vD vBНFК
+01a72b r  vD vBНF
+01a7fe r  vD vBНF
+01a817 r щ■ьще°ЛF
+01a832 r  vD vBНF
+01a9c8 r ЛVL+F·ЙFАЙVВ
+01aa2c r Ж| щДъО
+01aa40 r  vD vBНF
+01abce r  vD vBНF
+01abff r  vD vBНF
+01ac29 r  vD vBНF
+01ac5d r  vD vBНFК
+01aeb2 r  vD vBНFК
+01aef0 r  vD vBНF
+01b082 r  vD vBНF
+01b0b3 r  vD vBНFК
+01b0e4 r  vD vBНF
+01b1b9 r ў∙ЙF■ЛF№ЛN■
+01b1c9 r ЙF· F■Лv■
+01b207 r ў∙ЙF■ЛF№ЛN■
+01b217 r ЙF· F■Лv■
+01b255 r ў∙ЙF■ЛF№ЛN■
+01b265 r ЙF· F■Лv■
+01b83f r гwLгyL 
+01b87f r ыДUЛьЛV
+01b892 r Ўu6КЄЖ6
+01b967 r лаэKлаюKлбяKлЛF
+01b9c8 r ¤ыЎUЛьЛF
+01b9fa r ЛьVWш)&Л^
+01ba3f r ЎыoА>шK
+01ba6e r   ЩыUА>шK
+01bab0 r тЛЁЛ·ЛF
+01baf2 r №ыїUЛьш/%
+01bc1a r б}L@л_]
+01bcf2 r  ыЇUЛь3
+01bd2e r ¤ыёUЛьVW3
+01bd96 r ыэUЛьшш
+01bddc r   ыъUЛьша
+01bf48 r ыдUЛьVWш4
+01bfaa r шa s'∙ЛF
+01c076 r ¤ыўUЛь3
+01c0d9 r ¤ыЎUЛьЛF
+01c173 r   ыЄUЛьш
+01c19e r   ыёUЛьш
+01c265 r №ыїUЛь v
+01c48c r гPLгRLа
+01c49a r гyLгwLв
+01c4a3 r вБLв`Lв
+01c537 r арK&А&З
+01c6a8 r ы"VWЛ6PLЛ>RL;
+01c975 r вюKИ&шK
+01c998 r К]1КE-выK
+01c9dd r №uBаъKГр0<0u
+01ca22 r аъK$0<0u
+01ca49 r эKГ>яK w
+01cac5 r И&ъKАф0А№0t
+01cb05 r вэKвюK∙
+01cb3f r И&ъK&И&
+01cc61 r  6ЇKSP2фаЄKЛ°RЛ
+01cd3b r ЛьVWшD°К
+01cd81 r ЛьVWш■ўК
+01cdb0 r И6sLшЁў_^]
+01cddd r ши,Y[6А>АL
+01ce39 r К>UL6К6{LК
+01ceeb r шШЎшr бsL@Л
+01cf08 r ш@∙гsLXЛ
+01cf48 r щъ щ4!Ў
+01cfbf r °Гт?%??Ў
+01d01f r нТ&нТГ· u
+01d042 r ¤K&нЩТ&нSQ 
+01d0a6 r Б<Ч<Ы<6@
+01d121 r б¤ =F tD=
+01d1e6 r Л.&LSV6 
+01d1fe r Й>,L]_^
+01d23d r Й6,L]_^
+01d253 r ∙KК.єK 
+01d25d r аєKв°KИ.єK
+01d417 r г<Lг@LгDLгFLЙ
+01d43b r ш"°шs Л
+01d45f r шБ ∙[XЭ
+01d554 r шя¤ЖрZY
+01d577 r Щp,Эp-ш5
+01d5e9 r шu·*щА¤
+01d659 r Л>ЇK;ё}#Л
+01d769 r №ыЄRQЪe
+01d77b r ыкUЛьГь
+01d7b2 r ЛF№ЙF■ЛF
+01d7bb r ЙF№ЛF■ЙF
+01d81a r ЙFЄЙFЁў
+01d822 r ЙFЎЙFЇ+Ўы?Р
+01d82f r №&Л?9~Ё~
+01d838 r Й~Ё&Л?9~Ї}
+01d843 r Й~ЇЛFЄ&9G
+01d853 r ЙFЄЛFЎ&9G
+01d896 r  vЎ vЇ vЄ vЁш|
+01d934 r ыюUЛьГь
+01d960 r Г°ЁwlЙF·P
+01d978 r ЙV■ЙF№О
+01d9a9 r Л~№&Й5V
+01d9b2 r шK■^P v■ v№
+01d9d5 r °ыёUЛьГь VW
+01da02 r Н~рЛЄєе
+01da0e r Л·ЛєЛN■єеЛ√Лє+v
+01da2d r ЛN■єе+v
+01da3a r ышЛЄЛN■єе[
+01da4e r НvрЛ·ЛN■єе
+01dad1 r ы|ЛF■;F
+01db1b r Ўt' F■Л
+01dbc9 r ЄнУнСнТн+
+01dc22 r ЛьГь0VW
+01dc34 r ш+■@ЙF■
+01dc96 r ЁЙvЇЛF■
+01dcaa r  v№ v· v■шя¤ЙFЁ
+01dcbf r  v№ v·PSQш
+01dd3b r АЛvЎЛ~Ї
+01dd47 r ЛFт@ЩўvшЙVт;єu
+01dddf r  vЇ vъQ
+01de07 r  vЎPSRш
+01de3c r єеYЛ°ГFЎ
+01df26 r  vЎPWRшй·XY[
+01e24c r М,U<p<Б<Ч<Ы<6@
+01e2b6 r Б<Ч<Ы<6@
+01e389 r ш∙ы[ZXr9
+01e480 r цCЎCFDrDЖDd
+01e4e4 r цCЎCFDrDЖDd
+01e610 r цCЎCFDrDЖDd
+01e6e7 r ш@хбяKЎ6
+01e92a r  VEt%MR
+01e954 r Й>ЇKИ.ЄKWЛ¤А>∙K
+01e9de r Й6·KVИ.№Kш]
+01ea25 r Й6ЇKИ.ЄK_WVЛўЛ¤А>∙K
+01ea56 r шЫтЛ6·Kа№K
+01ea79 r ч6И>OMшр Крш
+01ea91 r И%GКчuьш>тыч"х&И%Gu
+01eac4 r юB6а¤K6"
+01eafc r ч6И>OMRКц
+01eb0a r шрсZК$Fu
+01eb58 r шТсXшJ 
+01eba8 r Б<Ч<Ы<6@
+01ebe1 r У8е8Є8#979
+01ec06 r цCЎCFDrDЖDd
+01ec45 r У8Э8Є8(979
+01f091 r К■ЖЁЖьЖ
+01f1ec r ЛЗA:гPM.ЛЗK:г`
+01f25e r ЇKаєKА>∙K
+01f2c6 r °KК6єK3
+01f2f4 r ычGЙ>ЇK
+01f315 r °KК6єK3
+01f333 r ы<Й>·KЙ>ЇKS3
+01f36b r шч■Y[ZЙ>ЇKЛ6·K]
+01f407 r ЇK2/"щ0/
+01f41c r ЇK&2/"щ&0/
+01f44f r ЛЗж<г[M
+01f483 r И%GКчuюшL
+01f48d r ыщ"х&И%Gu
+01f53b r шtFСА>∙K
+01f5d5 r  К№Д&∙Kt 2 3ЎК
+01f61d r ша Лю;>
+01f697 r Й>ЇKИ.ЄKш[■Л
+01f6da r Й>XMИ.ZMЙ>ЇKИ.ЄKU3эЎ
+01f747 r яАчU"°[uв2
+01f793 r Й>ЇKИ.ЄKZЛ
+01f7a6 r Й>ЇKИ.ЄKЛ6XMаZM]
+01f86f r Кь&2-"ш&0-
+01f8c2 r К№&2="°&0=+·s
+01f8d9 r К№&2="°&0=+·s
+01f969 r бЇKКьАх`Аф
+01f9da r Б<Ч<Ы<6@
+01fa94 r Ку6А>эK
+01fabc r √Ултщ√Z
+01fba2 r ЄKю&К,"щЎ
+01fceb r юК$FмК°
+01fcfa r И%GКчuюш
+01fd04 r ыщ"х&И%Gu
+01fe0e r юX&К%кт·ы
+01fee6 r чOИЭ^MOИЭ^MИ
+01ff0e r юа°KBю2
+01ffe3 r юКз^M&И%&К%K
+020035 r юаєKBюZ
+0200b1 r  6ЇK 6ЄKSЙ>jMК
+0200dc r ЄKА3эД&ЄKt
+02014e r  6ЇK 6ЄKSК
+0201c8 r ∙И.ЄKД&ЄKt
+0201fe r ∙Й6ЇKИ.ЄKД&ЄKt
+0202e7 r шw¤Й>ЇKИ.ЄKWЛ¤А>∙K
+020353 r Й6·KVИ.№Kшш№К
+02038f r №Й6ЇKИ.ЄK_WVЛўЛ¤А>∙K
+0203b8 r э№ш]√шd№Zш0
+0203c4 r Л6·Kа№K
+02043d r ЛьWVS3 ЛF
+0204a3 r ЇўёЛЁўf
+020515 r ЛьГь,НF
+020655 r РшGQЛ^■Г
+020683 r РUЛьVWЛv
+0206af r ш(DыjРГ>
+020722 r щr _^Лх]
+02078a r КFюPш_TГ>
+0207d0 r ЙFЎЙV°б°
+020818 r  ЙFЄЙVЇА~№
+020833 r швY vЇ vЄ
+0208a7 r ЙFЎЙV°щв
+0208d1 r ЙFьы А>Є
+02093f r  FЁЛFь9FЁ|э
+02094f r М^° vь v° vЎ 
+020aab r ЙF№ЙV■б
+020acd r РЛ^·ЛF°9G
+020ade r °9F°w° v° v■ v№шъ?Л^·АO
+020b3c r ш-NШЙF■ы
+020b4f r ШЙF■Л^№ G
+020ba6 r ы-Л^№ЛG
+020bc5 r ШЙF■Л^№ G
+020c48 r ЙF№;FЎs
+020c5b r Р+FЁЙF■ЛFЁ)
+020c6b r ■ЙF·)FЎЛ^Є
+020c8e r ЛF°)FЁЛFЁ-
+020cce r ЛF№+F·ЩRPЛ^Є w
+020ce5 r ыRРЛ^ЄЛG
+020dc1 r ЙFЄЛFЄ)F
+020dff r ЩRPЛ^Ї w
+020e25 r шDKИF·ы
+020e37 r ИF·Л^Ї G
+020e52 r КF·Л^№ИЗЪ
+020e5c r  F№ыпРЛ^Ї O
+020e79 r ЛF№^Лх]
+020e8c r ЙF°ЙFЎ 6°
+020e98 r ■ЙF■ЛF■ N■
+020ead r ИF№ F°<,tU< t
+020ee1 r №0А~№0u
+020efb r аКF№Л^ЎИЗЪ
+020f06 r  FЎыСРА>
+020f2b r ЙFЇЙFЄб°
+020f5a r ЛF·ЙF■=
+020f6a r  v■шь¤ЙF°;F■}
+020f7f r Р)F·ЛFЄ9F°
+020f8b r ЛF°)FЄы
+020f93 r РЛF°+FЄЙF№О
+020faa r йЛ^ЄКЗЪ
+020fbc r  FЄ FЇы
+020fe4 r Ї|ъ^Лх]
+020ffe r ЙF·ЙV№б
+02105b r  Fю NЎuЁЛFю
+021068 r ЁЛFЁ9Fю}N
+021097 r  FюЛ^юИЗЪ
+0210b3 r Р N·ЛFЁ9Fю|
+0210db r ЙFЄКF°в
+0210e4 r ЛFЁ+FЄЙF■ЙFЎ
+021106 r Ї0 N■ыHРЛ^ю+^ЎКЗЪ
+021123 r АnЇ0ы,РА~ЇA|
+021189 r Р N· FюЛFЁ9Fю}
+0211a3 r ЛьГь@WVа
+0211c4 r Ъ03> Ъ,3> Н^
+0211ee r  vф vт vр v
+021206 r Й^цМFш&ЛG
+021246 r ЛFЁЛVЄГnЁ
+0212cc r ЩЛNЁЛ^Є+NЇ
+021340 r ЩЛNЇЛ^Ўў
+02149a r ЛF°ЛV·гТ
+0215bf r шв:ЙF■Л^
+0215d4 r єеЎFц t
+0215f0 r  v■шn,ы^ v■ш(-ЙFрб
+0216a7 r НF°PНN№Qш■D v· v° v№КFшШЛ
+0216ed r шPшr9ЙFтЙVфА~ш
+021724 r ы8КFшШЛ
+02180c r шm<ЙF·ЙV№ЛF■Ht
+02183d r шШIЛF·ЛV№Лх]
+021945 r КЇШ:ЇuяЩ;
+021961 r ЙFЄЙF■б°
+021974 r ЙFЇЛFЇ9
+021983 r ЙF№+FЇў
+0219cb r  F·ЛF■9F·|
+0219d8 r ЙF№ЛF№ N№
+0219f1 r шx?ИF°ы
+021a5d r Є|ъ^Лх]
+021ac5 r КFЄPш$AГ>
+021b1f r шJ>ИF°ы
+021b31 r ИF°Л^Ї G
+021bae r ыnРРА>Є
+021bc5 r ш,№RPшM¤ыOРА>Є
+021bf3 r шV№ы&А>Є
+021d5d r щc WVбЮ
+021dbd r Й^№МF■&Ў
+021dfc r т'Ъ02> 
+021e0e r Ъge> r1Н
+021e17 r ъ'Ъ02> 
+021e3f r Ъ?3> ы$
+021e55 r ЛN№Л^■Г
+021ebd r шд1ЙF■PшЫ&
+021edc r ЎFЁАt,Л
+021eed r НFЎPНN№Qш
+021ef8 r  v° vЎ v№
+021f05 r ша!ИF·ы
+021f13 r ыєР v■КF·PшL-б
+021fdc r КFюPшБ0г
+021ff0 r шq0ЙF№ЎF· t
+022023 r А v№ш8%
+0220e3 r шЄ@Л^ЁЎG
+022229 r ЙF°шR *ф
+02226b r  vЎше@ЛFЎ)
+0222bb r ЙF·ЙV№Л^°ГG
+0222cc r ЛF·ЛV№9G
+0222e0 r  v·Л^° w
+0222e9 r Ъvs> Л^°ЙG
+0223a2 r щy Л^ЇГ
+022402 r ЙF·ЙV№Л^Ї;G
+022446 r КFЎШЩЛN·Л^№+
+02245d r ЛЁЛ·Ъvs> Г
+022539 r шЬ<Л^№ЛG
+022547 r Жш!4Л^№ O
+022551 r щz Л^№ЛG
+0225a9 r ЙF№ыpHu
+0225e8 r  v·ш(=ЛF·)
+02263c r  v·ш¤<ЛF·Л^№
+022654 r шГ$Л^№ЛG
+0226ee r Гt:Л^°ЛG
+022774 r ЙFЎ;F№v
+02277c r ЛF№ЙFЎЛFЎ9
+0227b5 r  vЎш[;ЛFЎ)
+0227d5 r щц■шС1Л^° O
+0227e8 r шэ9^Лх]
+022921 r ЙF·ЛFЄ)
+0229a9 r Ё&И@■ыK
+0229b4 r ЛF°ЩRPЛG
+0229bd r ЙFЎPЪvs> Г
+0229d2 r  vЎЪ\r> Г
+0229e8 r   +F°ЩRP vЎЪvs> Г
+022a0a r ЙF№ЙF·ЛF
+022a70 r шe7Л^°ЎG
+022ad2 r  v№ v·Л^° w
+022ade r Ъvs> Л^°ЙG
+022bb5 r ш 6Л^юКG
+022c3d r рУ. зd(p(И(p(№(p($)Л^юГo
+022c75 r ш`5 Nьx1Л^ю
+022c90 r ЎuхЛ^юЛG
+022cc1 r ш0■Л^юЛG
+022cca r ЙFьыйРш!■Л^юЛG
+022cf8 r ш∙¤Л^юЛG
+022d42 r шп¤Л^юЛG
+022d80 r А*ф@@)Fь
+022d8c r ыКЛ^юАg
+022d95 r ЛFь@Л^юЙG
+022db9 r ОMЙFшЙVъ
+022dea r Лv■ИBю F■КFцв~M FшЛFш9
+022e0c r ыXА>~M+u
+022e15 r КFцв~M FшыFЛv■
+022e31 r шH&гЖMЙ
+022e60 r бКMгРMЛFшЛVъгМMЙ
+022e7e r бРMЙF■Г~
+022ea3 r Л^■ F■И
+022ead r РЛ^■ F■
+022ec9 r ЛF■гРMЛх]
+022ed8 r ■А>~M)t
+022ee4 r  6ИM 6ЖMшЙ Л
+022f2f r ш" гРMЙF°ЙFЄшj■А>~M
+022f63 r шB■бРM 
+022f6b r РMгКMА>~M)u?бЖMЛ
+022f7c r ИMЙF·ЙV№RPшя■ш
+022fdb r а~MШH=*
+02305d r ЛF·ЛV№Гn·
+0230a2 r ¤А>~M)u
+0230d7 r ИMЙFюЙVЁш
+0230e1 r №А>~M)t
+023167 r Р FЎГ~Ў
+023184 r ш!№А>~M$t
+023196 r ЙF№ЙF·ЙFЇбМMЛ
+0231c5 r А?'u.Г~Ї
+0231fe r  v№ v·шq№
+02321b r щx■шЗ√Л
+023236 r щK щK Л
+023243 r щ> ш_√А>~M
+023257 r щ* А>~M
+023278 r  NЎГ~Ў t
+02328d r бРM+FЄщ
+023298 r √А>~M,u
+0232b8 r шэ·А>~M)t
+0232c5 r  6ИM 6ЖMши√Л
+0232d7 r щк■а~MИFшш
+0232e2 r ·А>~M)utА~ш"u
+0232fb r ИM 6ИM 6ЖMшp√шЭ·А>~M
+023319 r шМ·А>~M
+023323 r щ@№А>~M
+02332d r щ6№А>~M
+023337 r щ,№А>~M
+023341 r щ"№щ@■РЛ
+0234bf r ЙF°ЙV·Йv№
+0234d2 r  v· v° v№ v
+0234e6 r ЛF°ЛV·^Лх]
+023534 r ыЎЙ^№ыёZX^Лх]
+023570 r у9Єоu5Л
+02386e r ■ЛFЇЛVЎ_^Y[Лх]
+023911 r ЪЄd> u(
+023a87 r ■  ыUГ~
+023aa5 r ЙF■ЙF№ы4ЛF
+023ac1 r НF№PЪ|P>  v
+023ae1 r ЛF№ЛV■Лх]
+023af9 r ЩRPЪx6> Лх]
+023b20 r ЛF■ЮїXЛх]
+023bbc r ¤ычUЛьЪ>Ly
+023c22 r в9Mв8Mшр5
+023cd9 r Ъоo> ЪNp> 3эЪ`9> 
+023d21 r ш366Б>F#
+023eda r НF·PНF■Pш
+023f02 r ЙF■ v■ v№ v·
+023f73 r ЙF№Л^№Г
+024042 r ЪPz> Лх]
+024055 r Й^■Й^№А? u
+024060 r  F■Л^■А? tїы
+02406d r Р F№Л^■ F■К
+024085 r ЙF■;F№s
+024096 r  N№9F№wяЛ^№
+0240e7 r А8 tЁЛ^·Лv
+02412d r  F№ F■ЛF
+024146 r ыcЛ^·Лv
+02416a r рУ. зТ=Ра=ж=м=
+0241a8 r ш- ^Лх]
+024235 r ЙF№Л^·;G
+02424f r Ъvs> Л^·ЙG
+024297 r ЙF№ЙV■ 
+0242a7 r ОF■Л^№Лv°&К
+0242bb r  F°Г~°O~цыSш+
+024319 r ш0¤ыл^Лх]
+024349 r ЙF№Л^№ЛF
+024406 r ЙFвЙVд= 
+024426 r  NвБ~в 
+02444e r ЙЖL ЛЮL Г?
+024461 r  7ЛєЪ z> Г
+024470 r ЙF№М^■ЛЮL Л
+02449b r  N№ЛF№9
+0244a5 r ЛF№ЛV■@RP vд vвЪzy> Г
+024526 r ы1РРЛЮL Л
+024556 r щ∙■ЛЖN ^Лх]
+024600 r ш_ ^_Лх]
+024621 r ЙFЇЙFЎГ~Ї
+02462d r Л^Ї NЇА
+024639 r эЛFЇЙFЎГ~Ў
+02464c r  FЎЛFЎP
+024715 r шЇ■ЙF■@t(КF№*ф-
+024764 r ш{№ЙF°б
+0247f3 r КF№*фЛ^ьЙG
+024804 r ЛF■Л^ьЙG
+02483e r КF№*ф9G
+0248e7 r ЛF° F°Ht
+024903 r РАfЇ¤Л^
+0249d5 r  vЁЛ^ь w
+024a27 r   ЩRP w
+024a66 r ЙFъЛ^ъГ?
+024b07 r ы_РЛ^■ЎG
+024b53 r ыFРЛ^■Г
+024c53 r ЛF№Л^■ЙG
+024ca2 r ш1 Л^№Г
+024cec r  7Ъ8z> Г
+024d26 r ЙF°Л^°ЛF
+024d3f r ·|чы Л^·
+024e1f r Ъ\r> Лх]
+024e37 r ЙF·PЪ^s> Г
+024e7f r ЛF· F·;F
+024e8a r КF■Лv·Л^
+024f26 r ЛF·HH^Лх]
+024f39 r Ъ z> ЛхP
+024f49 r Ъ\r> Лх]
+025008 r шI ЙF№ЙF·ы
+02501d r Л^· F·И
+02502e r хЛ^· F·
+0250d0 r ЙF°ЙF■НF°
+0250e5 r Ъ№r> КFс*ф
+025122 r ЙF°ЙF■НF°
+025137 r Ъ№r> ЛFр
+02515f r РUЛьГь$
+025190 r ЙF°ЙF■НF°
+0251bb r РUЛьГь$
+0251f7 r ЙF°ЙF■НF°
+025267 r Й^№МF■&ЛG
+0252a2 r ЎFЁ@u>Г~Ў
+0252cf r  vЎ vЇы-Р vЇЪУu> Г
+0252f7 r  vЎ vЇЪ\
+025382 r Й^№МF■&ЛG
+025398 r ЎFЎ u6ЎFЎ@u
+0253ac r  7ЪАu> ы
+02544e r ЪDy> MMЛх
+02545b r РUЛьSЛ^
+02547d r ЛьVW№3 3
+0254db r Р<єt0Г∙
+025522 r А∙$wйА∙
+02553c r ·мtёщk <ar
+025607 r ыtРКF·%
+025620 r шA·ЙFЇPш8я
+0256fc r  ЎF· t)Л^ЎГ
+0257bf r ЙF·Л^ЄЛG
+0257d1 r ЛF·ЛЄЩ+
+0257da r ЄЙN№Йv■АO
+0257e5 r  v■ v№ w
+025831 r ШЙF°Л^ЄК_
+025844 r АЙFЎЛ^Є w
+025856 r  v° vЎЛ^Є
+025860 r  7Ърw> Г
+025887 r шXыЙFЇЛ^Є
+02595a r  v· v■Ъ\r> Лх]
+0259d5 r  v■Л^· w
+0259ec r ЙF°ЩЛ^·
+025a2d r ЛF°9F■v%Л
+025a63 r ЛF°9F■u%Л
+025aa6 r щq Л^·ЛG
+025ae6 r ЙF№М^■КF
+025aff r рУ. з&WDWVW`W
+025b3d r ыюРЛ^ЎыZРКF
+025b84 r ЙF№М^■Г
+025b99 r ЙF№ЙV■Г
+025ba2 r ЛF№ЛV■^Лх]
+025bd9 r шPЙV■шГЇЛ^
+025c4e r ш_ ы1РКF№PКF·Pшa■г
+025c98 r КF■ы'РКF■$
+025cb6 r шPЙVЎшжєг
+025d4e r Й^ЎМF° Fю&Ў
+025dd8 r ь[tZ0YиZ
+025dff r  vЁ vю 
+025e33 r уЛFюЛVЁЙЗТMЙЧФMбЇ
+025e49 r ЙЗЦMЙЧШMщ
+025e69 r ЛFюЛVЁгж
+025ee5 r уЛЗТMЛЧФMщ
+025f2e r шЙFъыTб°
+026018 r рУ. з@\РZ\a\h\o\v\}\Д\Л\Т\Щ\а\з\о\
+026122 r ЛєЪ z> Г
+02624b r   Л^№Аg
+026254 r ЛF·Л^№ЙG А>
+026306 r ЛG ЙF■ЛF■Лх]
+026508 r сщy А>.
+02658c r эuфше■u
+02665f r ЎFўAu&X
+0267ce r  щН№UЛьГь
+0267e4 r ЙF№ЙV■ы
+026810 r Й^№МF■&А?5|bГ~
+02683d r Л^№&А?9u2М
+026886 r Г?-u,&ЛG
+02689b r № F№&А?0tЇЛ^№&А
+026957 r Кf ЮXЛх]
+0269f9 r е6е6е6е
+026a0d r мШСєдСк
+026a62 r Ъwo> би
+026a6e r Ъwo> Ъ%:> UЛьш
+026e20 r шЗїы9Лх]
+026e3f r гЙ!гЛ!гН!гП!ы
+026e7b r тыщЛVЁА>.
+0270ca r ш6їш^ u_
+0270e3 r шдєшE uF
+02717a r шы■шо■u0
+0272aa r ЙD■CCтЎ^
+02730f r ф№м2рт√АЇUt
+027346 r   ЄоЛўыыЦ_^Лх]
+0273b8 r ЄоFоu·Л
+02740b r О^№Й?МG
+027456 r А3 Єооu√GGЙ>Н
+0274a9 r м<\t·<"t
+0274da r м<\t·<"t
+027537 r км< t√<
+02754c r ы~Р6Й?6МW
+027579 r м<\t·<"t
+0275ad r м<\t·<"t
+027794 r ∙ы6ЙV■ЙF№Л
+0277f4 r  Ъ*И> ЛЁы
+027820 r ўёЛЁ N°Л^°&А?Xt
+027830 r  F°Л^°&А?
+027a32 r ъu°ы"Г·
+027a92 r ■s6BSQМ
+027ae7 r ЁыЄOOЛў_
+027af1 r Ас■S№Лw
+027b3f r ЛўЙD■ыфЛ
+027c31 r АN¤@ЎF¤@t
+027d4e r Й> MMЛх
+027d6c r м&К'C:рtє,A<
+027ecc r ЙFъЙVьЛVьЙFЎЙV°
+027f20 r ЛFъ9F·s$
+027f36 r щq  v° vЎЪ
+027f47 r щ` РРА~■\t
+027f52 r А~■/uпЛ
+027f5d r  \ FЇГ~Ї
+027f67 r ЯНG ЙFъМFь
+027fa1 r ЙFъМFьГF
+027fbd r А?/u&Г~Є
+027feb r  v° vЎ vЄЪКИ> Г
+028000 r щ+  v° vЎЪ z> Г
+028015 r ЎОF°Й^ъМFь&А
+028037 r ЛFЎЛV°@@ЙFющ
+028045 r Р&А?.u\&А
+0280a4 r ыyРР&А?.uA&А
+0280cb r Р&А?/t&&А?
+0280d8 r ЛFъ9F·v
+0280f8 r ЛFъ9F·w
+028143 r ЛFЎЛV°Лх]
+02815c r ЙF·ЙF№Л^
+0281ca r КFї$Ё<Рu
+0281ef r  F·КFї$Ё<
+02820e r  F·ыЮРКFї$Ё<аu
+028227 r РКFї$Ё<
+02824a r ИF° FЇ<,t
+028258 r  N·КF°ОF
+028274 r ИFЎ FЇ$А<АtЖКFЎы
+0282d5 r ЎFўAuBшD
+02830d r сшEсшГтщHсщ}тш9сш
+028390 r №Й>ф Й6ц 
+028550 r Л>ф Г>ъ 
+028605 r ■ ТлУлХлЦлТл^
+02868a r ў&ю Л°ЛъЛ
+028769 r ш s#мА>ї 
+028794 r №      ■?
+028822 r аS!вU!X
+02889a r нЧнХнТнУнСБщ■?ў
+0289af r ЛF■АфєА
+028a0f r  6f!Ъ z> Г
+028a36 r Н^ёSбh!ЩRPЪЁs> Г
+028a5b r єдН^ЁЛў+єV
+028aaf r ИF¤ЙV■2ф
+028ad8 r ЪjО> ЛF°
+028afd r Ъwo> Л^■Ъ&М> КF¤Ш
+028bd8 r ўёУўёТЗ
+028c61 r ЪКИ> Лх]
+028c78 r ■ЙF№МV■Г~
+028c85 r ЪРЙ> ЙF
+028cb6 r ИFьЛF■ЙFЇЙF·ЛF№ЙFюНFЇ
+028cf3 r ЩыtРРНЖ
+028d3b r ЛV■ы*ЛV■ЙF
+028d5c r  v■ v№Ъ
+028da4 r ЙFЁЙFюб
+028dd3 r ЙF·@upГ>`
+028e5e r  vЁ vю vЇ vЄшщ
+028eab r  vюЪдТ> Г
+028ec4 r  vЁ vюЛЁЪ z> Г
+028ee2 r  vЁ vюЪдТ> Г
+028efc r  vЁ vю v
+028f0d r ЙF·@u-Г>`
+028f48 r  vЁ vюЪ
+028f56 r ЛF·^MMЛх
+028f8e r ЙFтЙVф=  u
+028fbf r ¤ЙFшЙFюЛЖ
+028fc9 r ¤ЙF°НFш
+028fe4 r  vф vтVЪvs> Г
+028ffe r ЛFЄ^Лх]
+02910d r Н)пЮ@аDэБ
+02912d r УиAkU'9Нўpр|BО
+02913c r ∙Э√ы~кQCvу
+029147 r Є)/ДБ&D
+0291d7 r √D?ещ9е'ъ
+02931a r ЙFЎЙFЇ vЎ vЇ+
+029351 r  v№ v·НЖp 
+02936e r ЙF° vЄ vЁЪ
+02937c r ЛF°MMЛх
+02940a r ЛFь9F·v
+029412 r ЛF·ЛV№ЙFьЙVю
+029422 r  vю vьЪvТ> Г
+02943b r  6Ў! v°PЪzy> Г
+029496 r ЙFьЙVюЛFЇг
+0294d2 r ьЛVюЙFЎЙV°
+0294f9 r Ў! v° vЎЪ
+02950c r  vю vьЪ
+02952c r  vю vь v
+02953d r ЙFЄ vю vьЪ
+02954b r ЛFЄMMЛх
+029562 r ЙF№ЙV■ N
+029577 r А?;t%&К
+029596 r ЙF№ЙV■ы
+029609 r  7Ъ z> Г
+02961e r А8=u%V v
+02966c r Л√ЄоO&8
+029692 r   ЄоНu 
+0296f6 r ЙFЎЙV°ы
+029707 r  7Ъ z> Г
+029735 r Р N■Г~■
+02977b r ЁFЙvЇБ■ 
+0297ff r ЙFЎЙV°ы
+029820 r  7 vЁ vюЪ
+02983b r ЙFюЙVЁы
+029852 r  vЁ vюЪ
+02986a r ЙFюЙVЁ+Ўы'КДo
+029891 r Л^ю Fю&И
+0298c1 r Л^ю Fю&
+0298cb r Л^ю Fю&
+0298f0 r ЙFюЙVЁЛN 
+02993c r ЙvюМFЁ+v
+02998d r  7Ъ z> Г
+0299d4 r  7 vЁ vюЪ
+029a21 r ЛFЇ^Лх]
+029a3d r щ ЁUЛьW
+029aca r   °щoЁVWЛF
+029c55 r ■v)Л√Лv
+029c6f r єжuчНG М
+029ceb r ИF№КF■&И
+029d4f r ЙF№ЙV■ы
+029d5f r А?0tЇ&А?.u
+029e37 r Й^№МF■&Г?-u
+029e50 r ЙF°ЙV·RPГ~
+029e86 r ЙF№ЙV■RPЛF
+029ea2 r №ЙFЎ&Г?-u
+029f21 r ЙF°ЙV·Г~
+029f3f r А=0t\ОF■&Лw
+029f5b r  F°Г■d|
+029f73 r Щў∙ЛЄ F°Г■
+029fe8 r Й^№МF■&Г?-u
+02a002 r ЙFЄЙVЇЛ
+02a03e r ЙF№ЙV■RP
+02a101 r  vЇ vЄPшБ
+02a112 r  vЇ vЄЪжа> Г
+02a1a0 r ЙF№ЙV■RPЪ6Я> Г
+02a1c8 r в:"ЛF·г8"=№ |
+02a201 r № F№&А?
+02a29b r Ъ z> Лх@P v
+02a337 r ЙF№МF■ы&Р
+02a38d r №&А?9tЁ&■
+02a418 r ¤єд№Су\Г■ u
+02a521 r ЛьГь4VW
+02a52e r ЙFЄМ^ЁЙvюЙFьЙFшЙFъ
+02a59b r м Nъ<0t° Fъ
+02a5a9 r цы+м<0r!<9w
+02a5b7 r к Nцuям Fъ<0r
+02a5c8 r Ї Nъ<.t
+02a5e1 r к Nъ Nцuьм<0r
+02a5f2 r ўў^цГFц
+02a5fa r Н\ Й^ю3
+02a61f r ш  м<0r?<9w;-0
+02a630 r м<0r$<9w ,0Б√f
+02a658 r ў3^ш+^ш
+02a661 r ъNЙvюГ~ц
+02a681 r  Nц FъO<
+02a69a r  Nц Fъ&А=
+02a6ab r  vцНFЇPшх
+02a6cd r НFЇP vъ v
+02a6da r ЛF№Л^·ЛN°ЛVЎБ~Ї
+02a705 r А F■Лv■Б■ 
+02a849 r ЕkU'9Нўpр|B
+02a858 r ∙Э√ы~кQCбцvу
+02a865 r Є)/ДБ&D(
+02a87b r єўысJzХ
+02a8a6 r эSMзх]=
+02a8b0 r ЛЮТZ ]жЁб 
+02a941 r лф?/L[сM
+02a989 r √D?$?ещ9е'ъ
+02a995 r и*?}мбф
+02a9ab r Г СБ=С·:
+02a9e7 r юIРZ9жЗ
+02aa06 r ф-64OSо
+02aa1c r ЮчИZWС<
+02ab90 r ББъ■?ЙT
+02ab9e r Н^юQVW&Л
+02abce r ЛVЁЛNЄЛ^ЇЛFЎЛ~°Г|
+02acb9 r ы:Й~■ЙF№Й^·ЙN°ЙVЎш{
+02adc5 r ЪYМ> Г>
+02ae1b r ЪBМ> А>
+02ae42 r ЪnМ> Г>
+02b1bc r Ас0Г∙0uTЎ
+02bd92 r Количество треугольников - 0               X0    Y0    S0    H0 интен. fi     
+02bf34 r Коорд. центра Размер Инт.  Кол.            X     Y               сторон       
+02c0d0 r Коорд. центра Размер Кол.                 X     Y     мкм   шпал              
+02c274 r Коорд.центра Размер Интен.                 X     Y           I        Буква А
+02c2e1 r Буква E
+02c308 r Буква W
+02c32f r Знак  :
+02c356 r Знак  +
+02c37d r Знак  %
+02c3a4 r Знак  #
+02e6ed r СБСБСеРЯРмР
+02e803 r хditфescriptorхxpectedцor
+02e820 r щndefiniteиїninitializedЁreviousхrrorйщnvalidэathяverflow
+02e85c r щllegalяnЇerminalфeviceюoїnitюumberсssociatedўithк
+02e895 r юon-windowцileюotяpenЄeadingьockedхndяfхncounteredтufferЇruncation
+02e8d8 r уlosedЇooэanyтytesЄeadцromїnformattedЄecordєtructureхxternal
+02e92b r щnputэultipleЄadixєpecifiersєpecifier
+02e95a r цormattedуonsistent
+02e971 r яptionsюamelistьist-directedфirectєcratchюameьimitхxceededўithoutёuickwin
+02e9e0 r ЇhreadsсrgumentЎariableцound
+02ea04 r цormatсrrayєubscriptхxceedsсllocatedсreaўrongфimensionsєubrangeєubstringЄangeєpecifiedюon-characterщtemсlreadyєize·eroюegativeюon-huge
+02ea8d r шeapєpace
+02eaa4 r єequentialїnlockedфeadlocked
+02eac5 r щnstalledхxpressionяut
+02eafc r їnknownуonnectedЇoсфifferentЁarameterэismatchьeftЄead-onlyсgainstўritingщnternal
+02eb56 r сccessсllowedхxistsцilesїnits
+02eb79 r уharacterшexadecimal
+02eba0 r ўrite-onlyуommaфelimiterфisabledсfterЄepositioningьabelсssigned
+02ebe3 r ьistщntegerщnitialЁarenthesisЁositiveЄepeatуountюonrepeatableЁreceding
+02ec2f r юestingз.'їnexpected
+02ec55 r сpostropheюumericтiggerЇhanєtringэissing
+02fdc2 r Пpямоугольники                        2.Треугольники                          3.Правильные многоугольники             4.Радиальные миры                       5.Знаки                                 6.Кpуги                                 7.Шпальные миры                         8.Генерация изображения                 PSF EF  LSF EDGEBAR MTF SF  SF  
+030131 r истема-                                  Работа-                       OPAL-PC 
+0301a3 r ДА  Хотите прекратить расчет ? Cохранено в файле Разделы файла протокола   Файл протокола пуст     Не готов принтер    Нет вывода таблицы  Нет вывода графика  Загруз.Таблиц   Запись таблиц   Запись Графика  Запись Протокол Установ. окна    Не готов принтер. Записать в файл ?    
+030785 r НЕТ ФАЙЛА С ОПФ   bpf300&HAR.TMPPROTOCOL.PRN
+030970 r Не найден файл .FRMУказанный путь не найден 
+030aca r Количество прямоугольников - 0             X0    Y0    PX    PY интен. fi     
+030cfe r Количество кругов -                          X0    Y0     R0  интенс.         
+030d82 r Количество шпал      
+030daa r Коорд.центра Размер шпалы Инт. Угол       X     Y      X     Y               
+030e5a r Общий фон    
+030e85 r Вид отображения-
+030ef8 r Черно-белое      Изофоты      Изофоты log  
+030f52 r Мало оперативной памяти  Кол. объектов больше допустимого  Не заданы  об'екты  МКМИЗОБРАЖЕНИЕ ОБЪЕКТОВ В КВАДРАТЕ РАЗМЕРОМ
+030fcf r Производится генерация изображения bpf100@
+031086 r Количество кругов:
+0310a1 r Количество треугольников:
+0310c1 r Количество прямоугольников:
+0310df r Общее количество тест-объектов:
+0310ff r Максимальный размер тест-объекта: 
+03156b r йDAt0 (
+0319e6 r И)Н)Х)W+R+С+Ъ)fBШ
+031a22 r               
+031c4f r Ю> *Щ> 
+031c5b r Ш> иЩ> 
+032190 r И`?`o`Р`
+0321da r Ю`Гa-`лaЙa,a-`Жa7`7`P`7`лa^`-`лa
+03281a r с~6`o`:
+032849 r №      ■C
+032936 r ц!ы!Ё!/c 
+0329ad r ДДДДДДДДДД
+032aab r Е> ЯЖ> {О> 
+032c6f r ШїA*?П=Ф
+032c7d r Р2√Яpd?беeГ
+032c91 r ■Р?ч*л#&,
+032cfe r н6ў>д?Ь5Ї&ё 
+032d46 r Ў/,0o0Ў/
+032e5a r Ё?ffЖ?33s?
+032f2d r р  яGt0t0
+035636 r Л∙OЛў¤єдP
+035654 r  єоGЛўЛ
+0356c8 r нЛ°Г  t
+03583e r з%П%Г%c%
+035848 r к$К$h$=$4$
+03586a r Р*o*,+д,j,U,
+035898 r й/а/Ц/Н/Г/z/q///'/
+0358ba r и.Я.Ф.Л.А.w.n.f.[.R.J.?.:.
+03590c r к8б8Й8~8u8j8B87828-8%8
+035932 r л7г7Ш7П7З7|7w7o7d7[7;717(7
+035966 r У>p><>(>
+035976 r КAsAHA%A
+035982 r п@Ш@q@Y@$@
+0359a2 r °A2CЭFЙFuFaF
+0359b0 r ЫE|EkE]ECE/E
+0359da r мJШJДJpJ
+0359ec r ЫIЗIsI_IKI7I
+035a24 r ЇSvS[S<S+S
+035a30 r НUxUNU)U^V,VLYEY=Y5Y-Y%Y
+035a50 r ¤XїXэXхX
+035a70 r яWкWПWpW_WQW·Z
+035a88 r мZдZЬZФZМZДZ|ZUZNZFZ>Z6Z.Z&Z
+035aba r иYаYУYЛYГY{YsYQ[J[B[:[2[*["[
+035ae2 r гcПc{cgc9c e
+035b0c r єfоfУftfffвjЗjhj4j
+035b68 r лqОv}vuvmvevчu
+035b7e r РuJu;uчtрt
+035bba r л~г~Ы~У~w~o~]~U~M~6~EБ-Б
+035bed r ВhБ]БqДfДKД@Д
+035bfb r ГоГ7Е.ЕфД
+035c05 r И№ЗЁЗхЗ
+035c0f r ЗмЗбЗШЗ[Ж
+035c19 r И[ИмЙ}ЙrЙ[Й0М
+035c29 r МвЛiЛPЛ;Л
+035c39 r НбНsНBН
+035c49 r МпМЧМAО
+035c5f r ПиПkПUПFП
+035c81 r ШнШбШХШАШmШ:Ш
+035c8f r ШеЧ`Ч!Ч
+035c97 r ЦаЦ^ЦoЩKЩ=ЩїШ
+035caf r ЬgЬKЬ0Ь√ЫрЫнЫ
+035cbf r Э ЬшЬNЮ?ЮЄЭ[аVаWг?г
+035cd3 r в)в·гъе
+035ce1 r зЩзЗиmиSиЗк
+035cef r к№йьйблBл2л"л
+035d03 r мпмЯм@м0м м
+035ed9 r т7трс√р
+035efb r фpф0ф!ф
+035f09 r тSчAч"ч
+035f1f r шJшЗыHы=ы
+035f2b r щ юЛэAэ6э
+035f37 r ь^ьЄычы яЁяхя
+035f45 r явяЙя<я
+035f4d r яєюzю^Ё9ЁvЄ\ЄJЄ
+035f65 r ёпёlёўЁ
+035f71 r ЇЬЇ}ЇjЇ^Ї<Ї Ї
+035f9d r їЦїwїYїDї"ї
+035fad r ·ш∙T∙J∙∙°
+035fb9 r °Ю°П°N°;°
+035fc3 r °юўYўBў+ў
+035fd5 r √п√Ф√i√
+0360f4 r я9]9C9'9
+036106 r Є7ц7Т7t7i7 7
+036134 r дBЬHХHwH[HGH
+036144 r ЯGЛG¤FzISLLL
+03617c r эTКTwT]TJTyS
+03619e r О]z]¤\Ў\
+0361e4 r эnеnЕn-n
+0361fa r єlщlтlШl~lфo
+03621a r иtrtHtцs
+036224 r Иs&sЎrшr
+036230 r Нv\v5vЩyxy~x]xAx x
+036259 r ДкДgДSД4Д
+036267 r ГiГжВАВСЙhЙOЙ
+036275 r ЙКИ·ЗъЗ
+036281 r ЗмЖЮЖФЖЗЖKЖ%Ж
+036295 r Й?Л.ЛQО
+03629d r НYНPН6Н-Н
+0362b7 r СKСёРЦР?Р0РаПДП
+0362cd r ХцФoФьУСУ5У
+0362db r ТРТjТLШ
+0362f7 r ЫбЫ3ЫЧЪ=ЪтЩЛЩyЩ
+03630d r ЯеЮMЮ;ЮзЭ
+036337 r дёг}г%г
+03633f r вqв_впиWиEи
+036351 r зЪжCжше
+036361 r кeкSкцйfй
+036373 r оХо$оСн6н
+03637d r мВмpм<мП
+0363f1 r рMрQрtрxрЫр
+0363fd r т#тГтЗтSфWф
+03640f r хухчхGцKцuыyы
+036488 r Ў)с*7*Г+=+ж4с4
+036508 r ёLxMИMУM"N>NTN<OLO`OШOTP
+036540 r зXЦXВXeXQXёWcYАZчY
+03655e r нaШasaaaJa<a'a
+03658f r оEоАо|пK
+0365bb r К(КCКnК|КЙК
+0365d3 r ЛПЛeН&Н
+0365dd r МИМdМQП
+0365ed r ООО:О$О
+0365fd r ПкПЙПkПIХ8Х
+03660f r ФСФЕФdФFФ+ФуУ
+03661f r УШУzУiУIУ■ТтТ/Ц
+036637 r ЩТЩ0Щ&Щ
+036641 r ЩтШeШ[Ш5Ш+ШмЧrЧ
+036669 r вЮвлбoб

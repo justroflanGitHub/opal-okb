@@ -1,0 +1,539 @@
+== релокации модулей: внешние сегменты (вне 0x35FC..0x3DB0 и DGROUP) ==
+file 1: crlc=478 внешние: []
+file 2: crlc=190 внешние: []
+file 3: crlc=1175 внешние: []
+file 4: crlc=423 внешние: []
+
+== входы оверлеев ==
+
+--- site 0x013d sel=0x1 (file 1, seg 35fc, load 0x35fc0) entry=0x0 ---
+035f90  0000                    add byte ptr [bx + si], al
+035f92  0000                    add byte ptr [bx + si], al
+035f94  0000                    add byte ptr [bx + si], al
+035f96  0000                    add byte ptr [bx + si], al
+035f98  0000                    add byte ptr [bx + si], al
+035f9a  0000                    add byte ptr [bx + si], al
+035f9c  0000                    add byte ptr [bx + si], al
+035f9e  0000                    add byte ptr [bx + si], al
+035fa0  0000                    add byte ptr [bx + si], al
+035fa2  0000                    add byte ptr [bx + si], al
+035fa4  0000                    add byte ptr [bx + si], al
+035fa6  0000                    add byte ptr [bx + si], al
+035fa8  0000                    add byte ptr [bx + si], al
+035faa  0000                    add byte ptr [bx + si], al
+035fac  0000                    add byte ptr [bx + si], al
+035fae  0000                    add byte ptr [bx + si], al
+035fb0  0000                    add byte ptr [bx + si], al
+035fb2  0000                    add byte ptr [bx + si], al
+035fb4  0000                    add byte ptr [bx + si], al
+035fb6  0000                    add byte ptr [bx + si], al
+035fb8  0000                    add byte ptr [bx + si], al
+035fba  0000                    add byte ptr [bx + si], al
+035fbc  0000                    add byte ptr [bx + si], al
+035fbe  0000                    add byte ptr [bx + si], al
+035fc0  55                      push bp
+035fc1  8bec                    mov bp, sp
+035fc3  81ecc600                sub sp, 0xc6
+035fc7  57                      push di
+035fc8  56                      push si
+035fc9  8e06da32                mov es, word ptr [0x32da]
+035fcd  2bc0                    sub ax, ax
+035fcf  26a31600                mov word ptr es:[0x16], ax
+035fd3  26a31400                mov word ptr es:[0x14], ax
+035fd7  26a31800                mov word ptr es:[0x18], ax
+035fdb  8e06dc32                mov es, word ptr [0x32dc]
+035fdf  26a10000                mov ax, word ptr es:[0]
+035fe3  268b160200              mov dx, word ptr es:[2]
+035fe8  8e06de32                mov es, word ptr [0x32de]
+035fec  26a30000                mov word ptr es:[0], ax
+035ff0  2689160200              mov word ptr es:[2], dx
+035ff5  8e06dc32                mov es, word ptr [0x32dc]
+035ff9  0bc2                    or ax, dx
+035ffb  7512                    jne 0x3600f
+035ffd  8e06de32                mov es, word ptr [0x32de]
+036001  26c7060000e803          mov word ptr es:[0], 0x3e8
+036008  26c70602000000          mov word ptr es:[2], 0
+
+--- site 0x0678 sel=0x26 (file 4, seg 3641, load 0x36410) entry=0xa ---
+0363ea  47                      inc di
+0363eb  04a1                    add al, 0xa1
+0363ed  1c0c                    sbb al, 0xc
+0363ef  26894706                mov word ptr es:[bx + 6], ax
+0363f3  eb1f                    jmp 0x36414
+0363f5  c45e06                  les bx, ptr [bp + 6]
+0363f8  a1160c                  mov ax, word ptr [0xc16]
+0363fb  26894702                mov word ptr es:[bx + 2], ax
+0363ff  a1180c                  mov ax, word ptr [0xc18]
+036402  26894704                mov word ptr es:[bx + 4], ax
+036406  a11a0c                  mov ax, word ptr [0xc1a]
+036409  26894706                mov word ptr es:[bx + 6], ax
+03640d  a11c0c                  mov ax, word ptr [0xc1c]
+036410  26894708                mov word ptr es:[bx + 8], ax
+036414  8be5                    mov sp, bp
+036416  5d                      pop bp
+036417  ca0800                  retf 8
+03641a  55                      push bp
+03641b  8bec                    mov bp, sp
+03641d  83ec74                  sub sp, 0x74
+036420  57                      push di
+036421  56                      push si
+036422  c45e22                  les bx, ptr [bp + 0x22]
+036425  268b07                  mov ax, word ptr es:[bx]
+036428  d1e0                    shl ax, 1
+03642a  d1e0                    shl ax, 1
+03642c  8946ee                  mov word ptr [bp - 0x12], ax
+03642f  c45e1e                  les bx, ptr [bp + 0x1e]
+036432  268b07                  mov ax, word ptr es:[bx]
+036435  f766ee                  mul word ptr [bp - 0x12]
+036438  8946f0                  mov word ptr [bp - 0x10], ax
+03643b  8b46ee                  mov ax, word ptr [bp - 0x12]
+03643e  0346f0                  add ax, word ptr [bp - 0x10]
+036441  050400                  add ax, 4
+036444  8946f2                  mov word ptr [bp - 0xe], ax
+036447  c45e22                  les bx, ptr [bp + 0x22]
+03644a  268b07                  mov ax, word ptr es:[bx]
+03644d  d1e0                    shl ax, 1
+03644f  d1e0                    shl ax, 1
+036451  8946f4                  mov word ptr [bp - 0xc], ax
+036454  c45e1e                  les bx, ptr [bp + 0x1e]
+036457  268b07                  mov ax, word ptr es:[bx]
+03645a  f766f4                  mul word ptr [bp - 0xc]
+03645d  8946f6                  mov word ptr [bp - 0xa], ax
+036460  8b46f4                  mov ax, word ptr [bp - 0xc]
+036463  0346f6                  add ax, word ptr [bp - 0xa]
+036466  050400                  add ax, 4
+
+--- site 0x07f0 sel=0x9 (file 1, seg 3b68, load 0x3b680) entry=0x5 ---
+03b655  18ff                    sbb bh, bh
+03b657  7616                    jbe 0x3b66f
+03b659  ff761c                  push word ptr [bp + 0x1c]
+03b65c  ff761a                  push word ptr [bp + 0x1a]
+03b65f  ff36e65c                push word ptr [0x5ce6]
+03b663  52                      push dx
+03b664  50                      push ax
+03b665  b88203                  mov ax, 0x382
+03b668  50                      push ax
+03b669  9ac20e7c1c              lcall 0x1c7c, 0xec2
+03b66e  83c420                  add sp, 0x20
+03b671  c45e1e                  les bx, ptr [bp + 0x1e]
+03b674  26830701                add word ptr es:[bx], 1
+03b678  2683570200              adc word ptr es:[bx + 2], 0
+03b67d  5e                      pop si
+03b67e  5f                      pop di
+03b67f  8be5                    mov sp, bp
+03b681  5d                      pop bp
+03b682  ca2000                  retf 0x20
+03b685  55                      push bp
+03b686  8bec                    mov bp, sp
+03b688  83ec2a                  sub sp, 0x2a
+03b68b  57                      push di
+03b68c  56                      push si
+03b68d  a1f21d                  mov ax, word ptr [0x1df2]
+03b690  8b16f41d                mov dx, word ptr [0x1df4]
+03b694  8946e2                  mov word ptr [bp - 0x1e], ax
+03b697  8956e4                  mov word ptr [bp - 0x1c], dx
+03b69a  c45ee2                  les bx, ptr [bp - 0x1e]
+03b69d  268b4702                mov ax, word ptr es:[bx + 2]
+03b6a1  8946e6                  mov word ptr [bp - 0x1a], ax
+03b6a4  c45e0a                  les bx, ptr [bp + 0xa]
+03b6a7  268b07                  mov ax, word ptr es:[bx]
+03b6aa  40                      inc ax
+03b6ab  a3445d                  mov word ptr [0x5d44], ax
+03b6ae  c45e1a                  les bx, ptr [bp + 0x1a]
+03b6b1  26833f01                cmp word ptr es:[bx], 1
+03b6b5  7507                    jne 0x3b6be
+03b6b7  26837f0200              cmp word ptr es:[bx + 2], 0
+03b6bc  7416                    je 0x3b6d4
+03b6be  c45e1a                  les bx, ptr [bp + 0x1a]
+03b6c1  26833f0a                cmp word ptr es:[bx], 0xa
+03b6c5  7403                    je 0x3b6ca
+03b6c7  e9c901                  jmp 0x3b893
+03b6ca  26837f0200              cmp word ptr es:[bx + 2], 0
+03b6cf  7403                    je 0x3b6d4
+03b6d1  e9bf01                  jmp 0x3b893
+
+--- site 0x086d sel=0x6 (file 1, seg 3804, load 0x38040) entry=0x3 ---
+038013  57                      push di
+038014  028946e6                add cl, byte ptr [bx + di - 0x19ba]
+038018  8956e8                  mov word ptr [bp - 0x18], dx
+03801b  c706a65b0100            mov word ptr [0x5ba6], 1
+038021  c706a85b0000            mov word ptr [0x5ba8], 0
+038027  e9f4fe                  jmp 0x37f1e
+03802a  c45e16                  les bx, ptr [bp + 0x16]
+03802d  a1a25b                  mov ax, word ptr [0x5ba2]
+038030  8b16a45b                mov dx, word ptr [0x5ba4]
+038034  268907                  mov word ptr es:[bx], ax
+038037  26895702                mov word ptr es:[bx + 2], dx
+03803b  5e                      pop si
+03803c  5f                      pop di
+03803d  8be5                    mov sp, bp
+03803f  5d                      pop bp
+038040  ca1800                  retf 0x18
+038043  55                      push bp
+038044  8bec                    mov bp, sp
+038046  81eca000                sub sp, 0xa0
+03804a  57                      push di
+03804b  56                      push si
+03804c  c706d65b1d02            mov word ptr [0x5bd6], 0x21d
+038052  c45e06                  les bx, ptr [bp + 6]
+038055  2bc0                    sub ax, ax
+038057  b93804                  mov cx, 0x438
+03805a  8bfb                    mov di, bx
+03805c  f2ab                    repne stosw word ptr es:[di], ax
+03805e  c45e1a                  les bx, ptr [bp + 0x1a]
+038061  268b07                  mov ax, word ptr es:[bx]
+038064  268b5702                mov dx, word ptr es:[bx + 2]
+038068  2d0100                  sub ax, 1
+03806b  83da00                  sbb dx, 0
+03806e  a3165c                  mov word ptr [0x5c16], ax
+038071  8916185c                mov word ptr [0x5c18], dx
+038075  c706e65b0100            mov word ptr [0x5be6], 1
+03807b  8d1e3833                lea bx, [0x3338]
+03807f  9aa43d7c1c              lcall 0x1c7c, 0x3da4
+038084  8d1e5c5c                lea bx, [0x5c5c]
+038088  9ab03d7c1c              lcall 0x1c7c, 0x3db0
+03808d  c706d65b0100            mov word ptr [0x5bd6], 1
+
+--- site 0x0b31 sel=0x7 (file 1, seg 3ad2, load 0x3ad20) entry=0x3 ---
+03acf3  ff899662                dec word ptr [bx + di + 0x6296]
+03acf7  ffc7                    inc di
+03acf9  06                      push es
+03acfa  da5b01                  ficomp dword ptr [bp + di + 1]
+03acfd  00c7                    add bh, al
+03acff  06                      push es
+03ad00  dc5b00                  fcomp qword ptr [bp + di]
+03ad03  00e9                    add cl, ch
+03ad05  7efe                    jle 0x3ad05
+03ad07  a1e65b                  mov ax, word ptr [0x5be6]
+03ad0a  99                      cdq 
+03ad0b  2d0100                  sub ax, 1
+03ad0e  83da00                  sbb dx, 0
+03ad11  c45e16                  les bx, ptr [bp + 0x16]
+03ad14  268907                  mov word ptr es:[bx], ax
+03ad17  26895702                mov word ptr es:[bx + 2], dx
+03ad1b  5e                      pop si
+03ad1c  5f                      pop di
+03ad1d  8be5                    mov sp, bp
+03ad1f  5d                      pop bp
+03ad20  ca1800                  retf 0x18
+03ad23  55                      push bp
+03ad24  8bec                    mov bp, sp
+03ad26  83ec3e                  sub sp, 0x3e
+03ad29  57                      push di
+03ad2a  56                      push si
+03ad2b  c45e2e                  les bx, ptr [bp + 0x2e]
+03ad2e  268b07                  mov ax, word ptr es:[bx]
+03ad31  8946fe                  mov word ptr [bp - 2], ax
+03ad34  c706a65c0100            mov word ptr [0x5ca6], 1
+03ad3a  3d0100                  cmp ax, 1
+03ad3d  7c39                    jl 0x3ad78
+03ad3f  be840c                  mov si, 0xc84
+03ad42  8b462a                  mov ax, word ptr [bp + 0x2a]
+03ad45  8b562c                  mov dx, word ptr [bp + 0x2c]
+03ad48  8946f8                  mov word ptr [bp - 8], ax
+03ad4b  8956fa                  mov word ptr [bp - 6], dx
+03ad4e  8b46fe                  mov ax, word ptr [bp - 2]
+03ad51  0106a65c                add word ptr [0x5ca6], ax
+03ad55  8bc8                    mov cx, ax
+03ad57  c45ef8                  les bx, ptr [bp - 8]
+03ad5a  268b07                  mov ax, word ptr es:[bx]
+03ad5d  268b5702                mov dx, word ptr es:[bx + 2]
+03ad61  8bde                    mov bx, si
+03ad63  8e06a433                mov es, word ptr [0x33a4]
+03ad67  268947fc                mov word ptr es:[bx - 4], ax
+03ad6b  268957fe                mov word ptr es:[bx - 2], dx
+03ad6f  83c604                  add si, 4
+
+--- site 0x0b83 sel=0x5 (file 1, seg 37d5, load 0x37d50) entry=0x5 ---
+037d25  c45e2e                  les bx, ptr [bp + 0x2e]
+037d28  268b07                  mov ax, word ptr es:[bx]
+037d2b  48                      dec ax
+037d2c  c45eee                  les bx, ptr [bp - 0x12]
+037d2f  26f76f02                imul word ptr es:[bx + 2]
+037d33  034632                  add ax, word ptr [bp + 0x32]
+037d36  8b5634                  mov dx, word ptr [bp + 0x34]
+037d39  2b46f2                  sub ax, word ptr [bp - 0xe]
+037d3c  054200                  add ax, 0x42
+037d3f  52                      push dx
+037d40  50                      push ax
+037d41  b85c03                  mov ax, 0x35c
+037d44  50                      push ax
+037d45  9ac20e7c1c              lcall 0x1c7c, 0xec2
+037d4a  83c408                  add sp, 8
+037d4d  5e                      pop si
+037d4e  5f                      pop di
+037d4f  8be5                    mov sp, bp
+037d51  5d                      pop bp
+037d52  ca3000                  retf 0x30
+037d55  55                      push bp
+037d56  8bec                    mov bp, sp
+037d58  83ec1a                  sub sp, 0x1a
+037d5b  57                      push di
+037d5c  56                      push si
+037d5d  a1f21d                  mov ax, word ptr [0x1df2]
+037d60  8b16f41d                mov dx, word ptr [0x1df4]
+037d64  8946ee                  mov word ptr [bp - 0x12], ax
+037d67  8956f0                  mov word ptr [bp - 0x10], dx
+037d6a  c45eee                  les bx, ptr [bp - 0x12]
+037d6d  268b4702                mov ax, word ptr es:[bx + 2]
+037d71  8946f2                  mov word ptr [bp - 0xe], ax
+037d74  bf9c5b                  mov di, 0x5b9c
+037d77  be6803                  mov si, 0x368
+037d7a  1e                      push ds
+037d7b  07                      pop es
+037d7c  a5                      movsw word ptr es:[di], word ptr [si]
+037d7d  a5                      movsw word ptr es:[di], word ptr [si]
+037d7e  a5                      movsw word ptr es:[di], word ptr [si]
+037d7f  c45e16                  les bx, ptr [bp + 0x16]
+037d82  268b07                  mov ax, word ptr es:[bx]
+037d85  268b5702                mov dx, word ptr es:[bx + 2]
+037d89  a3a25b                  mov word ptr [0x5ba2], ax
+037d8c  8916a45b                mov word ptr [0x5ba4], dx
+037d90  c746fa3c00              mov word ptr [bp - 6], 0x3c
+037d95  c746ea0100              mov word ptr [bp - 0x16], 1
+037d9a  c746ec0000              mov word ptr [bp - 0x14], 0
+037d9f  c746f80600              mov word ptr [bp - 8], 6
+
+--- site 0x0bdc sel=0x8 (file 1, seg 3b58, load 0x3b580) entry=0x4 ---
+03b554  9c                      pushf 
+03b555  0083da00                add byte ptr [bp + di + 0xda], al
+03b559  f7d8                    neg ax
+03b55b  83d200                  adc dx, 0
+03b55e  f7da                    neg dx
+03b560  8946c6                  mov word ptr [bp - 0x3a], ax
+03b563  8956c8                  mov word ptr [bp - 0x38], dx
+03b566  c45ec2                  les bx, ptr [bp - 0x3e]
+03b569  2bc0                    sub ax, ax
+03b56b  8b4ec6                  mov cx, word ptr [bp - 0x3a]
+03b56e  8bf2                    mov si, dx
+03b570  8bfb                    mov di, bx
+03b572  f2ab                    repne stosw word ptr es:[di], ax
+03b574  8b46c6                  mov ax, word ptr [bp - 0x3a]
+03b577  0106a65c                add word ptr [0x5ca6], ax
+03b57b  5e                      pop si
+03b57c  5f                      pop di
+03b57d  8be5                    mov sp, bp
+03b57f  5d                      pop bp
+03b580  ca3800                  retf 0x38
+03b583  00558b                  add byte ptr [di - 0x75], dl
+03b586  ec                      in al, dx
+03b587  83ec12                  sub sp, 0x12
+03b58a  57                      push di
+03b58b  56                      push si
+03b58c  a1f21d                  mov ax, word ptr [0x1df2]
+03b58f  8b16f41d                mov dx, word ptr [0x1df4]
+03b593  8946ee                  mov word ptr [bp - 0x12], ax
+03b596  8956f0                  mov word ptr [bp - 0x10], dx
+03b599  c45eee                  les bx, ptr [bp - 0x12]
+03b59c  268b4702                mov ax, word ptr es:[bx + 2]
+03b5a0  8946f2                  mov word ptr [bp - 0xe], ax
+03b5a3  bf285d                  mov di, 0x5d28
+03b5a6  be7c03                  mov si, 0x37c
+03b5a9  1e                      push ds
+03b5aa  07                      pop es
+03b5ab  a5                      movsw word ptr es:[di], word ptr [si]
+03b5ac  a5                      movsw word ptr es:[di], word ptr [si]
+03b5ad  a5                      movsw word ptr es:[di], word ptr [si]
+03b5ae  c706e85c0100            mov word ptr [0x5ce8], 1
+03b5b4  c706ea5c0000            mov word ptr [0x5cea], 0
+03b5ba  c746fa3c00              mov word ptr [bp - 6], 0x3c
+03b5bf  c746f80600              mov word ptr [bp - 8], 6
+03b5c4  c45eee                  les bx, ptr [bp - 0x12]
+03b5c7  268b4702                mov ax, word ptr es:[bx + 2]
+03b5cb  8946f6                  mov word ptr [bp - 0xa], ax
+03b5ce  ff7624                  push word ptr [bp + 0x24]
+03b5d1  ff7622                  push word ptr [bp + 0x22]
+
+--- site 0x0c3f sel=0x3 (file 1, seg 371b, load 0x371b0) entry=0xa ---
+03718a  7c1c                    jl 0x371a8
+03718c  83c402                  add sp, 2
+03718f  b87a02                  mov ax, 0x27a
+037192  50                      push ax
+037193  9a8c277c1c              lcall 0x1c7c, 0x278c
+037198  83c402                  add sp, 2
+03719b  eb17                    jmp 0x371b4
+03719d  b80a00                  mov ax, 0xa
+0371a0  99                      cdq 
+0371a1  52                      push dx
+0371a2  50                      push ax
+0371a3  b83c02                  mov ax, 0x23c
+0371a6  1e                      push ds
+0371a7  50                      push ax
+0371a8  b80200                  mov ax, 2
+0371ab  50                      push ax
+0371ac  9aee347c1c              lcall 0x1c7c, 0x34ee
+0371b1  83c40a                  add sp, 0xa
+0371b4  8be5                    mov sp, bp
+0371b6  5d                      pop bp
+0371b7  ca0400                  retf 4
+0371ba  55                      push bp
+0371bb  8bec                    mov bp, sp
+0371bd  83ec18                  sub sp, 0x18
+0371c0  56                      push si
+0371c1  a1f21d                  mov ax, word ptr [0x1df2]
+0371c4  8b16f41d                mov dx, word ptr [0x1df4]
+0371c8  8946ee                  mov word ptr [bp - 0x12], ax
+0371cb  8956f0                  mov word ptr [bp - 0x10], dx
+0371ce  c45eee                  les bx, ptr [bp - 0x12]
+0371d1  268b4702                mov ax, word ptr es:[bx + 2]
+0371d5  8946f2                  mov word ptr [bp - 0xe], ax
+0371d8  c45e06                  les bx, ptr [bp + 6]
+0371db  268b07                  mov ax, word ptr es:[bx]
+0371de  d1e0                    shl ax, 1
+0371e0  d1e0                    shl ax, 1
+0371e2  8946f4                  mov word ptr [bp - 0xc], ax
+0371e5  050400                  add ax, 4
+0371e8  8946f6                  mov word ptr [bp - 0xa], ax
+0371eb  c45e0e                  les bx, ptr [bp + 0xe]
+0371ee  268b07                  mov ax, word ptr es:[bx]
+0371f1  268b5702                mov dx, word ptr es:[bx + 2]
+0371f5  050100                  add ax, 1
+0371f8  83d200                  adc dx, 0
+0371fb  a3505a                  mov word ptr [0x5a50], ax
+0371fe  8916525a                mov word ptr [0x5a52], dx
+037202  c746fe3c00              mov word ptr [bp - 2], 0x3c
+037207  2bc0                    sub ax, ax
+
+--- site 0x0ca8 sel=0x4 (file 1, seg 375d, load 0x375d0) entry=0x4 ---
+0375a4  50                      push ax
+0375a5  c45e16                  les bx, ptr [bp + 0x16]
+0375a8  268b07                  mov ax, word ptr es:[bx]
+0375ab  48                      dec ax
+0375ac  c45eee                  les bx, ptr [bp - 0x12]
+0375af  26f76f02                imul word ptr es:[bx + 2]
+0375b3  03461a                  add ax, word ptr [bp + 0x1a]
+0375b6  8b561c                  mov dx, word ptr [bp + 0x1c]
+0375b9  2b46f2                  sub ax, word ptr [bp - 0xe]
+0375bc  054500                  add ax, 0x45
+0375bf  52                      push dx
+0375c0  50                      push ax
+0375c1  b8e002                  mov ax, 0x2e0
+0375c4  50                      push ax
+0375c5  9ac20e7c1c              lcall 0x1c7c, 0xec2
+0375ca  83c40a                  add sp, 0xa
+0375cd  5e                      pop si
+0375ce  8be5                    mov sp, bp
+0375d0  5d                      pop bp
+0375d1  ca1800                  retf 0x18
+0375d4  55                      push bp
+0375d5  8bec                    mov bp, sp
+0375d7  83ec1c                  sub sp, 0x1c
+0375da  57                      push di
+0375db  56                      push si
+0375dc  a1f21d                  mov ax, word ptr [0x1df2]
+0375df  8b16f41d                mov dx, word ptr [0x1df4]
+0375e3  8946ee                  mov word ptr [bp - 0x12], ax
+0375e6  8956f0                  mov word ptr [bp - 0x10], dx
+0375e9  c45eee                  les bx, ptr [bp - 0x12]
+0375ec  268b4702                mov ax, word ptr es:[bx + 2]
+0375f0  8946f2                  mov word ptr [bp - 0xe], ax
+0375f3  c45e1a                  les bx, ptr [bp + 0x1a]
+0375f6  268b07                  mov ax, word ptr es:[bx]
+0375f9  268b5702                mov dx, word ptr es:[bx + 2]
+0375fd  a3125b                  mov word ptr [0x5b12], ax
+037600  8916145b                mov word ptr [0x5b14], dx
+037604  c45e06                  les bx, ptr [bp + 6]
+037607  268b07                  mov ax, word ptr es:[bx]
+03760a  40                      inc ax
+03760b  a3a65a                  mov word ptr [0x5aa6], ax
+03760e  c45e16                  les bx, ptr [bp + 0x16]
+037611  268b07                  mov ax, word ptr es:[bx]
+037614  268b5702                mov dx, word ptr es:[bx + 2]
+037618  a3c45a                  mov word ptr [0x5ac4], ax
+03761b  8916c65a                mov word ptr [0x5ac6], dx
+03761f  c45e12                  les bx, ptr [bp + 0x12]
+
+--- site 0x2580 sel=0x1a (file 3, seg 38de, load 0x38de0) entry=0x6 ---
+038db6  8e068434                mov es, word ptr [0x3484]
+038dba  8d1e0000                lea bx, [0]
+038dbe  9a143e7c1c              lcall 0x1c7c, 0x3e14
+038dc3  8d1eac65                lea bx, [0x65ac]
+038dc7  9ad43d7c1c              lcall 0x1c7c, 0x3dd4
+038dcc  9ad23f7c1c              lcall 0x1c7c, 0x3fd2
+038dd1  2bc7                    sub ax, di
+038dd3  f7d8                    neg ax
+038dd5  40                      inc ax
+038dd6  8e068434                mov es, word ptr [0x3484]
+038dda  26a30800                mov word ptr es:[8], ax
+038dde  5e                      pop si
+038ddf  5f                      pop di
+038de0  8be5                    mov sp, bp
+038de2  5d                      pop bp
+038de3  ca0800                  retf 8
+038de6  55                      push bp
+038de7  8bec                    mov bp, sp
+038de9  83ec26                  sub sp, 0x26
+038dec  a1f21d                  mov ax, word ptr [0x1df2]
+038def  8b16f41d                mov dx, word ptr [0x1df4]
+038df3  8946ee                  mov word ptr [bp - 0x12], ax
+038df6  8956f0                  mov word ptr [bp - 0x10], dx
+038df9  c45e4e                  les bx, ptr [bp + 0x4e]
+038dfc  268b07                  mov ax, word ptr es:[bx]
+038dff  d1e0                    shl ax, 1
+038e01  d1e0                    shl ax, 1
+038e03  8946f2                  mov word ptr [bp - 0xe], ax
+038e06  050400                  add ax, 4
+038e09  8946f4                  mov word ptr [bp - 0xc], ax
+038e0c  c706c4650100            mov word ptr [0x65c4], 1
+038e12  c706c6650000            mov word ptr [0x65c6], 0
+038e18  268b07                  mov ax, word ptr es:[bx]
+038e1b  99                      cdq 
+038e1c  a3c065                  mov word ptr [0x65c0], ax
+038e1f  8916c265                mov word ptr [0x65c2], dx
+038e23  2b06c465                sub ax, word ptr [0x65c4]
+038e27  1b16c665                sbb dx, word ptr [0x65c6]
+038e2b  050100                  add ax, 1
+038e2e  83d200                  adc dx, 0
+038e31  a3bc65                  mov word ptr [0x65bc], ax
+
+--- site 0x2768 sel=0xa (file 2, seg 35fc, load 0x35fc0) entry=0x0 ---
+035f90  0000                    add byte ptr [bx + si], al
+035f92  0000                    add byte ptr [bx + si], al
+035f94  0000                    add byte ptr [bx + si], al
+035f96  0000                    add byte ptr [bx + si], al
+035f98  0000                    add byte ptr [bx + si], al
+035f9a  0000                    add byte ptr [bx + si], al
+035f9c  0000                    add byte ptr [bx + si], al
+035f9e  0000                    add byte ptr [bx + si], al
+035fa0  0000                    add byte ptr [bx + si], al
+035fa2  0000                    add byte ptr [bx + si], al
+035fa4  0000                    add byte ptr [bx + si], al
+035fa6  0000                    add byte ptr [bx + si], al
+035fa8  0000                    add byte ptr [bx + si], al
+035faa  0000                    add byte ptr [bx + si], al
+035fac  0000                    add byte ptr [bx + si], al
+035fae  0000                    add byte ptr [bx + si], al
+035fb0  0000                    add byte ptr [bx + si], al
+035fb2  0000                    add byte ptr [bx + si], al
+035fb4  0000                    add byte ptr [bx + si], al
+035fb6  0000                    add byte ptr [bx + si], al
+035fb8  0000                    add byte ptr [bx + si], al
+035fba  0000                    add byte ptr [bx + si], al
+035fbc  0000                    add byte ptr [bx + si], al
+035fbe  0000                    add byte ptr [bx + si], al
+035fc0  c8860000                enter 0x86, 0
+035fc4  57                      push di
+035fc5  56                      push si
+035fc6  c45e6a                  les bx, ptr [bp + 0x6a]
+035fc9  268b07                  mov ax, word ptr es:[bx]
+035fcc  c1e002                  shl ax, 2
+035fcf  8946fc                  mov word ptr [bp - 4], ax
+035fd2  050400                  add ax, 4
+035fd5  8946fe                  mov word ptr [bp - 2], ax
+035fd8  c45e22                  les bx, ptr [bp + 0x22]
+035fdb  26c7070000              mov word ptr es:[bx], 0
+035fe0  b8b25f                  mov ax, 0x5fb2
+035fe3  1e                      push ds
+035fe4  50                      push ax
+035fe5  9a8c01e928              lcall 0x28e9, 0x18c
+035fea  83c404                  add sp, 4
+035fed  833ebc5f00              cmp word ptr [0x5fbc], 0
+035ff2  750b                    jne 0x35fff
+035ff4  c45e22                  les bx, ptr [bp + 0x22]
+035ff7  26c7070100              mov word ptr es:[bx], 1
+035ffc  e97409                  jmp 0x36973
+035fff  ff36b45f                push word ptr [0x5fb4]
+036003  ff36b25f                push word ptr [0x5fb2]
+036007  6a00                    push 0
+036009  6a00                    push 0
+03600b  9a670be928              lcall 0x28e9, 0xb67

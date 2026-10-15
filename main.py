@@ -1550,8 +1550,8 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Ошибка", f"Ошибка при построении диаграммы:\n{e}")
 
     def _fit_dialog(self):
-        """Open the parameter fitting dialog."""
-        from optimizer import fit_focal_length, fit_bfd
+        """Open the parameter fitting dialog (подгонка 1×1 / ЛАП)."""
+        from analysis.optimization import solve_single
 
         self._collect_system_from_ui()
 
@@ -1574,6 +1574,13 @@ class MainWindow(QMainWindow):
         if dlg.exec_() != QDialog.Accepted:
             return
 
+        # Вкладка «Оптимизация (ЛАП)» — многоцелевой сценарий волны 9;
+        # литералы 0/1: FitDialog в этих тестах подменяется заглушкой
+        # без атрибутов mode/MODE_* (mode по умолчанию = 0 = подгонка)
+        if getattr(dlg, 'mode', 0) == 1:
+            self._run_lap_optimization(dlg)
+            return
+
         target_type, target_val, surf_idx, param_type = dlg.get_parameters()
 
         old_system = self.current_system  # fit работает с копией
@@ -1584,12 +1591,11 @@ class MainWindow(QMainWindow):
         param_name = 'R' if param_type == 'radius' else 'd'
 
         try:
-            if target_type == FitDialog.TARGET_FOCAL:
-                result_sys = fit_focal_length(
-                    old_system, target_val, surf_idx, param_type)
-            else:
-                result_sys = fit_bfd(
-                    old_system, target_val, surf_idx, param_type)
+            # Solve-режим ЛАП (REVERSE_LAP §9.4): Ньютон по центрально-
+            # разностной чувствительности с явными ошибками «не влияет»
+            kind = 'efl' if target_type == FitDialog.TARGET_FOCAL else 'bfd'
+            result_sys = solve_single(
+                old_system, kind, target_val, surf_idx, param_type).system
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка подгонки:\n{e}")
             return
@@ -1620,6 +1626,59 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             f"Подгонка: {ach_name} = {ach_value:.4f} мм (цель: {target_val:.4f}); "
             f"{param_name}{surf_idx + 1}: {old_value:.4f} → {new_value:.4f} мм")
+
+    def _run_lap_optimization(self, dlg):
+        """Многоцелевая оптимизация ЛАП (волна 9, REVERSE_LAP §9).
+
+        Задача берётся из вкладки «Оптимизация (ЛАП)» диалога
+        (OptVariable/OptGoal/max_iter/damping), прогресс — в статусбар,
+        результат — подтверждение с протоколом GTISL и обновление системы.
+        """
+        from analysis import optimization
+
+        variables, goals, options = dlg.get_opt_parameters()
+        if not variables:
+            QMessageBox.warning(self, "Оптимизация",
+                                "Не выбрано ни одной переменной (PAR).")
+            return
+        if not goals:
+            QMessageBox.warning(self, "Оптимизация",
+                                "Не задано ни одной цели (MF).")
+            return
+
+        old_system = self.current_system  # оптимизация работает с копией
+
+        def _progress(nstep, fmin, _x):
+            self.statusBar().showMessage(
+                f"Оптимизация ЛАП: шаг {nstep}, FMIN = {fmin:.6g}")
+            QApplication.processEvents()
+
+        try:
+            res = optimization.optimize(
+                old_system, variables, goals,
+                max_iter=options.get('max_iter', 50),
+                damping=options.get('damping', 1.0),
+                callback=_progress)
+        except Exception as e:
+            QMessageBox.warning(self, "Ошибка", f"Ошибка оптимизации:\n{e}")
+            return
+
+        protocol_tail = '\n'.join(res.protocol[-3:])
+        answer = QMessageBox.question(
+            self, "Оптимизация ЛАП",
+            f"Применить результат?\n\n"
+            f"FMIN: {res.fmin:.6g}\nISTOP: {res.istop} — {res.message}\n"
+            f"NSTEP: {res.nstep}\n\n{protocol_tail}",
+            QMessageBox.Apply | QMessageBox.Cancel,
+            QMessageBox.Cancel)
+        if answer != QMessageBox.Apply:
+            return  # исходная система не тронута
+
+        self.current_system = res.system
+        self._refresh_ui()
+        self.statusBar().showMessage(
+            f"Оптимизация ЛАП: FMIN = {res.fmin:.6g}, "
+            f"ISTOP = {res.istop}, NSTEP = {res.nstep} — применено")
 
 
     def _show_ray_table(self):

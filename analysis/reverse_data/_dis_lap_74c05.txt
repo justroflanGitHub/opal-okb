@@ -1,0 +1,985 @@
+074c05  55                   push bp
+074c06  8bec                 mov bp, sp
+074c08  81ec9400             sub sp, 0x94
+074c0c  57                   push di
+074c0d  56                   push si
+074c0e  c45e1e               les bx, ptr [bp + 0x1e]
+074c11  268b07               mov ax, word ptr es:[bx]
+074c14  d1e0                 shl ax, 1
+074c16  d1e0                 shl ax, 1
+074c18  8946f0               mov word ptr [bp - 0x10], ax
+074c1b  050400               add ax, 4
+074c1e  8946f2               mov word ptr [bp - 0xe], ax
+074c21  8b46f0               mov ax, word ptr [bp - 0x10]
+074c24  8946f4               mov word ptr [bp - 0xc], ax
+074c27  8b46f2               mov ax, word ptr [bp - 0xe]
+074c2a  8946f6               mov word ptr [bp - 0xa], ax
+074c2d  c45e0e               les bx, ptr [bp + 0xe]
+074c30  cd35ee               FLDLN2 st,st(5)
+074c33  cd3c                 ESC#
+074c35  d91f                 fstp dword ptr [bx]
+074c37  cd3d                 FISTP#
+074c39  8e06a44d             mov es, word ptr [0x4da4]
+074c3d  268b360000           mov si, word ptr es:[0]
+074c42  b103                 mov cl, 3
+074c44  d3e6                 shl si, cl
+074c46  8e06a64d             mov es, word ptr [0x4da6]
+074c4a  8d9cf801             lea bx, [si + 0x1f8]
+074c4e  268b47f4             mov ax, word ptr es:[bx - 0xc]
+074c52  268b57f6             mov dx, word ptr es:[bx - 0xa]
+074c56  a30e8f               mov word ptr [0x8f0e], ax
+074c59  8916108f             mov word ptr [0x8f10], dx
+074c5d  8d9cfc01             lea bx, [si + 0x1fc]
+074c61  268b47f4             mov ax, word ptr es:[bx - 0xc]
+074c65  268b57f6             mov dx, word ptr es:[bx - 0xa]
+074c69  a3128f               mov word ptr [0x8f12], ax
+074c6c  8916148f             mov word ptr [0x8f14], dx
+074c70  8d9cc002             lea bx, [si + 0x2c0]
+074c74  268b47f4             mov ax, word ptr es:[bx - 0xc]
+074c78  268b57f6             mov dx, word ptr es:[bx - 0xa]
+074c7c  a3068f               mov word ptr [0x8f06], ax
+074c7f  8916088f             mov word ptr [0x8f08], dx
+074c83  8d9cc402             lea bx, [si + 0x2c4]
+074c87  268b47f4             mov ax, word ptr es:[bx - 0xc]
+074c8b  268b57f6             mov dx, word ptr es:[bx - 0xa]
+074c8f  a30a8f               mov word ptr [0x8f0a], ax
+074c92  89160c8f             mov word ptr [0x8f0c], dx
+074c96  cd3506b053           FLD        [53b0]
+074c9b  cd340ea84d           FMUL       [4da8]
+074ca0  cd351e1e8f           FSTP       [8f1e]
+074ca5  cd35060c6d           FLD        [6d0c]
+074caa  cd340e186d           FMUL       [6d18]
+074caf  cd3506146d           FLD        [6d14]
+074cb4  cd340e106d           FMUL       [6d10]
+074cb9  cd3ae9               FMULP st,st(5)
+074cbc  cd35161a8f           FST        [8f1a]
+074cc1  cd3416ac4d           FCOM       [4dac]
+074cc6  cd39d8               DD /3 st(0) st,st(3)
+074cc9  cd397e9e             FSTSW      -98
+074ccd  cd3d                 FISTP#
+074ccf  8a669f               mov ah, byte ptr [bp - 0x61]
+074cd2  9e                   sahf 
+074cd3  750b                 jne 0x74ce0
+074cd5  c45e26               les bx, ptr [bp + 0x26]
+074cd8  26c707ffff           mov word ptr es:[bx], 0xffff
+074cdd  e93409               jmp 0x75614
+074ce0  cd3506186d           FLD        [6d18]
+074ce5  cd340e1e8f           FMUL       [8f1e]
+074cea  cd34361a8f           FDIV       [8f1a]
+074cef  cd35e0               FCHS st,st(4)
+074cf2  cd355ee0             FSTP       -32
+074cf6  cd35060c6d           FLD        [6d0c]
+074cfb  cd340e1e8f           FMUL       [8f1e]
+074d00  cd34361a8f           FDIV       [8f1a]
+074d05  cd35e0               FCHS st,st(4)
+074d08  cd355eec             FSTP       -20
+074d0c  cd3506106d           FLD        [6d10]
+074d11  cd340e1e8f           FMUL       [8f1e]
+074d16  cd34361a8f           FDIV       [8f1a]
+074d1b  cd355ee8             FSTP       -24
+074d1f  cd3506146d           FLD        [6d14]
+074d24  cd340e1e8f           FMUL       [8f1e]
+074d29  cd34361a8f           FDIV       [8f1a]
+074d2e  cd355ee4             FSTP       -28
+074d32  cd3d                 FISTP#
+074d34  8e06b04d             mov es, word ptr [0x4db0]
+074d38  26a10400             mov ax, word ptr es:[4]
+074d3c  260b060600           or ax, word ptr es:[6]
+074d41  7503                 jne 0x74d46
+074d43  e9ee01               jmp 0x74f34
+074d46  c45e32               les bx, ptr [bp + 0x32]
+074d49  268b07               mov ax, word ptr es:[bx]
+074d4c  268b5702             mov dx, word ptr es:[bx + 2]
+074d50  a3228f               mov word ptr [0x8f22], ax
+074d53  8916248f             mov word ptr [0x8f24], dx
+074d57  2bc0                 sub ax, ax
+074d59  26894702             mov word ptr es:[bx + 2], ax
+074d5d  268907               mov word ptr es:[bx], ax
+074d60  cd3706228f           DB /0      [8f22]
+074d65  cd340e5c6d           FMUL       [6d5c]
+074d6a  cd3436706d           FDIV       [6d70]
+074d6f  9acc41115f           lcall 0x5f11, 0x41cc   ; -> FUN_6000_32dc
+074d74  9ae83f115f           lcall 0x5f11, 0x3fe8   ; -> sub_0630f8
+074d79  a3268f               mov word ptr [0x8f26], ax
+074d7c  99                   cdq 
+074d7d  52                   push dx
+074d7e  50                   push ax
+074d7f  ff36248f             push word ptr [0x8f24]
+074d83  ff36228f             push word ptr [0x8f22]
+074d87  9abc0c115f           lcall 0x5f11, 0xcbc   ; -> sub_05fdcc
+074d8c  a3288f               mov word ptr [0x8f28], ax
+074d8f  cd3506b24d           FLD        [4db2]
+074d94  cd3a36268f           FDIVP      [8f26]
+074d99  cd351efe8e           FSTP       [8efe]
+074d9e  cd3506b24d           FLD        [4db2]
+074da3  cd3a36288f           FDIVP      [8f28]
+074da8  cd3516028f           FST        [8f02]
+074dad  cd3436b24d           FDIV       [4db2]
+074db2  cd342eb64d           FSUBR      [4db6]
+074db7  cd351ef88e           FSTP       [8ef8]
+074dbc  cd3d                 FISTP#
+074dbe  89469c               mov word ptr [bp - 0x64], ax
+074dc1  c706e28e0100         mov word ptr [0x8ee2], 1
+074dc7  e93a01               jmp 0x74f04
+074dca  a1e68e               mov ax, word ptr [0x8ee6]
+074dcd  394698               cmp word ptr [bp - 0x68], ax
+074dd0  7c5e                 jl 0x74e30
+074dd2  8b46f0               mov ax, word ptr [bp - 0x10]
+074dd5  f726e68e             mul word ptr [0x8ee6]
+074dd9  8bd8                 mov bx, ax
+074ddb  c47632               les si, ptr [bp + 0x32]
+074dde  268b04               mov ax, word ptr es:[si]
+074de1  d1e0                 shl ax, 1
+074de3  d1e0                 shl ax, 1
+074de5  03d8                 add bx, ax
+074de7  035e1a               add bx, word ptr [bp + 0x1a]
+074dea  8e461c               mov es, word ptr [bp + 0x1c]
+074ded  2b5ef2               sub bx, word ptr [bp - 0xe]
+074df0  a1f88e               mov ax, word ptr [0x8ef8]
+074df3  8b16fa8e             mov dx, word ptr [0x8efa]
+074df7  268907               mov word ptr es:[bx], ax
+074dfa  26895702             mov word ptr es:[bx + 2], dx
+074dfe  8b46f4               mov ax, word ptr [bp - 0xc]
+074e01  f726e68e             mul word ptr [0x8ee6]
+074e05  8bd8                 mov bx, ax
+074e07  8e4634               mov es, word ptr [bp + 0x34]
+074e0a  268b04               mov ax, word ptr es:[si]
+074e0d  d1e0                 shl ax, 1
+074e0f  d1e0                 shl ax, 1
+074e11  03d8                 add bx, ax
+074e13  035e16               add bx, word ptr [bp + 0x16]
+074e16  8e4618               mov es, word ptr [bp + 0x18]
+074e19  2b5ef6               sub bx, word ptr [bp - 0xa]
+074e1c  a1f48e               mov ax, word ptr [0x8ef4]
+074e1f  8b16f68e             mov dx, word ptr [0x8ef6]
+074e23  268907               mov word ptr es:[bx], ax
+074e26  26895702             mov word ptr es:[bx + 2], dx
+074e2a  ff06e68e             inc word ptr [0x8ee6]
+074e2e  719a                 jno 0x74dca
+074e30  cd3506fe8e           FLD        [8efe]
+074e35  cd3406f48e           FADD       [8ef4]
+074e3a  cd351ef48e           FSTP       [8ef4]
+074e3f  cd3d                 FISTP#
+074e41  ff06e48e             inc word ptr [0x8ee4]
+074e45  7103                 jno 0x74e4a
+074e47  e9a000               jmp 0x74eea
+074e4a  a1e48e               mov ax, word ptr [0x8ee4]
+074e4d  39469a               cmp word ptr [bp - 0x66], ax
+074e50  7d03                 jge 0x74e55
+074e52  e99500               jmp 0x74eea
+074e55  cd3506068f           FLD        [8f06]
+074e5a  cd3416ac4d           FCOM       [4dac]
+074e5f  cd39d8               DD /3 st(0) st,st(3)
+074e62  cd397e9e             FSTSW      -98
+074e66  cd3d                 FISTP#
+074e68  8a669f               mov ah, byte ptr [bp - 0x61]
+074e6b  9e                   sahf 
+074e6c  745e                 je 0x74ecc
+074e6e  cd35060a8f           FLD        [8f0a]
+074e73  cd3416ac4d           FCOM       [4dac]
+074e78  cd39d8               DD /3 st(0) st,st(3)
+074e7b  cd397e9e             FSTSW      -98
+074e7f  cd3d                 FISTP#
+074e81  8a669f               mov ah, byte ptr [bp - 0x61]
+074e84  9e                   sahf 
+074e85  7445                 je 0x74ecc
+074e87  cd3506f48e           FLD        [8ef4]
+074e8c  cd34260e8f           FSUB       [8f0e]
+074e91  cd35e1               FABS st,st(4)
+074e94  cd3416068f           FCOM       [8f06]
+074e99  cd39d8               DD /3 st(0) st,st(3)
+074e9c  cd397e9e             FSTSW      -98
+074ea0  cd3d                 FISTP#
+074ea2  8a669f               mov ah, byte ptr [bp - 0x61]
+074ea5  9e                   sahf 
+074ea6  7324                 jae 0x74ecc
+074ea8  cd3506f88e           FLD        [8ef8]
+074ead  cd3426128f           FSUB       [8f12]
+074eb2  cd35e1               FABS st,st(4)
+074eb5  cd34160a8f           FCOM       [8f0a]
+074eba  cd39d8               DD /3 st(0) st,st(3)
+074ebd  cd397e9e             FSTSW      -98
+074ec1  cd3d                 FISTP#
+074ec3  8a669f               mov ah, byte ptr [bp - 0x61]
+074ec6  9e                   sahf 
+074ec7  7303                 jae 0x74ecc
+074ec9  e964ff               jmp 0x74e30
+074ecc  c45e32               les bx, ptr [bp + 0x32]
+074ecf  26830701             add word ptr es:[bx], 1
+074ed3  2683570200           adc word ptr es:[bx + 2], 0
+074ed8  c45e2e               les bx, ptr [bp + 0x2e]
+074edb  268b07               mov ax, word ptr es:[bx]
+074ede  894698               mov word ptr [bp - 0x68], ax
+074ee1  c706e68e0100         mov word ptr [0x8ee6], 1
+074ee7  e9e0fe               jmp 0x74dca
+074eea  cd3506028f           FLD        [8f02]
+074eef  cd342ef88e           FSUBR      [8ef8]
+074ef4  cd351ef88e           FSTP       [8ef8]
+074ef9  cd3d                 FISTP#
+074efb  ff06e28e             inc word ptr [0x8ee2]
+074eff  7103                 jno 0x74f04
+074f01  e92802               jmp 0x7512c
+074f04  a1e28e               mov ax, word ptr [0x8ee2]
+074f07  39469c               cmp word ptr [bp - 0x64], ax
+074f0a  7d03                 jge 0x74f0f
+074f0c  e91d02               jmp 0x7512c
+074f0f  cd3506fe8e           FLD        [8efe]
+074f14  cd3436b24d           FDIV       [4db2]
+074f19  cd3406ba4d           FADD       [4dba]
+074f1e  cd351ef48e           FSTP       [8ef4]
+074f23  cd3d                 FISTP#
+074f25  a1268f               mov ax, word ptr [0x8f26]
+074f28  89469a               mov word ptr [bp - 0x66], ax
+074f2b  c706e48e0100         mov word ptr [0x8ee4], 1
+074f31  e916ff               jmp 0x74e4a
+074f34  c45e32               les bx, ptr [bp + 0x32]
+074f37  2bc0                 sub ax, ax
+074f39  26894702             mov word ptr es:[bx + 2], ax
+074f3d  268907               mov word ptr es:[bx], ax
+074f40  cd3506b64d           FLD        [4db6]
+074f45  c45e36               les bx, ptr [bp + 0x36]
+074f48  cd3c                 ESC#
+074f4a  da37                 fidiv dword ptr [bx]
+074f4c  cd3516f08e           FST        [8ef0]
+074f51  cd3436b24d           FDIV       [4db2]
+074f56  cd351e168f           FSTP       [8f16]
+074f5b  cd3d                 FISTP#
+074f5d  268b07               mov ax, word ptr es:[bx]
+074f60  894696               mov word ptr [bp - 0x6a], ax
+074f63  c706e48e0100         mov word ptr [0x8ee4], 1
+074f69  e98701               jmp 0x750f3
+074f6c  a1e68e               mov ax, word ptr [0x8ee6]
+074f6f  39867eff             cmp word ptr [bp - 0x82], ax
+074f73  7c5e                 jl 0x74fd3
+074f75  8b46f0               mov ax, word ptr [bp - 0x10]
+074f78  f726e68e             mul word ptr [0x8ee6]
+074f7c  8bd8                 mov bx, ax
+074f7e  c47632               les si, ptr [bp + 0x32]
+074f81  268b04               mov ax, word ptr es:[si]
+074f84  d1e0                 shl ax, 1
+074f86  d1e0                 shl ax, 1
+074f88  03d8                 add bx, ax
+074f8a  035e1a               add bx, word ptr [bp + 0x1a]
+074f8d  8e461c               mov es, word ptr [bp + 0x1c]
+074f90  2b5ef2               sub bx, word ptr [bp - 0xe]
+074f93  a1f88e               mov ax, word ptr [0x8ef8]
+074f96  8b16fa8e             mov dx, word ptr [0x8efa]
+074f9a  268907               mov word ptr es:[bx], ax
+074f9d  26895702             mov word ptr es:[bx + 2], dx
+074fa1  8b46f4               mov ax, word ptr [bp - 0xc]
+074fa4  f726e68e             mul word ptr [0x8ee6]
+074fa8  8bd8                 mov bx, ax
+074faa  8e4634               mov es, word ptr [bp + 0x34]
+074fad  268b04               mov ax, word ptr es:[si]
+074fb0  d1e0                 shl ax, 1
+074fb2  d1e0                 shl ax, 1
+074fb4  03d8                 add bx, ax
+074fb6  035e16               add bx, word ptr [bp + 0x16]
+074fb9  8e4618               mov es, word ptr [bp + 0x18]
+074fbc  2b5ef6               sub bx, word ptr [bp - 0xa]
+074fbf  a1f48e               mov ax, word ptr [0x8ef4]
+074fc2  8b16f68e             mov dx, word ptr [0x8ef6]
+074fc6  268907               mov word ptr es:[bx], ax
+074fc9  26895702             mov word ptr es:[bx + 2], dx
+074fcd  ff06e68e             inc word ptr [0x8ee6]
+074fd1  7199                 jno 0x74f6c
+074fd3  cd3506ec8e           FLD        [8eec]
+074fd8  cd3406e88e           FADD       [8ee8]
+074fdd  cd351ee88e           FSTP       [8ee8]
+074fe2  cd3d                 FISTP#
+074fe4  ff06e28e             inc word ptr [0x8ee2]
+074fe8  7103                 jno 0x74fed
+074fea  e9ef00               jmp 0x750dc
+074fed  a1e28e               mov ax, word ptr [0x8ee2]
+074ff0  394694               cmp word ptr [bp - 0x6c], ax
+074ff3  7d03                 jge 0x74ff8
+074ff5  e9e400               jmp 0x750dc
+074ff8  cd3506e88e           FLD        [8ee8]
+074ffd  9aa241115f           lcall 0x5f11, 0x41a2   ; -> sub_0632b2
+075002  cd340e168f           FMUL       [8f16]
+075007  cd351ef88e           FSTP       [8ef8]
+07500c  cd3506e88e           FLD        [8ee8]
+075011  9a9c41115f           lcall 0x5f11, 0x419c   ; -> sub_0632ac
+075016  cd340e168f           FMUL       [8f16]
+07501b  cd351ef48e           FSTP       [8ef4]
+075020  cd3506068f           FLD        [8f06]
+075025  cd3416ac4d           FCOM       [4dac]
+07502a  cd39d8               DD /3 st(0) st,st(3)
+07502d  cd397e9e             FSTSW      -98
+075031  cd3d                 FISTP#
+075033  8a669f               mov ah, byte ptr [bp - 0x61]
+075036  9e                   sahf 
+075037  7503                 jne 0x7503c
+075039  e98100               jmp 0x750bd
+07503c  cd35060a8f           FLD        [8f0a]
+075041  cd3416ac4d           FCOM       [4dac]
+075046  cd39d8               DD /3 st(0) st,st(3)
+075049  cd397e9e             FSTSW      -98
+07504d  cd3d                 FISTP#
+07504f  8a669f               mov ah, byte ptr [bp - 0x61]
+075052  9e                   sahf 
+075053  7468                 je 0x750bd
+075055  cd3506f88e           FLD        [8ef8]
+07505a  cd3426128f           FSUB       [8f12]
+07505f  cd35c0               F2XM1 st,st(0)
+075062  cd377e8a             DB /7      -118
+075066  cd3506f48e           FLD        [8ef4]
+07506b  cd34260e8f           FSUB       [8f0e]
+075070  cd35c0               F2XM1 st,st(0)
+075073  cd377e80             DB /7      -128
+075077  cd35c0               F2XM1 st,st(0)
+07507a  cd34c9               FMUL st,st(1) st,st(1)
+07507d  cd3506068f           FLD        [8f06]
+075082  cd340e068f           FMUL       [8f06]
+075087  cd3af9               FMULP st,st(7)
+07508a  cd35c2               FPTAN st,st(0)
+07508d  cd34cb               FMUL st,st(3) st,st(1)
+075090  cd35060a8f           FLD        [8f0a]
+075095  cd340e0a8f           FMUL       [8f0a]
+07509a  cd3af9               FMULP st,st(7)
+07509d  cd3ac1               FMULP st,st(0)
+0750a0  cd3416b64d           FCOM       [4db6]
+0750a5  cd39d8               DD /3 st(0) st,st(3)
+0750a8  cd397e9e             FSTSW      -98
+0750ac  cd3d                 FISTP#
+0750ae  8a669f               mov ah, byte ptr [bp - 0x61]
+0750b1  9e                   sahf 
+0750b2  cd39c1               DD /0 st(1) st,st(0)
+0750b5  cd39c0               DD /0 st(0) st,st(0)
+0750b8  7303                 jae 0x750bd
+0750ba  e916ff               jmp 0x74fd3
+0750bd  c45e32               les bx, ptr [bp + 0x32]
+0750c0  26830701             add word ptr es:[bx], 1
+0750c4  2683570200           adc word ptr es:[bx + 2], 0
+0750c9  c45e2e               les bx, ptr [bp + 0x2e]
+0750cc  268b07               mov ax, word ptr es:[bx]
+0750cf  89867eff             mov word ptr [bp - 0x82], ax
+0750d3  c706e68e0100         mov word ptr [0x8ee6], 1
+0750d9  e990fe               jmp 0x74f6c
+0750dc  cd3506f08e           FLD        [8ef0]
+0750e1  cd3406168f           FADD       [8f16]
+0750e6  cd351e168f           FSTP       [8f16]
+0750eb  cd3d                 FISTP#
+0750ed  ff06e48e             inc word ptr [0x8ee4]
+0750f1  7039                 jo 0x7512c
+0750f3  a1e48e               mov ax, word ptr [0x8ee4]
+0750f6  394696               cmp word ptr [bp - 0x6a], ax
+0750f9  7c31                 jl 0x7512c
+0750fb  d1e0                 shl ax, 1
+0750fd  48                   dec ax
+0750fe  d1e0                 shl ax, 1
+075100  d1e0                 shl ax, 1
+075102  a3fc8e               mov word ptr [0x8efc], ax
+075105  cd3506be4d           FLD        [4dbe]
+07510a  cd3a36fc8e           FDIVP      [8efc]
+07510f  cd3516ec8e           FST        [8eec]
+075114  cd3436b24d           FDIV       [4db2]
+075119  cd351ee88e           FSTP       [8ee8]
+07511e  cd3d                 FISTP#
+075120  894694               mov word ptr [bp - 0x6c], ax
+075123  c706e28e0100         mov word ptr [0x8ee2], 1
+075129  e9c1fe               jmp 0x74fed
+07512c  8e06c24d             mov es, word ptr [0x4dc2]
+075130  bf6e01               mov di, 0x16e
+075133  be6519               mov si, 0x1965
+075136  a5                   movsw word ptr es:[di], word ptr [si]
+075137  a5                   movsw word ptr es:[di], word ptr [si]
+075138  bf7701               mov di, 0x177
+07513b  be6419               mov si, 0x1964
+07513e  a4                   movsb byte ptr es:[di], byte ptr [si]
+07513f  2bc0                 sub ax, ax
+075141  898674ff             mov word ptr [bp - 0x8c], ax
+075145  898672ff             mov word ptr [bp - 0x8e], ax
+075149  c78676ff2200         mov word ptr [bp - 0x8a], 0x22
+07514f  898678ff             mov word ptr [bp - 0x88], ax
+075153  c7867aff0100         mov word ptr [bp - 0x86], 1
+075159  89867cff             mov word ptr [bp - 0x84], ax
+07515d  c746fa3200           mov word ptr [bp - 6], 0x32
+075162  b85f01               mov ax, 0x15f
+075165  baa880               mov dx, 0x80a8
+075168  48                   dec ax
+075169  52                   push dx
+07516a  50                   push ax
+07516b  8d867aff             lea ax, [bp - 0x86]
+07516f  16                   push ss
+075170  50                   push ax
+075171  8d8676ff             lea ax, [bp - 0x8a]
+075175  16                   push ss
+075176  50                   push ax
+075177  8d8672ff             lea ax, [bp - 0x8e]
+07517b  16                   push ss
+07517c  50                   push ax
+07517d  8d46f8               lea ax, [bp - 8]
+075180  a3e433               mov word ptr [0x33e4], ax
+075183  8c16e633             mov word ptr [0x33e6], ss
+075187  9a07007c53           lcall 0x537c, 7   ; -> sub_0537c7
+07518c  c45e2e               les bx, ptr [bp + 0x2e]
+07518f  268b07               mov ax, word ptr es:[bx]
+075192  898670ff             mov word ptr [bp - 0x90], ax
+075196  c706e68e0100         mov word ptr [0x8ee6], 1
+07519c  e9e902               jmp 0x75488
+07519f  a1e28e               mov ax, word ptr [0x8ee2]
+0751a2  99                   cdq 
+0751a3  b91400               mov cx, 0x14
+0751a6  f7f9                 idiv cx
+0751a8  8bc2                 mov ax, dx
+0751aa  99                   cdq 
+0751ab  0bd0                 or dx, ax
+0751ad  7563                 jne 0x75212
+0751af  ff36e28e             push word ptr [0x8ee2]
+0751b3  b88a19               mov ax, 0x198a
+0751b6  50                   push ax
+0751b7  9a460f115f           lcall 0x5f11, 0xf46   ; -> FUN_6000_0056
+0751bc  83c404               add sp, 4
+0751bf  c7867aff0100         mov word ptr [bp - 0x86], 1
+0751c5  c7867cff0000         mov word ptr [bp - 0x84], 0
+0751cb  c78676ff2200         mov word ptr [bp - 0x8a], 0x22
+0751d1  c78678ff0000         mov word ptr [bp - 0x88], 0
+0751d7  c78672ff0100         mov word ptr [bp - 0x8e], 1
+0751dd  c78674ff0000         mov word ptr [bp - 0x8c], 0
+0751e3  c746fa3200           mov word ptr [bp - 6], 0x32
+0751e8  b85f01               mov ax, 0x15f
+0751eb  baa880               mov dx, 0x80a8
+0751ee  48                   dec ax
+0751ef  52                   push dx
+0751f0  50                   push ax
+0751f1  8d8672ff             lea ax, [bp - 0x8e]
+0751f5  16                   push ss
+0751f6  50                   push ax
+0751f7  8d8676ff             lea ax, [bp - 0x8a]
+0751fb  16                   push ss
+0751fc  50                   push ax
+0751fd  8d867aff             lea ax, [bp - 0x86]
+075201  16                   push ss
+075202  50                   push ax
+075203  8d46f8               lea ax, [bp - 8]
+075206  a3e433               mov word ptr [0x33e4], ax
+075209  8c16e633             mov word ptr [0x33e6], ss
+07520d  9a07007c53           lcall 0x537c, 7   ; -> sub_0537c7
+075212  8b36e28e             mov si, word ptr [0x8ee2]
+075216  b102                 mov cl, 2
+075218  d3e6                 shl si, cl
+07521a  8b46f0               mov ax, word ptr [bp - 0x10]
+07521d  f726e68e             mul word ptr [0x8ee6]
+075221  8bd8                 mov bx, ax
+075223  035e1a               add bx, word ptr [bp + 0x1a]
+075226  8e461c               mov es, word ptr [bp + 0x1c]
+075229  2b5ef2               sub bx, word ptr [bp - 0xe]
+07522c  cd3c                 ESC#
+07522e  d900                 fld dword ptr [bx + si]
+075230  cd395ea0             FSTP m64   -96
+075234  cd3d                 FISTP#
+075236  8b46f4               mov ax, word ptr [bp - 0xc]
+075239  f726e68e             mul word ptr [0x8ee6]
+07523d  8bd8                 mov bx, ax
+07523f  035e16               add bx, word ptr [bp + 0x16]
+075242  8e4618               mov es, word ptr [bp + 0x18]
+075245  2b5ef6               sub bx, word ptr [bp - 0xa]
+075248  cd3c                 ESC#
+07524a  d900                 fld dword ptr [bx + si]
+07524c  cd395ec0             FSTP m64   -64
+075250  cd3d                 FISTP#
+075252  c78672ff0100         mov word ptr [bp - 0x8e], 1
+075258  c78674ff0000         mov word ptr [bp - 0x8c], 0
+07525e  b8c400               mov ax, 0xc4
+075261  f72ee68e             imul word ptr [0x8ee6]
+075265  034622               add ax, word ptr [bp + 0x22]
+075268  8b5624               mov dx, word ptr [bp + 0x24]
+07526b  894680               mov word ptr [bp - 0x80], ax
+07526e  895682               mov word ptr [bp - 0x7e], dx
+075271  b86805               mov ax, 0x568
+075274  babd8e               mov dx, 0x8ebd
+075277  52                   push dx
+075278  50                   push ax
+075279  b8f006               mov ax, 0x6f0
+07527c  52                   push dx
+07527d  50                   push ax
+07527e  b87808               mov ax, 0x878
+075281  52                   push dx
+075282  50                   push ax
+075283  b86a19               mov ax, 0x196a
+075286  1e                   push ds
+075287  50                   push ax
+075288  b86c19               mov ax, 0x196c
+07528b  1e                   push ds
+07528c  50                   push ax
+07528d  b86405               mov ax, 0x564
+075290  52                   push dx
+075291  50                   push ax
+075292  b86605               mov ax, 0x566
+075295  52                   push dx
+075296  50                   push ax
+075297  8d46c0               lea ax, [bp - 0x40]
+07529a  16                   push ss
+07529b  50                   push ax
+07529c  8d46a0               lea ax, [bp - 0x60]
+07529f  16                   push ss
+0752a0  50                   push ax
+0752a1  8b4680               mov ax, word ptr [bp - 0x80]
+0752a4  8b5682               mov dx, word ptr [bp - 0x7e]
+0752a7  2dc400               sub ax, 0xc4
+0752aa  52                   push dx
+0752ab  50                   push ax
+0752ac  8b4680               mov ax, word ptr [bp - 0x80]
+0752af  2d5400               sub ax, 0x54
+0752b2  52                   push dx
+0752b3  50                   push ax
+0752b4  8d46c8               lea ax, [bp - 0x38]
+0752b7  16                   push ss
+0752b8  50                   push ax
+0752b9  8d46d0               lea ax, [bp - 0x30]
+0752bc  16                   push ss
+0752bd  50                   push ax
+0752be  8d46a8               lea ax, [bp - 0x58]
+0752c1  16                   push ss
+0752c2  50                   push ax
+0752c3  8d8672ff             lea ax, [bp - 0x8e]
+0752c7  16                   push ss
+0752c8  50                   push ax
+0752c9  9a0d00f65d           lcall 0x5df6, 0xd   ; -> sub_05df6d
+0752ce  ff06e48e             inc word ptr [0x8ee4]
+0752d2  8b36e48e             mov si, word ptr [0x8ee4]
+0752d6  b102                 mov cl, 2
+0752d8  d3e6                 shl si, cl
+0752da  8b46f4               mov ax, word ptr [bp - 0xc]
+0752dd  f726e68e             mul word ptr [0x8ee6]
+0752e1  8bd8                 mov bx, ax
+0752e3  035e16               add bx, word ptr [bp + 0x16]
+0752e6  8e4618               mov es, word ptr [bp + 0x18]
+0752e9  2b5ef6               sub bx, word ptr [bp - 0xa]
+0752ec  cd3546e0             FLD        -32
+0752f0  cd384ed0             FMUL m64   -48
+0752f4  cd3546e8             FLD        -24
+0752f8  cd384ed8             FMUL m64   -40
+0752fc  cd3ac1               FMULP st,st(0)
+0752ff  cd3c                 ESC#
+075301  d918                 fstp dword ptr [bx + si]
+075303  cd3d                 FISTP#
+075305  8b46f0               mov ax, word ptr [bp - 0x10]
+075308  f726e68e             mul word ptr [0x8ee6]
+07530c  8bd8                 mov bx, ax
+07530e  035e1a               add bx, word ptr [bp + 0x1a]
+075311  8e461c               mov es, word ptr [bp + 0x1c]
+075314  2b5ef2               sub bx, word ptr [bp - 0xe]
+075317  cd3546e4             FLD        -28
+07531b  cd384ed0             FMUL m64   -48
+07531f  cd3546ec             FLD        -20
+075323  cd384ed8             FMUL m64   -40
+075327  cd3ac1               FMULP st,st(0)
+07532a  cd3c                 ESC#
+07532c  d918                 fstp dword ptr [bx + si]
+07532e  cd3d                 FISTP#
+075330  8b36e48e             mov si, word ptr [0x8ee4]
+075334  d3e6                 shl si, cl
+075336  8b3ee68e             mov di, word ptr [0x8ee6]
+07533a  d3e7                 shl di, cl
+07533c  8b46f4               mov ax, word ptr [bp - 0xc]
+07533f  f726e68e             mul word ptr [0x8ee6]
+075343  8bd8                 mov bx, ax
+075345  035e16               add bx, word ptr [bp + 0x16]
+075348  8e4618               mov es, word ptr [bp + 0x18]
+07534b  2b5ef6               sub bx, word ptr [bp - 0xa]
+07534e  cd3c                 ESC#
+075350  d900                 fld dword ptr [bx + si]
+075352  c45e0a               les bx, ptr [bp + 0xa]
+075355  cd3c                 ESC#
+075357  d841fc               fadd dword ptr [bx + di - 4]
+07535a  cd3c                 ESC#
+07535c  d959fc               fstp dword ptr [bx + di - 4]
+07535f  cd3d                 FISTP#
+075361  8b46f0               mov ax, word ptr [bp - 0x10]
+075364  f726e68e             mul word ptr [0x8ee6]
+075368  8bd8                 mov bx, ax
+07536a  035e1a               add bx, word ptr [bp + 0x1a]
+07536d  8e461c               mov es, word ptr [bp + 0x1c]
+075370  2b5ef2               sub bx, word ptr [bp - 0xe]
+075373  cd3c                 ESC#
+075375  d900                 fld dword ptr [bx + si]
+075377  c45e06               les bx, ptr [bp + 6]
+07537a  cd3c                 ESC#
+07537c  d841fc               fadd dword ptr [bx + di - 4]
+07537f  cd3c                 ESC#
+075381  d959fc               fstp dword ptr [bx + di - 4]
+075384  cd3d                 FISTP#
+075386  8b36e48e             mov si, word ptr [0x8ee4]
+07538a  d3e6                 shl si, cl
+07538c  8b46f4               mov ax, word ptr [bp - 0xc]
+07538f  f726e68e             mul word ptr [0x8ee6]
+075393  8bd8                 mov bx, ax
+075395  035e16               add bx, word ptr [bp + 0x16]
+075398  8e4618               mov es, word ptr [bp + 0x18]
+07539b  2b5ef6               sub bx, word ptr [bp - 0xa]
+07539e  cd3c                 ESC#
+0753a0  d900                 fld dword ptr [bx + si]
+0753a2  cd3d                 FISTP#
+0753a4  8b46f0               mov ax, word ptr [bp - 0x10]
+0753a7  f726e68e             mul word ptr [0x8ee6]
+0753ab  8bd8                 mov bx, ax
+0753ad  035e1a               add bx, word ptr [bp + 0x1a]
+0753b0  8e461c               mov es, word ptr [bp + 0x1c]
+0753b3  2b5ef2               sub bx, word ptr [bp - 0xe]
+0753b6  cd3c                 ESC#
+0753b8  d900                 fld dword ptr [bx + si]
+0753ba  cd35c0               F2XM1 st,st(0)
+0753bd  cd34c9               FMUL st,st(1) st,st(1)
+0753c0  cd35c2               FPTAN st,st(0)
+0753c3  cd34cb               FMUL st,st(3) st,st(1)
+0753c6  cd3ac1               FMULP st,st(0)
+0753c9  cd351ede8e           FSTP       [8ede]
+0753ce  cd39c1               DD /0 st(1) st,st(0)
+0753d1  cd39c0               DD /0 st(0) st,st(0)
+0753d4  c45e0e               les bx, ptr [bp + 0xe]
+0753d7  cd3c                 ESC#
+0753d9  d907                 fld dword ptr [bx]
+0753db  cd3416de8e           FCOM       [8ede]
+0753e0  cd39d8               DD /3 st(0) st,st(3)
+0753e3  cd397e9e             FSTSW      -98
+0753e7  cd3d                 FISTP#
+0753e9  8a669f               mov ah, byte ptr [bp - 0x61]
+0753ec  9e                   sahf 
+0753ed  730e                 jae 0x753fd
+0753ef  a1de8e               mov ax, word ptr [0x8ede]
+0753f2  8b16e08e             mov dx, word ptr [0x8ee0]
+0753f6  268907               mov word ptr es:[bx], ax
+0753f9  26895702             mov word ptr es:[bx + 2], dx
+0753fd  833ee68e01           cmp word ptr [0x8ee6], 1
+075402  7517                 jne 0x7541b
+075404  8b1ee48e             mov bx, word ptr [0x8ee4]
+075408  d1e3                 shl bx, 1
+07540a  d1e3                 shl bx, 1
+07540c  c47612               les si, ptr [bp + 0x12]
+07540f  cd3506b64d           FLD        [4db6]
+075414  cd3c                 ESC#
+075416  d958fc               fstp dword ptr [bx + si - 4]
+075419  cd3d                 FISTP#
+07541b  ff06e28e             inc word ptr [0x8ee2]
+07541f  704e                 jo 0x7546f
+075421  a1e28e               mov ax, word ptr [0x8ee2]
+075424  39866eff             cmp word ptr [bp - 0x92], ax
+075428  7c45                 jl 0x7546f
+07542a  c746fe0300           mov word ptr [bp - 2], 3
+07542f  c746fc0300           mov word ptr [bp - 4], 3
+075434  c746fa1c00           mov word ptr [bp - 6], 0x1c
+075439  b80700               mov ax, 7
+07543c  ba4a8d               mov dx, 0x8d4a
+07543f  48                   dec ax
+075440  52                   push dx
+075441  50                   push ax
+075442  b80400               mov ax, 4
+075445  48                   dec ax
+075446  52                   push dx
+075447  50                   push ax
+075448  b80100               mov ax, 1
+07544b  48                   dec ax
+07544c  52                   push dx
+07544d  50                   push ax
+07544e  8d46f8               lea ax, [bp - 8]
+075451  a3e433               mov word ptr [0x33e4], ax
+075454  8c16e633             mov word ptr [0x33e6], ss
+075458  9a0b009e53           lcall 0x539e, 0xb   ; -> sub_0539eb
+07545d  0bd0                 or dx, ax
+07545f  7503                 jne 0x75464
+075461  e93bfd               jmp 0x7519f
+075464  c45e26               les bx, ptr [bp + 0x26]
+075467  26c707ffff           mov word ptr es:[bx], 0xffff
+07546c  e95201               jmp 0x755c1
+07546f  8b1ee68e             mov bx, word ptr [0x8ee6]
+075473  d1e3                 shl bx, 1
+075475  c47626               les si, ptr [bp + 0x26]
+075478  a1e48e               mov ax, word ptr [0x8ee4]
+07547b  268940fe             mov word ptr es:[bx + si - 2], ax
+07547f  ff06e68e             inc word ptr [0x8ee6]
+075483  7103                 jno 0x75488
+075485  e9c000               jmp 0x75548
+075488  a1e68e               mov ax, word ptr [0x8ee6]
+07548b  398670ff             cmp word ptr [bp - 0x90], ax
+07548f  7d03                 jge 0x75494
+075491  e9b400               jmp 0x75548
+075494  3d0100               cmp ax, 1
+075497  7474                 je 0x7550d
+075499  99                   cdq 
+07549a  2d0100               sub ax, 1
+07549d  83da00               sbb dx, 0
+0754a0  52                   push dx
+0754a1  50                   push ax
+0754a2  b87a19               mov ax, 0x197a
+0754a5  50                   push ax
+0754a6  9a460f115f           lcall 0x5f11, 0xf46   ; -> FUN_6000_0056
+0754ab  83c406               add sp, 6
+0754ae  8e06c24d             mov es, word ptr [0x4dc2]
+0754b2  bf6e01               mov di, 0x16e
+0754b5  be6019               mov si, 0x1960
+0754b8  a5                   movsw word ptr es:[di], word ptr [si]
+0754b9  a5                   movsw word ptr es:[di], word ptr [si]
+0754ba  c7867aff0100         mov word ptr [bp - 0x86], 1
+0754c0  c7867cff0000         mov word ptr [bp - 0x84], 0
+0754c6  c78676ff2200         mov word ptr [bp - 0x8a], 0x22
+0754cc  c78678ff0000         mov word ptr [bp - 0x88], 0
+0754d2  c78672ff0100         mov word ptr [bp - 0x8e], 1
+0754d8  c78674ff0000         mov word ptr [bp - 0x8c], 0
+0754de  c746fa3200           mov word ptr [bp - 6], 0x32
+0754e3  b85f01               mov ax, 0x15f
+0754e6  baa880               mov dx, 0x80a8
+0754e9  48                   dec ax
+0754ea  52                   push dx
+0754eb  50                   push ax
+0754ec  8d8672ff             lea ax, [bp - 0x8e]
+0754f0  16                   push ss
+0754f1  50                   push ax
+0754f2  8d8676ff             lea ax, [bp - 0x8a]
+0754f6  16                   push ss
+0754f7  50                   push ax
+0754f8  8d867aff             lea ax, [bp - 0x86]
+0754fc  16                   push ss
+0754fd  50                   push ax
+0754fe  8d46f8               lea ax, [bp - 8]
+075501  a3e433               mov word ptr [0x33e4], ax
+075504  8c16e633             mov word ptr [0x33e6], ss
+075508  9a07007c53           lcall 0x537c, 7   ; -> sub_0537c7
+07550d  8b36e68e             mov si, word ptr [0x8ee6]
+075511  b102                 mov cl, 2
+075513  d3e6                 shl si, cl
+075515  c45e0a               les bx, ptr [bp + 0xa]
+075518  cd35ee               FLDLN2 st,st(5)
+07551b  cd3c                 ESC#
+07551d  d958fc               fstp dword ptr [bx + si - 4]
+075520  cd3d                 FISTP#
+075522  c45e06               les bx, ptr [bp + 6]
+075525  cd35ee               FLDLN2 st,st(5)
+075528  cd3c                 ESC#
+07552a  d958fc               fstp dword ptr [bx + si - 4]
+07552d  cd3d                 FISTP#
+07552f  c706e48e0000         mov word ptr [0x8ee4], 0
+075535  c45e32               les bx, ptr [bp + 0x32]
+075538  268b07               mov ax, word ptr es:[bx]
+07553b  89866eff             mov word ptr [bp - 0x92], ax
+07553f  c706e28e0100         mov word ptr [0x8ee2], 1
+075545  e9d9fe               jmp 0x75421
+075548  c45e2e               les bx, ptr [bp + 0x2e]
+07554b  268b07               mov ax, word ptr es:[bx]
+07554e  89866cff             mov word ptr [bp - 0x94], ax
+075552  c706e68e0100         mov word ptr [0x8ee6], 1
+075558  a1e68e               mov ax, word ptr [0x8ee6]
+07555b  39866cff             cmp word ptr [bp - 0x94], ax
+07555f  7c4b                 jl 0x755ac
+075561  d1e0                 shl ax, 1
+075563  c45e26               les bx, ptr [bp + 0x26]
+075566  03d8                 add bx, ax
+075568  268b77fe             mov si, word ptr es:[bx - 2]
+07556c  0bf6                 or si, si
+07556e  743c                 je 0x755ac
+075570  89769e               mov word ptr [bp - 0x62], si
+075573  cd3b469e             FILD m16   -98
+075577  cd3d                 FISTP#
+075579  8b3ee68e             mov di, word ptr [0x8ee6]
+07557d  b102                 mov cl, 2
+07557f  d3e7                 shl di, cl
+075581  c45e0a               les bx, ptr [bp + 0xa]
+075584  cd35c0               F2XM1 st,st(0)
+075587  cd3c                 ESC#
+075589  d879fc               fdivr dword ptr [bx + di - 4]
+07558c  cd3c                 ESC#
+07558e  d959fc               fstp dword ptr [bx + di - 4]
+075591  cd3d                 FISTP#
+075593  c45e06               les bx, ptr [bp + 6]
+075596  cd35c0               F2XM1 st,st(0)
+075599  cd3c                 ESC#
+07559b  d879fc               fdivr dword ptr [bx + di - 4]
+07559e  cd3c                 ESC#
+0755a0  d959fc               fstp dword ptr [bx + di - 4]
+0755a3  cd39c0               DD /0 st(0) st,st(0)
+0755a6  ff06e68e             inc word ptr [0x8ee6]
+0755aa  71ac                 jno 0x75558
+0755ac  c45e0e               les bx, ptr [bp + 0xe]
+0755af  cd3c                 ESC#
+0755b1  d907                 fld dword ptr [bx]
+0755b3  9acc41115f           lcall 0x5f11, 0x41cc   ; -> FUN_6000_32dc
+0755b8  c45e0e               les bx, ptr [bp + 0xe]
+0755bb  cd3c                 ESC#
+0755bd  d91f                 fstp dword ptr [bx]
+0755bf  cd3d                 FISTP#
+0755c1  c7867aff6400         mov word ptr [bp - 0x86], 0x64
+0755c7  c7867cff0000         mov word ptr [bp - 0x84], 0
+0755cd  c78676ff1800         mov word ptr [bp - 0x8a], 0x18
+0755d3  c78678ff0000         mov word ptr [bp - 0x88], 0
+0755d9  c78672ff0100         mov word ptr [bp - 0x8e], 1
+0755df  c78674ff0000         mov word ptr [bp - 0x8c], 0
+0755e5  c746fa3200           mov word ptr [bp - 6], 0x32
+0755ea  b85f01               mov ax, 0x15f
+0755ed  baa880               mov dx, 0x80a8
+0755f0  48                   dec ax
+0755f1  52                   push dx
+0755f2  50                   push ax
+0755f3  8d8672ff             lea ax, [bp - 0x8e]
+0755f7  16                   push ss
+0755f8  50                   push ax
+0755f9  8d8676ff             lea ax, [bp - 0x8a]
+0755fd  16                   push ss
+0755fe  50                   push ax
+0755ff  8d867aff             lea ax, [bp - 0x86]
+075603  16                   push ss
+075604  50                   push ax
+075605  8d46f8               lea ax, [bp - 8]
+075608  a3e433               mov word ptr [0x33e4], ax
+07560b  8c16e633             mov word ptr [0x33e6], ss
+07560f  9a07007c53           lcall 0x537c, 7   ; -> sub_0537c7
+075614  5e                   pop si
+075615  5f                   pop di
+075616  8be5                 mov sp, bp
+075618  5d                   pop bp
+075619  ca3400               retf 0x34
+07561c  55                   push bp
+07561d  8bec                 mov bp, sp
+07561f  83ec58               sub sp, 0x58
+075622  57                   push di
+075623  56                   push si
+075624  c45e0a               les bx, ptr [bp + 0xa]
+075627  268b07               mov ax, word ptr es:[bx]
+07562a  268b5702             mov dx, word ptr es:[bx + 2]
+07562e  0bd2                 or dx, dx
+075630  7d07                 jge 0x75639
+075632  f7d8                 neg ax
+075634  83d200               adc dx, 0
+075637  f7da                 neg dx
+075639  0bd2                 or dx, dx
+07563b  7d03                 jge 0x75640
+07563d  e9c417               jmp 0x76e04
+075640  7f08                 jg 0x7564a
+075642  3d0100               cmp ax, 1
+075645  7703                 ja 0x7564a
+075647  e9ba17               jmp 0x76e04
+07564a  c45e16               les bx, ptr [bp + 0x16]
+07564d  268b07               mov ax, word ptr es:[bx]
+075650  268b5702             mov dx, word ptr es:[bx + 2]
+075654  263b5706             cmp dx, word ptr es:[bx + 6]
+075658  7f10                 jg 0x7566a
+07565a  7c06                 jl 0x75662
+07565c  263b4704             cmp ax, word ptr es:[bx + 4]
+075660  7308                 jae 0x7566a
+075662  268b5706             mov dx, word ptr es:[bx + 6]
+075666  268b4704             mov ax, word ptr es:[bx + 4]
+07566a  c45e16               les bx, ptr [bp + 0x16]
+07566d  263b570a             cmp dx, word ptr es:[bx + 0xa]
+075671  7f10                 jg 0x75683
+075673  7c06                 jl 0x7567b
+075675  263b4708             cmp ax, word ptr es:[bx + 8]
+075679  7308                 jae 0x75683
+07567b  268b570a             mov dx, word ptr es:[bx + 0xa]
+07567f  268b4708             mov ax, word ptr es:[bx + 8]
+075683  2d0200               sub ax, 2
+075686  a3d68f               mov word ptr [0x8fd6], ax
+075689  8d1ec44d             lea bx, [0x4dc4]
+07568d  9a023e115f           lcall 0x5f11, 0x3e02   ; -> FUN_6000_2f12
+075692  9acc41115f           lcall 0x5f11, 0x41cc   ; -> FUN_6000_32dc
+075697  8d1edc8f             lea bx, [0x8fdc]
+07569b  9a0e3e115f           lcall 0x5f11, 0x3e0e   ; -> sub_062f1e
+0756a0  a1be8f               mov ax, word ptr [0x8fbe]
+0756a3  99                   cdq 
+0756a4  8bc8                 mov cx, ax
+0756a6  a1d68f               mov ax, word ptr [0x8fd6]
+0756a9  8bda                 mov bx, dx
+0756ab  99                   cdq 
+0756ac  2bc1                 sub ax, cx
+0756ae  1bd3                 sbb dx, bx
+0756b0  0bd2                 or dx, dx
+0756b2  7c17                 jl 0x756cb
+0756b4  7f04                 jg 0x756ba
+0756b6  0bc0                 or ax, ax
+0756b8  7411                 je 0x756cb
+0756ba  c45e06               les bx, ptr [bp + 6]
+0756bd  26c7070100           mov word ptr es:[bx], 1
+0756c2  26c747020000         mov word ptr es:[bx + 2], 0
+0756c8  e9361a               jmp 0x77101
+0756cb  c45e06               les bx, ptr [bp + 6]
+0756ce  2bc0                 sub ax, ax
+0756d0  26894702             mov word ptr es:[bx + 2], ax
+0756d4  268907               mov word ptr es:[bx], ax
+0756d7  c45e16               les bx, ptr [bp + 0x16]
+0756da  268b07               mov ax, word ptr es:[bx]
+0756dd  a30290               mov word ptr [0x9002], ax
+0756e0  268b4704             mov ax, word ptr es:[bx + 4]
+0756e4  a30890               mov word ptr [0x9008], ax
+0756e7  268b4708             mov ax, word ptr es:[bx + 8]
+0756eb  a3308f               mov word ptr [0x8f30], ax
+0756ee  b80200               mov ax, 2
+0756f1  50                   push ax
+0756f2  ff360290             push word ptr [0x9002]
+0756f6  9aa542115f           lcall 0x5f11, 0x42a5   ; -> sub_0633b5
+0756fb  a32a8f               mov word ptr [0x8f2a], ax
+0756fe  b80200               mov ax, 2
+075701  50                   push ax
+075702  ff360890             push word ptr [0x9008]
+075706  9aa542115f           lcall 0x5f11, 0x42a5   ; -> sub_0633b5
+07570b  a32c8f               mov word ptr [0x8f2c], ax
+07570e  b80200               mov ax, 2
+075711  50                   push ax
+075712  ff36308f             push word ptr [0x8f30]
+075716  9aa542115f           lcall 0x5f11, 0x42a5   ; -> sub_0633b5
+07571b  a32e8f               mov word ptr [0x8f2e], ax
+07571e  c45e0a               les bx, ptr [bp + 0xa]
+075721  26837f0200           cmp word ptr es:[bx + 2], 0
+075726  7c0e                 jl 0x75736
+075728  7e03                 jle 0x7572d
+07572a  e99800               jmp 0x757c5
+07572d  26833f00             cmp word ptr es:[bx], 0
+075731  7403                 je 0x75736
+075733  e98f00               jmp 0x757c5
+075736  a12a8f               mov ax, word ptr [0x8f2a]
+075739  f72e2c8f             imul word ptr [0x8f2c]
+07573d  f72e2e8f             imul word ptr [0x8f2e]
+075741  a3c88f               mov word ptr [0x8fc8], ax
+075744  8d1ec88f             lea bx, [0x8fc8]
+075748  9ade3d115f           lcall 0x5f11, 0x3dde   ; -> sub_062eee
+07574d  8d1e8a8f             lea bx, [0x8f8a]
+075751  9a0e3e115f           lcall 0x5f11, 0x3e0e   ; -> sub_062f1e
+075756  c706468f0100         mov word ptr [0x8f46], 1
+07575c  833ec88f01           cmp word ptr [0x8fc8], 1
+075761  7c62                 jl 0x757c5
+075763  8b461a               mov ax, word ptr [bp + 0x1a]
+075766  8b561c               mov dx, word ptr [bp + 0x1c]
+075769  8946fa               mov word ptr [bp - 6], ax
+07576c  8956fc               mov word ptr [bp - 4], dx
+07576f  050400               add ax, 4
+075772  8946f6               mov word ptr [bp - 0xa], ax
+075775  8956f8               mov word ptr [bp - 8], dx
+075778  8b36c88f             mov si, word ptr [0x8fc8]
+07577c  8bc6                 mov ax, si
+07577e  0106468f             add word ptr [0x8f46], ax
+075782  8d1e8a8f             lea bx, [0x8f8a]
+075786  9a023e115f           lcall 0x5f11, 0x3e02   ; -> FUN_6000_2f12
+07578b  c45efa               les bx, ptr [bp - 6]
+07578e  53                   push bx
+07578f  06                   push es
+075790  9aea3e115f           lcall 0x5f11, 0x3eea   ; -> sub_062ffa
+075795  07                   pop es
+075796  5b                   pop bx
+075797  9a813e115f           lcall 0x5f11, 0x3e81   ; -> FUN_6000_2f91
+07579c  c45ef6               les bx, ptr [bp - 0xa]
+07579f  9a723e115f           lcall 0x5f11, 0x3e72   ; -> sub_062f82
+0757a4  8d1e8a8f             lea bx, [0x8f8a]
+0757a8  9a563e115f           lcall 0x5f11, 0x3e56   ; -> sub_062f66
+0757ad  9a663d115f           lcall 0x5f11, 0x3d66   ; -> sub_062e76
+0757b2  c45ef6               les bx, ptr [bp - 0xa]
+0757b5  9a813e115f           lcall 0x5f11, 0x3e81   ; -> FUN_6000_2f91
+0757ba  8346fa08             add word ptr [bp - 6], 8
+0757be  8346f608             add word ptr [bp - 0xa], 8
+0757c2  4e                   dec si
+0757c3  75bd                 jne 0x75782
+0757c5  a12a8f               mov ax, word ptr [0x8f2a]
+0757c8  d1e0                 shl ax, 1
+0757ca  a3ae8f               mov word ptr [0x8fae], ax
+0757cd  f72e2c8f             imul word ptr [0x8f2c]
+0757d1  a3b08f               mov word ptr [0x8fb0], ax
+0757d4  f72e2e8f             imul word ptr [0x8f2e]
+0757d8  a3b28f               mov word ptr [0x8fb2], ax
+0757db  c706728f0100         mov word ptr [0x8f72], 1
+0757e1  e92211               jmp 0x76906
+0757e4  8306648f02           add word ptr [0x8f64], 2
+0757e9  7103                 jno 0x757ee
+0757eb  e9dd00               jmp 0x758cb
+0757ee  a1648f               mov ax, word ptr [0x8f64]
+0757f1  3946f2               cmp word ptr [bp - 0xe], ax
+0757f4  7d03                 jge 0x757f9
+0757f6  e9d200               jmp 0x758cb
+0757f9  0306d48f             add ax, word ptr [0x8fd4]
+0757fd  a3768f               mov word ptr [0x8f76], ax

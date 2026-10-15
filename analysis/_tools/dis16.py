@@ -1,36 +1,52 @@
 # -*- coding: utf-8 -*-
-"""16-битный дизассемблер (capstone) для COM/EXE-образов реверса TSR."""
-import sys
-import capstone
+"""TASK_LAP: 16-бит дизассемблер (capstone) для merged-образа OPALLAP_full.bin.
+Аннотирует far-call цели именами функций из _lap_funcs.txt и RTL 1ECB/2AA3.
+Использование: py dis16.py <lin_start> <lin_end> [> out.txt]
+"""
+import sys, bisect
+from capstone import *
+
+RD = r"C:\Users\mikhail\.openclaw\workspace\opal_okb\analysis\reverse_data"
+BUF = open(RD + r"\OPALLAP_full.bin", "rb").read()
+
+# карта функций: линейный адрес -> имя
+FUNCS = {}
+for ln in open(r"C:\tools\rea-out\_lap_funcs.txt"):
+    p = ln.split("|")
+    if len(p) < 4:
+        continue
+    so = p[0].split(":")
+    funcls = (int(so[0], 16) << 4) | int(so[1], 16)
+    FUNCS.setdefault(funcls, p[1])
+STARTS = sorted(FUNCS)
 
 
-def disasm(data, org, start, length, stop_ret=False, raw=False):
-    """org — линейный адрес байта data[0]. Возвращает список строк."""
-    md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_16)
+def name_of(lin):
+    if lin in FUNCS:
+        return FUNCS[lin]
+    return "sub_%06x" % lin
+
+
+def disasm(lo, hi):
+    md = Cs(CS_ARCH_X86, CS_MODE_16)
     md.detail = False
-    code = data[start:start + length]
+    code = BUF[lo:hi]
     out = []
-    count = 0
-    for i in md.disasm(code, org + start):
-        out.append("%06x  %-23s %s %s" % (i.address, i.bytes.hex(), i.mnemonic, i.op_str))
-        count += 1
-        if stop_ret and i.mnemonic in ("ret", "retf", "iret"):
-            break
-        if count > 4000:
-            out.append("... STOP 4000 insns")
-            break
-    return out
+    for ins in md.disasm(code, lo):
+        txt = "%06x  %-22s %s %s" % (ins.address, ins.bytes.hex(), ins.mnemonic, ins.op_str)
+        # far call / far jmp: 9a/ea off seg
+        if ins.mnemonic in ("callf", "lcall", "call") and ins.bytes[:1] == b"\x9a":
+            off = int.from_bytes(ins.bytes[1:3], "little")
+            seg = int.from_bytes(ins.bytes[3:5], "little")
+            txt += "   ; -> %s" % name_of((seg << 4) + off)
+        # int 3Fh остатки
+        if ins.bytes[:2] == b"\xcd\x3f":
+            txt += "   ; INT 3Fh sel=%02x off=%04x" % (BUF[ins.address + 2],
+                                                       int.from_bytes(BUF[ins.address + 3:ins.address + 5], "little"))
+        out.append(txt)
+    return "\n".join(out)
 
 
 if __name__ == "__main__":
-    import tsr_lib as T
-    name = sys.argv[1]
-    start = int(sys.argv[2], 0)
-    length = int(sys.argv[3], 0) if len(sys.argv) > 3 else 128
-    org = int(sys.argv[4], 0) if len(sys.argv) > 4 else 0
-    d = T.load(name)
-    if d[:2] == b"MZ":
-        inf = T.mz_info(d)
-        org = 0x10000  # образ Ghidra-подобно: file 0x200 -> linear 0x10000
-        start = start + 0x200 - 0x10000  # если дали linear
-    print("\n".join(disasm(d, org, start, length)))
+    lo, hi = int(sys.argv[1], 16), int(sys.argv[2], 16)
+    print(disasm(lo, hi))

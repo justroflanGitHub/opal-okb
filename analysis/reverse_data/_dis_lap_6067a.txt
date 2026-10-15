@@ -1,0 +1,630 @@
+006067  55                   push bp
+006068  8bec                 mov bp, sp
+00606a  83ec60               sub sp, 0x60
+00606d  57                   push di
+00606e  56                   push si
+00606f  a1e433               mov ax, word ptr [0x33e4]
+006072  8b16e633             mov dx, word ptr [0x33e6]
+006076  8946f2               mov word ptr [bp - 0xe], ax
+006079  8956f4               mov word ptr [bp - 0xc], dx
+00607c  c45ef2               les bx, ptr [bp - 0xe]
+00607f  268b4702             mov ax, word ptr es:[bx + 2]
+006083  c45e1e               les bx, ptr [bp + 0x1e]
+006086  26f72f               imul word ptr es:[bx]
+006089  8946f6               mov word ptr [bp - 0xa], ax
+00608c  c45ef2               les bx, ptr [bp - 0xe]
+00608f  268b4702             mov ax, word ptr es:[bx + 2]
+006093  8946f8               mov word ptr [bp - 8], ax
+006096  833e0e0a00           cmp word ptr [0xa0e], 0
+00609b  7403                 je 0x60a0
+00609d  e99402               jmp 0x6334
+0060a0  2bc0                 sub ax, ax
+0060a2  8946e8               mov word ptr [bp - 0x18], ax
+0060a5  8946e6               mov word ptr [bp - 0x1a], ax
+0060a8  c746eae803           mov word ptr [bp - 0x16], 0x3e8
+0060ad  8946ec               mov word ptr [bp - 0x14], ax
+0060b0  b83453               mov ax, 0x5334
+0060b3  1e                   push ds
+0060b4  50                   push ax
+0060b5  8d46ea               lea ax, [bp - 0x16]
+0060b8  16                   push ss
+0060b9  50                   push ax
+0060ba  8d46e6               lea ax, [bp - 0x1a]
+0060bd  16                   push ss
+0060be  50                   push ax
+0060bf  b8627a               mov ax, 0x7a62
+0060c2  1e                   push ds
+0060c3  50                   push ax
+0060c4  9a0700db1c           lcall 0x1cdb, 7   ; -> FUN_1000_cdb7
+0060c9  c706dc790100         mov word ptr [0x79dc], 1
+0060cf  c706de790000         mov word ptr [0x79de], 0
+0060d5  c706d8794006         mov word ptr [0x79d8], 0x640
+0060db  c706da790000         mov word ptr [0x79da], 0
+0060e1  a1d879               mov ax, word ptr [0x79d8]
+0060e4  8b16da79             mov dx, word ptr [0x79da]
+0060e8  2b06dc79             sub ax, word ptr [0x79dc]
+0060ec  1b16de79             sbb dx, word ptr [0x79de]
+0060f0  b102                 mov cl, 2
+0060f2  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+0060f7  050400               add ax, 4
+0060fa  83d200               adc dx, 0
+0060fd  a3d479               mov word ptr [0x79d4], ax
+006100  8916d679             mov word ptr [0x79d6], dx
+006104  c706d0790100         mov word ptr [0x79d0], 1
+00610a  c706d2790000         mov word ptr [0x79d2], 0
+006110  a13453               mov ax, word ptr [0x5334]
+006113  8b163653             mov dx, word ptr [0x5336]
+006117  a3cc79               mov word ptr [0x79cc], ax
+00611a  8916ce79             mov word ptr [0x79ce], dx
+00611e  ff36d679             push word ptr [0x79d6]
+006122  ff36d479             push word ptr [0x79d4]
+006126  2b06d079             sub ax, word ptr [0x79d0]
+00612a  1b16d279             sbb dx, word ptr [0x79d2]
+00612e  050100               add ax, 1
+006131  83d200               adc dx, 0
+006134  52                   push dx
+006135  50                   push ax
+006136  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+00613b  a3c879               mov word ptr [0x79c8], ax
+00613e  8916ca79             mov word ptr [0x79ca], dx
+006142  a1dc79               mov ax, word ptr [0x79dc]
+006145  8b16de79             mov dx, word ptr [0x79de]
+006149  b102                 mov cl, 2
+00614b  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+006150  ff36d279             push word ptr [0x79d2]
+006154  ff36d079             push word ptr [0x79d0]
+006158  ff36d679             push word ptr [0x79d6]
+00615c  ff36d479             push word ptr [0x79d4]
+006160  8bf0                 mov si, ax
+006162  8bfa                 mov di, dx
+006164  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006169  03c6                 add ax, si
+00616b  13d7                 adc dx, di
+00616d  a3e079               mov word ptr [0x79e0], ax
+006170  8916e279             mov word ptr [0x79e2], dx
+006174  b010                 mov al, 0x10
+006176  50                   push ax
+006177  b80400               mov ax, 4
+00617a  50                   push ax
+00617b  ff36ca79             push word ptr [0x79ca]
+00617f  ff36c879             push word ptr [0x79c8]
+006183  b80800               mov ax, 8
+006186  baa63c               mov dx, 0x3ca6
+006189  52                   push dx
+00618a  50                   push ax
+00618b  b8c000               mov ax, 0xc0
+00618e  50                   push ax
+00618f  9ad259cb1e           lcall 0x1ecb, 0x59d2   ; -> FUN_2000_4682
+006194  83c40e               add sp, 0xe
+006197  99                   cdq 
+006198  a32e7b               mov word ptr [0x7b2e], ax
+00619b  8916307b             mov word ptr [0x7b30], dx
+00619f  0bc2                 or ax, dx
+0061a1  744d                 je 0x61f0
+0061a3  a12a67               mov ax, word ptr [0x672a]
+0061a6  99                   cdq 
+0061a7  8946ea               mov word ptr [bp - 0x16], ax
+0061aa  8956ec               mov word ptr [bp - 0x14], dx
+0061ad  c746e63c00           mov word ptr [bp - 0x1a], 0x3c
+0061b2  c746e80000           mov word ptr [bp - 0x18], 0
+0061b7  c746fc1e00           mov word ptr [bp - 4], 0x1e
+0061bc  b81f00               mov ax, 0x1f
+0061bf  babe4c               mov dx, 0x4cbe
+0061c2  48                   dec ax
+0061c3  52                   push dx
+0061c4  50                   push ax
+0061c5  8d46e6               lea ax, [bp - 0x1a]
+0061c8  16                   push ss
+0061c9  50                   push ax
+0061ca  8d46ea               lea ax, [bp - 0x16]
+0061cd  16                   push ss
+0061ce  50                   push ax
+0061cf  b83a67               mov ax, 0x673a
+0061d2  1e                   push ds
+0061d3  50                   push ax
+0061d4  8d46fa               lea ax, [bp - 6]
+0061d7  a3e433               mov word ptr [0x33e4], ax
+0061da  8c16e633             mov word ptr [0x33e6], ss
+0061de  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+0061e3  c746ee6400           mov word ptr [bp - 0x12], 0x64
+0061e8  c746f00000           mov word ptr [bp - 0x10], 0
+0061ed  e9261e               jmp 0x8016
+0061f0  c706c0790100         mov word ptr [0x79c0], 1
+0061f6  c706c2790000         mov word ptr [0x79c2], 0
+0061fc  c706bc794006         mov word ptr [0x79bc], 0x640
+006202  c706be790000         mov word ptr [0x79be], 0
+006208  a1bc79               mov ax, word ptr [0x79bc]
+00620b  8b16be79             mov dx, word ptr [0x79be]
+00620f  2b06c079             sub ax, word ptr [0x79c0]
+006213  1b16c279             sbb dx, word ptr [0x79c2]
+006217  b102                 mov cl, 2
+006219  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+00621e  050400               add ax, 4
+006221  83d200               adc dx, 0
+006224  a3b879               mov word ptr [0x79b8], ax
+006227  8916ba79             mov word ptr [0x79ba], dx
+00622b  c706b4790100         mov word ptr [0x79b4], 1
+006231  c706b6790000         mov word ptr [0x79b6], 0
+006237  a13453               mov ax, word ptr [0x5334]
+00623a  8b163653             mov dx, word ptr [0x5336]
+00623e  a3b079               mov word ptr [0x79b0], ax
+006241  8916b279             mov word ptr [0x79b2], dx
+006245  ff36ba79             push word ptr [0x79ba]
+006249  ff36b879             push word ptr [0x79b8]
+00624d  2b06b479             sub ax, word ptr [0x79b4]
+006251  1b16b679             sbb dx, word ptr [0x79b6]
+006255  050100               add ax, 1
+006258  83d200               adc dx, 0
+00625b  52                   push dx
+00625c  50                   push ax
+00625d  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006262  a3ac79               mov word ptr [0x79ac], ax
+006265  8916ae79             mov word ptr [0x79ae], dx
+006269  a1c079               mov ax, word ptr [0x79c0]
+00626c  8b16c279             mov dx, word ptr [0x79c2]
+006270  b102                 mov cl, 2
+006272  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+006277  ff36b679             push word ptr [0x79b6]
+00627b  ff36b479             push word ptr [0x79b4]
+00627f  ff36ba79             push word ptr [0x79ba]
+006283  ff36b879             push word ptr [0x79b8]
+006287  8bf0                 mov si, ax
+006289  8bfa                 mov di, dx
+00628b  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006290  03c6                 add ax, si
+006292  13d7                 adc dx, di
+006294  a3c479               mov word ptr [0x79c4], ax
+006297  8916c679             mov word ptr [0x79c6], dx
+00629b  b010                 mov al, 0x10
+00629d  50                   push ax
+00629e  b80400               mov ax, 4
+0062a1  50                   push ax
+0062a2  ff36ae79             push word ptr [0x79ae]
+0062a6  ff36ac79             push word ptr [0x79ac]
+0062aa  b80000               mov ax, 0
+0062ad  baa63c               mov dx, 0x3ca6
+0062b0  52                   push dx
+0062b1  50                   push ax
+0062b2  b8c000               mov ax, 0xc0
+0062b5  50                   push ax
+0062b6  9ad259cb1e           lcall 0x1ecb, 0x59d2   ; -> FUN_2000_4682
+0062bb  83c40e               add sp, 0xe
+0062be  99                   cdq 
+0062bf  a32e7b               mov word ptr [0x7b2e], ax
+0062c2  8916307b             mov word ptr [0x7b30], dx
+0062c6  0bc2                 or ax, dx
+0062c8  7464                 je 0x632e
+0062ca  a12a67               mov ax, word ptr [0x672a]
+0062cd  99                   cdq 
+0062ce  8946ea               mov word ptr [bp - 0x16], ax
+0062d1  8956ec               mov word ptr [bp - 0x14], dx
+0062d4  c746e63c00           mov word ptr [bp - 0x1a], 0x3c
+0062d9  c746e80000           mov word ptr [bp - 0x18], 0
+0062de  c746fc1e00           mov word ptr [bp - 4], 0x1e
+0062e3  b81f00               mov ax, 0x1f
+0062e6  babe4c               mov dx, 0x4cbe
+0062e9  48                   dec ax
+0062ea  52                   push dx
+0062eb  50                   push ax
+0062ec  8d46e6               lea ax, [bp - 0x1a]
+0062ef  16                   push ss
+0062f0  50                   push ax
+0062f1  8d46ea               lea ax, [bp - 0x16]
+0062f4  16                   push ss
+0062f5  50                   push ax
+0062f6  b83a67               mov ax, 0x673a
+0062f9  1e                   push ds
+0062fa  50                   push ax
+0062fb  8d46fa               lea ax, [bp - 6]
+0062fe  a3e433               mov word ptr [0x33e4], ax
+006301  8c16e633             mov word ptr [0x33e6], ss
+006305  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+00630a  c746ee6400           mov word ptr [bp - 0x12], 0x64
+00630f  c746f00000           mov word ptr [bp - 0x10], 0
+006314  b010                 mov al, 0x10
+006316  50                   push ax
+006317  b80800               mov ax, 8
+00631a  baa63c               mov dx, 0x3ca6
+00631d  52                   push dx
+00631e  50                   push ax
+00631f  b84000               mov ax, 0x40
+006322  50                   push ax
+006323  9af05acb1e           lcall 0x1ecb, 0x5af0   ; -> FUN_2000_47a0
+006328  83c408               add sp, 8
+00632b  e9e81c               jmp 0x8016
+00632e  c7060e0a0100         mov word ptr [0xa0e], 1
+006334  c45e06               les bx, ptr [bp + 6]
+006337  2bc0                 sub ax, ax
+006339  26894702             mov word ptr es:[bx + 2], ax
+00633d  268907               mov word ptr es:[bx], ax
+006340  c746ee0100           mov word ptr [bp - 0x12], 1
+006345  8946f0               mov word ptr [bp - 0x10], ax
+006348  c45e1a               les bx, ptr [bp + 0x1a]
+00634b  268b07               mov ax, word ptr es:[bx]
+00634e  260b4702             or ax, word ptr es:[bx + 2]
+006352  7514                 jne 0x6368
+006354  2bc0                 sub ax, ax
+006356  8946f0               mov word ptr [bp - 0x10], ax
+006359  8946ee               mov word ptr [bp - 0x12], ax
+00635c  c45e06               les bx, ptr [bp + 6]
+00635f  26c7070100           mov word ptr es:[bx], 1
+006364  26894702             mov word ptr es:[bx + 2], ax
+006368  803e320a00           cmp byte ptr [0xa32], 0
+00636d  7441                 je 0x63b0
+00636f  a12a67               mov ax, word ptr [0x672a]
+006372  99                   cdq 
+006373  8946ea               mov word ptr [bp - 0x16], ax
+006376  8956ec               mov word ptr [bp - 0x14], dx
+006379  c746e63800           mov word ptr [bp - 0x1a], 0x38
+00637e  c746e80000           mov word ptr [bp - 0x18], 0
+006383  c746fc2400           mov word ptr [bp - 4], 0x24
+006388  b8ea09               mov ax, 0x9ea
+00638b  1e                   push ds
+00638c  50                   push ax
+00638d  8d46e6               lea ax, [bp - 0x1a]
+006390  16                   push ss
+006391  50                   push ax
+006392  8d46ea               lea ax, [bp - 0x16]
+006395  16                   push ss
+006396  50                   push ax
+006397  b83a67               mov ax, 0x673a
+00639a  1e                   push ds
+00639b  50                   push ax
+00639c  8d46fa               lea ax, [bp - 6]
+00639f  a3e433               mov word ptr [0x33e4], ax
+0063a2  8c16e633             mov word ptr [0x33e6], ss
+0063a6  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+0063ab  c606320a00           mov byte ptr [0xa32], 0
+0063b0  c45e2a               les bx, ptr [bp + 0x2a]
+0063b3  26c747044e00         mov word ptr es:[bx + 4], 0x4e
+0063b9  26c747060000         mov word ptr es:[bx + 6], 0
+0063bf  26c7470c0200         mov word ptr es:[bx + 0xc], 2
+0063c5  26c7470e0000         mov word ptr es:[bx + 0xe], 0
+0063cb  c45e2e               les bx, ptr [bp + 0x2e]
+0063ce  26833f09             cmp word ptr es:[bx], 9
+0063d2  753d                 jne 0x6411
+0063d4  26837f0200           cmp word ptr es:[bx + 2], 0
+0063d9  7536                 jne 0x6411
+0063db  c746ee6400           mov word ptr [bp - 0x12], 0x64
+0063e0  c746f00000           mov word ptr [bp - 0x10], 0
+0063e5  b010                 mov al, 0x10
+0063e7  50                   push ax
+0063e8  b80000               mov ax, 0
+0063eb  baa63c               mov dx, 0x3ca6
+0063ee  52                   push dx
+0063ef  50                   push ax
+0063f0  b84000               mov ax, 0x40
+0063f3  50                   push ax
+0063f4  b80800               mov ax, 8
+0063f7  baa63c               mov dx, 0x3ca6
+0063fa  52                   push dx
+0063fb  50                   push ax
+0063fc  b84000               mov ax, 0x40
+0063ff  50                   push ax
+006400  9af05acb1e           lcall 0x1ecb, 0x5af0   ; -> FUN_2000_47a0
+006405  83c40e               add sp, 0xe
+006408  c7060e0a0000         mov word ptr [0xa0e], 0
+00640e  e9051c               jmp 0x8016
+006411  a1fc67               mov ax, word ptr [0x67fc]
+006414  0b06fe67             or ax, word ptr [0x67fe]
+006418  750e                 jne 0x6428
+00641a  a14453               mov ax, word ptr [0x5344]
+00641d  8b164653             mov dx, word ptr [0x5346]
+006421  a3327b               mov word ptr [0x7b32], ax
+006424  8916347b             mov word ptr [0x7b34], dx
+006428  833efc6701           cmp word ptr [0x67fc], 1
+00642d  7515                 jne 0x6444
+00642f  833efe6700           cmp word ptr [0x67fe], 0
+006434  750e                 jne 0x6444
+006436  a14053               mov ax, word ptr [0x5340]
+006439  8b164253             mov dx, word ptr [0x5342]
+00643d  a3327b               mov word ptr [0x7b32], ax
+006440  8916347b             mov word ptr [0x7b34], dx
+006444  c45e1a               les bx, ptr [bp + 0x1a]
+006447  268b07               mov ax, word ptr es:[bx]
+00644a  260b4702             or ax, word ptr es:[bx + 2]
+00644e  7503                 jne 0x6453
+006450  e9a706               jmp 0x6afa
+006453  c45e2e               les bx, ptr [bp + 0x2e]
+006456  26833f02             cmp word ptr es:[bx], 2
+00645a  7403                 je 0x645f
+00645c  e99b06               jmp 0x6afa
+00645f  26837f0200           cmp word ptr es:[bx + 2], 0
+006464  7403                 je 0x6469
+006466  e99106               jmp 0x6afa
+006469  cd35062c68           FLD        [682c]
+00646e  cd34169247           FCOM       [4792]
+006473  cd39d8               DD /3 st(0) st,st(3)
+006476  cd397ee4             FSTSW      -28
+00647a  cd3d                 FISTP#
+00647c  8a66e5               mov ah, byte ptr [bp - 0x1b]
+00647f  9e                   sahf 
+006480  7554                 jne 0x64d6
+006482  c45e06               les bx, ptr [bp + 6]
+006485  2bc0                 sub ax, ax
+006487  26894702             mov word ptr es:[bx + 2], ax
+00648b  268907               mov word ptr es:[bx], ax
+00648e  a12a67               mov ax, word ptr [0x672a]
+006491  99                   cdq 
+006492  8946ea               mov word ptr [bp - 0x16], ax
+006495  8956ec               mov word ptr [bp - 0x14], dx
+006498  c746e63800           mov word ptr [bp - 0x1a], 0x38
+00649d  c746e80000           mov word ptr [bp - 0x18], 0
+0064a2  c746fc1e00           mov word ptr [bp - 4], 0x1e
+0064a7  b80100               mov ax, 1
+0064aa  babe4c               mov dx, 0x4cbe
+0064ad  48                   dec ax
+0064ae  52                   push dx
+0064af  50                   push ax
+0064b0  8d46e6               lea ax, [bp - 0x1a]
+0064b3  16                   push ss
+0064b4  50                   push ax
+0064b5  8d46ea               lea ax, [bp - 0x16]
+0064b8  16                   push ss
+0064b9  50                   push ax
+0064ba  b84a67               mov ax, 0x674a
+0064bd  1e                   push ds
+0064be  50                   push ax
+0064bf  8d46fa               lea ax, [bp - 6]
+0064c2  a3e433               mov word ptr [0x33e4], ax
+0064c5  8c16e633             mov word ptr [0x33e6], ss
+0064c9  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+0064ce  c606320a01           mov byte ptr [0xa32], 1
+0064d3  e9401b               jmp 0x8016
+0064d6  c706a4790100         mov word ptr [0x79a4], 1
+0064dc  c706a6790000         mov word ptr [0x79a6], 0
+0064e2  c706a0792c01         mov word ptr [0x79a0], 0x12c
+0064e8  c706a2790000         mov word ptr [0x79a2], 0
+0064ee  a1a079               mov ax, word ptr [0x79a0]
+0064f1  8b16a279             mov dx, word ptr [0x79a2]
+0064f5  2b06a479             sub ax, word ptr [0x79a4]
+0064f9  1b16a679             sbb dx, word ptr [0x79a6]
+0064fd  b102                 mov cl, 2
+0064ff  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+006504  050400               add ax, 4
+006507  83d200               adc dx, 0
+00650a  a39c79               mov word ptr [0x799c], ax
+00650d  89169e79             mov word ptr [0x799e], dx
+006511  c70698790100         mov word ptr [0x7998], 1
+006517  c7069a790000         mov word ptr [0x799a], 0
+00651d  c70694790500         mov word ptr [0x7994], 5
+006523  c70696790000         mov word ptr [0x7996], 0
+006529  52                   push dx
+00652a  50                   push ax
+00652b  a19479               mov ax, word ptr [0x7994]
+00652e  8b169679             mov dx, word ptr [0x7996]
+006532  2b069879             sub ax, word ptr [0x7998]
+006536  1b169a79             sbb dx, word ptr [0x799a]
+00653a  050100               add ax, 1
+00653d  83d200               adc dx, 0
+006540  52                   push dx
+006541  50                   push ax
+006542  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006547  a39079               mov word ptr [0x7990], ax
+00654a  89169279             mov word ptr [0x7992], dx
+00654e  a1a479               mov ax, word ptr [0x79a4]
+006551  8b16a679             mov dx, word ptr [0x79a6]
+006555  b102                 mov cl, 2
+006557  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+00655c  ff369a79             push word ptr [0x799a]
+006560  ff369879             push word ptr [0x7998]
+006564  ff369e79             push word ptr [0x799e]
+006568  ff369c79             push word ptr [0x799c]
+00656c  8bf0                 mov si, ax
+00656e  8bfa                 mov di, dx
+006570  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006575  03c6                 add ax, si
+006577  13d7                 adc dx, di
+006579  a3a879               mov word ptr [0x79a8], ax
+00657c  8916aa79             mov word ptr [0x79aa], dx
+006580  b010                 mov al, 0x10
+006582  50                   push ax
+006583  b80400               mov ax, 4
+006586  50                   push ax
+006587  ff369279             push word ptr [0x7992]
+00658b  ff369079             push word ptr [0x7990]
+00658f  b80c00               mov ax, 0xc
+006592  baa63c               mov dx, 0x3ca6
+006595  52                   push dx
+006596  50                   push ax
+006597  b8c000               mov ax, 0xc0
+00659a  50                   push ax
+00659b  9ad259cb1e           lcall 0x1ecb, 0x59d2   ; -> FUN_2000_4682
+0065a0  83c40e               add sp, 0xe
+0065a3  99                   cdq 
+0065a4  a32e7b               mov word ptr [0x7b2e], ax
+0065a7  8916307b             mov word ptr [0x7b30], dx
+0065ab  0bc2                 or ax, dx
+0065ad  7459                 je 0x6608
+0065af  a12a67               mov ax, word ptr [0x672a]
+0065b2  99                   cdq 
+0065b3  8946ea               mov word ptr [bp - 0x16], ax
+0065b6  8956ec               mov word ptr [bp - 0x14], dx
+0065b9  c746e63c00           mov word ptr [bp - 0x1a], 0x3c
+0065be  c746e80000           mov word ptr [bp - 0x18], 0
+0065c3  c746fc1e00           mov word ptr [bp - 4], 0x1e
+0065c8  b80100               mov ax, 1
+0065cb  babe4c               mov dx, 0x4cbe
+0065ce  48                   dec ax
+0065cf  52                   push dx
+0065d0  50                   push ax
+0065d1  8d46e6               lea ax, [bp - 0x1a]
+0065d4  16                   push ss
+0065d5  50                   push ax
+0065d6  8d46ea               lea ax, [bp - 0x16]
+0065d9  16                   push ss
+0065da  50                   push ax
+0065db  b83a67               mov ax, 0x673a
+0065de  1e                   push ds
+0065df  50                   push ax
+0065e0  8d46fa               lea ax, [bp - 6]
+0065e3  a3e433               mov word ptr [0x33e4], ax
+0065e6  8c16e633             mov word ptr [0x33e6], ss
+0065ea  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+0065ef  c45e06               les bx, ptr [bp + 6]
+0065f2  26c7070100           mov word ptr es:[bx], 1
+0065f7  26c747020000         mov word ptr es:[bx + 2], 0
+0065fd  2bc0                 sub ax, ax
+0065ff  8946f0               mov word ptr [bp - 0x10], ax
+006602  8946ee               mov word ptr [bp - 0x12], ax
+006605  e90e1a               jmp 0x8016
+006608  c70688790100         mov word ptr [0x7988], 1
+00660e  c7068a790000         mov word ptr [0x798a], 0
+006614  c70684792c01         mov word ptr [0x7984], 0x12c
+00661a  c70686790000         mov word ptr [0x7986], 0
+006620  a18479               mov ax, word ptr [0x7984]
+006623  8b168679             mov dx, word ptr [0x7986]
+006627  2b068879             sub ax, word ptr [0x7988]
+00662b  1b168a79             sbb dx, word ptr [0x798a]
+00662f  b102                 mov cl, 2
+006631  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+006636  050400               add ax, 4
+006639  83d200               adc dx, 0
+00663c  a38079               mov word ptr [0x7980], ax
+00663f  89168279             mov word ptr [0x7982], dx
+006643  c7067c790100         mov word ptr [0x797c], 1
+006649  c7067e790000         mov word ptr [0x797e], 0
+00664f  c70678790500         mov word ptr [0x7978], 5
+006655  c7067a790000         mov word ptr [0x797a], 0
+00665b  52                   push dx
+00665c  50                   push ax
+00665d  a17879               mov ax, word ptr [0x7978]
+006660  8b167a79             mov dx, word ptr [0x797a]
+006664  2b067c79             sub ax, word ptr [0x797c]
+006668  1b167e79             sbb dx, word ptr [0x797e]
+00666c  050100               add ax, 1
+00666f  83d200               adc dx, 0
+006672  52                   push dx
+006673  50                   push ax
+006674  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+006679  a37479               mov word ptr [0x7974], ax
+00667c  89167679             mov word ptr [0x7976], dx
+006680  a18879               mov ax, word ptr [0x7988]
+006683  8b168a79             mov dx, word ptr [0x798a]
+006687  b102                 mov cl, 2
+006689  9a280ecb1e           lcall 0x1ecb, 0xe28   ; -> FUN_1000_fad8
+00668e  ff367e79             push word ptr [0x797e]
+006692  ff367c79             push word ptr [0x797c]
+006696  ff368279             push word ptr [0x7982]
+00669a  ff368079             push word ptr [0x7980]
+00669e  8bf0                 mov si, ax
+0066a0  8bfa                 mov di, dx
+0066a2  9a560dcb1e           lcall 0x1ecb, 0xd56   ; -> FUN_1000_fa06
+0066a7  03c6                 add ax, si
+0066a9  13d7                 adc dx, di
+0066ab  a38c79               mov word ptr [0x798c], ax
+0066ae  89168e79             mov word ptr [0x798e], dx
+0066b2  b010                 mov al, 0x10
+0066b4  50                   push ax
+0066b5  b80400               mov ax, 4
+0066b8  50                   push ax
+0066b9  ff367679             push word ptr [0x7976]
+0066bd  ff367479             push word ptr [0x7974]
+0066c1  b80400               mov ax, 4
+0066c4  baa63c               mov dx, 0x3ca6
+0066c7  52                   push dx
+0066c8  50                   push ax
+0066c9  b8c000               mov ax, 0xc0
+0066cc  50                   push ax
+0066cd  9ad259cb1e           lcall 0x1ecb, 0x59d2   ; -> FUN_2000_4682
+0066d2  83c40e               add sp, 0xe
+0066d5  99                   cdq 
+0066d6  a32e7b               mov word ptr [0x7b2e], ax
+0066d9  8916307b             mov word ptr [0x7b30], dx
+0066dd  0bc2                 or ax, dx
+0066df  7462                 je 0x6743
+0066e1  a12a67               mov ax, word ptr [0x672a]
+0066e4  99                   cdq 
+0066e5  8946ea               mov word ptr [bp - 0x16], ax
+0066e8  8956ec               mov word ptr [bp - 0x14], dx
+0066eb  c746e63c00           mov word ptr [bp - 0x1a], 0x3c
+0066f0  c746e80000           mov word ptr [bp - 0x18], 0
+0066f5  c746fc1e00           mov word ptr [bp - 4], 0x1e
+0066fa  b80100               mov ax, 1
+0066fd  babe4c               mov dx, 0x4cbe
+006700  48                   dec ax
+006701  52                   push dx
+006702  50                   push ax
+006703  8d46e6               lea ax, [bp - 0x1a]
+006706  16                   push ss
+006707  50                   push ax
+006708  8d46ea               lea ax, [bp - 0x16]
+00670b  16                   push ss
+00670c  50                   push ax
+00670d  b83a67               mov ax, 0x673a
+006710  1e                   push ds
+006711  50                   push ax
+006712  8d46fa               lea ax, [bp - 6]
+006715  a3e433               mov word ptr [0x33e4], ax
+006718  8c16e633             mov word ptr [0x33e6], ss
+00671c  9a0b007611           lcall 0x1176, 0xb   ; -> FUN_1000_176b
+006721  c45e06               les bx, ptr [bp + 6]
+006724  26c7070100           mov word ptr es:[bx], 1
+006729  26c747020000         mov word ptr es:[bx + 2], 0
+00672f  2bc0                 sub ax, ax
+006731  8946f0               mov word ptr [bp - 0x10], ax
+006734  8946ee               mov word ptr [bp - 0x12], ax
+006737  b010                 mov al, 0x10
+006739  50                   push ax
+00673a  b80c00               mov ax, 0xc
+00673d  baa63c               mov dx, 0x3ca6
+006740  e9dafb               jmp 0x631d
+006743  a13453               mov ax, word ptr [0x5334]
+006746  8b163653             mov dx, word ptr [0x5336]
+00674a  a3c87a               mov word ptr [0x7ac8], ax
+00674d  8916ca7a             mov word ptr [0x7aca], dx
+006751  a1d867               mov ax, word ptr [0x67d8]
+006754  0b06da67             or ax, word ptr [0x67da]
+006758  740c                 je 0x6766
+00675a  c706c87a0100         mov word ptr [0x7ac8], 1
+006760  c706ca7a0000         mov word ptr [0x7aca], 0
+006766  c45e06               les bx, ptr [bp + 6]
+006769  26c7070100           mov word ptr es:[bx], 1
+00676e  26c747020000         mov word ptr es:[bx + 2], 0
+006774  c45e16               les bx, ptr [bp + 0x16]
+006777  26c7070100           mov word ptr es:[bx], 1
+00677c  26c747020000         mov word ptr es:[bx + 2], 0
+006782  c706127d0800         mov word ptr [0x7d12], 8
+006788  c706147d0000         mov word ptr [0x7d14], 0
+00678e  c706387b0001         mov word ptr [0x7b38], 0x100
+006794  c7063a7b0000         mov word ptr [0x7b3a], 0
+00679a  a12c68               mov ax, word ptr [0x682c]
+00679d  8b162e68             mov dx, word ptr [0x682e]
+0067a1  a3387f               mov word ptr [0x7f38], ax
+0067a4  89163a7f             mov word ptr [0x7f3a], dx
+0067a8  a1dc67               mov ax, word ptr [0x67dc]
+0067ab  8b16de67             mov dx, word ptr [0x67de]
+0067af  a3207a               mov word ptr [0x7a20], ax
+0067b2  8916227a             mov word ptr [0x7a22], dx
+0067b6  c7063c7a0200         mov word ptr [0x7a3c], 2
+0067bc  8b1e3c7a             mov bx, word ptr [0x7a3c]
+0067c0  d1e3                 shl bx, 1
+0067c2  d1e3                 shl bx, 1
+0067c4  cd3506dc67           FLD        [67dc]
+0067c9  cd3426387f           FSUB       [7f38]
+0067ce  cd359f1c7a           FSTP       +31260
+0067d3  cd3d                 FISTP#
+0067d5  8b1e3c7a             mov bx, word ptr [0x7a3c]
+0067d9  d1e3                 shl bx, 1
+0067db  d1e3                 shl bx, 1
+0067dd  cd3506dc67           FLD        [67dc]
+0067e2  cd3406387f           FADD       [7f38]
+0067e7  cd359f207a           FSTP       +31264
+0067ec  cd35062c68           FLD        [682c]
+0067f1  cd3406387f           FADD       [7f38]
+0067f6  cd351e387f           FSTP       [7f38]
+0067fb  cd3d                 FISTP#
+0067fd  83063c7a02           add word ptr [0x7a3c], 2
+006802  833e3c7a05           cmp word ptr [0x7a3c], 5
+006807  7eb3                 jle 0x67bc
+006809  a12c68               mov ax, word ptr [0x682c]
+00680c  8b162e68             mov dx, word ptr [0x682e]
+006810  a3387f               mov word ptr [0x7f38], ax
+006813  89163a7f             mov word ptr [0x7f3a], dx
+006817  a14453               mov ax, word ptr [0x5344]
+00681a  0b064653             or ax, word ptr [0x5346]
+00681e  7511                 jne 0x6831
+006820  cd35069647           FLD        [4796]
+006825  cd340e387f           FMUL       [7f38]
+00682a  cd351e387f           FSTP       [7f38]
+00682f  cd3d                 FISTP#

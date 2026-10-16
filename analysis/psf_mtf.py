@@ -26,7 +26,11 @@ OPAL-OKB — ФРТ/ФРЛ/ОПФ/ФКЭ (уровень-2 анализа, ANALI
   переиспользует сетку :mod:`analysis.strehl` и сверяется с ним (тесты,
   допуск 1e-3);
 * **миры** (§9.5): изображение синус-миры / шпальной миры (меандр) —
-  свёртка профиля с ФРЛ; контраст синус-миры на частоте ν равен MTF(ν).
+  свёртка профиля с ФРЛ; контраст синус-миры на частоте ν равен MTF(ν);
+* **разложение Цернике** (ANALIZE.DOC §5.1-5.2, работа WA/OPAVA):
+  опция к ФРТ-секции протокола — МНК-разложение той же карты W по
+  базису OPAL из 28 членов (n ≤ 12, m ≥ 0, марки «C xIJ»), печать
+  коэффициентов и вклада в СКВ, как в формах VAFORUS ``vnb.gl``.
 
 Масштаб плоскости изображения (шаг решётки ФРТ, мкм)::
 
@@ -46,6 +50,9 @@ from optics_engine import OpticalSystem, paraxial_trace
 from optics_utils import get_effective_aperture, get_primary_wl
 from analysis.aberrations import trace_wavefront_hexapolar, WF_RMS_MIN_POINTS
 from analysis.strehl import _pupil_grid_from_points, STREHL_HEXAPOLAR_RINGS
+from analysis.zernike import (ZERNIKE_TERMS_28, ZERNIKE_MARKS_28,
+                              fit_zernike, strehl_from_zernike,
+                              zernike_term_name)
 
 # Решётка зрачка: 128, как STREHL_GRID_SIZE — Штрель из ФРТ совпадает с
 # analysis.strehl вплоть до дискретизации (тест, допуск 1e-3).
@@ -380,11 +387,14 @@ def render_test_target(psf: np.ndarray, pitch_um: float, freq_lpmm: float,
 
 
 def format_psf_mtf_section(system: OpticalSystem,
-                           field_y: float = 0.0) -> str:
+                           field_y: float = 0.0,
+                           zernike: bool = False) -> str:
     """Краткая секция «ФРТ/ОПФ» для протокола расчёта (fileio/protocol).
 
     Штрель (FFT), частота среза и ЧКХ осевого пучка по сечениям
     меридиональному/сагиттальному на частотах 0.2..1.0·ν_c.
+    ``zernike=True`` — добавить разложение Цернике (28 членов, марки
+    «C xIJ», как в OPAVA; :func:`format_zernike_section`).
     Возвращает пустую строку, если расчёт невозможен.
     """
     res = psf_grid(system, field_y=field_y)
@@ -409,4 +419,127 @@ def format_psf_mtf_section(system: OpticalSystem,
             f"{float(np.interp(f * nu, freqs, mtf[key])):>8.3f}"
             for f in fracs)
         lines.append(f"  {label}   {values}")
+    if zernike:
+        dec = _decompose_psf_result(res)
+        if dec.get('coeffs') is not None:
+            dec['wl'] = res.get('wl')
+            dec['field_y'] = field_y
+            dec['num_points'] = res.get('num_points')
+            lines.extend(_zernike_lines(dec))
     return '\n'.join(lines)
+
+
+# ── Разложение Цернике (OPAVA WGLB, ANALIZE.DOC §5.1-5.2) ──────────────────
+
+def _decompose_psf_result(res: Dict, terms=ZERNIKE_TERMS_28) -> Dict:
+    """Разложение карты W из результата :func:`psf_grid` по базису OPAL."""
+    if res.get('psf') is None:
+        return {'coeffs': None, 'reason': res.get('reason', '')}
+    coeffs, residual_rms = fit_zernike(res['wavefront'],
+                                       res['pupil_mask'], terms=terms)
+    variance = float(sum(c * c for c, (n, m) in zip(coeffs, terms)
+                         if (n, m) != (0, 0)))
+    contributions = [c * c / variance * 100.0 for c in coeffs] \
+        if variance > 0.0 else [0.0] * len(coeffs)
+    if (0, 0) in terms:
+        contributions[terms.index((0, 0))] = None  # пистон не аберрация
+    return {
+        'coeffs': coeffs,
+        'residual_rms': residual_rms,
+        'sigma_w': math.sqrt(variance),
+        'strehl_zernike': strehl_from_zernike(coeffs, terms),
+        'contributions_pct': contributions,
+        'terms': list(terms),
+        'marks': [f'C x{n:X}{m:X}' for n, m in terms],
+        'names': [zernike_term_name(n, m) for n, m in terms],
+    }
+
+
+def zernike_decomposition(system: OpticalSystem, field_y: float = 0.0,
+                          wl: Optional[float] = None,
+                          terms=ZERNIKE_TERMS_28,
+                          num_rings: int = PSF_HEXAPOLAR_RINGS,
+                          grid: int = GRID) -> Dict:
+    """МНК-разложение волнового фронта по базису Цернике OPAL (28 членов).
+
+    Использует ту же карту W на решётке зрачка, из которой строится ФРТ
+    (:func:`psf_grid` — гексаполярная трассировка + интерполяция), и
+    базис n ≤ 12 работы OPAVA (REVERSE_OPAVA §4): только косинусные
+    члены m ≥ 0, азимут — от меридиональной плоскости; нормировка Noll
+    (СКВ каждого члена = 1, σ² = Σ c²). Марки коэффициентов «C xIJ»
+    (ANALIZE.DOC §5.2: I — степень по радиусу, J — по азимуту).
+
+    Args:
+        system: Оптическая система.
+        field_y: Поле расчёта (град / мм).
+        wl: Длина волны (мкм); None → основная λ системы.
+        terms: Пары (n, m) базиса.
+        num_rings: Кольца гексаполярной сетки зрачка.
+        grid: Решётка зрачка.
+
+    Returns:
+        Словарь; ``coeffs = None`` и ``reason`` — если ФРТ не построена::
+
+            coeffs            — коэффициенты (28,), длины волн
+            residual_rms      — СКВ остатка разложения, λ
+            sigma_w           — σ разложения sqrt(Σc²) без пистона, λ
+            strehl_zernike    — Штрель (Марешаль) из коэффициентов
+            contributions_pct — вклад члена в СКВ², % (пистон — None)
+            terms, marks, names — пары (n, m), марки «C xIJ», имена
+            wl, field_y, num_points — параметры расчёта
+    """
+    res = psf_grid(system, field_y=field_y, wl=wl, grid=grid,
+                   num_rings=num_rings)
+    dec = _decompose_psf_result(res, terms=terms)
+    dec['wl'] = res.get('wl')
+    dec['field_y'] = field_y
+    dec['num_points'] = res.get('num_points')
+    return dec
+
+
+def _zernike_lines(dec: Dict) -> list:
+    """Строки секции разложения Цернике для протокола (как OPAVA WGLB)."""
+    coeffs, terms = dec['coeffs'], dec['terms']
+    contributions = dec.get('contributions_pct')
+    lines = ['─' * 40,
+             '  РАЗЛОЖЕНИЕ ЦЕРНИКЕ — 28 ЧЛЕНОВ (n≤12, OPAVA)',
+             '─' * 40,
+             f"  λ = {dec['wl']:.5f} мкм   поле = {dec['field_y']:.2f}"
+             f"   точек зрачка = {dec.get('num_points', '—')}",
+             f"  СКВ (разл.) = {dec['sigma_w']:.4f}λ"
+             f"   СКВ остатка = {dec['residual_rms']:.4f}λ"
+             f"   Штрель = {dec['strehl_zernike']:.4f}",
+             '  марка (n,m)  коэфф.  вклад%   марка (n,m)  коэфф.  вклад%']
+    half = (len(coeffs) + 1) // 2
+    for k in range(half):
+        cells = []
+        for idx in (k, k + half):
+            if idx >= len(coeffs):
+                continue
+            n, m = terms[idx]
+            share = contributions[idx]
+            share_txt = '—' if share is None else f'{share:5.1f}'
+            cells.append(f"  C x{n:X}{m:X}  ({n:2d},{m:d})"
+                         f" {coeffs[idx]:>+9.4f} {share_txt:>5}")
+        lines.append(' |'.join(cells))
+    return lines
+
+
+def format_zernike_section(system: OpticalSystem,
+                           field_y: float = 0.0,
+                           wl: Optional[float] = None,
+                           num_rings: int = PSF_HEXAPOLAR_RINGS,
+                           grid: int = GRID) -> str:
+    """Секция «Разложение Цернике» протокола: марки «C xIJ» + коэффициенты.
+
+    Как пункт WGLB работы WA (OPAVA): глобальное разложение волновой
+    аберрации по 28 полиномам (n ≤ 12), коэффициенты с марками
+    ``C xIJ`` и вкладом в волновой критерий (СКВ², гистограммы
+    ANALIZE.DOC §5.2). Возвращает пустую строку, если карта W не
+    построена.
+    """
+    dec = zernike_decomposition(system, field_y=field_y, wl=wl,
+                                num_rings=num_rings, grid=grid)
+    if dec.get('coeffs') is None:
+        return ''
+    return '\n'.join(_zernike_lines(dec))

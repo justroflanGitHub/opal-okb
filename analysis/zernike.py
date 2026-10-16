@@ -490,6 +490,246 @@ def format_global_zernike_text(result: Dict,
     return '\n'.join(lines)
 
 
+# ── OPAL-базис 28 членов, n ≤ 12 (реверс OPAVA, REVERSE_OPAVA.md §4/§8) ─────
+#
+# OPAVA (работа WA) раскладывает волновой фронт по 28 полиномам Цернике —
+# таблица пар (n, m) в DGROUP:0B76, ASCII «00 20 40 … 66»: только косинусные
+# члены (m ≥ 0) до n = 12. Азимут φ отсчитывается от меридиональной
+# плоскости (оси Y — плоскости поля), поэтому cos-базис полон для фронтов,
+# симметричных относительно меридиональной плоскости (W(−x, y) = W(x, y) —
+# все осесимметричные системы с полем в меридиональной плоскости):
+# sin-члены тождественно нулевые, кома/дисторсия ловятся членами (n, 1).
+#
+# Марки коэффициентов «C x IJ» (ANALIZE.DOC §5.2): x — степень разложения
+# по хроматизму (0 = монохроматическое), I — степень по радиусу (n),
+# J — степень по азимуту (m); цифры — шестнадцатеричные, как в таблице
+# OPAVA («C x20» … «C x66»). Нормировка — Noll (единичный СКВ на единичном
+# круге), σ² волнового фронта = Σ c².
+
+#: Пары (n, m) базиса OPAL/OPAVA — 28 членов, n ≤ 12, m ≥ 0 (косинусные).
+ZERNIKE_TERMS_28: List[Tuple[int, int]] = [
+    (0, 0), (2, 0), (4, 0), (6, 0), (8, 0), (10, 0), (12, 0),
+    (1, 1), (3, 1), (5, 1), (7, 1), (9, 1), (11, 1),
+    (2, 2), (4, 2), (6, 2), (8, 2), (10, 2),
+    (3, 3), (5, 3), (7, 3), (9, 3),
+    (4, 4), (6, 4), (8, 4),
+    (5, 5), (7, 5),
+    (6, 6),
+]
+
+#: Марки «C xIJ» (зональное разложение OPAVA, I = n, J = m, hex-цифры).
+ZERNIKE_MARKS_28: List[str] = [f'C x{n:X}{m:X}' for n, m in ZERNIKE_TERMS_28]
+
+#: Имена классических аберраций (формы VAFORUS.DAT *vnb.sf); высшие
+#: порядки в OPAVA имени не имеют (марка только).
+_ZERNIKE_OPAL_NAMES: Dict[Tuple[int, int], str] = {
+    (0, 0): 'Пистон',
+    (1, 1): 'Дисторсия',
+    (2, 0): 'Расфокусировка',
+    (2, 2): 'Астигматизм',
+    (3, 1): 'Кома',
+    (4, 0): 'Сферическая',
+    (6, 0): 'Сферическая 2',
+    (8, 0): 'Сферическая 3',
+}
+
+
+def zernike_term_name(n: int, m: int) -> str:
+    """Имя члена (n, m) OPAL-базиса: классическая аберрация или «n=… m=…»."""
+    return _ZERNIKE_OPAL_NAMES.get((n, m), f'n={n} m={m}')
+
+
+def _radial_coeffs(n: int, m: int) -> List[Tuple[int, float]]:
+    """Радиальный полином R_n^|m|(ρ) как список ``(степень, коэффициент)``.
+
+    R_n^m(ρ) = Σ_s (−1)^s·(n−s)! / (s!·((n+m)/2−s)!·((n−m)/2−s)!) · ρ^{n−2s}
+    (m — неотрицательная степень азимута).
+    """
+    terms = []
+    for s in range((n - m) // 2 + 1):
+        c = ((-1) ** s * math.factorial(n - s)
+             / (math.factorial(s)
+                * math.factorial((n + m) // 2 - s)
+                * math.factorial((n - m) // 2 - s)))
+        terms.append((n - 2 * s, c))
+    return terms
+
+
+def _zernike_grid(n: int, m: int, gx: np.ndarray, gy: np.ndarray) -> np.ndarray:
+    """Noll-нормированный Z_n^m на решётке (вне единичного круга — 0).
+
+    Азимут φ — от оси Y (меридиональная плоскость): φ = atan2(x, y).
+    """
+    rho2 = gx ** 2 + gy ** 2
+    rho = np.sqrt(rho2)
+    radial = np.zeros_like(rho)
+    for power, c in _radial_coeffs(n, abs(m)):
+        radial += c * rho ** power
+    phi = np.arctan2(gx, gy)
+    value = _noll_norm(n, abs(m)) * radial * np.cos(abs(m) * phi)
+    return np.where(rho2 <= 1.0, value, 0.0)
+
+
+def _basis_stack(xs: np.ndarray, ys: np.ndarray,
+                 terms: List[Tuple[int, int]]) -> np.ndarray:
+    """Базис на решётке с осями X (``xs``) и Y (``ys``): (K, Ny, Nx)."""
+    gx, gy = np.meshgrid(xs, ys)
+    return np.stack([_zernike_grid(n, m, gx, gy) for n, m in terms])
+
+
+def _grid_axes(grid) -> Tuple[np.ndarray, np.ndarray]:
+    """Оси решётки X/Y из параметра ``grid``: N | ось | пара (Nx, Ny)."""
+    if isinstance(grid, (tuple, list)) and len(grid) == 2 \
+            and all(np.isscalar(g) for g in grid):
+        nx, ny = int(grid[0]), int(grid[1])
+        return (np.linspace(-1.0, 1.0, nx), np.linspace(-1.0, 1.0, ny))
+    if np.isscalar(grid):
+        coords = np.linspace(-1.0, 1.0, int(grid))
+        return (coords, coords.copy())
+    coords = np.asarray(grid, dtype=float)
+    return (coords, coords.copy())
+
+
+def zernike_basis(grid, terms: List[Tuple[int, int]] = ZERNIKE_TERMS_28
+                  ) -> np.ndarray:
+    """Базис Цернике OPAL на квадратной решётке зрачка.
+
+    Args:
+        grid: Размер решётки N (координаты −1..1, как у
+            :func:`strehl._pupil_grid_from_points`), готовая ось координат
+            (1D-массив, общая для X и Y) либо пара ``(Nx, Ny)``.
+        terms: Список пар (n, m); по умолчанию :data:`ZERNIKE_TERMS_28`.
+
+    Returns:
+        Массив ``(len(terms), Ny, Nx)``; строки — Y, столбцы — X,
+        Noll-нормировка (СКВ = 1 на единичном круге), вне круга — 0.
+    """
+    xs, ys = _grid_axes(grid)
+    return _basis_stack(xs, ys, terms)
+
+
+def fit_zernike(W: np.ndarray, mask: np.ndarray,
+                terms: List[Tuple[int, int]] = ZERNIKE_TERMS_28
+                ) -> Tuple[np.ndarray, float]:
+    """МНК-разложение карты волнового фронта по базису Цернике (как OPAVA).
+
+    Строит нормальные уравнения по точкам зрачка (``mask ≥ 0.5``) и решает
+    МНК (:func:`numpy.linalg.lstsq`); базис Noll-нормирован, поэтому
+    коэффициенты — вклады с единичным СКВ: σ² ≈ Σ c_k².
+
+    Args:
+        W: Карта волновой аберрации (длины волн), (Ny, Nx).
+        mask: Маска зрачка (≥ 0.5 — внутри), той же формы.
+        terms: Пары (n, m) базиса.
+
+    Returns:
+        ``(coeffs, residual_rms)`` — коэффициенты ``(len(terms),)`` и
+        СКВ остатка (W − аппроксимация) по зрачку, длины волн.
+
+    Raises:
+        ValueError: Точек зрачка меньше, чем членов базиса.
+    """
+    W = np.asarray(W, dtype=float)
+    inside = np.asarray(mask) >= 0.5
+    if inside.shape != W.shape:
+        raise ValueError(f'форма W {W.shape} ≠ формы маски {inside.shape}')
+    if int(inside.sum()) < len(terms):
+        raise ValueError(f'точек зрачка {int(inside.sum())} < '
+                         f'членов базиса {len(terms)}')
+
+    xs = np.linspace(-1.0, 1.0, W.shape[1])
+    ys = np.linspace(-1.0, 1.0, W.shape[0])
+    basis = _basis_stack(xs, ys, terms)              # (K, Ny, Nx)
+    Zm = basis[:, inside].T                          # (N, K)
+    coeffs, _, _, _ = np.linalg.lstsq(Zm, W[inside], rcond=None)
+    residual = W[inside] - Zm @ coeffs
+    residual_rms = math.sqrt(float(np.mean(residual ** 2)))
+    return coeffs, residual_rms
+
+
+def fit_zernike_points(points: List[Tuple[float, float, float]],
+                       terms: List[Tuple[int, int]] = ZERNIKE_TERMS_28
+                       ) -> Tuple[np.ndarray, float]:
+    """МНК-разложение по рассеянным точкам зрачка — как OPAVA (лучи, не сетка).
+
+    Базис вычисляется прямо в точках выборки зрачка (например,
+    гексаполярная сетка :func:`aberrations.trace_wavefront_hexapolar`),
+    без промежуточной интерполяции на решётку.
+
+    Внимание: сумма Σc² равна площадному σ² единичного круга; σ по самим
+    точкам (равные веса, как у :func:`strehl._wavefront_sigma`) содержит
+    смещение выборки (кольца гексагональной сетки весят не по площади).
+
+    Args:
+        points: Список ``(px, py, W)`` — нормированные координаты зрачка
+            (−1..1) и волновая аберрация (длины волн).
+        terms: Пары (n, m) базиса.
+
+    Returns:
+        ``(coeffs, residual_rms)`` — как у :func:`fit_zernike`.
+
+    Raises:
+        ValueError: Точек меньше, чем членов базиса.
+    """
+    pts = np.asarray(points, dtype=float)
+    if pts.ndim != 2 or pts.shape[1] != 3 or pts.shape[0] == 0:
+        raise ValueError('points — список (px, py, W)')
+    if pts.shape[0] < len(terms):
+        raise ValueError(f'точек зрачка {pts.shape[0]} < '
+                         f'членов базиса {len(terms)}')
+    Zm = np.stack([_zernike_grid(n, m, pts[:, 0], pts[:, 1])
+                   for n, m in terms]).T                  # (N, K)
+    coeffs, _, _, _ = np.linalg.lstsq(Zm, pts[:, 2], rcond=None)
+    residual = pts[:, 2] - Zm @ coeffs
+    residual_rms = math.sqrt(float(np.mean(residual ** 2)))
+    return coeffs, residual_rms
+
+
+def zernike_reconstruct(coeffs, grid,
+                        terms: List[Tuple[int, int]] = ZERNIKE_TERMS_28
+                        ) -> np.ndarray:
+    """Волновой фронт по коэффициентам: ``W = Σ c_k·Z_k`` (длины волн).
+
+    Args:
+        coeffs: Коэффициенты из :func:`fit_zernike` (или список).
+        grid: Решётка — размер N, ось координат или пара ``(Nx, Ny)``
+            (см. :func:`zernike_basis`).
+        terms: Пары (n, m) базиса (должны соответствовать coeffs).
+
+    Returns:
+        Карта ``(Ny, Nx)``; вне единичного круга — 0.
+    """
+    coeffs = np.asarray(coeffs, dtype=float)
+    basis = zernike_basis(grid, terms=terms[:len(coeffs)])
+    return np.tensordot(coeffs, basis, axes=1)
+
+
+def strehl_from_zernike(coeffs,
+                        terms: List[Tuple[int, int]] = ZERNIKE_TERMS_28
+                        ) -> float:
+    """Число Штреля по коэффициентам Цернике (Марешаль).
+
+    Noll-нормировка даёт σ² = Σ c_k² (пистон исключён — на пик PSF не
+    влияет): ``S = exp(−(2π·σ)²)``; в линейном виде ``S ≈ 1 − (2π)²·Σc²``.
+    Совпадает с :func:`strehl.strehl_marechal` от σ подгонки (тест,
+    допуск 2 %).
+
+    Args:
+        coeffs: Коэффициенты :func:`fit_zernike` (длины волн).
+        terms: Пары (n, m) базиса.
+
+    Returns:
+        Число Штреля в (0, 1].
+    """
+    from strehl import strehl_marechal   # формула-эталон волны 6
+    coeffs = np.asarray(coeffs, dtype=float)
+    variance = 0.0
+    for c, (n, m) in zip(coeffs, terms):
+        if (n, m) != (0, 0):             # пистон не снижает пик PSF
+            variance += float(c) ** 2
+    return strehl_marechal(math.sqrt(variance))
+
+
 if __name__ == "__main__":
     import sys, io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')

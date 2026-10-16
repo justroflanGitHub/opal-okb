@@ -155,7 +155,13 @@ def _reference_sphere(system: OpticalSystem, field_y: float = 0.0,
     z_pos = compute_z_positions(system)
     last_surf_z = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
     bfd = parax.get('back_focal_distance', 0)
-    cz = last_surf_z + bfd if bfd != 0 else z_pos[-1]
+    # Нечётное число отражений — изображение строится против исходного
+    # направления распространения (+z): параксиальный фокус лежит в −z от
+    # последней поверхности (зеркальный обратный ход, конвенция трейсера).
+    odd_reflections = sum(1 for s in system.surfaces if s.is_reflective) % 2 == 1
+    cz = last_surf_z - bfd if odd_reflections else (last_surf_z + bfd)
+    if bfd == 0:
+        cz = z_pos[-1]
     cx = 0.0
     cy = 0.0
     if system.object_type == ObjectType.INFINITE and field_y != 0:

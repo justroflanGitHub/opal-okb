@@ -497,8 +497,19 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             going_forward = local_ray.m > 0
             surface_behind = (z_intersect < local_ray.z - 1e-6) if going_forward else (z_intersect > local_ray.z + 1e-6)
             if surface_behind:
-                # Skip this virtual surface — don't refract, just continue
-                continue
+                # Пропускать молча — ТОЛЬКО чисто виртуальные reference-плоскости
+                # (без кривизны, стекла и отражения). Реальная поверхность за
+                # спиной луча — геометрическая ошибка системы (напр. Кассегрен
+                # с инвертированной толщиной): диагностировать, а не молчать.
+                is_virtual_reference = (abs(R) < EPSILON and not s.glass
+                                        and not s.is_reflective
+                                        and not s.aspheric_coeffs)
+                if is_virtual_reference and i > 0:
+                    # Skip this virtual surface — don't refract, just continue
+                    continue
+                result.success = False
+                result.error = 'MISS'
+                return result
             result.success = False
             result.error = 'MISS'
             return result

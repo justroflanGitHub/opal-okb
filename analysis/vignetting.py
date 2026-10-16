@@ -400,3 +400,368 @@ def format_tabbea(rows) -> str:
             line += f' {letter} {surf:3d}'
         lines.append(line.rstrip())
     return '\n'.join(lines)
+
+
+# ══ A4: реальное экранирование — зоны прохождения (TASK_SEIDEL) ═════════════
+#
+# Режим «ЭКРАНИРОВАНИЕ ПУЧКОВ — реальное» (ANALIZE.DOC:488–516, §4.4;
+# MANUAL.DOC §2.2.4.3): поиск зон прохождения лучей на ВСЕХ поверхностях
+# с учётом «загораживания» (центральный экран перед системой — правило
+# запуска |ρ| ≥ k) и рабочих зон самих поверхностей (semi_diameter,
+# EDGE-кромка трейсера). Базовый уровень (первая режущая поверхность) —
+# compute_vignetting выше; здесь — честный проход всех поверхностей и
+# эллипс экранирования на входном зрачке («полные габариты» TABBEA vs
+# «габариты экранов» TABEAP, §14.4/§17.6).
+
+#: Узлов меридионального веера зон прохождения по диаметру зрачка
+#: (нечётное; симметричная сетка).
+PASSAGE_GRID_N = 15
+
+#: Допуск сопоставления точки пути с плоскостью (мм) — как
+#: ``beam_heights._Z_MATCH_TOL``.
+_PASSAGE_Z_TOL = 1e-6
+
+
+def _path_surface_points(system: OpticalSystem, result):
+    """Точки пути луча на поверхностях + точка изображения.
+
+    Разбор пути — по схеме ``beam_heights._surface_heights``: точка 0 —
+    старт; точка в плоскости диафрагмы (вставляется трейсером после
+    прохождения поверхности стопа) пропускается; замыкающая точка за
+    последней поверхностью в плоскости изображения — отдельно
+    (``image_pt``). Возвращает список длины ``len(surfaces)``: элемент
+    ``i`` — ``(x, y, z)`` на поверхности ``i`` или ``None`` (луч не
+    дошёл). Срезанный кромкой (EDGE) луч свою точку на поверхности
+    имеет — точку кромки: геометрически дошёл, апертуру не прошёл.
+    """
+    from optics_utils import compute_z_positions
+    pts = list(getattr(result, 'path', None) or [])
+    n = len(system.surfaces)
+    out: List[Optional[Tuple[float, float, float]]] = [None] * n
+    image_pt = None
+    if not pts:
+        return out, image_pt
+    z_pos = compute_z_positions(system)
+    stop_idx = getattr(system, 'stop_surface', -1)
+    z_stop = (z_pos[stop_idx] + getattr(system, 'stop_offset', 0.0)
+              if 0 <= stop_idx < len(z_pos) else None)
+    consumed = 0
+    for j, (x, y, z) in enumerate(pts):
+        if j == 0:
+            continue
+        is_image = (j == len(pts) - 1 and consumed == n
+                    and abs(z - z_pos[-1]) < _PASSAGE_Z_TOL)
+        if is_image:
+            image_pt = (x, y, z)
+            continue
+        if (z_stop is not None and abs(z - z_stop) < _PASSAGE_Z_TOL
+                and consumed > stop_idx):
+            continue                     # точка в плоскости диафрагмы
+        if consumed < n:
+            out[consumed] = (x, y, z)
+            consumed += 1
+    return out, image_pt
+
+
+def find_passage_zones(system: OpticalSystem, field_y: float,
+                       wl: Optional[float] = None,
+                       grid_n: int = PASSAGE_GRID_N) -> Dict:
+    """Зоны прохождения пучка по ВСЕМ поверхностям (ANALIZE.DOC §2.2.4.3).
+
+    «Реальное экранирование» (§4.4): пучок поля ``field_y`` —
+    меридиональный веер из ``grid_n`` лучей через диаметр входного
+    зрачка (лучи :func:`aberrations._pupil_field_ray`, трассировка
+    батчем ``ray_native``). На каждой поверхности, до которой лучи
+    дошли, — интервал высот зоны (кольцо по MANUAL.DOC §2.2.4.3:
+    «наружный + внутренний размеры, внутренний может быть 0»):
+
+    * ``crossed`` — [min, max] высот всех лучей, дошедших до
+      поверхности (включая срезанные кромкой — их точка лежит на
+      самой поверхности);
+    * ``passed`` — то же для лучей, дошедших до изображения;
+    * ``outer``/``inner`` — наружный/внутренний размеры зоны
+      прохождения: max|y| и min|y| по ``passed`` («захватывает ось» —
+      inner 0); ``center`` — середина ``passed`` (эксцентричная зона —
+      эллипс экранирования смещён, ≠ 0);
+    * ``blocked_here`` — число лучей, срезанных именно этой
+      поверхностью (EDGE/TIR), ``limit`` — код «Ограничения»
+      (:data:`LIMIT_LETTERS`).
+
+    Центральное экранирование ``obscuration_ratio`` — «загораживание»
+    на входе: узлы |ρ| < k не запускаются (правило ``trace_fan``, как
+    :func:`compute_light_distribution`) — «коэффициент экранирования»
+    моделирует вторичное зеркало/отверстие перед системой.
+
+    Args:
+        system: Оптическая система (не изменяется).
+        field_y: Угол поля (град) для INFINITE / высота (мм) для FINITE.
+        wl: Длина волны (мкм); None → основная λ системы.
+        grid_n: Узлов веера по диаметру зрачка (нечётное; ≥ 3).
+
+    Returns:
+        ``{'field_y', 'wl', 'grid_n', 'obscuration_ratio', 'n_rays',
+        'n_blocked_launch', 'n_traced', 'n_passed', 'passage_fraction',
+        'vignetted', 'surfaces': [dict по поверхностям с ключами
+        'n', 'z', 'semi_diameter', 'crossed', 'passed', 'outer',
+        'inner', 'center', 'blocked_here', 'limit']}`` — только
+        поверхности, которых достиг хотя бы один луч.
+    """
+    if not system.surfaces:
+        return {'field_y': field_y, 'wl': wl, 'grid_n': grid_n,
+                'obscuration_ratio': 0.0, 'n_rays': 0,
+                'n_blocked_launch': 0, 'n_traced': 0, 'n_passed': 0,
+                'passage_fraction': None, 'vignetted': False,
+                'surfaces': []}
+    if wl is None:
+        wl = get_primary_wl(system)
+    radius = get_effective_aperture(system, default=10.0) / 2.0
+    k = abs(float(getattr(system, 'obscuration_ratio', 0.0) or 0.0))
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+
+    grid_n = max(3, int(grid_n))
+    if grid_n % 2 == 0:
+        grid_n += 1
+    rhos = [2.0 * i / (grid_n - 1) - 1.0 for i in range(grid_n)]
+    if k > 0.0:                          # граничные узлы ±k — край
+        rhos += [k, -k]                  # загораживания (внутренний
+    rhos = sorted(set(round(r, 12) for r in rhos))
+    rays: List[Tuple[float, ...]] = []
+    slots: List[Optional[int]] = []      # узел → луч (None — загораживание)
+    for rho in rhos:
+        if abs(rho) < k:
+            slots.append(None)
+            continue
+        ray = _pupil_field_ray(system, 0.0, rho * radius, field_y,
+                               z_start, z_pupil)
+        rays.append((ray.x, ray.y, ray.z, ray.k, ray.l, ray.m))
+        slots.append(len(rays) - 1)
+    traced = ray_native.trace_batch(system, rays, wl)
+
+    ns = len(system.surfaces)
+    crossed: List[List[float]] = [[] for _ in range(ns)]
+    passed: List[List[float]] = [[] for _ in range(ns)]
+    blocked: List[int] = [0] * ns
+    limits: List[Optional[Tuple[str, int]]] = [None] * ns
+    n_passed = 0
+    for slot in slots:
+        if slot is None:
+            continue
+        res = traced[slot]
+        points, image_pt = _path_surface_points(system, res)
+        for i, pt in enumerate(points):
+            if pt is not None:
+                crossed[i].append(pt[1])
+                if res.success:
+                    passed[i].append(pt[1])
+        if res.success:
+            n_passed += 1
+        elif res.error in ('EDGE', 'MISS', 'TIR'):
+            letter, num = _limit_from_failure(system, res)
+            idx = num - 1
+            if 0 <= idx < ns:
+                blocked[idx] += 1
+                limits[idx] = (letter, num)
+
+    n_traced = len(rays)
+    surfaces = []
+    from optics_utils import compute_z_positions
+    z_pos = compute_z_positions(system)
+    for i in range(ns):
+        if not crossed[i]:
+            continue
+        pmin = min(passed[i]) if passed[i] else None
+        pmax = max(passed[i]) if passed[i] else None
+        if passed[i]:
+            abs_hs = [abs(v) for v in passed[i]]
+            inner = min(abs_hs)            # кольцо: min |y| (0 — лучи
+            outer = max(abs_hs)            # через ось); max |y| — наружный
+            center = (pmin + pmax) / 2.0
+        else:
+            inner = outer = center = 0.0
+        surfaces.append({
+            'n': i + 1,
+            'z': z_pos[i],
+            'semi_diameter': system.surfaces[i].semi_diameter,
+            'crossed': [min(crossed[i]), max(crossed[i])],
+            'passed': [pmin, pmax],
+            'outer': outer,
+            'inner': inner,
+            'center': center,
+            'blocked_here': blocked[i],
+            'limit': limits[i],
+        })
+    return {
+        'field_y': field_y, 'wl': wl, 'grid_n': grid_n,
+        'obscuration_ratio': k,
+        'n_rays': len(slots), 'n_blocked_launch': len(slots) - n_traced,
+        'n_traced': n_traced, 'n_passed': n_passed,
+        'passage_fraction': (n_passed / n_traced) if n_traced else None,
+        'vignetted': n_passed < n_traced,
+        'surfaces': surfaces,
+    }
+
+
+def real_obscuration(system: OpticalSystem, field_y: float,
+                     wl: Optional[float] = None) -> Dict:
+    """«Габариты экранов»: реальное экранирование пучка эллипсом (TABEAP).
+
+    Зона прохождения пучка на входном зрачке ищется бисекцией
+    (:data:`VIGNETTING_BISECT_STEPS`) по 4 полуосям — ±y (меридиональные)
+    и ±x (сагиттальные): ``rho_hi`` — максимальная зрачковая координата
+    проходящего луча (наружная граница зоны), ``rho_lo`` — минимальная
+    (внутренняя: центральный экран; правило запуска |ρ| ≥ k задаёт
+    нижнюю границу моделью «загораживания»). Из границ собирается
+    эллипс экранирования на входном зрачке (ANALIZE.DOC:488–516):
+
+    * ``full_diameter_y/x`` — «полные габариты» (TABBEA): удвоенные
+      наружные полуоси эллипса пучка, мм;
+    * ``screen_diameter_y/x`` — «габариты экранов» (TABEAP):
+      удвоенные внутренние полуоси эллипса экранирования (центральный
+      экран: вторичное зеркало, отверстие, загораживание), мм;
+    * ``obscuration_fraction`` — относительное экранирование по
+      площади (отношение произведений полуосей, π сокращается);
+    * ``screen_shift`` — смещение центра эллипса экранирования
+      относительно центра зрачка, доли радиуса зрачка;
+    * ``minimal_obscuration`` — «коэффициент экранирования»
+      (ANALIZE.DOC:508–516): наименьшее относительное центральное
+      экранирование осевого пучка — max по поверхностям inner/outer
+      зон прохождения осевого пучка (:func:`find_passage_zones`, поле
+      0);
+    * ``cutters`` — «экранирующие поверхности»: коды «Ограничения»
+      срезавших кромки (у невыигьетированного пучка — пусто).
+
+    Args:
+        system: Оптическая система (не изменяется).
+        field_y: Угол поля (град) / высота предмета (мм).
+        wl: Длина волны (мкм); None → основная λ системы.
+
+    Returns:
+        Словарь с ключами ``field_y, wl, outer_rho_hi_up/down/left/
+        right, outer_rho_lo_*, inner/outer_semi_y/x, inner/outer_
+        shift_y, full_diameter_y/x, screen_diameter_y/x,
+        obscuration_fraction, screen_shift, minimal_obscuration,
+        cutters, passage_fraction`` (ρ — доли радиуса зрачка, полуоси —
+        мм; полностью завиньетированная сторона — 0).
+    """
+    empty = {
+        'field_y': field_y, 'wl': wl,
+        'outer_rho_hi_up': 0.0, 'outer_rho_hi_down': 0.0,
+        'outer_rho_hi_left': 0.0, 'outer_rho_hi_right': 0.0,
+        'outer_rho_lo_up': 0.0, 'outer_rho_lo_down': 0.0,
+        'outer_rho_lo_left': 0.0, 'outer_rho_lo_right': 0.0,
+        'outer_semi_y': 0.0, 'outer_semi_x': 0.0,
+        'outer_shift_y': 0.0,
+        'inner_semi_y': 0.0, 'inner_semi_x': 0.0,
+        'inner_shift_y': 0.0,
+        'full_diameter_y': 0.0, 'full_diameter_x': 0.0,
+        'screen_diameter_y': 0.0, 'screen_diameter_x': 0.0,
+        'obscuration_fraction': 0.0, 'screen_shift': 0.0,
+        'minimal_obscuration': 0.0, 'cutters': [],
+        'passage_fraction': None,
+    }
+    if not system.surfaces:
+        return dict(empty)
+    if wl is None:
+        wl = get_primary_wl(system)
+    radius = get_effective_aperture(system, default=10.0) / 2.0
+    k = abs(float(getattr(system, 'obscuration_ratio', 0.0) or 0.0))
+    parax = paraxial_trace(system)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+
+    def trace(t: float, dx: float, dy: float):
+        """Луч на зрачковой координате t·(dx,dy)·radius (доли радиуса)."""
+        ray = _pupil_field_ray(system, dx * t * radius, dy * t * radius,
+                               field_y, z_start, z_pupil)
+        return ray_native.trace_batch(
+            system, [(ray.x, ray.y, ray.z, ray.k, ray.l, ray.m)], wl)[0]
+
+    def bisect(lo_ok: float, hi_fail: float, dx: float, dy: float,
+               want: str):
+        """Граница зоны: ``'hi'`` — max проходящего, ``'lo'`` — min."""
+        for _ in range(VIGNETTING_BISECT_STEPS):
+            mid = (lo_ok + hi_fail) / 2.0
+            ok = trace(mid, dx, dy).success
+            if (ok and want == 'hi') or (not ok and want == 'lo'):
+                lo_ok = mid
+            else:
+                hi_fail = mid
+        return (lo_ok + hi_fail) / 2.0
+
+    out = dict(empty)
+    cutters: List[Tuple[str, int]] = []
+    for axis, (dx, dy) in (('up', (0.0, 1.0)), ('down', (0.0, -1.0)),
+                           ('left', (-1.0, 0.0)), ('right', (1.0, 0.0))):
+        edge = trace(1.0, dx, dy)
+        if edge.success:
+            rho_hi = 1.0                    # край не срезан
+        else:
+            anchor = None                   # ищем проходящий луч стороны
+            for i in range(1, 16):
+                t = 1.0 - i / 16.0
+                if t <= k:
+                    break
+                if trace(t, dx, dy).success:
+                    anchor = t
+                    break
+            if anchor is None:
+                continue                    # сторона полностью срезана
+            rho_hi = bisect(anchor, 1.0, dx, dy, 'hi')
+            cutters.append(_limit_from_failure(system, edge))
+        # внутренняя граница: правило запуска |ρ| ≥ k — пол модели
+        if k > 0.0:
+            if rho_hi >= k and trace(k, dx, dy).success:
+                rho_lo = k
+            elif rho_hi > 0.0:
+                rho_lo = bisect(k, rho_hi, dx, dy, 'lo')
+            else:
+                rho_lo = 0.0
+        else:
+            if trace(0.0, dx, dy).success:
+                rho_lo = 0.0
+            else:
+                rho_lo = bisect(0.0, rho_hi if rho_hi > 0 else 1.0,
+                                dx, dy, 'lo')
+        out[f'outer_rho_hi_{axis}'] = rho_hi
+        out[f'outer_rho_lo_{axis}'] = min(rho_lo, rho_hi)
+
+    hi_y_up = out['outer_rho_hi_up']
+    hi_y_dn = out['outer_rho_hi_down']
+    hi_x_lf = out['outer_rho_hi_left']
+    hi_x_rt = out['outer_rho_hi_right']
+    lo_y_up = out['outer_rho_lo_up']
+    lo_y_dn = out['outer_rho_lo_down']
+    lo_x_lf = out['outer_rho_lo_left']
+    lo_x_rt = out['outer_rho_lo_right']
+    out['outer_semi_y'] = (hi_y_up + hi_y_dn) / 2.0 * radius
+    out['outer_shift_y'] = (hi_y_up - hi_y_dn) / 2.0 * radius
+    out['outer_semi_x'] = (hi_x_lf + hi_x_rt) / 2.0 * radius
+    out['inner_semi_y'] = (lo_y_up + lo_y_dn) / 2.0 * radius
+    out['inner_shift_y'] = (lo_y_up - lo_y_dn) / 2.0 * radius
+    out['inner_semi_x'] = (lo_x_lf + lo_x_rt) / 2.0 * radius
+    out['full_diameter_y'] = 2.0 * out['outer_semi_y']
+    out['full_diameter_x'] = 2.0 * out['outer_semi_x']
+    out['screen_diameter_y'] = 2.0 * out['inner_semi_y']
+    out['screen_diameter_x'] = 2.0 * out['inner_semi_x']
+    denom = out['outer_semi_y'] * out['outer_semi_x']
+    out['obscuration_fraction'] = (
+        out['inner_semi_y'] * out['inner_semi_x'] / denom
+        if denom > 1e-12 else 0.0)
+    out['screen_shift'] = (out['inner_shift_y'] / out['outer_semi_y']
+                           if out['outer_semi_y'] > 1e-12 else 0.0)
+    seen = []
+    for pair in cutters:
+        if pair not in seen:
+            seen.append(pair)
+    out['cutters'] = seen
+
+    # «Коэффициент экранирования»: осевой пучок — max inner/outer по
+    # поверхностям с реальным габаритом пучка (у поверхностей вблизи
+    # фокуса outer — пятно, а не габарит; порог 5 % радиуса зрачка).
+    axial = find_passage_zones(system, 0.0, wl=wl)
+    out['passage_fraction'] = axial.get('passage_fraction')
+    ratios = [sf['inner'] / sf['outer']
+              for sf in axial.get('surfaces', [])
+              if sf['outer'] >= 0.05 * radius]
+    out['minimal_obscuration'] = max(ratios) if ratios else 0.0
+    return out

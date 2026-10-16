@@ -1,0 +1,161 @@
+0226b2: push ds
+0226b3: pop ax
+0226b4: nop 
+0226b5: inc bp
+0226b6: push bp
+0226b7: mov bp, sp
+0226b9: push ds
+0226ba: mov ds, ax
+0226bc: mov ax, 0x14
+0226bf: lcall 0x1886, 0x5270
+0226c4: cmp word ptr [bp + 6], 2
+0226c8: jne 0x226e8
+0226ca: push word ptr [bp + 0x12]
+0226cd: push word ptr [bp + 0x10]
+0226d0: push word ptr [bp + 0xe]
+0226d3: push word ptr [bp + 0xc]
+0226d6: push word ptr [bp + 0xa]
+0226d9: push word ptr [bp + 8]
+0226dc: lcall 0x1886, 0xa4ae
+0226e1: add sp, 0xc
+0226e4: jmp 0x22878
+0226e7: nop 
+0226e8: mov ax, 0x5c
+0226eb: push ax
+0226ec: push word ptr [bp + 0xa]
+0226ef: push word ptr [bp + 8]
+0226f2: lcall 0x1886, 0xa4c4
+0226f7: add sp, 6
+0226fa: mov word ptr [bp - 0x14], ax
+0226fd: mov word ptr [bp - 0x12], dx
+022700: mov ax, 0x2f
+022703: push ax
+022704: push word ptr [bp + 0xa]
+022707: push word ptr [bp + 8]
+02270a: lcall 0x1886, 0xa4c4
+02270f: add sp, 6
+022712: mov word ptr [bp - 6], ax
+022715: mov word ptr [bp - 4], dx
+022718: or dx, ax
+02271a: jne 0x2272c
+02271c: mov ax, word ptr [bp - 0x12]
+02271f: or ax, word ptr [bp - 0x14]
+022722: jne 0x22748
+022724: mov ax, word ptr [bp + 8]
+022727: mov dx, word ptr [bp + 0xa]
+02272a: jmp 0x22742
+02272c: mov ax, word ptr [bp - 0x12]
+02272f: or ax, word ptr [bp - 0x14]
+022732: je 0x2273c
+022734: mov ax, word ptr [bp - 0x14]
+022737: cmp word ptr [bp - 6], ax
+02273a: jbe 0x22748
+02273c: mov ax, word ptr [bp - 6]
+02273f: mov dx, word ptr [bp - 4]
+022742: mov word ptr [bp - 0x14], ax
+022745: mov word ptr [bp - 0x12], dx
+022748: mov ax, 0x2e
+02274b: push ax
+02274c: push word ptr [bp - 0x12]
+02274f: push word ptr [bp - 0x14]
+022752: lcall 0x1886, 0xa120
+022757: add sp, 6
+02275a: mov word ptr [bp - 0xa], ax
+02275d: mov word ptr [bp - 8], dx
+022760: or dx, ax
+022762: je 0x2279a
+022764: push ds
+022765: push word ptr [0x2b7c]
+022769: push word ptr [bp - 8]
+02276c: push ax
+02276d: lcall 0x1886, 0x883e
+022772: add sp, 8
+022775: push ax
+022776: push word ptr [bp + 0x12]
+022779: push word ptr [bp + 0x10]
+02277c: push word ptr [bp + 0xe]
+02277f: push word ptr [bp + 0xc]
+022782: push word ptr [bp + 0xa]
+022785: push word ptr [bp + 8]
+022788: push word ptr [bp + 6]
+02278b: lcall 0x1886, 0x9d9c
+022790: add sp, 0x10
+022793: mov word ptr [bp - 0xe], ax
+022796: jmp 0x22875
+022799: nop 
+02279a: mov ax, word ptr [0x28a4]
+02279d: mov word ptr [bp - 0xc], ax
+0227a0: mov word ptr [0x28a4], 0x10
+0227a6: push word ptr [bp + 0xa]
+0227a9: push word ptr [bp + 8]
+0227ac: lcall 0x1886, 0x5684
+0227b1: add sp, 4
+0227b4: add ax, 5
+0227b7: push ax
+0227b8: lcall 0x36e3, 0
+0227bd: add sp, 2
+0227c0: mov word ptr [bp - 0x14], ax
+0227c3: mov word ptr [bp - 0x12], dx
+0227c6: mov ax, word ptr [bp - 0xc]
+0227c9: mov word ptr [0x28a4], ax
+0227cc: mov ax, dx
+0227ce: or ax, word ptr [bp - 0x14]
+0227d1: jne 0x227da
+0227d3: mov ax, 0xffff
+0227d6: jmp 0x22878
+0227d9: nop 
+0227da: push word ptr [bp + 0xa]
+0227dd: push word ptr [bp + 8]
+0227e0: push dx
+0227e1: push word ptr [bp - 0x14]
+0227e4: lcall 0x1886, 0x564e
+0227e9: add sp, 8
+0227ec: push word ptr [bp + 0xa]
+0227ef: push word ptr [bp + 8]
+0227f2: lcall 0x1886, 0x5684
+0227f7: add sp, 4
+0227fa: add ax, word ptr [bp - 0x14]
+0227fd: mov dx, word ptr [bp - 0x12]
+022800: mov word ptr [bp - 0xa], ax
+022803: mov word ptr [bp - 8], dx
+022806: mov word ptr [bp - 0xe], 0xffff
+02280b: mov word ptr [bp - 0x10], 2
+022810: jmp 0x22815
+022812: dec word ptr [bp - 0x10]
+022815: cmp word ptr [bp - 0x10], 0
+022819: jl 0x2286a
+02281b: mov bx, word ptr [bp - 0x10]
+02281e: shl bx, 1
+022820: push ds
+022821: push word ptr [bx + 0x2b7c]
+022825: push word ptr [bp - 8]
+022828: push word ptr [bp - 0xa]
+02282b: lcall 0x1886, 0x564e
+022830: add sp, 8
+022833: sub ax, ax
+022835: push ax
+022836: push word ptr [bp - 0x12]
+022839: push word ptr [bp - 0x14]
+02283c: lcall 0x1886, 0x55bc
+022841: add sp, 6
+022844: inc ax
+022845: je 0x22812
+022847: push word ptr [bp - 0x10]
+02284a: push word ptr [bp + 0x12]
+02284d: push word ptr [bp + 0x10]
+022850: push word ptr [bp + 0xe]
+022853: push word ptr [bp + 0xc]
+022856: push word ptr [bp - 0x12]
+022859: push word ptr [bp - 0x14]
+02285c: push word ptr [bp + 6]
+02285f: lcall 0x1886, 0x9d9c
+022864: add sp, 0x10
+022867: mov word ptr [bp - 0xe], ax
+02286a: push word ptr [bp - 0x12]
+02286d: push word ptr [bp - 0x14]
+022870: lcall 0x36e6, 0xc
+022875: mov ax, word ptr [bp - 0xe]
+022878: dec bp
+022879: dec bp
+02287a: mov sp, bp
+02287c: pop ds

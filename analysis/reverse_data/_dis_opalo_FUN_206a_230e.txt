@@ -1,0 +1,224 @@
+0229ae: push bp
+0229af: mov bp, sp
+0229b1: sub sp, 0x16
+0229b4: push si
+0229b5: sub si, si
+0229b7: mov ax, word ptr [bp + 0xc]
+0229ba: or ax, word ptr [bp + 0xa]
+0229bd: jne 0x229cc
+0229bf: mov ax, word ptr [0x19c5]
+0229c2: mov dx, word ptr [0x19c7]
+0229c6: mov word ptr [bp + 0xa], ax
+0229c9: mov word ptr [bp + 0xc], dx
+0229cc: mov ax, word ptr [bp + 0xc]
+0229cf: or ax, word ptr [bp + 0xa]
+0229d2: je 0x22a0a
+0229d4: mov ax, word ptr [bp + 0xa]
+0229d7: mov dx, word ptr [bp + 0xc]
+0229da: mov word ptr [bp - 0xa], ax
+0229dd: mov word ptr [bp - 8], dx
+0229e0: jmp 0x229f8
+0229e2: add word ptr [bp - 0xa], 4
+0229e6: push word ptr es:[bx + 2]
+0229ea: push word ptr es:[bx]
+0229ed: lcall 0x1886, 0x5684
+0229f2: add sp, 4
+0229f5: inc ax
+0229f6: add si, ax
+0229f8: les bx, ptr [bp - 0xa]
+0229fb: mov ax, word ptr es:[bx + 2]
+0229ff: or ax, word ptr es:[bx]
+022a02: je 0x22a0a
+022a04: cmp si, 0x7fff
+022a08: jbe 0x229e2
+022a0a: cmp word ptr [0x2bb4], 0
+022a0f: je 0x22a30
+022a11: mov ax, word ptr [0x19a9]
+022a14: mov word ptr [bp - 2], ax
+022a17: jmp 0x22a1d
+022a19: nop 
+022a1a: dec word ptr [bp - 2]
+022a1d: cmp word ptr [bp - 2], 0
+022a21: je 0x22a35
+022a23: mov bx, word ptr [bp - 2]
+022a26: cmp byte ptr [bx + 0x19aa], 0
+022a2b: jne 0x22a35
+022a2d: jmp 0x22a1a
+022a2f: nop 
+022a30: mov word ptr [bp - 2], 0
+022a35: cmp word ptr [bp - 2], 0
+022a39: je 0x22a45
+022a3b: mov ax, word ptr [bp - 2]
+022a3e: add ax, 7
+022a41: shl ax, 1
+022a43: add si, ax
+022a45: mov ax, word ptr [bp + 0x1c]
+022a48: or ax, word ptr [bp + 0x1a]
+022a4b: je 0x22a60
+022a4d: push word ptr [bp + 0x1c]
+022a50: push word ptr [bp + 0x1a]
+022a53: lcall 0x1886, 0x5684
+022a58: add sp, 4
+022a5b: add ax, 3
+022a5e: add si, ax
+022a60: inc si
+022a61: mov word ptr [bp - 0xc], si
+022a64: cmp si, 0x7fff
+022a68: jbe 0x22a7c
+022a6a: mov word ptr [0x199c], 7
+022a70: mov word ptr [0x19a7], 0xa
+022a76: mov ax, 0xffff
+022a79: jmp 0x22d08
+022a7c: mov si, word ptr [0x28a4]
+022a80: mov word ptr [0x28a4], 0x10
+022a86: mov ax, word ptr [bp - 0xc]
+022a89: add ax, 0xf
+022a8c: push ax
+022a8d: lcall 0x36e3, 0
+022a92: add sp, 2
+022a95: mov word ptr [bp - 0x12], ax
+022a98: mov word ptr [bp - 0x10], dx
+022a9b: or dx, ax
+022a9d: jne 0x22ab2
+022a9f: mov word ptr [0x199c], 0xc
+022aa5: mov word ptr [0x19a7], 8
+022aab: mov word ptr [0x28a4], si
+022aaf: jmp 0x22a76
+022ab1: nop 
+022ab2: mov word ptr [0x28a4], si
+022ab6: mov dx, word ptr [bp - 0x10]
+022ab9: les bx, ptr [bp + 0xe]
+022abc: mov word ptr es:[bx], ax
+022abf: mov word ptr es:[bx + 2], dx
+022ac3: add ax, 0xf
+022ac6: and al, 0xf0
+022ac8: mov word ptr [bp - 0x12], ax
+022acb: les bx, ptr [bp + 0x12]
+022ace: mov word ptr es:[bx], ax
+022ad1: mov word ptr es:[bx + 2], dx
+022ad5: mov ax, word ptr [bp + 0xc]
+022ad8: or ax, word ptr [bp + 0xa]
+022adb: je 0x22b28
+022add: mov ax, word ptr [bp + 0xa]
+022ae0: mov dx, word ptr [bp + 0xc]
+022ae3: mov word ptr [bp - 0xa], ax
+022ae6: mov word ptr [bp - 8], dx
+022ae9: jmp 0x22af0
+022aeb: nop 
+022aec: add word ptr [bp - 0xa], 4
+022af0: les bx, ptr [bp - 0xa]
+022af3: mov ax, word ptr es:[bx + 2]
+022af7: or ax, word ptr es:[bx]
+022afa: je 0x22b28
+022afc: sub ax, ax
+022afe: push ax
+022aff: push word ptr es:[bx + 2]
+022b03: push word ptr es:[bx]
+022b06: push word ptr [bp - 0x10]
+022b09: push word ptr [bp - 0x12]
+022b0c: lcall 0x1886, 0x564e
+022b11: add sp, 8
+022b14: push dx
+022b15: push ax
+022b16: lcall 0x1886, 0xa120
+022b1b: add sp, 6
+022b1e: inc ax
+022b1f: mov word ptr [bp - 0x12], ax
+022b22: mov word ptr [bp - 0x10], dx
+022b25: jmp 0x22aec
+022b27: nop 
+022b28: cmp word ptr [bp - 2], 0
+022b2c: je 0x22b93
+022b2e: sub ax, ax
+022b30: push ax
+022b31: mov ax, 0x1980
+022b34: push ds
+022b35: push ax
+022b36: push word ptr [bp - 0x10]
+022b39: push word ptr [bp - 0x12]
+022b3c: lcall 0x1886, 0x564e
+022b41: add sp, 8
+022b44: push dx
+022b45: push ax
+022b46: lcall 0x1886, 0xa120
+022b4b: add sp, 6
+022b4e: mov word ptr [bp - 0x12], ax
+022b51: mov word ptr [bp - 0x10], dx
+022b54: sub si, si
+022b56: jmp 0x22b7f
+022b58: mov al, byte ptr [si + 0x19ab]
+022b5c: mov cl, 4
+022b5e: mov dx, ax
+022b60: sar al, cl
+022b62: and al, 0xf
+022b64: add al, 0x41
+022b66: les bx, ptr [bp - 0x12]
+022b69: inc word ptr [bp - 0x12]
+022b6c: mov byte ptr es:[bx], al
+022b6f: and dl, 0xf
+022b72: add dl, 0x41
+022b75: mov bx, word ptr [bp - 0x12]
+022b78: inc word ptr [bp - 0x12]
+022b7b: mov byte ptr es:[bx], dl
+022b7e: inc si
+022b7f: mov ax, word ptr [bp - 2]
+022b82: dec word ptr [bp - 2]
+022b85: or ax, ax
+022b87: jne 0x22b58
+022b89: les bx, ptr [bp - 0x12]
+022b8c: inc word ptr [bp - 0x12]
+022b8f: mov byte ptr es:[bx], 0
+022b93: les bx, ptr [bp - 0x12]
+022b96: inc word ptr [bp - 0x12]
+022b99: mov byte ptr es:[bx], 0
+022b9d: mov ax, word ptr [bp + 0x1c]
+022ba0: or ax, word ptr [bp + 0x1a]
+022ba3: je 0x22bcb
+022ba5: mov bx, word ptr [bp - 0x12]
+022ba8: inc word ptr [bp - 0x12]
+022bab: mov byte ptr es:[bx], 1
+022baf: mov bx, word ptr [bp - 0x12]
+022bb2: inc word ptr [bp - 0x12]
+022bb5: mov byte ptr es:[bx], 0
+022bb9: push word ptr [bp + 0x1c]
+022bbc: push word ptr [bp + 0x1a]
+022bbf: push es
+022bc0: push word ptr [bp - 0x12]
+022bc3: lcall 0x1886, 0x564e
+022bc8: add sp, 8
+022bcb: sub si, si
+022bcd: mov ax, word ptr [bp + 0x16]
+022bd0: mov dx, word ptr [bp + 0x18]
+022bd3: inc ax
+022bd4: mov word ptr [bp - 0x12], ax
+022bd7: mov word ptr [bp - 0x10], dx
+022bda: mov cx, word ptr [bp + 0x20]
+022bdd: or cx, word ptr [bp + 0x1e]
+022be0: je 0x22c2a
+022be2: sub cx, cx
+022be4: push cx
+022be5: push word ptr [bp + 0x20]
+022be8: push word ptr [bp + 0x1e]
+022beb: push cx
+022bec: mov cx, 0x2b82
+022bef: push ds
+022bf0: push cx
+022bf1: push dx
+022bf2: push ax
+022bf3: lcall 0x1886, 0x564e
+022bf8: add sp, 8
+022bfb: push dx
+022bfc: push ax
+022bfd: lcall 0x1886, 0xa120
+022c02: add sp, 6
+022c05: push dx
+022c06: push ax
+022c07: lcall 0x1886, 0x564e
+022c0c: add sp, 8
+022c0f: push dx
+022c10: push ax
+022c11: lcall 0x1886, 0xa120
+022c16: add sp, 6
+022c19: mov es, dx
+022c1b: mov si, ax
+022c1d: db 83

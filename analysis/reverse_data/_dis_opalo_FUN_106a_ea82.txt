@@ -1,0 +1,122 @@
+01f122: push bp
+01f123: mov bp, sp
+01f125: sub sp, 2
+01f128: push si
+01f129: mov ax, 2
+01f12c: push ax
+01f12d: mov cx, 0x234b
+01f130: push ds
+01f131: push cx
+01f132: push ax
+01f133: lcall 0x1886, 0x80ec
+01f138: add sp, 8
+01f13b: lcall 0x1886, 0x951c
+01f140: mov ax, 0x29c4
+01f143: push ds
+01f144: push ax
+01f145: lcall 0x1886, 0x5684
+01f14a: add sp, 4
+01f14d: push ax
+01f14e: mov ax, 0x29c4
+01f151: push ds
+01f152: push ax
+01f153: mov ax, 2
+01f156: push ax
+01f157: lcall 0x1886, 0x80ec
+01f15c: add sp, 8
+01f15f: mov byte ptr [0xb402], 0x46
+01f164: mov ax, word ptr [bp + 8]
+01f167: cdq 
+01f168: push dx
+01f169: push ax
+01f16a: mov ax, 0x1bd2
+01f16d: push ax
+01f16e: mov ax, 0xb403
+01f171: push ax
+01f172: call 0x196ea
+01f175: mov ax, 5
+01f178: push ax
+01f179: mov ax, 0xb402
+01f17c: push ds
+01f17d: push ax
+01f17e: mov ax, 2
+01f181: push ax
+01f182: lcall 0x1886, 0x80ec
+01f187: add sp, 8
+01f18a: mov al, byte ptr [0x1b15]
+01f18d: cwde 
+01f18e: mov bx, ax
+01f190: shl bx, 1
+01f192: shl bx, 1
+01f194: push word ptr [bx + 0x235e]
+01f198: push word ptr [bx + 0x235c]
+01f19c: mov si, bx
+01f19e: lcall 0x1886, 0x5684
+01f1a3: add sp, 4
+01f1a6: push ax
+01f1a7: push word ptr [si + 0x235e]
+01f1ab: push word ptr [si + 0x235c]
+01f1af: mov ax, 2
+01f1b2: push ax
+01f1b3: lcall 0x1886, 0x80ec
+01f1b8: add sp, 8
+01f1bb: push word ptr [bp + 6]
+01f1be: push word ptr [bp + 4]
+01f1c1: lcall 0x1886, 0x5684
+01f1c6: add sp, 4
+01f1c9: mov word ptr [bp - 2], ax
+01f1cc: cmp byte ptr [0x1b15], 0xb
+01f1d1: jge 0x1f217
+01f1d3: mov ax, 0x1b5c
+01f1d6: push ds
+01f1d7: push ax
+01f1d8: lcall 0x1886, 0x5684
+01f1dd: add sp, 4
+01f1e0: push ax
+01f1e1: mov ax, 0x1b5c
+01f1e4: push ds
+01f1e5: push ax
+01f1e6: mov ax, 2
+01f1e9: push ax
+01f1ea: lcall 0x1886, 0x80ec
+01f1ef: add sp, 8
+01f1f2: cmp word ptr [bp - 2], 0
+01f1f6: je 0x1f202
+01f1f8: mov ax, 5
+01f1fb: push ax
+01f1fc: mov ax, 0x234e
+01f1ff: jmp 0x1f209
+01f201: nop 
+01f202: mov ax, 3
+01f205: push ax
+01f206: mov ax, 0x2354
+01f209: push ds
+01f20a: push ax
+01f20b: mov ax, 2
+01f20e: push ax
+01f20f: lcall 0x1886, 0x80ec
+01f214: add sp, 8
+01f217: push word ptr [bp - 2]
+01f21a: push word ptr [bp + 6]
+01f21d: push word ptr [bp + 4]
+01f220: mov ax, 2
+01f223: push ax
+01f224: lcall 0x1886, 0x80ec
+01f229: add sp, 8
+01f22c: mov ax, 2
+01f22f: push ax
+01f230: mov cx, 0x2358
+01f233: push ds
+01f234: push cx
+01f235: push ax
+01f236: lcall 0x1886, 0x80ec
+01f23b: add sp, 8
+01f23e: mov ax, 1
+01f241: push ax
+01f242: lcall 0x1886, 0x3fd5
+01f247: add sp, 2
+01f24a: pop si
+01f24b: mov sp, bp
+01f24d: pop bp
+01f24e: db c2
+01f24f: push es

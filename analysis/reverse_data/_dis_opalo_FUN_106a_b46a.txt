@@ -1,0 +1,446 @@
+01bb0a: push bp
+01bb0b: mov bp, sp
+01bb0d: sub sp, 0x2a
+01bb10: mov byte ptr [bp - 2], 0
+01bb14: mov ax, word ptr [bp + 8]
+01bb17: mov dx, word ptr [bp + 0xa]
+01bb1a: mov word ptr [0xb37c], ax
+01bb1d: mov word ptr [0xb37e], dx
+01bb21: add ax, word ptr [bp + 6]
+01bb24: dec ax
+01bb25: mov word ptr [0xb372], ax
+01bb28: mov word ptr [0xb374], dx
+01bb2c: mov ax, word ptr [bp + 6]
+01bb2f: mov cx, 0x32
+01bb32: sub dx, dx
+01bb34: div cx
+01bb36: add ax, word ptr [bp + 6]
+01bb39: add ax, 3
+01bb3c: push ax
+01bb3d: call 0x1d984
+01bb40: mov word ptr [0xb380], ax
+01bb43: mov word ptr [bp - 8], ax
+01bb46: mov word ptr [bp - 0xe], ax
+01bb49: call 0x1b9b6
+01bb4c: cmp byte ptr [0xb36e], 0xe
+01bb51: je 0x1bb6c
+01bb53: mov bx, word ptr [0xb380]
+01bb57: mov word ptr [0xb37a], bx
+01bb5b: mov byte ptr [bx], 0x1f
+01bb5e: inc word ptr [0xb37a]
+01bb62: mov word ptr [0xb370], 0x3d5
+01bb68: jmp 0x1bff1
+01bb6b: nop 
+01bb6c: mov word ptr [bp - 0xa], 0
+01bb71: call 0x1b9b6
+01bb74: mov ax, word ptr [0xb380]
+01bb77: inc word ptr [0xb380]
+01bb7b: mov word ptr [0xb37a], ax
+01bb7e: cmp byte ptr [0xb36e], 0x29
+01bb83: jne 0x1bbc4
+01bb85: mov ax, word ptr [0xb376]
+01bb88: mov dx, word ptr [0xb378]
+01bb8c: mov word ptr [bp - 6], ax
+01bb8f: mov word ptr [bp - 4], dx
+01bb92: push dx
+01bb93: push ax
+01bb94: call 0x1ba86
+01bb97: call 0x1b9b6
+01bb9a: cmp word ptr [bp - 4], 0
+01bb9e: jg 0x1bbb2
+01bba0: jl 0x1bba8
+01bba2: cmp word ptr [bp - 6], 1
+01bba6: jae 0x1bbb2
+01bba8: cmp byte ptr [0xb36e], 3
+01bbad: je 0x1bbb2
+01bbaf: jmp 0x1bf56
+01bbb2: cmp byte ptr [0xb36e], 0xf
+01bbb7: jl 0x1bbbc
+01bbb9: jmp 0x1bfcc
+01bbbc: mov al, byte ptr [0xb36e]
+01bbbf: add al, 0x20
+01bbc1: jmp 0x1bbd1
+01bbc3: nop 
+01bbc4: cmp byte ptr [0xb36e], 4
+01bbc9: jge 0x1bbce
+01bbcb: jmp 0x1bfba
+01bbce: mov al, byte ptr [0xb36e]
+01bbd1: mov bx, word ptr [0xb37a]
+01bbd5: mov byte ptr [bx], al
+01bbd7: cmp byte ptr [0xb36e], 6
+01bbdc: jl 0x1bbe9
+01bbde: cmp byte ptr [0xb36e], 0xd
+01bbe3: jg 0x1bbe9
+01bbe5: or byte ptr [bp - 2], 1
+01bbe9: mov al, byte ptr [0xb36e]
+01bbec: cwde 
+01bbed: dec ax
+01bbee: cmp ax, 0x2a
+01bbf1: jbe 0x1bbf6
+01bbf3: jmp 0x1bfa6
+01bbf6: shl ax, 1
+01bbf8: xchg bx, ax
+01bbf9: jmp word ptr cs:[bx + 0x339e]
+01bbfe: hlt 
+01bbff: xor di, si
+01bc01: xor ax, di
+01bc03: inc si
+01bc05: aaa 
+01bc06: inc si
+01bc07: aaa 
+01bc08: dec si
+01bc09: xor al, 0x5e
+01bc0b: xor al, 0x6c
+01bc0d: xor al, 0xc8
+01bc0f: xor al, 0xf0
+01bc11: xor al, 0xc8
+01bc13: xor al, 0xf0
+01bc15: xor al, 0x4e
+01bc17: xor al, 0x16
+01bc19: xor ax, 0x3746
+01bc1c: inc si
+01bc1d: aaa 
+01bc1e: inc dx
+01bc1f: xor ax, 0x3532
+01bc22: xor dh, byte ptr [di]
+01bc24: int3 
+01bc25: xor ax, 0x3746
+01bc28: inc si
+01bc29: aaa 
+01bc2a: inc si
+01bc2b: aaa 
+01bc2c: hlt 
+01bc2d: xor ax, 0x3532
+01bc30: inc sp
+01bc33: inc si
+01bc35: aaa 
+01bc36: inc si
+01bc37: aaa 
+01bc38: inc si
+01bc39: aaa 
+01bc3a: inc si
+01bc3b: aaa 
+01bc3c: inc si
+01bc3d: aaa 
+01bc3e: inc si
+01bc3f: aaa 
+01bc40: mov byte ptr [0x3688], dh
+01bc44: inc si
+01bc45: aaa 
+01bc46: inc si
+01bc47: aaa 
+01bc48: inc si
+01bc49: aaa 
+01bc4a: inc si
+01bc4b: aaa 
+01bc4c: inc si
+01bc4d: aaa 
+01bc4e: inc si
+01bc4f: aaa 
+01bc50: inc si
+01bc51: aaa 
+01bc52: xor byte ptr [bx], 0x8b
+01bc55: push ds
+01bc56: jp 0x1bc0b
+01bc58: mov byte ptr [bx], 0x5d
+01bc5b: jmp 0x1bd92
+01bc5e: mov ax, word ptr [0xb37c]
+01bc61: mov dx, word ptr [0xb37e]
+01bc65: mov word ptr [bp - 0x26], ax
+01bc68: mov word ptr [bp - 0x24], dx
+01bc6b: mov ax, word ptr [bp - 6]
+01bc6e: mov dx, word ptr [bp - 4]
+01bc71: sub word ptr [bp - 6], 1
+01bc75: sbb word ptr [bp - 4], 0
+01bc79: or dx, ax
+01bc7b: je 0x1bc9e
+01bc7d: mov ax, word ptr [0xb372]
+01bc80: cmp word ptr [bp - 0x26], ax
+01bc83: jb 0x1bc88
+01bc85: jmp 0x1bfe0
+01bc88: les bx, ptr [bp - 0x26]
+01bc8b: mov al, byte ptr es:[bx]
+01bc8e: mov bx, word ptr [0xb380]
+01bc92: mov byte ptr [bx], al
+01bc94: inc word ptr [bp - 0x26]
+01bc97: inc word ptr [0xb380]
+01bc9b: jmp 0x1bc6b
+01bc9d: nop 
+01bc9e: mov ax, word ptr [bp - 0x26]
+01bca1: mov dx, word ptr [bp - 0x24]
+01bca4: mov word ptr [0xb37c], ax
+01bca7: mov word ptr [0xb37e], dx
+01bcab: jmp 0x1bd92
+01bcae: call 0x1b9b6
+01bcb1: cmp byte ptr [0xb36e], 0x29
+01bcb6: jne 0x1bcbb
+01bcb8: jmp 0x1bed3
+01bcbb: jmp 0x1bd95
+01bcbe: call 0x1bae4
+01bcc1: or ax, ax
+01bcc3: je 0x1bcc8
+01bcc5: jmp 0x1bf6c
+01bcc8: jmp 0x1bd95
+01bccb: nop 
+01bccc: call 0x1bae4
+01bccf: or ax, ax
+01bcd1: je 0x1bcd6
+01bcd3: jmp 0x1bf6c
+01bcd6: cmp byte ptr [0xb36e], 0x20
+01bcdb: je 0x1bce0
+01bcdd: jmp 0x1bd95
+01bce0: mov ax, word ptr [0xb376]
+01bce3: mov dx, word ptr [0xb378]
+01bce7: mov word ptr [bp - 0x12], ax
+01bcea: mov word ptr [bp - 0x10], dx
+01bced: call 0x1b9b6
+01bcf0: cmp byte ptr [0xb36e], 0x29
+01bcf5: je 0x1bcfa
+01bcf7: jmp 0x1bf6c
+01bcfa: mov ax, word ptr [0xb376]
+01bcfd: mov dx, word ptr [0xb378]
+01bd01: cmp word ptr [bp - 0x10], dx
+01bd04: jle 0x1bd09
+01bd06: jmp 0x1bed3
+01bd09: jl 0x1bd13
+01bd0b: cmp word ptr [bp - 0x12], ax
+01bd0e: jb 0x1bd13
+01bd10: jmp 0x1bed3
+01bd13: mov bx, word ptr [0xb37a]
+01bd17: mov byte ptr [bx], 0x1f
+01bd1a: inc word ptr [0xb37a]
+01bd1e: mov word ptr [0xb370], 0x3de
+01bd24: jmp 0x1bff1
+01bd27: nop 
+01bd28: call 0x1bae4
+01bd2b: or ax, ax
+01bd2d: je 0x1bd32
+01bd2f: jmp 0x1bf6c
+01bd32: cmp byte ptr [0xb36e], 0x20
+01bd37: jne 0x1bd3c
+01bd39: jmp 0x1bec6
+01bd3c: mov bx, word ptr [0xb37a]
+01bd40: mov byte ptr [bx], 0x1f
+01bd43: inc word ptr [0xb37a]
+01bd47: mov word ptr [0xb370], 0x3db
+01bd4d: jmp 0x1bff1
+01bd50: call 0x1bae4
+01bd53: or ax, ax
+01bd55: je 0x1bd5a
+01bd57: jmp 0x1bf6c
+01bd5a: cmp byte ptr [0xb36e], 0x20
+01bd5f: jne 0x1bd3c
+01bd61: call 0x1bae4
+01bd64: or ax, ax
+01bd66: je 0x1bd6b
+01bd68: jmp 0x1bf6c
+01bd6b: cmp byte ptr [0xb36e], 0xa
+01bd70: jne 0x1bd95
+01bd72: jmp 0x1bec6
+01bd75: nop 
+01bd76: inc word ptr [bp - 0xa]
+01bd79: cmp word ptr [bp - 0xa], 0x10
+01bd7d: jle 0x1bd82
+01bd7f: jmp 0x1bf92
+01bd82: cmp word ptr [bp - 0xa], 1
+01bd86: jne 0x1bd92
+01bd88: mov ax, word ptr [0xb37a]
+01bd8b: mov word ptr [bp - 0xe], ax
+01bd8e: mov byte ptr [bp - 2], 0
+01bd92: call 0x1b9b6
+01bd95: cmp byte ptr [0xb36e], 0x24
+01bd9a: je 0x1bd9f
+01bd9c: jmp 0x1bb74
+01bd9f: jmp 0x1bb71
+01bda2: sub ax, ax
+01bda4: mov word ptr [bp - 4], ax
+01bda7: mov word ptr [bp - 6], ax
+01bdaa: mov word ptr [bp - 0xc], ax
+01bdad: mov ax, word ptr [0xb37c]
+01bdb0: mov dx, word ptr [0xb37e]
+01bdb4: mov word ptr [bp - 0x2a], ax
+01bdb7: mov word ptr [bp - 0x28], dx
+01bdba: cmp ax, word ptr [0xb372]
+01bdbe: jb 0x1bdc3
+01bdc0: jmp 0x1bfe0
+01bdc3: les bx, ptr [bp - 0x2a]
+01bdc6: cmp byte ptr es:[bx], 0x27
+01bdca: jne 0x1bdd8
+01bdcc: inc word ptr [bp - 0x2a]
+01bdcf: mov bx, word ptr [bp - 0x2a]
+01bdd2: cmp byte ptr es:[bx], 0x27
+01bdd6: jne 0x1be06
+01bdd8: cmp word ptr [bp - 0xc], 0
+01bddc: je 0x1bdee
+01bdde: mov al, byte ptr es:[bx]
+01bde1: mov bx, word ptr [0xb380]
+01bde5: mov byte ptr [bx], al
+01bde7: inc word ptr [0xb380]
+01bdeb: jmp 0x1bdf6
+01bded: nop 
+01bdee: add word ptr [bp - 6], 1
+01bdf2: adc word ptr [bp - 4], 0
+01bdf6: inc word ptr [bp - 0x2a]
+01bdf9: mov ax, word ptr [bp - 0x2a]
+01bdfc: cmp word ptr [0xb372], ax
+01be00: ja 0x1bdc3
+01be02: jmp 0x1bfe0
+01be05: nop 
+01be06: cmp word ptr [bp - 0xc], 0
+01be0a: jne 0x1be1c
+01be0c: push word ptr [bp - 4]
+01be0f: push word ptr [bp - 6]
+01be12: call 0x1ba86
+01be15: mov word ptr [bp - 0xc], 1
+01be1a: jmp 0x1bdad
+01be1c: mov bx, word ptr [0xb37a]
+01be20: mov byte ptr [bx], 0x22
+01be23: mov ax, word ptr [bp - 0x2a]
+01be26: mov dx, word ptr [bp - 0x28]
+01be29: jmp 0x1bca4
+01be2c: call 0x1b9b6
+01be2f: mov bx, word ptr [0xb37a]
+01be33: mov byte ptr [bx], 0x16
+01be36: mov al, byte ptr [0xb36e]
+01be39: cwde 
+01be3a: sub ax, 3
+01be3d: je 0x1be4a
+01be3f: sub ax, 0x11
+01be42: jne 0x1be47
+01be44: jmp 0x1bd92
+01be47: jmp 0x1bd95
+01be4a: mov bx, word ptr [0xb37a]
+01be4e: mov byte ptr [bx], 0x15
+01be51: jmp 0x1bd92
+01be54: call 0x1b9b6
+01be57: cmp byte ptr [0xb36e], 0x17
+01be5c: jne 0x1be68
+01be5e: mov bx, word ptr [0xb37a]
+01be62: mov byte ptr [bx], 0x17
+01be65: jmp 0x1bd92
+01be68: cmp byte ptr [0xb36e], 0xd
+01be6d: jne 0x1be72
+01be6f: jmp 0x1bd92
+01be72: mov bx, word ptr [0xb37a]
+01be76: mov byte ptr [bx], 0x1f
+01be79: inc word ptr [0xb37a]
+01be7d: mov word ptr [0xb370], 0x3d9
+01be83: jmp 0x1bff1
+01be86: dec word ptr [bp - 0xa]
+01be89: cmp word ptr [bp - 0xa], -1
+01be8d: je 0x1be92
+01be8f: jmp 0x1bd92
+01be92: cmp byte ptr [bp - 2], 0
+01be96: jne 0x1be9b
+01be98: jmp 0x1bf80
+01be9b: mov ax, word ptr [0xb380]
+01be9e: sub ax, word ptr [bp - 0xe]
+01bea1: jmp 0x1bf82
+01bea4: call 0x1b9b6
+01bea7: cmp byte ptr [0xb36e], 0x2c
+01beac: jne 0x1beb8
+01beae: mov bx, word ptr [0xb37a]
+01beb2: mov byte ptr [bx], 0x1d
+01beb5: jmp 0x1bec6
+01beb7: nop 
+01beb8: cmp byte ptr [0xb36e], 7
+01bebd: jne 0x1bec9
+01bebf: mov bx, word ptr [0xb37a]
+01bec3: mov byte ptr [bx], 0x1c
+01bec6: call 0x1b9b6
+01bec9: cmp byte ptr [0xb36e], 0x29
+01bece: je 0x1bed3
+01bed0: jmp 0x1bf6c
+01bed3: push word ptr [0xb378]
+01bed7: push word ptr [0xb376]
+01bedb: call 0x1ba86
+01bede: mov bx, word ptr [0xb37a]
+01bee2: add byte ptr [bx], 0x40
+01bee5: jmp 0x1bd92
+01bee8: mov al, byte ptr [0xb36e]
+01beeb: mov byte ptr [bp - 0x18], al
+01beee: call 0x1b9b6
+01bef1: cmp byte ptr [0xb36e], 0x29
+01bef6: jne 0x1bf6c
+01bef8: cmp byte ptr [bp - 0x18], 0x22
+01befc: jne 0x1bf0b
+01befe: neg word ptr [0xb376]
+01bf02: adc word ptr [0xb378], 0
+01bf07: neg word ptr [0xb378]
+01bf0b: push word ptr [0xb378]
+01bf0f: push word ptr [0xb376]
+01bf13: call 0x1ba86
+01bf16: call 0x1b9b6
+01bf19: cmp byte ptr [0xb36e], 3
+01bf1e: jne 0x1bf56
+01bf20: mov bx, word ptr [0xb37a]
+01bf24: mov byte ptr [bx], 0x23
+01bf27: call 0x1b9b6
+01bf2a: cmp byte ptr [0xb36e], 9
+01bf2f: jne 0x1bf34
+01bf31: jmp 0x1bb74
+01bf34: cmp byte ptr [0xb36e], 0xa
+01bf39: jne 0x1bf3e
+01bf3b: jmp 0x1bb74
+01bf3e: cmp byte ptr [0xb36e], 0xb
+01bf43: jne 0x1bf48
+01bf45: jmp 0x1bb74
+01bf48: cmp byte ptr [0xb36e], 0xc
+01bf4d: jne 0x1bf52
+01bf4f: jmp 0x1bb74
+01bf52: jmp 0x1bd95
+01bf55: nop 
+01bf56: mov bx, word ptr [0xb37a]
+01bf5a: mov byte ptr [bx], 0x1f
+01bf5d: inc word ptr [0xb37a]
+01bf61: mov word ptr [0xb370], 0x3d6
+01bf67: jmp 0x1bff1
+01bf6a: nop 
+01bf6b: nop 
+01bf6c: mov bx, word ptr [0xb37a]
+01bf70: mov byte ptr [bx], 0x1f
+01bf73: inc word ptr [0xb37a]
+01bf77: mov word ptr [0xb370], 0x3d4
+01bf7d: jmp 0x1bff1
+01bf7f: nop 
+01bf80: sub ax, ax
+01bf82: mov word ptr [0xb370], ax
+01bf85: mov bx, word ptr [0xb37a]
+01bf89: mov byte ptr [bx], 0x1e
+01bf8c: inc word ptr [0xb37a]
+01bf90: jmp 0x1bff1
+01bf92: mov bx, word ptr [0xb37a]
+01bf96: mov byte ptr [bx], 0x1f
+01bf99: inc word ptr [0xb37a]
+01bf9d: mov word ptr [0xb370], 0x3da
+01bfa3: jmp 0x1bff1
+01bfa5: nop 
+01bfa6: mov bx, word ptr [0xb37a]
+01bfaa: mov byte ptr [bx], 0x1f
+01bfad: inc word ptr [0xb37a]
+01bfb1: mov word ptr [0xb370], 0x3dd
+01bfb7: jmp 0x1bff1
+01bfb9: nop 
+01bfba: mov bx, ax
+01bfbc: mov byte ptr [bx], 0x1f
+01bfbf: inc word ptr [0xb37a]
+01bfc3: mov word ptr [0xb370], 0x3d8
+01bfc9: jmp 0x1bff1
+01bfcb: nop 
+01bfcc: mov bx, word ptr [0xb37a]
+01bfd0: mov byte ptr [bx], 0x1f
+01bfd3: inc word ptr [0xb37a]
+01bfd7: mov word ptr [0xb370], 0x3d7
+01bfdd: jmp 0x1bff1
+01bfdf: nop 
+01bfe0: mov bx, word ptr [0xb37a]
+01bfe4: mov byte ptr [bx], 0x1f
+01bfe7: inc word ptr [0xb37a]
+01bfeb: mov word ptr [0xb370], 0x3dc
+01bff1: mov ax, word ptr [0xb370]
+01bff4: mov bx, word ptr [0xb37a]
+01bff8: mov word ptr [bx], ax
+01bffa: mov ax, word ptr [bp - 8]
+01bffd: mov sp, bp
+01bfff: pop bp
+01c000: retf 

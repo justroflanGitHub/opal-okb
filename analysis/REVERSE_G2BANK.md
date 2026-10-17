@@ -187,3 +187,11 @@ stale-копии уже сохранены: bank/OBEKTIV_stale.PRN, bank/OKULAR_
 - `OKULAR: RT__2149.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
 | OBEKTIV | RT__2157.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
 - `OBEKTIV: RT__2157.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
+| OKULAR | RT__2158.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `OKULAR: RT__2158.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
+
+QA-итог TASK_STALE 22:00: OBEKTIV r1==r2==прежний (побайтово, stale опровергнут — RED суть конвенции печати);
+OKULAR r1==r2, новый дамп = состояние OKULAR.OPJ (λ.5461, Sp/Sp2/Н ЗР GREEN), прежний микс λ.4358 сохранён как OKULAR_stale.PRN.
+Вердикты: OBEKTIV 12/2/12/1 (без изм.), OKULAR 8/0/14/5 -> 9/5/12/1, банк 254/14/34/47 -> 255/19/32/43.
+Источник загрузки = файл OPJ каталога; OPAL.ARH (нет okular/obektiv в оригинале) деградирует от Чтения — детали REVERSE_GFIX §STALE.
+Стенд свободен, DOSBox прибит 21:58.

@@ -137,3 +137,44 @@ OBEKTIV — данные другие, «ОП-04/40» в заголовке = п
 - `GTIN05 NOOPALA2`
 | GTIE00 | RT__1127.PRN | 2732 | OK | секций~3, габариты=да; Cистема-ЭКРАН - ГОЭ                       Работа |
 - `GTIE00: RT__1127.PRN 2732б axial=True seps~3 PROTOCOL 0->2748; head='Cистема-ЭКРАН - ГОЭ                       Работа-RT                   '`
+| YBBS77_ | - | - | NOOPALA2 | Анализ не запустил RT |
+- `YBBS77_ NOOPALA2`
+| YBBS77_ | RT__1130.PRN | 1213 | MISLOAD | НЕДАГРУЗ: в файле «ЭКРАН - ГОЭ» (остаток GTIE00 в редакторе), все нули; Тор не загрузился; файл удалён из банка |
+- `YBBS77_: RT__1130.PRN 1213б axial=True seps~2 PROTOCOL 0->0; head='Cистема-ЭКРАН - ГОЭ                       Работа-RT                   '`
+| S_KOND1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `S_KOND1 NOOPALA2`
+| S_KOND1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `S_KOND1 NOOPALA2`
+| KURSOVIK | RT__1134.PRN | 2007 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `KURSOVIK: RT__1134.PRN 2007б axial=True seps~4 PROTOCOL 0->2050; head='Cистема-                                  Работа-RT                   '`
+| ST | RT__1135.PRN | 2318 | OK | секций~3, габариты=да; Cистема-Tаир     f'=300  1:3.5  2w=5   4  Работа |
+- `ST: RT__1135.PRN 2318б axial=True seps~3 PROTOCOL 0->2329; head="Cистема-Tаир     f'=300  1:3.5  2w=5   4  Работа-RT                   "`
+
+## Раунд добора 11:42 (сессия B: стенд свободен, батч завершился)
+
+QC банка: 11 валидных; YBBS77_.PRN удалён (MISLOAD). Ретрай пяти отставших:
+LAB6_GAS OPTICS#1 GTIN05 S_KOND1 YBBS77_ (для # в имени — контроль диалога по скрину).
+| SKOND1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `SKOND1 NOOPALA2`
+| LAB6_GAS | - | - | NOOPALA2 | Анализ не запустил RT |
+- `LAB6_GAS NOOPALA2`
+| SKOND1 | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `SKOND1 LOADFAIL diff=0.0000`
+| LAB6_GAS | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `LAB6_GAS LOADFAIL diff=0.0000`
+| LAB6GAS | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `LAB6GAS LOADFAIL diff=0.0000`
+| OPTICS#1 | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `OPTICS#1 LOADFAIL diff=0.0000`
+| LAB6GAS | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `LAB6GAS LOADFAIL diff=0.0000`
+| OPTICS#1 | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `OPTICS#1 LOADFAIL diff=0.0000`
+| GTIN05 | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `GTIN05 LOADFAIL diff=0.0000`
+| OPTICS1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `OPTICS1 NOOPALA2`
+| GTIN05 | RT__1144.PRN | 1323 | OK-NOAXIAL | секций~1, габариты=да; Cистема-                                  Работа |
+- `GTIN05: RT__1144.PRN 1323б axial=False seps~1 PROTOCOL 0->2492; head='Cистема-                                  Работа-RT                   '`
+| OPTICS1 | RT__1145.PRN | 2474 | OK-NOAXIAL | секций~2, габариты=да; Cистема-                                  Работа |
+- `OPTICS1: RT__1145.PRN 2474б axial=False seps~2 PROTOCOL 2492->2492; head='Cистема-                                  Работа-RT                   '`

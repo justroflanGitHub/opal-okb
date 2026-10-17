@@ -78,3 +78,5 @@ boot (~30 c, title сразу = авто-восстановленный OPALA)
 - `ST4: RT__1031.PRN 2326б axial=True seps~3 PROTOCOL 0->2337; head="Cистема-Таир-12  f'=150  1:4    2w=11  3  Работа-RT                   "`
 | OPAL3 | - | - | NOOPALA2 | Анализ не запустил RT |
 - `OPAL3 NOOPALA2`
+| OPAL3 | - | - | BOOTFAIL | окно не появилось |
+- `OPAL3 BOOTFAIL`

@@ -17,7 +17,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from decode_lbo_opj import decode_lbo_opj
 from lbo_reader import load_lbo_fast
 from optics_engine import paraxial_trace
-from ray_tracing import trace_fan, trace_ray_through_system, Ray
+from ray_tracing import trace_fan, trace_ray_through_system, Ray, \
+    TERMINAL_EXIT_EPS
 from domain.models import OpticalSystem, Surface, Wavelength, ApertureType
 
 
@@ -212,9 +213,78 @@ class TestIndustarStopClipping:
         assert r_out.error == 'STOP', f"Expected STOP, got {r_out.error}"
 
 
+class TestZeroTerminalThicknessExit:
+    """GFIX/P2: терминальный сегмент при нулевой терминальной толщине.
+
+    Досье REVERSE_GVERIFY §4.1: при thickness=0 путь кончался сегментом
+    ДО преломления на последней поверхности (наклон осевого веера
+    −0.090923 вместо пост-рефракции) — потребители направления берут
+    конечную разность path[-2]→path[-1] (осевой веер, аберрации,
+    golden_verify). Теперь путь всегда кончается сегментом с
+    пост-рефракционным направлением: при нулевой толщине — длиной
+    TERMINAL_EXIT_EPS (луч прямой, наклон сегмента точен при любой
+    длине).
+    """
+
+    @staticmethod
+    def _single_k8(thickness):
+        sys = OpticalSystem(name="exit-seg")
+        sys.aperture_value = 20.0
+        sys.surfaces = [
+            Surface(radius=100.0, thickness=thickness, glass="K8",
+                    semi_diameter=15.0),
+        ]
+        sys.wavelengths = [Wavelength(0.58756, 1.0, "d")]
+        return sys
+
+    def test_exit_slope_is_post_refraction(self):
+        # Луч || оси на высоте 5: до-рефракционный наклон == 0 точно,
+        # после преломления в K8 на сфере R=100 — отрицательный (луч
+        # прижимается к нормали и сходится к оси).
+        ray = Ray(x=0, y=5.0, z=-50, k=0, l=0, m=1)
+        res = trace_ray_through_system(self._single_k8(0.0), ray, 0.58756)
+        assert res.success and len(res.path) >= 3
+        prev, last = res.path[-2], res.path[-1]
+        dz = last[2] - prev[2]
+        slope = (last[1] - prev[1]) / dz
+        # терминальный сегмент ненулевой длины до плоскости вершины+EPS
+        # (точка попадания на сфере — sag≈0.125 при y=5 — сегмент идёт
+        # назад по лучу к плоскости вершины; наклон от этого не меняется)
+        assert abs(dz) > 1e-6, f"вырожденный терминальный сегмент: dz={dz}"
+        assert last[2] == pytest.approx(TERMINAL_EXIT_EPS)
+        assert slope < -1e-4, f"наклон {slope} — до-рефракционный (=0), не выход"
+
+    def test_exit_slope_matches_nonzero_thickness_twin(self):
+        # Близнец с thickness=1e-3: его терминальный сегмент заведомо
+        # пост-рефракционный (старый обход харнесса) — наклоны совпадают.
+        ray = Ray(x=0, y=5.0, z=-50, k=0, l=0, m=1)
+        res0 = trace_ray_through_system(self._single_k8(0.0), ray, 0.58756)
+        res1 = trace_ray_through_system(self._single_k8(1e-3), ray, 0.58756)
+        for res in (res0, res1):
+            assert res.success
+        s0 = (res0.path[-1][1] - res0.path[-2][1]) / (res0.path[-1][2] - res0.path[-2][2])
+        s1 = (res1.path[-1][1] - res1.path[-2][1]) / (res1.path[-1][2] - res1.path[-2][2])
+        assert s0 == pytest.approx(s1, rel=1e-9), f"{s0} vs {s1}"
+        # точка выхода — та же (сдвиг сегмента ≤ TERMINAL_EXIT_EPS)
+        assert res0.path[-2] == pytest.approx(res1.path[-2])
+
+    def test_native_parity_zero_terminal(self):
+        # Нативное ядро получает ту же сдвинутую плоскость изображения
+        # (ray_native._system_params) — пути Python/native идентичны.
+        import ray_native
+        ray = (0.0, 5.0, -50.0, 0.0, 0.0, 1.0)
+        py = trace_ray_through_system(self._single_k8(0.0), Ray(*ray), 0.58756)
+        nat = ray_native.trace_batch(self._single_k8(0.0), [ray], wl=0.58756)[0]
+        assert py.success and nat.success
+        assert tuple(py.path[-1]) == pytest.approx(tuple(nat.path[-1]))
+        # терминальный сегмент ненулевой и с пост-рефракционным наклоном
+        for res in (py, nat):
+            dz = res.path[-1][2] - res.path[-2][2]
+            assert abs(dz) > 1e-6, f"вырожденный терминальный сегмент: {dz}"
+
+
 class TestIndustarFieldRays:
     """Field rays at 26° pass through system."""
-
     def test_axial_and_field_pass(self, industar):
         wl = industar.wavelengths[0].value
         fan = trace_fan(industar, num_rays=11, pupil_range=1.0, wl=wl, field_y=26.0)

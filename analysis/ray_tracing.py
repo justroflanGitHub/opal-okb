@@ -11,6 +11,14 @@ from glass_catalog import compute_refractive_index
 from optics_utils import get_effective_aperture, make_field_ray, EPSILON, TINY, UNLIMITED_SD
 from domain.spatial import CoordBreak, surface_has_coord_break
 
+#: Минимальная длина терминального сегмента пути (мм) при нулевой
+#: терминальной толщине: плоскость изображения совпадает с последней
+#: поверхностью, а путь обязан кончаться сегментом с направлением ПОСЛЕ
+#: преломления (конечные разности потребителей path[-2]→path[-1]).
+#: Наклон прямого сегмента точен при любой длине; сдвиг точки ≤1e-3 мм —
+#: ниже шумового порога эталонов (досье REVERSE_GVERIFY §4.1).
+TERMINAL_EXIT_EPS = 1e-3
+
 
 class Ray:
     """Луч в 3D пространстве."""
@@ -601,18 +609,28 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             gk, gl, gm = cb.dir_to_global((local_ray.k, local_ray.l, local_ray.m))
             current_ray = Ray(gx, gy, gz, gk, gl, gm)
 
-    # После последней поверхности — propagate до плоскости изображения
-    if sys.surfaces:
+    # После последней поверхности — сегмент до плоскости изображения.
+    # Строится ВСЕГДА (кроме |m|≈0): последний сегмент пути несёт
+    # направление ПОСЛЕ преломления на последней поверхности — на нём
+    # конечные разности path[-2]→path[-1] (осевой веер, аберрации,
+    # golden_verify; досье REVERSE_GVERIFY §4.1: при нулевой терминальной
+    # толщине путь кончался ДО-рефракционным сегментом, наклон веера
+    # −0.090923 вместо пост-рефракции). При нулевой толщине плоскость
+    # изображения совпадает с последней поверхностью — сегмент
+    # минимальной длины TERMINAL_EXIT_EPS (луч прямой: наклон сегмента
+    # точен при любой длине).
+    if sys.surfaces and abs(current_ray.m) > TINY:
         last = sys.surfaces[-1]
-        if last.thickness != 0 and abs(current_ray.m) > TINY:
-            img_z = z_positions[-1]
-            dt = (img_z - current_ray.z) / current_ray.m
-            ix = current_ray.x + dt * current_ray.k
-            iy = current_ray.y + dt * current_ray.l
-            # OPL от последней поверхности до плоскости изображения
-            result.opl += current_n * dt
-            result.add_point(ix, iy, img_z)
-    
+        img_z = z_positions[-1]
+        if last.thickness == 0:
+            img_z += TERMINAL_EXIT_EPS
+        dt = (img_z - current_ray.z) / current_ray.m
+        ix = current_ray.x + dt * current_ray.k
+        iy = current_ray.y + dt * current_ray.l
+        # OPL от последней поверхности до плоскости изображения
+        result.opl += current_n * dt
+        result.add_point(ix, iy, img_z)
+
     return result
 
 

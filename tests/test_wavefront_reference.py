@@ -111,12 +111,16 @@ class TestDegenerateTerminalSegment:
         s = self._system()
         res = trace_ray_through_system(s, Ray(0, 8, -50, 0, 0, 1), 0.58756)
         d = ab._air_exit_direction(s, res, 0.58756)
-        # Снеллиус на R=30 в точке падения: сверка с независимым расчётом
-        hit = res.path[-2]
+        # Снеллиус на R=30 в точке падения: сверка с независимым расчётом.
+        # Входящее направление — реальный сегмент в стекле (преломлён на
+        # первой поверхности, наклон ≈ −0.0267, а не (0,0,1))
+        hit, prev = res.path[-2], res.path[-3]
+        n_in = math.hypot(*(hit[i] - prev[i] for i in range(3)))
+        inc = tuple((hit[i] - prev[i]) / n_in for i in range(3))
         nx, ny, nz = ab.surface_normal(hit[0], hit[1], hit[2], 30.0, 5.0)
         from glass_catalog import compute_refractive_index
         n1 = compute_refractive_index('K8', 0.58756)
-        exp = ab.refract(0.0, 0.0, 1.0, nx, ny, nz, n1, 1.0)
+        exp = ab.refract(inc[0], inc[1], inc[2], nx, ny, nz, n1, 1.0)
         assert d == pytest.approx(exp, abs=1e-9)
 
 

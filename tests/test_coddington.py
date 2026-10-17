@@ -23,7 +23,7 @@ from optics_engine import (OpticalSystem, Surface, Wavelength, FieldPoint,
                            paraxial_trace)
 from optics_utils import compute_z_positions, get_effective_aperture
 from aberrations import coddington_trace, caustic_radii, \
-    compute_field_aberrations
+    compute_field_aberrations, get_primary_wl
 
 # Сужение веера для сравнения с дифференциальным следом: 20% апертуры
 # (сферическая аберрация веера ∝ h², при сужении веер сходится к следу)
@@ -90,12 +90,17 @@ class TestCoddingtonFanConvergence:
 
     @staticmethod
     def _check_convergence(system, field_y):
-        cod = coddington_trace(system, field_y=field_y)
+        # Единая λ: coddington_trace берёт основную λ системы
+        # (54607 нм у Индустара), а у compute_field_aberrations дефолт
+        # захардкожен 58756 — сравнение на разных λ расходится на ~15 %
+        # (проявилось после унификации ND/SD, GFIX).
+        wl = get_primary_wl(system)
+        cod = coddington_trace(system, wl=wl, field_y=field_y)
         assert cod['z_m'] is not None and cod['z_s'] is not None
 
         for frac in (1.0, FAN_NARROW_FRAC):
             fan = compute_field_aberrations(
-                narrowed(system, frac), field_points=[(field_y,)])[0]
+                narrowed(system, frac), wl=wl, field_points=[(field_y,)])[0]
             assert fan['z_m'] is not None, f'веер x{frac} не прошёл'
             img_z = compute_z_positions(system)[-1]
             z_fan_m = img_z + fan['z_m']

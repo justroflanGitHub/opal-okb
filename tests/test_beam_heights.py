@@ -184,8 +184,14 @@ class TestTabeap:
             assert row['screen_shift'] == 0.0
 
     def test_obscuration_03_sizes_positive(self, mirror):
-        """obscuration_ratio=0.3 → относительные размеры 0.3 (>0),
-        смещение на экране растёт с полем, осевой пучок — без смещения."""
+        """obscuration_ratio=0.3 → относительные размеры 0.3 (>0).
+
+        Смещение эллипса на экране диафрагмы ≈0 у всех полей: главный
+        луч строится через центр диафрагмы (прежние ненулевые сдвиги —
+        артефакт фантомной плоскости стопа, off-by-one до GFIX; экран
+        диафрагмы совпадает с плоскостью зрачка). Осевой пучок — без
+        виньетирования; косое поле срезается зеркалом-экраном ('M').
+        """
         system = copy.deepcopy(mirror)
         system.obscuration_ratio = 0.3
         rows = tabeap_rows(system)
@@ -193,9 +199,8 @@ class TestTabeap:
             for key in ('obsc_in_x', 'obsc_in_y',
                         'obsc_out_x', 'obsc_out_y'):
                 assert row[key] == pytest.approx(0.3)
-        assert rows[0]['screen_shift'] == pytest.approx(0.0)
-        assert abs(rows[1]['screen_shift']) > 0
-        assert abs(rows[2]['screen_shift']) > abs(rows[1]['screen_shift'])
+            assert row['screen_shift'] == pytest.approx(0.0, abs=1e-9)
+        assert rows[0]['vignetting_upper'] == pytest.approx(0.0, abs=1e-9)
 
     def test_limits_and_vignetting_structure(self, mirror):
         """Ограничения — (буква, N); виньетирование в [0, 1].
@@ -232,12 +237,19 @@ class TestTabeap:
     def test_catadioptric_system(self, mirror_lens_450):
         """Зеркально-линзовая f'=450 (LENS_SPC.LBO): не падает, структура.
 
-        Осевой пучок срезан кромкой S3 (полудиаметры LBO впритык),
-        косой — сильнее: доля срезанного края растёт с полем.
+        После унификации ND/SD (GFIX): диафрагма на первой поверхности
+        (SD=0) — клиппинг делают полудиаметры поверхностей. Полудиаметры
+        LBO (40…44) больше радиуса зрачка (aperture/2 = 39.85) — осевой
+        и косой пучки проходят без срезания; прежние 0 < v < 1 были
+        обрезкой фантомной плоскостью стопа (off-by-one до GFIX).
         """
         system = copy.deepcopy(mirror_lens_450)
         system.obscuration_ratio = 0.3
         rows = tabeap_rows(system)
         assert [r['n'] for r in rows] == [1, 2]
-        assert 0.0 < rows[0]['vignetting_upper'] < 1.0   # осевой срезан S3
-        assert rows[1]['vignetting_upper'] > rows[0]['vignetting_upper']
+        for row in rows:
+            assert row['vignetting_upper'] == pytest.approx(0.0, abs=1e-9)
+            assert row['obsc_out_y'] == pytest.approx(0.3)
+            letter, num = row['limit_upper']
+            assert letter in ('D', 'P', 'M')
+            assert 0 <= num <= len(system.surfaces)

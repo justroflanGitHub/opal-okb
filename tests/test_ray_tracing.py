@@ -18,6 +18,7 @@ from decode_lbo_opj import decode_lbo_opj
 from lbo_reader import load_lbo_fast
 from optics_engine import paraxial_trace
 from ray_tracing import trace_fan, trace_ray_through_system, Ray
+from domain.models import OpticalSystem, Surface, Wavelength, ApertureType
 
 
 # --------------------------------------------------------------------------- #
@@ -150,7 +151,23 @@ class TestIndustarWavelengths:
 # =========================================================================== #
 
 class TestIndustarStopClipping:
-    """Rays wider than aperture stop are clipped (STOP error)."""
+    """Апертурная диафрагма: плоскость ND/SD и клиппинг (STOP).
+
+    ND (stop_surface) — 1-индексация, как в OPAL: плоскость диафрагмы =
+    вершина поверхности stop_surface−1 + stop_offset (SD). Семантика
+    подтверждена эталонами GVERIFY (ST/HELIOS8/121: Sp сходится до
+    1e-3). Старый трейсер считал z_stop = z_positions[stop_surface]
+    — off-by-one на поверхность.
+    """
+
+    def test_stop_plane_position(self, industar):
+        # Индустар-23у: ND=4 (0-based поверхность 3, z=11.3) + SD=4.2
+        z_vertices = [0.0]
+        for s in industar.surfaces:
+            z_vertices.append(z_vertices[-1] + s.thickness)
+        assert industar.stop_surface == 4
+        z_stop = z_vertices[industar.stop_surface - 1] + industar.stop_offset
+        assert abs(z_stop - 15.5) < 1e-9, f"z_stop={z_stop}, ожидалось 15.5"
 
     def test_ray_within_aperture_passes(self, industar):
         wl = industar.wavelengths[0].value
@@ -164,12 +181,35 @@ class TestIndustarStopClipping:
         r = trace_ray_through_system(industar, ray, wl)
         assert r.success, f"Ray y=10 should pass, got {r.error}"
 
-    def test_ray_beyond_stop_blocked(self, industar):
+    def test_ray_converged_at_stop_passes(self, industar):
+        # При исправленной плоскости z=15.5 луч y=12 сходится к 10.28
+        # на диафрагме (радиус 10.55) и проходит; более высокие лучи
+        # режутся полудиаметрами поверхностей (EDGE), поэтому STOP
+        # проверяется на синтетике (test_stop_clip_synthetic).
         wl = industar.wavelengths[0].value
         ray = Ray(x=0, y=12.0, z=-1, k=0, l=0, m=1)
         r = trace_ray_through_system(industar, ray, wl)
-        assert not r.success, "Ray y=12 should be blocked"
-        assert r.error == 'STOP', f"Expected STOP, got {r.error}"
+        assert r.success, f"Ray y=12 should pass at corrected stop, got {r.error}"
+
+    def test_stop_clip_synthetic(self):
+        # Две плоские поверхности, диафрагма D=2 (радиус 1.0):
+        # stop_surface=1 → плоскость z = 0 (вершина 0-based 0) + 5.0
+        sys = OpticalSystem(name="stop-synth")
+        sys.aperture_type = ApertureType.ENTRANCE_PUPIL
+        sys.aperture_value = 2.0
+        sys.stop_surface = 1
+        sys.stop_offset = 5.0
+        sys.surfaces = [
+            Surface(radius=0.0, thickness=10.0, glass="BK8"),
+            Surface(radius=0.0, thickness=0.0, glass=""),
+        ]
+        sys.wavelengths = [Wavelength(0.54607, 1.0, "e")]
+        wl = 0.54607
+        r_in = trace_ray_through_system(sys, Ray(x=0, y=0.99, z=-1, k=0, l=0, m=1), wl)
+        assert r_in.success, f"y=0.99 should pass, got {r_in.error}"
+        r_out = trace_ray_through_system(sys, Ray(x=0, y=1.01, z=-1, k=0, l=0, m=1), wl)
+        assert not r_out.success, "y=1.01 should be blocked"
+        assert r_out.error == 'STOP', f"Expected STOP, got {r_out.error}"
 
 
 class TestIndustarFieldRays:

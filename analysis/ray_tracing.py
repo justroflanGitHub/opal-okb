@@ -429,6 +429,8 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     current_n = compute_refractive_index("", wl)  # n среды перед системой
     
     # Параметры диафрагмы (aperture stop)
+    # stop_surface — 1-индексация, как в paraxial_trace (OPAL ND):
+    # плоскость диафрагмы = вершина поверхности stop_surface−1 + stop_offset
     stop_surf_idx = getattr(sys, 'stop_surface', -1)
     stop_offset = getattr(sys, 'stop_offset', 0.0)
     # Detect bogus aperture_value (F/# or NA stored instead of diameter)
@@ -440,10 +442,11 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             raw_aperture = max(real_sd_vals) * 2.0
     stop_radius = raw_aperture / 2.0 if raw_aperture > 0 else 0
     # aperture_value = D (полный диаметр), stop_radius = D/2 = радиус
-    # Z-позиция диафрагмы
+    # Z-позиция диафрагмы: 1-индексация stop_surface (как в
+    # paraxial_trace/OPAL ND); 0 — диафрагма не задана (проверка выключена)
     z_stop = None
-    if 0 <= stop_surf_idx < len(z_positions):
-        z_stop = z_positions[stop_surf_idx] + stop_offset
+    if 1 <= stop_surf_idx <= len(sys.surfaces):
+        z_stop = z_positions[stop_surf_idx - 1] + stop_offset
     
     for i, s in enumerate(sys.surfaces):
         z_surf = z_positions[i]

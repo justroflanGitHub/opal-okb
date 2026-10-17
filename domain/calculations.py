@@ -140,9 +140,11 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
             ``None`` — основная λ системы. Позволяет сосчитать
             характеристики для любой λ без копии системы (п. 13 GAP v2).
 
-    Note: sys.stop_type ('d', 'z', 'p') определяет тип диафрагмы, но
-    текущий расчёт работает только с типом 'd' (апертурная диафрагма).
-    Все существующие системы из LBO используют тип 'd'.
+    Note: sys.stop_type ('d', 'z', 'p') — способ задания диафрагмы в UI;
+    расчёт един для всех типов: плоскость диафрагмы = вершина поверхности
+    ``stop_surface`` (1-индексация) + ``stop_offset`` (OPAL: ND/SD; 'z' —
+    на поверхности, 'd' — на заданном расстоянии, 'p' — плоскость входного
+    зрачка в предметном пространстве, см. блок «Положение зрачков»).
 
     Note: Surfaces with non-zero tilt/decenter are treated as
     ordinary surfaces in the paraxial approximation.  Full tilt
@@ -291,88 +293,86 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
         results['sH'] = sH
 
     # ===== Положение зрачков (sP, sP') =====
-    stop_idx = max(0, min(sys.stop_surface - 1, ns - 1))  # 0-based
-    stop_off = getattr(sys, 'stop_offset', 0.0)  # смещение диафрагмы от stop_surface (мм)
+    # Плоскость диафрагмы — вершина поверхности stop_surface (1-индексация,
+    # как ND в OPAL: «Диафрагма: ND= (кол-во поверхностей до диафрагмы),
+    # SD= (расстояние; SD=0 — совпадает с поверхностью)», OPAL.DOC) плюс
+    # stop_offset (SD) вправо. Тип 'p' (задание входного зрачка) — тот же
+    # механизм с плоскостью в пространстве предмета (stop_surface=1,
+    # stop_offset=Sp): плоскость предметного пространства отображается
+    # в себя, sP = stop_offset.
+    #
+    # Зрачки — изображения плоскости диафрагмы. Главный параксиальный луч
+    # (y=0 в плоскости диафрагмы) раскладывается по базисным лучам
+    # y1/nu1 = (1, 0) и y2/nu2 = (0, 1) на первой поверхности: по
+    # линейности параксиальной оптики высота любого луча в произвольной
+    # плоскости z линейна по стартовым (y, nu), поэтому главный луч
+    # (y0, nu0) = (hB, −hA), где hA/hB — высоты базисных лучей в плоскости
+    # диафрагмы. Зрачки — точки пересечения оси этим лучом в предметном
+    # и образном пространствах ( золотая верификация GVERIFY: KURSOVIK
+    # Sp/Sp' — совпадение 3e-5; прежняя обратная трассировка теряла
+    # преломление на самой диафрагменной поверхности и смещение SD,
+    # расхождение до 40 % на HELIOS8).
+    stop_idx = max(0, min(int(sys.stop_surface) - 1, ns - 1))  # 0-based
+    stop_off = float(getattr(sys, 'stop_offset', 0.0) or 0.0)
+    z_stop = sum(sys.surfaces[k].thickness for k in range(stop_idx)) + stop_off
 
-    # Обратная трассировка от диафрагмы к первой поверхности
-    # Диафрагма находится на z = z(stop_surface) + stop_offset
-    # yb на диафрагме = 0, nub = 1
-    yb = [0.0] * (ns + 1)
-    nub = [0.0] * (ns + 1)
-    yb[stop_idx] = 0.0
-    nub[stop_idx] = 1.0
+    # Высоты базисных лучей в плоскости диафрагмы. Пространство k
+    # (после преломления на поверхности k): y(z) = y[k] + nu[k]/n·(z−z_k).
+    z_k = 0.0
+    k_stop = None
+    for k in range(ns):
+        d_k = sys.surfaces[k].thickness
+        if z_k <= z_stop <= z_k + d_k or k == ns - 1:
+            k_stop = k
+            break
+        z_k += d_k
 
-    # Сначала трассируем от stop_idx назад, учитывая смещение
-    # Если stop_offset > 0, диафрагма между stop_idx и stop_idx+1
-    # Сместим начальную точку: yb[stop_idx] уже = 0
-    # Но при переносе назад к stop_idx нужно учесть смещение
-    # yb_at_stop_surface = 0 - nub * stop_offset / n_medium[stop_idx]
-    if stop_off > 0 and stop_idx < ns:
-        n_after_stop = n_medium[stop_idx + 1]
-        yb[stop_idx] = -nub[stop_idx] * stop_off / n_after_stop
+    if z_stop < 0.0 or k_stop is None:
+        # Плоскость в предметном пространстве: базисные лучи там
+        # (1, 0) и (0, 1) — без преломлений.
+        hA, hB = 1.0, z_stop
+        nuA_s, nuB_s = 0.0, 1.0
+    else:
+        dz = z_stop - z_k
+        n_k = n_medium[k_stop + 1]
+        hA = y1[k_stop] + (nu1[k_stop] / n_k) * dz
+        hB = y2[k_stop] + (nu2[k_stop] / n_k) * dz
+        nuA_s, nuB_s = nu1[k_stop], nu2[k_stop]
 
-    for i in range(stop_idx - 1, -1, -1):
-        s = sys.surfaces[i]
-        R = s.radius if s.radius != 0 else 1e15
-        n1 = n_medium[i]
-        n2 = n_medium[i + 1]
-        d = s.thickness
-        yb[i] = yb[i + 1] - nub[i + 1] * d / n_medium[i + 1]
-        if R != 1e15:
-            nub[i] = nub[i + 1] + yb[i] * (n2 - n1) / R
-        else:
-            nub[i] = nub[i + 1]
+    # Главный луч в системе координат первой поверхности (до преломлений).
+    y0, nu0 = hB, -hA
+    # Его приведённый угол в плоскости диафрагмы (для увеличений зрачков)
+    nu_stop = y0 * nuA_s + nu0 * nuB_s
 
-    # Прямая трассировка от stop_surface к последней поверхности
-    # Сбросим yb на стоп-поверхности обратно (для прямого хода)
-    yb[stop_idx] = 0.0
-    nub[stop_idx] = 1.0
-    if stop_off > 0 and stop_idx < ns:
-        n_after_stop = n_medium[stop_idx + 1]
-        # Перенос от диафрагмы вперёд к следующей поверхности
-        d_to_next = sys.surfaces[stop_idx].thickness - stop_off
-        if stop_idx + 1 <= ns:
-            yb[stop_idx + 1] = nub[stop_idx] * stop_off / n_after_stop
-            nub_next = nub[stop_idx]
-    for i in range(stop_idx, ns):
-        s = sys.surfaces[i]
-        R = s.radius if s.radius != 0 else 1e15
-        n1 = n_medium[i]
-        n2 = n_medium[i + 1]
-        if R != 1e15:
-            nub[i] = nub[i] - yb[i] * (n2 - n1) / R
-        if i < ns - 1:
-            d = s.thickness
-            yb[i + 1] = yb[i] + nub[i] * d / n_medium[i + 1]
-            nub[i + 1] = nub[i]
-        else:
-            d = s.thickness
-            yb[ns] = yb[i] + nub[i] * d / n_medium[ns]
-
-    # Входной зрачок: расстояние от первой поверхности
+    # Входной зрачок: пересечение оси в предметном пространстве (n=1).
     sP = 0.0
-    if abs(nub[0]) > TINY:
-        sP = -yb[0] / nub[0]
+    if abs(nu0) > TINY:
+        sP = -y0 / nu0
     results['sP'] = sP
     results['entrance_pupil'] = sP
 
-    # Выходной зрачок: расстояние от последней поверхности
+    # Выходной зрачок: состояние главного луча на последней поверхности
+    # (после её преломления) → пересечение оси в образном пространстве.
+    y_last = y0 * y1[ns - 1] + nu0 * y2[ns - 1]
+    nu_last = y0 * nu1[ns - 1] + nu0 * nu2[ns - 1]
+    n_exit = n_medium[ns]
     sP_prime = 0.0
-    nu_exit = nub[ns - 1] if ns > 0 else 0.0
-    if abs(nu_exit) > TINY:
-        sP_prime = -yb[ns] / nu_exit
+    if abs(nu_last) > TINY:
+        sP_prime = -y_last * n_exit / nu_last
     results['sP_prime'] = sP_prime
     results['exit_pupil'] = sP_prime
     results['pupil_location'] = sP_prime
+    results['stop_z'] = z_stop
 
     # ===== Увеличения изображения диафрагмы (пересчёт апертур, п. 12) =====
-    # Трассирован луч через центр диафрагмы: y = 0 на диафрагме,
-    # nu = 1 (приведённый угол). По инварианту Лагранжа для сопряжённых
-    # плоскостей «диафрагма → зрачок» увеличение = 1/nu этого луча
-    # в плоскости зрачка.
-    nu_exit = nub[ns - 1] if ns > 0 else 0.0
-    m_entrance = 1.0 / nub[0] if abs(nub[0]) > TINY else None
-    m_exit = 1.0 / nu_exit if abs(nu_exit) > TINY else None
+    # Главный луч с приведённым углом nu=1 в плоскости диафрагмы:
+    # масштабирование (y0, nu0) → (y0, nu0)/nu_stop даёт инвариант
+    # Лагранга для сопряжённых плоскостей «диафрагма → зрачок»:
+    # увеличение = 1/nu этого луча в плоскости зрачка.
+    nub_0 = nu0 / nu_stop if abs(nu_stop) > TINY else 0.0
+    nub_exit = nu_last / nu_stop if abs(nu_stop) > TINY else 0.0
+    m_entrance = 1.0 / nub_0 if abs(nub_0) > TINY else None
+    m_exit = 1.0 / nub_exit if abs(nub_exit) > TINY else None
     results['entrance_pupil_magnification'] = m_entrance
     results['exit_pupil_magnification'] = m_exit
     if m_entrance and m_exit and abs(m_entrance) > TINY:

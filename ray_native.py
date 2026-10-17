@@ -235,8 +235,10 @@ def _system_params(system: OpticalSystem, wl: float) -> dict:
             raw_aperture = max(real_sd_vals) * 2.0
     stop_radius = raw_aperture / 2.0 if raw_aperture > 0 else 0.0
 
-    has_stop = 0 <= stop_surf_idx < len(z_positions)
-    z_stop = (z_positions[stop_surf_idx] + stop_offset) if has_stop else 0.0
+    # stop_surface — 1-индексация (как в paraxial_trace/OPAL ND):
+    # плоскость диафрагмы = вершина поверхности stop_surface−1 + stop_offset
+    has_stop = 1 <= stop_surf_idx <= len(system.surfaces)
+    z_stop = (z_positions[stop_surf_idx - 1] + stop_offset) if has_stop else 0.0
 
     last = system.surfaces[-1] if system.surfaces else None
     return dict(

@@ -159,6 +159,27 @@ def test_us00ki02_reference_system_green():
 
 
 @requires_stand
+def test_us00ki02_axial_fan_slope_post_refraction():
+    """GFIX/P2: терминальная толщина 0 (маркер 1e20) — наклон веера
+    пост-рефракционный. Прежде путь кончался ДО-рефракционным сегментом
+    последней поверхности (досье §4.1: наклон −0.090923 вместо
+    пост-рефракции), харнесс обходил заглушкой толщины _IMAGE_EPS=1e-3.
+    Теперь трейсер строит терминальный сегмент сам (TERMINAL_EXIT_EPS):
+    наклон совпадает с близнецом thickness=1e-3 — обход больше не нужен."""
+    import copy
+    from analysis.golden_verify import axial_fan, opj_to_system
+    system = opj_to_system(parse_golden_opj(GOLDEN_DOS / 'US00KI02.OPJ'))
+    assert system.surfaces[-1].thickness == 0.0
+    twin = copy.deepcopy(system)
+    twin.surfaces[-1].thickness = 1e-3
+    fan0 = axial_fan(system, 10.0, [1.0], 5.0)[0]
+    fan1 = axial_fan(twin, 10.0, [1.0], 5.0)[0]
+    assert fan0['ok'] and fan1['ok']
+    assert fan0['slope'] == pytest.approx(fan1['slope'], rel=1e-4), \
+        f"наклон thickness=0: {fan0['slope']} vs 1e-3: {fan1['slope']}"
+
+
+@requires_stand
 def test_opal3_fully_green():
     res = compare_system('OPAL3')
     assert res['counts']['RED'] == 0

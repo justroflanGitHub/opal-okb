@@ -175,3 +175,13 @@ QA-вывод: все LOADFAIL-имена содержат `_`/`#` (LAB6_GAS, OP
 - `YBBS77_ NOOPALA2`
 | OPTICS#1 | RT__1157.PRN | 2320 | OK | секций~3, габариты=да; Cистема-Триплет     f'=200 1:4    2w=12   Работа |
 - `OPTICS#1: RT__1157.PRN 2320б axial=True seps~3 PROTOCOL 0->2331; head="Cистема-Триплет     f'=200 1:4    2w=12   Работа-RT                   "`
+
+## Захват стенда 21:46 (TASK_STALE, сессия 241ddd15)
+
+Переген OBEKTIV/OKULAR ×2 холодный прогон каждый (g2bank.py, рецепт выше).
+stale-копии уже сохранены: bank/OBEKTIV_stale.PRN, bank/OKULAR_stale.PRN.
+Лог ниже по строкам драйвера.
+| OBEKTIV | RT__2147.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `OBEKTIV: RT__2147.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
+| OKULAR | RT__2149.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `OKULAR: RT__2149.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`

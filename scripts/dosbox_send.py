@@ -8,7 +8,10 @@ import ctypes, subprocess, sys, time
 
 VK = {'ESC': 0x1B, 'ENTER': 0x0D, 'SPACE': 0x20, 'TAB': 0x09,
       'UP': 0x26, 'DOWN': 0x28, 'LEFT': 0x25, 'RIGHT': 0x27,
-      'F1': 0x70, 'F3': 0x72, 'F9': 0x78, 'F10': 0x79, 'BS': 0x08}
+      'F1': 0x70, 'F2': 0x71, 'F3': 0x72, 'F4': 0x73, 'F5': 0x74,
+      'F6': 0x75, 'F7': 0x76, 'F8': 0x77, 'F9': 0x78, 'F10': 0x79,
+      'F11': 0x7A, 'F12': 0x7B, 'BS': 0x08, 'INS': 0x2D, 'DEL': 0x2E,
+      'HOME': 0x24, 'END': 0x23, 'PGUP': 0x21, 'PGDN': 0x22}
 
 u32 = ctypes.windll.user32
 WM_KEYDOWN, WM_KEYUP, WM_CHAR = 0x0100, 0x0101, 0x0102
@@ -51,7 +54,7 @@ def main():
         if k == 'CTRL_F5':
             tap(0x74, extra_ctrl=True, char=False)   # скриншот DOSBox
             continue
-        if k in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'F1', 'F3', 'F9', 'F10'):
+        if k in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'INS', 'DEL', 'HOME', 'END', 'PGUP', 'PGDN') or k.startswith('F') and k[1:].isdigit():
             tap(VK[k], char=False)
             continue
         vk = VK.get(k, ord(k[0]) if len(k) == 1 else 0x0D)

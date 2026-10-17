@@ -76,6 +76,12 @@ def test_all_stand_files_strict_parse():
     ('121', 'stop_nd', 4),                       # ND 1-индексация (GFIX P1)
     ('121', 'pupil_pos', 8.162),                 # SD от вершины ND−1
     ('YBBS77_', 'mirrors', [0, 1]),              # зеркальные маркеры gidx
+    # P6.1: положение предмета — f64@0x4C (мм от первой поверхности):
+    # <0 действительный слева, >0 мнимый справа; 1000/(sP − z_obj) = Sp
+    ('ST4', 'object_pos', -96.2046),             # Sp 9.717 дптр
+    ('S_KOND1', 'object_pos', -30.0),            # Sp 33.333 дптр
+    ('PLIOPT', 'object_pos', -280.5),
+    ('OPTICS#1', 'object_pos', 85.1495),         # мнимый предмет
 ])
 def test_layout_pins(name, field, expected):
     opj = parse_standalone_opj((GOLDEN_DOS / f'{name}.OPJ').read_bytes())

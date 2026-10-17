@@ -75,6 +75,51 @@ class TestOplToReferenceSphere:
             self.CENTER, self.R) is None
 
 
+class TestDegenerateTerminalSegment:
+    """Сагитта последней поверхности у высоты выхода > TERMINAL_EXIT_EPS
+    (GFIX P6/PLIOPT): точка падения ЗА ε-плоскостью вершины —
+    терминальный сегмент направлен назад (прямая луча верна, ориентация
+    перевёрнута). Направление выхода — Снеллиус от точки падения."""
+
+    def _system(self):
+        # R=30: сагитта на y=8 равна 30−√(30²−8²) ≈ 1.086 мм ≫ ε=10⁻³
+        s = OpticalSystem()
+        s.wavelengths = [Wavelength(0.58756, 1.0, 'd')]
+        s.field_points = [FieldPoint(y=0.0)]
+        s.surfaces = [
+            Surface(radius=100, glass='K8', thickness=5),
+            Surface(radius=30, glass='', thickness=0),
+        ]
+        return s
+
+    def test_direction_forward_not_reversed(self):
+        s = self._system()
+        res = trace_ray_through_system(s, Ray(0, 8, -50, 0, 0, 1), 0.58756)
+        hit, term = res.path[-2], res.path[-1]
+        assert hit[2] > term[2] + 1.0          # падение ЗА ε-плоскостью
+        d = ab._air_exit_direction(s, res, 0.58756)
+        assert d is not None and d[2] > 0.0    # ПО ХОДУ луча (вперёд)
+        # прямая терминального сегмента — та же (наклон сохранился),
+        # но её «сырая» ориентация назад: без фикса d[2] < 0
+        raw = (term[1] - hit[1], term[2] - hit[2])
+        import math as _m
+        n = _m.hypot(*raw)
+        assert raw[1] / n < 0.0                # сегмент назад по z
+        assert d[1] / d[2] == pytest.approx(raw[0] / raw[1], rel=1e-9)
+
+    def test_direction_matches_snell_refraction(self):
+        s = self._system()
+        res = trace_ray_through_system(s, Ray(0, 8, -50, 0, 0, 1), 0.58756)
+        d = ab._air_exit_direction(s, res, 0.58756)
+        # Снеллиус на R=30 в точке падения: сверка с независимым расчётом
+        hit = res.path[-2]
+        nx, ny, nz = ab.surface_normal(hit[0], hit[1], hit[2], 30.0, 5.0)
+        from glass_catalog import compute_refractive_index
+        n1 = compute_refractive_index('K8', 0.58756)
+        exp = ab.refract(0.0, 0.0, 1.0, nx, ny, nz, n1, 1.0)
+        assert d == pytest.approx(exp, abs=1e-9)
+
+
 class TestAirExitDirection:
     def test_image_plane_segment_is_air(self):
         """Ненулевой отрезок до плоскости изображения: направление —

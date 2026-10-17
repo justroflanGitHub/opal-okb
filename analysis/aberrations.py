@@ -214,9 +214,19 @@ def _refract_at_last_surface(system: OpticalSystem, point, direction,
         # Отражение: d' = d − 2(d·n)n
         dot = k * nx + l * ny + m * nz
         return (k - 2 * dot * nx, l - 2 * dot * ny, m - 2 * dot * nz)
-    glass_before = system.surfaces[-2].glass if len(system.surfaces) > 1 else ''
-    n1 = compute_refractive_index(glass_before, wl)
-    n2 = compute_refractive_index(surf.glass, wl)
+
+    def _n_at(s) -> float:
+        """n среды ПОСЛЕ поверхности ``s``: каталог либо n_override
+        (порт OPJ — показатели из RI-матрицы OPAL, трейсер так же)."""
+        n = compute_refractive_index(s.glass, wl)
+        for wl_key, n_val in (getattr(s, 'n_override', None) or {}).items():
+            if abs(wl_key - wl) < 0.002:
+                return n_val
+        return n
+
+    prev_s = system.surfaces[-2] if len(system.surfaces) > 1 else surf
+    n1 = _n_at(prev_s)
+    n2 = _n_at(surf)
     return refract(k, l, m, nx, ny, nz, n1, n2)
 
 

@@ -263,13 +263,53 @@ def test_121_zone_pairing_by_hzr():
 
 
 @requires_stand
-def test_near_object_systems_skipped_with_note():
-    """obj=1: конвенции не реверсированы (досье §3) — строки пропущены с
-    заметкой вместо ложного RED."""
-    for name in ('ST4', 'OKULAR', 'S_KOND1'):
-        res = compare_system(name)
-        assert res['counts']['RED'] == 0
-        assert any('ближний предмет' in n for n in res['notes'])
+@pytest.mark.parametrize('name, wave_etalon', [
+    ('ST4', -1.0566),          # афокальный выход: плоскость выходного зрачка
+    ('LAB6_GAS', -2.0346),
+    ('S_KOND1', -137.7047),    # опорная сфера от точки Гаусса (0.26 %)
+    ('PLIOPT', -0.02),
+])
+def test_near_object_axial_fully_converged(name, wave_etalon):
+    """P6.2: ближний предмет (obj=1) — предмет f64@0x4C, веер по углу
+    arcsin(zone·Ax) от точки предмета. Дальнее изображение — прод в
+    дптр/попер в гр.мнсек/Tg'·100 = высота в выходном зрачке; ближнее —
+    прод/попер в мм от L_ref, Tg'·100 = −100·tg u'. PLIOPT — вырожденный
+    терминальный сегмент (сагитта > ε): направление выхода по Снеллиусу,
+    без фикса волновые +2·10⁵ λ (досье §P6)."""
+    res = compare_system(name)
+    assert res['counts']['RED'] == 0, res['name']
+    by_qty = {r[1]: r for r in res['rows']}
+    assert by_qty['Sp'][7] == 'GREEN'
+    assert by_qty['Sp2'][7] == 'GREEN'
+    hzr = [r for r in res['rows'] if r[1] == 'Н ЗР (мм)']
+    assert hzr and all(r[7] == 'GREEN' for r in hzr)
+    wave = [r for r in res['rows'] if r[1] == 'волновые' and r[2] != 0.0]
+    assert wave and all(r[7] in ('GREEN', 'YELLOW') for r in wave)
+    assert wave[0][4] == pytest.approx(wave_etalon, rel=5e-3)
+
+
+@requires_stand
+def test_optics1_virtual_image_vertex_reference():
+    """P6: мнимое изображение (L_p < 0) — опорная плоскость строк вершина
+    последней поверхности, не точка Гаусса: прод = L (строка зона-0
+    −17.742 = |L_p|), попер = −y на вершине, Sp2 = 1000/sP′ (−16.401).
+    Волновые мнимого изображения — опора OPAL не найдена (OPEN,
+    досье §P6): со старта веера вычтен сагиттный эксцесс фазы."""
+    res = compare_system('OPTICS#1')
+    by_qty = {r[1]: r for r in res['rows']}
+    assert by_qty['Sp2'][3] == pytest.approx(-16.401, abs=1e-3)
+    assert by_qty['Sp2'][5] < 1e-4
+    prod = [r for r in res['rows']
+            if r[1] == 'прод (мм)' and r[2] != 0.0]
+    assert len(prod) == 4
+    assert prod[0][3] == pytest.approx(-17.742 - 0.624, abs=5e-3)
+    assert all(r[7] in ('GREEN', 'YELLOW') for r in prod)
+    trans = [r for r in res['rows']
+             if r[1] == 'попер (мм)' and r[2] != 0.0]
+    assert trans[0][3] == pytest.approx(2.74072, abs=1e-3)
+    assert all(r[7] in ('GREEN', 'YELLOW') for r in trans)
+    # знаки: попер мнимого изображения печатается с обратным знаком
+    assert all((r[3] > 0) == (r[4] > 0) for r in trans)
 
 
 @requires_stand

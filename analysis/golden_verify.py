@@ -488,6 +488,10 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         y0_par = (z_obj - z0_par) * (-u0_par)
     y_p, u_p = _paraxial_ray(system, wl, y0_par, u0_par, z0_par)
     L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None    # ∞ — афокальный выход
+    # Мнимое изображение (L_p < 0, OPTICS#1): опорная плоскость строк —
+    # вершина последней поверхности, не точка Гаусса: прод = L (зона-0
+    # −17.742 = |L_p|), попер = −y на вершине, Sp2 = 1000/sP' (досье §P6)
+    L_ref = 0.0 if (L_p is not None and L_p < 0.0) else L_p
     sp_prime = paraxial_of(system, wl)['sP_prime']
     z_last = sum(s.thickness for s in system.surfaces[:-1])
     z_pup = z_last + sp_prime
@@ -521,11 +525,18 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
             ray = Ray(0.0, (z_obj - z0) * tu, z0,
                       0.0, -su, math.sqrt(1.0 - su * su))
         res = trace_ray_through_system(system, ray, wl)
-        row = {'zone': zone, 'ok': False, 'L_p': L_p, 'u_parax': u_p,
-               'h_zr_mm': 100.0 * tu, 'wave': None}
+        row = {'zone': zone, 'ok': False, 'L_p': L_p, 'L_ref': L_ref,
+               'u_parax': u_p, 'h_zr_mm': 100.0 * tu, 'wave': None}
         if not (res.success and len(res.path) >= 2):
             fan.append(row)
             continue
+        if z_obj > 0.0:
+            # мнимый предмет: веер со старта на ПЛОСКОСТИ z0 несёт фазовый
+            # сагиттный эксцесс сферы, сходящейся в точку предмета
+            # (R0 − √(R0²+y0²), ~2 мм = 4·10³ λ у OPTICS#1) — вычитаем:
+            # фаза старта общая со сферы R0 вокруг точки предмета
+            r0 = z_obj - ray.z
+            res.opl -= math.sqrt(r0 * r0 + ray.y * ray.y) - r0
         prev, last = res.path[-2], res.path[-1]
         dz = last[2] - prev[2]
         slope = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else None
@@ -627,10 +638,19 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
             port_sp = (1000.0 / (parax['sP'] - z_obj)
                        if units_sp == 'дптр' else parax['sP'])
             if units_sp2 == 'дптр':
-                y_p, u_p = _paraxial_ray(system, wl, 0.0, 0.05, z_obj)
+                if z_obj < 0.0:
+                    y0p, u0p, z0p = 0.0, 0.05, z_obj
+                else:                       # прицел в мнимый предмет
+                    z0p = -(abs(z_obj) + 100.0)
+                    u0p = -0.05
+                    y0p = (z_obj - z0p) * (-u0p)
+                y_p, u_p = _paraxial_ray(system, wl, y0p, u0p, z0p)
                 L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None
-                port_sp2 = (1000.0 / (parax['sP_prime'] - L_p)
-                            if L_p is not None else None)
+                # мнимое изображение (L_p<0): опора — вершина последней
+                # поверхности, Sp2 = 1000/sP' (OPTICS#1 −16.401, §P6)
+                L_ref = 0.0 if (L_p is not None and L_p < 0.0) else L_p
+                port_sp2 = (1000.0 / (parax['sP_prime'] - L_ref)
+                            if L_ref is not None else None)
             else:
                 port_sp2 = parax['sP_prime']
         else:
@@ -789,13 +809,14 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 opal_v = et['long'][0]
                 port_v = None
                 if pr and pr['ok'] and pr['L'] is not None:
+                    l_ref = pr.get('L_ref', pr['L_p'])
                     if units[0] == 'дптр':
                         port_v = 1000.0 / pr['L']
-                        if pr['L_p'] is not None:
-                            port_v -= 1000.0 / pr['L_p']
+                        if l_ref:
+                            port_v -= 1000.0 / l_ref
                     else:
-                        port_v = (pr['L'] - pr['L_p']
-                                  if pr['L_p'] is not None else None)
+                        port_v = (pr['L'] - l_ref
+                                  if l_ref is not None else None)
                 floor = (ABS_FLOOR_MM if units[0] == 'мм'
                          else ABS_FLOOR_DPTR)
                 d = rel_diff(port_v, opal_v, floor)
@@ -814,11 +835,17 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                     rows.append(('осевой', 'попер (гр.мнсек)', zone, opal_as,
                                  port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))
                 else:
-                    if pr and pr['ok'] and pr['slope'] is not None \
-                            and pr['L_p'] is not None:
-                        z_img = z_last + pr['L_p']
-                        port_v = pr['y_exit'] + pr['slope'] * (z_img
-                                                               - pr['z_exit'])
+                    if pr and pr['ok'] and pr['slope'] is not None:
+                        l_ref = pr.get('L_ref', pr['L_p'])
+                        if l_ref is not None:
+                            z_img = z_last + l_ref
+                            port_v = pr['y_exit'] + pr['slope'] * (z_img
+                                                                   - pr['z_exit'])
+                            if l_ref == 0.0 and pr['L_p'] is not None \
+                                    and pr['L_p'] < 0.0:
+                                # мнимое изображение: ТА на вершине с
+                                # обратным знаком (OPTICS#1 +2.741, §P6)
+                                port_v = -port_v
                     d = rel_diff(port_v, opal_v, ABS_FLOOR_MM)
                     rows.append(('осевой', f'попер ({units[1]})', zone,
                                  opal_v, port_v, d, TOL_ABERR,
@@ -856,6 +883,10 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                     else:
                         port_v = (-100.0 * pr['slope']
                                   if pr['slope'] is not None else None)
+                        # знак эталона (луч ниже оси / печать з.0.5
+                        # OPTICS#1 −7.433 при |7.4333| — как дальняя ветка)
+                        if port_v is not None and et['tg100'] < 0:
+                            port_v = -port_v
                 d = rel_diff(port_v, et['tg100'])
                 rows.append(('осевой', "Tg'*100" + (' (H`ЗР)' if far else ''),
                              zone, et['tg100'], port_v, d, TOL_ABERR,

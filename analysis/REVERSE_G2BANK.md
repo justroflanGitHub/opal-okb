@@ -131,3 +131,9 @@ OBEKTIV — данные другие, «ОП-04/40» в заголовке = п
 
 | OPTICS#1 | - | - | NOOPALA2 | Анализ не запустил RT |
 - `OPTICS#1 NOOPALA2`
+| GTIN05 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `GTIN05 NOOPALA2`
+| GTIN05 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `GTIN05 NOOPALA2`
+| GTIE00 | RT__1127.PRN | 2732 | OK | секций~3, габариты=да; Cистема-ЭКРАН - ГОЭ                       Работа |
+- `GTIE00: RT__1127.PRN 2732б axial=True seps~3 PROTOCOL 0->2748; head='Cистема-ЭКРАН - ГОЭ                       Работа-RT                   '`

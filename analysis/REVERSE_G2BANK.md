@@ -185,3 +185,5 @@ stale-копии уже сохранены: bank/OBEKTIV_stale.PRN, bank/OKULAR_
 - `OBEKTIV: RT__2147.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
 | OKULAR | RT__2149.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
 - `OKULAR: RT__2149.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
+| OBEKTIV | RT__2157.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `OBEKTIV: RT__2157.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`

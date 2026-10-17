@@ -168,6 +168,25 @@ def test_opal3_fully_green():
 
 
 @requires_stand
+@pytest.mark.parametrize('name', ['KURSOVIK', 'ST', 'HELIOS8', '121'])
+def test_stop_nd_sd_pupils_match_etalon(name):
+    """Регресс GFIX/P1: плоскость диафрагмы = вершина(ND−1, 0-based)
+    + SD — единая семантика для всех способов ввода 0x46 ('z' —
+    ST/KURSOVIK, 'd' — HELIOS8, 'p' — 121). Зрачки sP/sP′ — до 1e-4
+    отн. (Sp′ ближнего изображения печатается в дптр от плоскости
+    Гаусса: 1000/(sP′−bfd), досье §1). Прежний порт: 'z' — sP=0
+    (ST веер не сходился), 'd' — sP=−0 (HELIOS8), 'p' — 0x6C как
+    входной зрачок у 121 (Sp 8.162 vs 14.444)."""
+    res = compare_system(name)
+    by_qty = {r[1]: r for r in res['rows']}
+    for key in ('Sp', 'Sp2'):
+        row = by_qty[key]
+        assert row[5] is not None and row[5] < 1e-4, \
+            f'{name} {key}: Δ={row[5]} (OPAL {row[3]}, порт {row[4]})'
+        assert row[7] == 'GREEN'
+
+
+@requires_stand
 def test_helios8_near_image_tg_sign_convention():
     """Ближнее изображение: метка = −100·tg u' (знак OPAL обратен порту,
     досье §2.1) — величины сходятся лучше 1 %."""

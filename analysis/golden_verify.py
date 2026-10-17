@@ -76,6 +76,16 @@ TOL_PARAX = 1e-4
 TOL_ABERR = 1e-3
 TOL_YELLOW = 10.0
 
+#: Абсолютный шумовой порог аберраций (мм): PRN печатает 5 знаков,
+#: n порта/OPAL интерполируются из f32-λ — систематика ~1e-3 мм не
+#: устранима; для дптр — эквивалент 1000·floor/f² при типовом фокусе
+#: (2e-3 мм / 100 мм ≈ 2e-4 дптр); волновые в мкм — разрешение печати
+#: (4 знака → 1e-4 мкм) с запасом: 1e-3 мкм, чтобы не глотать
+#: реальную систематику опорной сферы ~2 % (досье §2.4, цель P4).
+ABS_FLOOR_MM = 2e-3
+ABS_FLOOR_DPTR = 2e-4
+ABS_FLOOR_WAVE = 1e-3
+
 #: 1e20-маркер конца цепочки толщин в standalone .OPJ.
 _BIG_MARKER = 1e19
 
@@ -564,12 +574,25 @@ def verdict(delta_rel: float, tol: float) -> str:
     return 'RED'
 
 
-def rel_diff(port: float, opal: float) -> float:
-    """Относительное расхождение |Δ|/max(|OPAL|, ε) с защитой нулей."""
+def rel_diff(port: float, opal: float, abs_floor: float = 0.0) -> float:
+    """Относительное расхождение |Δ|/max(|OPAL|, ε) с защитой нулей.
+
+    ``abs_floor`` — абсолютный шумовой порог в единицах величины:
+    при |Δ| ≤ floor расхождение считается нулевым (возвращает 0).
+    Обоснование: PRN печатает 5 знаков, показатели n порта и OPAL
+    интерполируются из f32-λ OPJ — систематика ~1e-3 мм между
+    независимыми реализациями численно неустранима; у нулей
+    сферической аберрации (смена знака между зонами, OPAL3 з.0.866:
+    0.046 мм при |Δ| 1 мкм) чистое |Δ|/|OPAL| взрывается и RED
+    обвиняет порт ложно.
+    """
     if port is None or opal is None:
         return None
+    delta = abs(port - opal)
+    if abs_floor > 0.0 and delta <= abs_floor:
+        return 0.0
     denom = max(abs(opal), 1e-9)
-    return abs(port - opal) / denom
+    return delta / denom
 
 
 def compare_system(name: str, bank_dir: str = _BANK_DIR,
@@ -670,7 +693,9 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
             if et['long'] and et['long'][0] is not None:
                 opal_v = et['long'][0]
                 port_v = pr.get(long_key) if pr else None
-                d = rel_diff(port_v, opal_v)
+                floor = (ABS_FLOOR_MM if units[0] == 'мм'
+                         else ABS_FLOOR_DPTR)
+                d = rel_diff(port_v, opal_v, floor)
                 rows.append(('осевой', f'прод ({units[0]})', zone, opal_v,
                              port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))
             # поперечные — конвенция не сходится (досье §2.3): считаем
@@ -732,7 +757,7 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                              verdict(d, TOL_ABERR)))
             if et['wave'] and et['wave'][0] is not None:
                 port_v = pr.get('wave') if pr else None
-                d = rel_diff(port_v, et['wave'][0])
+                d = rel_diff(port_v, et['wave'][0], ABS_FLOOR_WAVE)
                 rows.append(('осевой', 'волновые', zone, et['wave'][0], port_v,
                              d, TOL_ABERR, verdict(d, TOL_ABERR)))
             if et['h_zr'] is not None:

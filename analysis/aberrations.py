@@ -145,8 +145,12 @@ def _reference_sphere(system: OpticalSystem, field_y: float = 0.0,
     """Опорная сфера поля ``field_y``: центр и радиус, мм.
 
     Центр — параксиальное изображение точки поля (для дальнего типа
-    со смещением f'·tan(угол)), радиус — расстояние от центра до
-    вершины последней поверхности. Единственная реализация для
+    со смещением f'·tan(угол)). Вершина — центр ВЫХОДНОГО ЗРАЧКА
+    (OPAL; волна GFIX P4, досье §2.4): у US00KI02 зоны 1.0/0.866
+    дают 0.7531/0.3619 против эталона 0.7532/0.362 (0.03 %) при
+    радиусе от выходного зрачка и 3 % — от последней поверхности
+    (прежде). Запасной вариант при невырожденном/невстроенном зрачке —
+    вершина на последней поверхности. Единственная реализация для
     волновой аберрации (веер, гексаполярная сетка, Цернике, карта W).
 
     Returns:
@@ -168,7 +172,16 @@ def _reference_sphere(system: OpticalSystem, field_y: float = 0.0,
     if system.object_type == ObjectType.INFINITE and field_y != 0:
         efl = parax.get('focal_length', 0)
         cy = efl * math.tan(math.radians(field_y)) if efl else 0.0
-    R = abs(cz - last_surf_z)
+    # Вершина сферы — центр выходного зрачка (sP′ от последней
+    # поверхности); вырожденный/отсутствующий зрачок → последняя
+    # поверхность (прежняя опора).
+    vertex_z = last_surf_z
+    sp_prime = parax.get('sP_prime')
+    if isinstance(sp_prime, (int, float)) and math.isfinite(sp_prime):
+        z_exit = last_surf_z + sp_prime
+        if abs(cz - z_exit) > EPSILON:
+            vertex_z = z_exit
+    R = abs(cz - vertex_z)
     if R < EPSILON:
         R = 1.0
     return (cx, cy, cz), R

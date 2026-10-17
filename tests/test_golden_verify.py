@@ -129,14 +129,14 @@ def test_rel_diff_none_is_none():
 
 @requires_stand
 def test_us00ki02_reference_system_green():
-    """Опорная система: все развёрнутые конвенции зелёные; RED — только
-    волновые зоны 1.0/0.866 с остатком ~2–3 % (опорная сфера, досье
-    §2.4)."""
+    """Опорная система полностью зелёная: все развёрнутые конвенции
+    (зрачки, прод, Tg'·100, Н ЗР) и волновые во всех зонах — GFIX P4
+    закрыл остаток опорной сферой от выходного зрачка (досье §2.4:
+    0.75315/0.36191 против 0.7532/0.362, ≤0.03 %); поперечные —
+    конвенция не сведена (досье §2.5): SKIP."""
     res = compare_system('US00KI02')
-    reds = [r for r in res['rows'] if r[7] == 'RED']
-    assert len(reds) == 2
-    assert all(r[1] == 'волновые' for r in reds)
-    assert all(r[5] < 0.05 for r in reds)
+    assert res['counts']['RED'] == 0
+    assert res['counts']['YELLOW'] == 0
     by_qty = {r[1]: r for r in res['rows']}
     # параксиальные зрачки — точно (0x6C и его изображение)
     assert by_qty['Sp'][7] == 'GREEN'
@@ -157,6 +157,12 @@ def test_us00ki02_reference_system_green():
     # поперечные — конвенция не сведена (досье §2.5): SKIP
     trans = [r for r in res['rows'] if r[1].startswith('попер')]
     assert trans and all(r[7] == 'SKIP' for r in trans)
+    # GFIX P4: вершина опорной сферы — центр выходного зрачка
+    # (z_exit = последняя поверхность + sP′): зоны 1.0/0.866 ≤0.5 %
+    wave = {r[2]: r for r in res['rows'] if r[1] == 'волновые'}
+    assert wave[1.0][5] < 5e-3 and wave[0.866][5] < 5e-3
+    assert wave[1.0][4] == pytest.approx(0.7532, abs=1e-4)
+    assert wave[0.866][4] == pytest.approx(0.362, abs=1e-4)
 
 
 @requires_stand

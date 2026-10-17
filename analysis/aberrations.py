@@ -9,7 +9,8 @@ from typing import List, Tuple, Dict
 from optics_engine import (OpticalSystem, Surface, SurfaceType, ObjectType,
                            Wavelength, FieldPoint, paraxial_trace)
 from ray_tracing import (Ray, trace_ray_through_system, refract,
-                         surface_normal, surface_normal_aspheric)
+                         surface_normal, surface_normal_aspheric,
+                         TERMINAL_EXIT_EPS)
 import ray_native
 from glass_catalog import compute_refractive_index
 from optics_utils import (compute_z_positions, get_primary_wl, get_effective_aperture,
@@ -178,10 +179,11 @@ def _air_exit_direction(system: OpticalSystem, result,
     """Единичное направление луча в воздухе за последней поверхностью.
 
     Если трассировка дошла до плоскости изображения — направление
-    берётся из последнего сегмента пути (воздух). Если путь оборвался
-    на самой последней поверхности (нулевое расстояние до плоскости
-    изображения) — направление получается преломлением/отражением на
-    ней по Снеллиусу.
+    берётся из последнего сегмента пути (воздух); терминальный сегмент
+    при нулевой терминальной толщине (TERMINAL_EXIT_EPS по ходу луча,
+    GFIX P2) — тот же случай. Если путь оборвался ДО последней
+    поверхности (ошибка/стоп) — направление получается
+    преломлением/отражением на ней по Снеллиусу.
 
     Returns:
         ``(k, l, m)`` или ``None``, если направление определить не
@@ -198,8 +200,12 @@ def _air_exit_direction(system: OpticalSystem, result,
     k, l, m = dx / norm, dy / norm, dz / norm
 
     z_pos = compute_z_positions(system)
-    # Путь дошёл до плоскости изображения — последний сегмент в воздухе
-    if abs(p1[2] - z_pos[-1]) < EPSILON:
+    # Путь дошёл до плоскости изображения — последний сегмент в воздухе.
+    # При нулевой терминальной толщине трейсер строит сегмент длиной
+    # TERMINAL_EXIT_EPS до плоскости вершины ПО ХОДУ луча (GFIX P2) —
+    # точка на TERMINAL_EXIT_EPS от плоскости и есть терминальная;
+    # без допуска сегмент ошибочно «допреломлялся» по Снеллиусу.
+    if abs(p1[2] - z_pos[-1]) <= EPSILON + TERMINAL_EXIT_EPS:
         return (k, l, m)
 
     # Путь оборвался на последней поверхности: преломить направление

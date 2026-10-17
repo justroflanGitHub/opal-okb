@@ -341,12 +341,16 @@ class TestTiltedMirror:
 
         two_theta = math.radians(2.0 * theta_deg)
         expected = (0.0, math.sin(two_theta), -math.cos(two_theta))
+        # терминальный сегмент (GFIX P2) строится за плоскостью
+        # изображения ПО ХОДУ луча — направление выхода из него; точка
+        # падения на саму плоскость — предпоследняя точка пути
         assert _dir_between(r.path[-2], r.path[-1]) == pytest.approx(
             expected, abs=1e-12)
+        img_pt = r.path[-2]
         # точка падения на плоскость изображения: y = back·tan 2θ
-        assert r.path[-1][1] == pytest.approx(back * math.tan(two_theta),
-                                              rel=1e-9)
-        assert r.path[-1][2] == pytest.approx(-back, abs=1e-9)
+        assert img_pt[1] == pytest.approx(back * math.tan(two_theta),
+                                          rel=1e-9)
+        assert img_pt[2] == pytest.approx(-back, abs=1e-9)
 
     def test_tilt_z_rotates_reflected_azimuth(self):
         """tilt_z поворачивает азимут отражённого луча: R = Rz(φ)·Rx(θ).

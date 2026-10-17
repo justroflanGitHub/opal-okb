@@ -616,14 +616,16 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     # golden_verify; досье REVERSE_GVERIFY §4.1: при нулевой терминальной
     # толщине путь кончался ДО-рефракционным сегментом, наклон веера
     # −0.090923 вместо пост-рефракции). При нулевой толщине плоскость
-    # изображения совпадает с последней поверхностью — сегмент
-    # минимальной длины TERMINAL_EXIT_EPS (луч прямой: наклон сегмента
-    # точен при любой длине).
+    # изображения совпадает с вершиной последней поверхности — сегмент
+    # длиной TERMINAL_EXIT_EPS ПО ХОДУ луча (знак по m: свёрнутые
+    # зеркальные системы выходят в −z); точка остаётся у плоскости
+    # вершины — эталон-валидированная геометрия продольных (досье §2.2).
     if sys.surfaces and abs(current_ray.m) > TINY:
         last = sys.surfaces[-1]
         img_z = z_positions[-1]
         if last.thickness == 0:
-            img_z += TERMINAL_EXIT_EPS
+            img_z += TERMINAL_EXIT_EPS if current_ray.m > 0.0 \
+                else -TERMINAL_EXIT_EPS
         dt = (img_z - current_ray.z) / current_ray.m
         ix = current_ray.x + dt * current_ray.k
         iy = current_ray.y + dt * current_ray.l

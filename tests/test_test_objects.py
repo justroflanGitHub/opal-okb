@@ -217,28 +217,37 @@ class TestSimulation:
     def test_defocus_blurs_more(self):
         """Смещение плоскости установки размывает изображение сильнее.
 
-        Сравниваются далёкие от фокуса Δz: малый дефокус частично
-        компенсирует сферическую аберрацию синглета (сдвиг к кругу
-        наименьшего рассеяния) и может «заострить» край; вдали от
-        оптимума размытие растёт с |Δz|.
+        Ядро PSF (res['psf'], нормировано на сумму) при удалении от
+        оптимума установки расплывается: центральная доля энергии
+        падает. Прежняя метрика ширины края (максимальный градиент
+        профиля) не была робастной — размытие сферической аберрации
+        синглета шире кадра 64 px, максимум градиента ловит FFT-звон;
+        пересчитано в GFIX P2 (терминальный сегмент трейсера сместил
+        баланс сферической в W). Демо-ахромат: оптимум установки
+        ≈ +0.2 мм (сферическая), сравниваются удаления от него —
+        0.4 → 0.8 мм (дальняя сторона, монотонная зона) и гауссова
+        плоскость 0.0 против 0.8.
         """
-        s = singlet()
-        res0 = compute_test_object_image(s, kind='edge', num_rays=GRID,
-                                         defocus_mm=0.5)
-        res1 = compute_test_object_image(s, kind='edge', num_rays=GRID,
-                                         defocus_mm=1.0)
-        mid, margin = GRID // 2, GRID // 8
+        s = create_demo_system()
 
-        def edge_width(res):
-            # ширина края через максимальный градиент (робастно к
-            # аберрациям, размывающим край сильнее кадра)
-            prof = res['image'][margin:GRID - margin, mid]
-            step = abs(res['y'][1] - res['y'][0])
-            return 0.8 / max(np.abs(np.diff(prof)) / step)
+        def central_fraction(res):
+            d = res['psf'] / res['psf'].sum()
+            c = GRID // 2
+            return d[c - 2:c + 3, c - 2:c + 3].sum()
 
-        assert edge_width(res1) > edge_width(res0)
-        # и результат вообще другой
-        assert not np.allclose(res0['image'], res1['image'], atol=1e-6)
+        res04 = compute_test_object_image(s, kind='mira', num_rays=GRID,
+                                          defocus_mm=0.4)
+        res08 = compute_test_object_image(s, kind='mira', num_rays=GRID,
+                                          defocus_mm=0.8)
+        res00 = compute_test_object_image(s, kind='mira', num_rays=GRID,
+                                          defocus_mm=0.0)
+        # вдали от оптимума размытие растёт с |Δz|
+        assert central_fraction(res08) < central_fraction(res04)
+        # гауссова плоскость тоже резче дальней
+        assert central_fraction(res08) < central_fraction(res00)
+        # ядро от дефокуса реально меняется (мора демо-системы в кадре
+        # насыщена до 1 — изображение может совпасть тривиально)
+        assert not np.allclose(res00['psf'], res08['psf'])
 
     def test_field_shifts_and_blurs(self):
         """Внеосевое поле: изображение тоже считается (кома/астигматизм)."""

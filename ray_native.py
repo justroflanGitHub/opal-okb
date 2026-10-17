@@ -32,8 +32,7 @@ from optics_utils import (
     make_field_ray,
 )
 from optics_engine import ObjectType, paraxial_trace
-from analysis.ray_tracing import (_compute_semi_diameter, trace_ray_through_system,
-                                  TERMINAL_EXIT_EPS)
+from analysis.ray_tracing import _compute_semi_diameter, trace_ray_through_system
 
 try:
     import _opal_native as _native
@@ -250,12 +249,9 @@ def _system_params(system: OpticalSystem, wl: float) -> dict:
     last = system.surfaces[-1] if system.surfaces else None
     # Терминальный сегмент строится всегда (паритет с Python-трейсером,
     # GFIX P2): путь кончается направлением ПОСЛЕ преломления. При
-    # нулевой терминальной толщине плоскость изображения для ядра
-    # сдвинута на TERMINAL_EXIT_EPS — ядро дошло бы до совпадающей z и
-    # дало бы вырожденный (нулевой длины) сегмент.
-    img_z = z_positions[-1]
-    if last is not None and last.thickness == 0:
-        img_z += TERMINAL_EXIT_EPS
+    # нулевой терминальной толщине (img_z у вершины последней
+    # поверхности) ядро само строит сегмент TERMINAL_EXIT_EPS по ходу
+    # луча — знак выхода (m) знает только трассировщик.
     return dict(
         wl=wl,
         has_stop=has_stop,
@@ -263,7 +259,7 @@ def _system_params(system: OpticalSystem, wl: float) -> dict:
         stop_radius=stop_radius,
         n_start=compute_refractive_index("", wl),
         propagate_to_image=bool(last is not None),
-        img_z=img_z,
+        img_z=z_positions[-1],
     )
 
 

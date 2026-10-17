@@ -33,6 +33,9 @@ namespace py = pybind11;
 // ==== Константы (источник — utils/optics_utils.py, НЕ магические числа) ====
 constexpr double EPSILON = 1e-10;  // optics_utils.EPSILON — общий «почти ноль»
 constexpr double TINY    = 1e-15;  // optics_utils.TINY — защита деления
+// analysis.ray_tracing.TERMINAL_EXIT_EPS — терминальный сегмент при
+// нулевой терминальной толщине (GFIX P2; досье REVERSE_GVERIFY §4.1)
+constexpr double TERMINAL_EXIT_EPS = 1e-3;
 // analysis/ray_tracing.py (skip виртуальной поверхности): порог 1e-6
 constexpr double VIRTUAL_SURFACE_TOL = 1e-6;
 // intersect_aspheric: max_iter=20, tol=EPSILON (значения по умолчанию референса)
@@ -561,11 +564,20 @@ static void trace_one_core(const SurfaceData* surfaces, int32_t n_surf,
 
     // -- после последней поверхности — до плоскости изображения --
     if (n_surf > 0 && propagate_to_image && !(std::fabs(cur_m) < TINY)) {
-        const double dt = (img_z - cur_z) / cur_m;
+        // Нулевая терминальная толщина: плоскость изображения совпадает с
+        // вершиной последней поверхности — терминальный сегмент строится
+        // длиной TERMINAL_EXIT_EPS ПО ХОДУ луча (знак по cur_m; паритет с
+        // Python-трейсером, GFIX P2): путь всегда кончается сегментом с
+        // пост-рефракционным направлением, сегмент не вырождается.
+        double target = img_z;
+        if (std::fabs(target - surfaces[n_surf - 1].z_surf) < TINY) {
+            target += (cur_m > 0.0) ? TERMINAL_EXIT_EPS : -TERMINAL_EXIT_EPS;
+        }
+        const double dt = (target - cur_z) / cur_m;
         const double ix = cur_x + dt * cur_k;
         const double iy = cur_y + dt * cur_l;
         opl += current_n * dt;
-        out.add_point(ix, iy, img_z);
+        out.add_point(ix, iy, target);
     }
 
 finish:

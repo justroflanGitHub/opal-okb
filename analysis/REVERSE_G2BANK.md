@@ -94,3 +94,40 @@ boot (~30 c, title сразу = авто-восстановленный OPALA)
 
 | OPAL3 | RT__11_8.PRN | 1122 | OK | секций~2, габариты=нет; Cистема-телемар-11 f'=300 1:5 2л          Работа |
 - `OPAL3: RT__11_8.PRN 1122б axial=True seps~2 PROTOCOL 0->1083; head="Cистема-телемар-11 f'=300 1:5 2л          Работа-RT                   "`
+| HELIOS8 | RT__11_9.PRN | 99 | OK-NOAXIAL | секций~0, габариты=нет; Cистема-ОП-04/40   v=-1   2y'=20  A'=.4   Работа |
+- `HELIOS8: RT__11_9.PRN 99б axial=False seps~0 PROTOCOL 0->0; head="Cистема-ОП-04/40   v=-1   2y'=20  A'=.4   Работа-RT                   "`
+| OKULAR | - | - | SAVEFAIL | F9 не создал файл; PROTOCOL=0 б |
+- `OKULAR SAVEFAIL PROTOCOL=0`
+| OKULAR | - | - | NOOPALA2 | Анализ не запустил RT |
+- `OKULAR NOOPALA2`
+| OBEKTIV | - | - | LOADFAIL | диалог Чтения не реагирует |
+- `OBEKTIV LOADFAIL diff=0.0013`
+| OBEKTIV | RT__1114.PRN | 1005 | OK | секций~2, габариты=нет; Cистема-                                  Работа |
+- `OBEKTIV: RT__1114.PRN 1005б axial=True seps~2 PROTOCOL 0->966; head='Cистема-                                  Работа-RT                   '`
+| HELIOS8 | - | - | SAVEFAIL | F9 не создал файл; PROTOCOL=-1 б |
+- `HELIOS8 SAVEFAIL PROTOCOL=-1`
+| HELIOS8 | RT__1117.PRN | 2318 | OK | секций~3, габариты=да; Cистема-гелиос-81                         Работа |
+- `HELIOS8: RT__1117.PRN 2318б axial=True seps~3 PROTOCOL 0->2329; head='Cистема-гелиос-81                         Работа-RT                   '`
+| OKULAR | RT__1118.PRN | 1777 | OK | секций~3, габариты=да; Cистема-ОП-04/40   v=-1   2y'=20  A'=.4   Работа |
+- `OKULAR: RT__1118.PRN 1777б axial=True seps~3 PROTOCOL 0->1782; head="Cистема-ОП-04/40   v=-1   2y'=20  A'=.4   Работа-RT                   "`
+| OBEKTIV | RT__1119.PRN | 2009 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `OBEKTIV: RT__1119.PRN 2009б axial=True seps~4 PROTOCOL 0->2052; head='Cистема-                                  Работа-RT                   '`
+| PLIOPT | RT__1120.PRN | 2596 | OK | секций~3, габариты=да; Cистема-ОБЪЕКТИВ                          Работа |
+- `PLIOPT: RT__1120.PRN 2596б axial=True seps~3 PROTOCOL 0->2610; head='Cистема-ОБЪЕКТИВ                          Работа-RT                   '`
+| LAB6_GAS | - | - | NOOPALA2 | Анализ не запустил RT |
+- `LAB6_GAS NOOPALA2`
+| LAB6_GAS | - | - | NOOPALA2 | Анализ не запустил RT |
+- `LAB6_GAS NOOPALA2`
+| OPTICS#1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `OPTICS#1 NOOPALA2`
+## Статус 11:25 (батч bncopbwfh в работе)
+
+В банке 8/16: US00KI02✓ 121✓ ST4✓ OPAL3✓ HELIOS8✓ OKULAR✓ OBEKTIV✓ PLIOPT✓
+(✓ = axial-секция есть, заголовок системы свой; OKULAR проверен побайтово против
+OBEKTIV — данные другие, «ОП-04/40» в заголовке = поле параметров самого файла).
+Едут: OPTICS#1 GTIN05 GTIE00 YBBS77_ S_KOND1 KURSOVIK ST. LAB6_GAS — 2× незагрузка
+(diff 0.047), взять в ручной добор. F6 из основного пути УБРАН (это toggle:
+под TX включает график → F9 пишет .PCX).
+
+| OPTICS#1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `OPTICS#1 NOOPALA2`

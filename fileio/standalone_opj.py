@@ -10,6 +10,9 @@
 0x3A ND u16 — поверхность диафрагмы (1-индексация, OPAL ND)
 0x3C тип предмета: 0 дальний (∞), 1 ближний
 0x3E тип изображения: 0 дальний, 1 ближний
+0x4C положение предмета f64 (мм от первой поверхности): <0 —
+      действительный предмет слева, >0 — мнимый справа (P6.1, досье
+      REVERSE_GVERIFY.md §3.7: ST4 −96.2046 = 1000/(Sp дптр) + sP)
 0x46 тип диафрагмы: 0 'd', 1 'z', 0xFFFF 'p' (зрачок)
 0x5C апертура f64 (полу-, мм)
 0x6C SD f64 — смещение диафрагмы от поверхности ND (мм)
@@ -105,6 +108,7 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
     img_type = _u16(data, 0x3E, 'тип изображения', source)
     stop_type = _u16(data, 0x46, 'тип диафрагмы', source)
     aperture = _f64(data, 0x5C, 'апертура', source)
+    object_pos = _f64(data, 0x4C, 'положение предмета', source)
     pupil_pos = _f64(data, 0x6C, 'SD', source)
     field_y = _f64(data, 0x74, 'поле Y', source)
     field_x = _f64(data, 0x7C, 'поле X', source)
@@ -185,7 +189,7 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
     return {
         'name': name, 'ns': ns, 'flags': flags, 'wls': wls,
         'obj_type': obj_type, 'img_type': img_type, 'stop_type': stop_type,
-        'stop_nd': stop_nd,
+        'stop_nd': stop_nd, 'object_pos': object_pos,
         'aperture_semi': aperture, 'pupil_pos': pupil_pos,
         'field_y_rad': field_y, 'field_x_rad': field_x,
         'curv': curv, 'thick': thick, 'gidx': gidx, 'ri': ri,
@@ -234,7 +238,6 @@ def standalone_to_system(opj: dict):
     if opj['field_y_rad']:
         system.field_points = [FieldPoint(y=math.degrees(opj['field_y_rad']))]
 
-    big = max(1.0, abs(opj['aperture_semi']) * 4)
     for i in range(ns):
         c = opj['curv'][i]
         d = opj['thick'][i]
@@ -248,7 +251,10 @@ def standalone_to_system(opj: dict):
             radius=(1.0 / c if abs(c) > 1e-15 else 0.0),
             thickness=(0.0 if d >= BIG_MARKER else d),
             glass=('ЗЕРКАЛО' if i in mirrors else ''),
-            semi_diameter=big * 10.0,   # без виньетирования: сверка расчёта
+            # 0 → UNLIMITED_SD трейсера: полудиаметры поверхностей в OPJ
+            # не хранятся, клиппинг выключен — сверка расчёта без
+            # виньетирования (ST4: вход zone 1.0 = 12.6 мм у S0)
+            semi_diameter=0.0,
             n_override=n_ov,
         )
         if i in mirrors:

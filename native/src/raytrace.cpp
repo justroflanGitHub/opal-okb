@@ -143,12 +143,24 @@ static inline bool intersect_sphere(const RayState& ray, double R, double z_surf
     const double t2 = (-b + sqrt_disc) / (2.0 * a);
 
     // - луч внутри сферы (c < 0): берём t2 (выход)
-    // - снаружи: ближайшее t > 0
-    double t;
+    // - снаружи: из положительных корней тот, чья точка ближе к вершине
+    //   поверхности по z (глубокая вогнутая сфера: ближайший t протыкает
+    //   «заднюю» оболочку математической сферы, физический cap — у вершины;
+    //   GFIX P6, паритет с analysis/ray_tracing.py)
+    double t = -1.0;
     if (c < 0.0) {
         t = t2;
     } else {
-        t = (t1 > EPSILON) ? t1 : t2;
+        const double tc[2] = {t1, t2};
+        double best_dz = 0.0;
+        for (int i = 0; i < 2; ++i) {
+            if (tc[i] <= EPSILON) continue;
+            const double dz_i = std::fabs(ray.z + tc[i] * ray.m - z_surf);
+            if (t < 0.0 || dz_i < best_dz) {
+                t = tc[i];
+                best_dz = dz_i;
+            }
+        }
     }
     if (t < EPSILON) return false;
 

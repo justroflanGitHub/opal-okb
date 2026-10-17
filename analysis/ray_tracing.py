@@ -245,13 +245,28 @@ def intersect_sphere(ray: Ray, R: float, z_surf: float) -> Optional[Tuple[float,
 
     # Выбираем пересечение:
     # - Если луч внутри сферы (c < 0): берём t2 (выход из сферы, ближе к вершине)
-    # - Если луч снаружи: берём ближайшее положительное t
+    # - Если луч снаружи: из положительных корней берём тот, чья точка ближе
+    #   к вершине поверхности по z. Ближайший t годится только для выпуклой
+    #   к лучу сферы; для глубокой вогнутой (ST4 S0: R=-20, предмет z=-96)
+    #   луч сперва протыкает «заднюю» оболочку математической сферы, а
+    #   физический cap лежит у вершины (GFIX P6).
     if c < 0:
         # Внутри сферы - берём t2 (выход)
         t = t2
     else:
-        # Снаружи - берём ближайшее t>0
-        t = t1 if t1 > EPSILON else t2
+        t = None
+        for tc in (t1, t2):
+            if tc <= EPSILON:
+                continue
+            if t is None:
+                t = tc
+                continue
+            z_c = ray.z + tc * ray.m
+            z_t = ray.z + t * ray.m
+            if abs(z_c - z_surf) < abs(z_t - z_surf):
+                t = tc
+        if t is None:
+            return None
 
     if t < EPSILON:
         return None

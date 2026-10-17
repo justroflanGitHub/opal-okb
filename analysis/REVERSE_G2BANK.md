@@ -178,3 +178,9 @@ LAB6_GAS OPTICS#1 GTIN05 S_KOND1 YBBS77_ (для # в имени — контр�
 - `GTIN05: RT__1144.PRN 1323б axial=False seps~1 PROTOCOL 0->2492; head='Cистема-                                  Работа-RT                   '`
 | OPTICS1 | RT__1145.PRN | 2474 | OK-NOAXIAL | секций~2, габариты=да; Cистема-                                  Работа |
 - `OPTICS1: RT__1145.PRN 2474б axial=False seps~2 PROTOCOL 2492->2492; head='Cистема-                                  Работа-RT                   '`
+| S_KOND1 | - | - | SAVEFAIL | F9 не создал файл; PROTOCOL=0 б |
+- `S_KOND1 SAVEFAIL PROTOCOL=0`
+| S_KOND1 | - | - | NOOPALA2 | Анализ не запустил RT |
+- `S_KOND1 NOOPALA2`
+| YBBS77_ | - | - | NOOPALA2 | Анализ не запустил RT |
+- `YBBS77_ NOOPALA2`

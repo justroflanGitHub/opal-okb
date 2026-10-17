@@ -99,17 +99,23 @@ def parse_golden_opj(path: str) -> dict:
     0x0C имя 40 байт CP866
     0x34 ns u16 — число поверхностей
     0x36 flags u16 — 1 → один слот λ f32, 3 → три слота
+    0x3A ND u16 — поверхность диафрагмы (1-индексация, OPAL ND)
     0x3C тип предмета: 0 дальний (∞), 1 ближний
     0x3E тип изображения: 0 дальний, 1 ближний
     0x46 тип диафрагмы: 0 'd', 1 'z', 0xFFFF 'p' (зрачок)
     0x5C апертура f64 (полу-, мм)
-    0x6C положение зрачка f64 (мм; для типа 'p' = Sp)
+    0x6C SD f64 — смещение диафрагмы от поверхности ND (мм)
     0x74/0x7C поле Y/X f64 (радианы)
     0x9C λ f32 × слоты (неиспользуемые слоты дублируют λ0)
     далее кривизны f64 × ns; толщины f64 × ns (последняя = 1e20);
     gidx u16 × (ns+1) (1 = воздух, g>1 = строка RI g−1);
     RI f64 (1+nglass) × n_valid_λ, строка 0 = воздух; имена CP866.
     ===  ==========================================================
+
+    Семантика диафрагмы (волна GFIX, досье REVERSE_GFIX.md §1): плоскость
+    диафрагмы = вершина поверхности ND−1 (0-индексация) + SD — для ВСЕХ
+    значений 0x46, включая 'p' (121: ND=4, SD=8.162 → z=16.152, sP=14.444
+    = эталон 14.444). Тип 0x46 — только способ ввода в UI OPAL.
 
     Возвращает словарь с prescription'ом; ключ ``warnings`` собирает
     отклонения раскладки (для досье).
@@ -119,6 +125,7 @@ def parse_golden_opj(path: str) -> dict:
     name = data[0x0C:0x34].decode('cp866').rstrip('\0 ')
     ns = struct.unpack_from('<H', data, 0x34)[0]
     flags = struct.unpack_from('<H', data, 0x36)[0]
+    stop_nd = struct.unpack_from('<H', data, 0x3A)[0]
     obj_type = struct.unpack_from('<H', data, 0x3C)[0]
     img_type = struct.unpack_from('<H', data, 0x3E)[0]
     stop_type = struct.unpack_from('<H', data, 0x46)[0]
@@ -170,6 +177,7 @@ def parse_golden_opj(path: str) -> dict:
     return {
         'name': name, 'ns': ns, 'flags': flags, 'wls': wls,
         'obj_type': obj_type, 'img_type': img_type, 'stop_type': stop_type,
+        'stop_nd': stop_nd,
         'aperture_semi': aperture, 'pupil_pos': pupil_pos,
         'field_y_rad': field_y, 'field_x_rad': field_x,
         'curv': curv, 'thick': thick, 'gidx': gidx, 'ri': ri,
@@ -186,6 +194,13 @@ def opj_to_system(opj: dict):
     показатели ровно те, что видел OPAL. Толщина изображения 1e20
     обнуляется (порт трассирует до последней поверхности; позиция
     изображения для дальнего типа = ∞ — семантика досье §2).
+
+    Диафрагма: ND (0x3A) + SD (0x6C) — плоскость диафрагмы для всех
+    типов 0x46 (досье §1); порт считает зрачки из этой плоскости сам
+    (:func:`domain.calculations.paraxial_trace`). ``aperture_value``
+    обнуляется — полудиаметр физической диафрагмы из 0x5C не
+    реверсирован (семантика меняется по системе), клиппинг трейсера
+    выключен: полу-диаметры поверхностей без виньетирования.
     """
     from domain.models import (ApertureType, FieldPoint, ObjectType,
                                OpticalSystem, Surface, Wavelength)
@@ -197,13 +212,13 @@ def opj_to_system(opj: dict):
     system.image_type = (ObjectType.INFINITE if opj['img_type'] == 0
                          else ObjectType.FINITE)
     system.stop_type = {0: 'd', 1: 'z', 0xFFFF: 'p'}.get(opj['stop_type'], 'd')
+    system.stop_surface = max(1, opj.get('stop_nd', 1))
+    system.stop_offset = opj['pupil_pos']
     system.aperture_type = ApertureType.ENTRANCE_PUPIL
-    system.aperture_value = 2.0 * opj['aperture_semi']
+    system.aperture_value = 0.0
     system.wavelengths = [Wavelength(wl, 1.0, '') for wl in wls]
     if opj['field_y_rad']:
         system.field_points = [FieldPoint(y=math.degrees(opj['field_y_rad']))]
-    if system.stop_type == 'p':
-        system.stop_offset = opj['pupil_pos']
 
     big = max(1.0, abs(opj['aperture_semi']) * 4)
     for i in range(ns):
@@ -273,6 +288,7 @@ def parse_golden_prn(path: str) -> dict:
     text = open(path, encoding='cp866').read()
     lines = text.splitlines()
     result = {'gabarit': {}, 'axial1': {}, 'axial2': {},
+              'gabarit_units': ('мм', 'мм'),
               'duplicated_gabarit': False}
     m = re.search(r'Cистема-(.*?)\s{2,}Работа-RT', text)
     result['name'] = m.group(1).rstrip() if m else ''
@@ -283,6 +299,13 @@ def parse_golden_prn(path: str) -> dict:
         line = lines[i]
         if line.strip() == 'Габариты пучков':
             gab_seen += 1
+            # единицы «Положение зрачков»: (мм)/(дптр) у Sp/Sp' —
+            # дптр у ближнего типа (Sp' при img=1 — от плоскости Гаусса,
+            # Sp при obj=1 — от предмета; OPALOPT:1275–1293)
+            units_line = lines[i + 2] if i + 2 < n else ''
+            mu = re.findall(r'\((мм|дптр)\)', units_line)
+            if len(mu) >= 2:
+                result['gabarit_units'] = (mu[0], mu[1])
             i += 4                                  # шапка из 3 строк
             while i < n:
                 s = lines[i].strip()
@@ -402,27 +425,21 @@ def _paraxial_ray(system, wl: float, y0: float, u0: float,
 
 
 def paraxial_of(system, wl: float) -> dict:
-    """Параксиальные габариты порта: sF', sP, sP', f', L + дополнения
-    харнесса (зрачок 'p': изображение входного зрачка)."""
+    """Параксиальные габариты порта: sF', sP, sP', f', L.
+
+    Все зрачковые величины считаются портовым :func:`paraxial_trace`
+    из плоскости диафрагмы ND/SD (волна GFIX: 'z'/'d'/'p' едины)."""
     from domain.calculations import paraxial_trace
     res = paraxial_trace(system, wl=wl)
-    out = {
+    return {
         'f': res.get('focal_length', 0.0),
         'sF_prime': res.get('sF_prime', 0.0),
         'sP': res.get('sP', 0.0),
         'sP_prime': res.get('sP_prime', 0.0),
         'V': res.get('V', 0.0),
         'L': res.get('L', 0.0),
+        'bfd': res.get('back_focal_distance', 0.0),
     }
-    if system.stop_type == 'p':
-        # входной зрачок из OPJ; выходной — изображение параксиальным
-        # лучом через центр входного (дossier §4: порт знает только 'd')
-        z_pupil = getattr(system, 'stop_offset', 0.0)
-        out['sP'] = z_pupil
-        u0 = 0.01
-        y, u = _paraxial_ray(system, wl, 0.0, u0, z_pupil)
-        out['sP_prime'] = (-y / u) if abs(u) > 1e-15 else 0.0
-    return out
 
 
 def axial_fan(system, wl: float, zones, ax_semi: float) -> list:
@@ -583,40 +600,51 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                      'реверсированы (запуск веера по углу NA от предмета, '
                      'Sp в дптр) — сверка осевых/габаритных строк '
                      'пропущена, кандидаты в досье §3')
-    if system.stop_type == 'z':
-        notes.append("диафрагма-поверхность 'z': paraxial_trace порта "
-                     "не поддерживает 'z' (досье §4) — зрачковые ссылки "
-                     'смещены, продольные/волновые несут систематику ~3%')
 
-    # ── габариты: строка N=0 (осевая) ──
+    # ── габариты: строка N=0 (осевая) расчётной λ ──
+    # (λ OPJ — f32: 0.54607 против печати .5461 → допуск 2e-3)
     ax_row = None
     for (wl_str, n_zone), row in prn['gabarit'].items():
-        if n_zone == 0:
+        if n_zone == 0 and abs(float(wl_str) - wl) < 2e-3:
             ax_row = row
-            wl_et = float(wl_str)
+            break
+    if ax_row is None:                      # фолбэк: любая N=0
+        for (wl_str, n_zone), row in prn['gabarit'].items():
+            if n_zone == 0:
+                ax_row = row
     if prn['gabarit'] and ax_row is None:
         notes.append('габариты без строки N=0')
+    units_sp, units_sp2 = prn.get('gabarit_units', ('мм', 'мм'))
     if ax_row is not None and not near_obj:
+        # Sp — мм от первой поверхности (дальний предмет). Sp' — мм от
+        # последней поверхности (дальнее изображение) либо дптр от
+        # плоскости Гаусса (ближнее изображение): HELIOS8/ST/121 —
+        # 1000/(sP'−bfd) совпадает с эталоном до 4 знаков (досье §1).
+        port_sp = parax['sP']
+        port_sp2 = parax['sP_prime']
+        if units_sp2 == 'дптр':
+            d = parax['sP_prime'] - parax['bfd']
+            port_sp2 = 1000.0 / d if abs(d) > 1e-9 else None
         for key, port_val, tol in (
-                ('Sp', parax['sP'], TOL_PARAX),
-                ('Sp2', parax['sP_prime'], TOL_PARAX),
+                ('Sp', port_sp, TOL_PARAX),
+                ('Sp2', port_sp2, TOL_PARAX),
         ):
             rows.append(('габариты', key, '', ax_row[key], port_val,
                          rel_diff(port_val, ax_row[key]), tol,
                          verdict(rel_diff(port_val, ax_row[key]), tol)))
 
     # Ax — реальная полувысота пучка: вход для веера (см. досье §5).
-    # Цепочка: габаритная строка N=0 → максимум колонки Н ЗР (зона 1.0:
-    # Н ЗР = отн.зр·Ax) → заданная апертура OPJ (у KURSOVIK/OPAL3
-    # отличается от реального габаритного луча).
+    # Цепочка: максимум колонки Н ЗР (зона 1.0: Н ЗР = отн.зр·Ax, точнее
+    # округленной габаритной Ax — HELIOS8 13.606 vs габарит 13.61/13.66
+    # по λ) → габаритная строка N=0 → заданная апертура OPJ (у
+    # KURSOVIK/OPAL3 отличается от реального габаритного луча).
     ax_semi = None
-    if ax_row:
+    hzr_vals = [r['h_zr'] for r in prn['axial2'].get('rows', {}).values()
+                if r.get('h_zr') is not None]
+    if hzr_vals:
+        ax_semi = max(hzr_vals)
+    if not ax_semi and ax_row:
         ax_semi = ax_row['Ax']
-    else:
-        hzr_vals = [r['h_zr'] for r in prn['axial2'].get('rows', {}).values()
-                    if r.get('h_zr') is not None]
-        if hzr_vals:
-            ax_semi = max(hzr_vals)
     if not ax_semi:
         ax_semi = opj['aperture_semi']
 

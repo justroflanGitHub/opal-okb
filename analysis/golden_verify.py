@@ -418,6 +418,103 @@ def port_axial_rows(system, wl: float, zones, ax_semi: float) -> list:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# 3а. Ближний предмет (obj=1) — веер по углу NA от точки предмета (P6)
+# ══════════════════════════════════════════════════════════════════════════
+
+#: Секунды дуги на радиан (формат «гр.мнсек» OPAL — DD.MMSSss).
+_ARCSEC_PER_RAD = 206264.80624709636
+
+
+def ddmmss_value(arcsec: float) -> float:
+    """Секунды дуги → число формата «гр.мнсек» OPAL: после запятой
+    двухразрядные минуты, затем секунды с двумя знаками (OBEKTIV попер
+    з.1.0 1°13'04.83" → 1.130483; ST4 2.17" → 0.000217; перенос
+    разрядов при ss ≥ 99.995 — печать OPAL его не делает, обратный
+    разбор :func:`arcsec_of_ddmmss` клампит)."""
+    sign = -1.0 if arcsec < 0.0 else 1.0
+    total_min = abs(arcsec) / 60.0
+    deg = int(total_min // 60.0)
+    mm = int(total_min % 60.0)
+    ss = (total_min - int(total_min)) * 100.0
+    if ss >= 99.995:
+        ss, mm = 0.0, mm + 1
+        if mm >= 60:
+            mm, deg = 0, deg + 1
+    return sign * (deg + mm / 100.0 + ss / 10000.0)
+
+
+def arcsec_of_ddmmss(value: float) -> float:
+    """Обратная к :func:`ddmmss_value`: сверка поперечных идёт в
+    секундах дуги — шкала линейна, числовое DD.MMSS кусочно."""
+    sign = -1.0 if value < 0.0 else 1.0
+    v = abs(value)
+    deg = int(v)
+    mm = int(round((v - deg) * 100.0))
+    ss = ((v - deg) * 100.0 - mm) * 100.0
+    if ss < 0.0:                            # округление минут вверх
+        mm, ss = mm - 1, ss + 100.0
+    if mm >= 100:                           # печать без переноса разряда
+        mm, deg = mm - 100, deg + 1
+    return sign * (deg * 3600.0 + mm * 60.0 + ss)
+
+
+def near_object_axial_fan(system, wl: float, zones, na: float,
+                          z_obj: float) -> list:
+    """Осевой веер ближнего предмета (P6.2): лучи из точки предмета
+    (0, 0, z_obj — f64@0x4C) под углом ``u = arcsin(zone·NA)`` к оси —
+    OPAL Ax = sin NA габаритной строки (ST4 0.125, досье §3.7). Мнимый
+    предмет (z_obj > 0, OPTICS#1 +85.1495): лучи сходятся В точку
+    предмета — старт слева от системы с наклоном −sin u.
+
+    Строка: геометрия выхода (терминальный сегмент, GFIX P2): ``L`` —
+    мм от вершины последней поверхности до пересечения с осью, плюс
+    параксиальная опора ``L_p``/``u_parax`` от точки предмета и
+    ``y_pupil`` в плоскости выходного зрачка.
+    """
+    from ray_tracing import Ray, trace_ray_through_system
+
+    if z_obj < 0.0:
+        y0_par, u0_par, z0_par = 0.0, 0.05, z_obj
+    else:                                   # прицел в (0, 0, z_obj)
+        z0_par = -(abs(z_obj) + 100.0)
+        u0_par = -0.05
+        y0_par = (z_obj - z0_par) * (-u0_par)
+    y_p, u_p = _paraxial_ray(system, wl, y0_par, u0_par, z0_par)
+    L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None    # ∞ — афокальный выход
+    sp_prime = paraxial_of(system, wl)['sP_prime']
+    z_last = sum(s.thickness for s in system.surfaces[:-1])
+    fan = []
+    for zone in zones:
+        su = na * zone
+        tu = su / math.sqrt(1.0 - su * su)
+        if z_obj < 0.0:
+            ray = Ray(0.0, 0.0, z_obj, 0.0, su, math.sqrt(1.0 - su * su))
+        else:
+            z0 = -(abs(z_obj) + 100.0)
+            ray = Ray(0.0, (z_obj - z0) * tu, z0,
+                      0.0, -su, math.sqrt(1.0 - su * su))
+        res = trace_ray_through_system(system, ray, wl)
+        row = {'zone': zone, 'ok': False, 'L_p': L_p, 'u_parax': u_p,
+               'h_zr_mm': 100.0 * tu}
+        if not (res.success and len(res.path) >= 2):
+            fan.append(row)
+            continue
+        prev, last = res.path[-2], res.path[-1]
+        dz = last[2] - prev[2]
+        slope = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else None
+        y_exit, z_exit = last[1], last[2]
+        row.update({
+            'ok': True, 'y_exit': y_exit, 'z_exit': z_exit, 'slope': slope,
+            'L': (z_exit - y_exit / slope - z_last
+                  if slope is not None and abs(slope) > 1e-15 else None),
+        })
+        if slope is not None:
+            row['y_pupil'] = y_exit + slope * ((z_last + sp_prime) - z_exit)
+        fan.append(row)
+    return fan
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # 4. Сравнение и вердикты
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -470,17 +567,10 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
 
     parax = paraxial_of(system, wl)
 
-    # Ближний предмет (obj=1): OPAL печатает Ax=sin(NA), Н ЗР как
-    # 100·tg(u), Sp в дптр — положение предмета в standalone-OPJ не
-    # найдено, веер по высоте неприменим. Конвенции не реверсированы —
-    # строки пропускаем с записью в досье (§3), RED было бы ложным
-    # обвинением порта.
+    # Ближний предмет (obj=1, P6): предмет — f64@0x4C (мм от первой
+    # поверхности), веер по углу u = arcsin(zone·Ax), Sp = 1000/(sP−z)
+    # дптр. Дальняя/ближняя конвенции строк — досье §3.7.
     near_obj = (opj['obj_type'] == 1)
-    if near_obj:
-        notes.append('ближний предмет (obj=1): конвенции OPAL не '
-                     'реверсированы (запуск веера по углу NA от предмета, '
-                     'Sp в дптр) — сверка осевых/габаритных строк '
-                     'пропущена, кандидаты в досье §3')
 
     # ── габариты: строка N=0 (осевая) расчётной λ ──
     # (λ OPJ — f32: 0.54607 против печати .5461 → допуск 2e-3)

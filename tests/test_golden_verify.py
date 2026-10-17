@@ -133,7 +133,9 @@ def test_us00ki02_reference_system_green():
     (зрачки, прод, Tg'·100, Н ЗР) и волновые во всех зонах — GFIX P4
     закрыл остаток опорной сферой от выходного зрачка (досье §2.4:
     0.75315/0.36191 против 0.7532/0.362, ≤0.03 %); поперечные —
-    конвенция не сведена (досье §2.5): SKIP."""
+    OD3 (REVERSE_OPALDIS §4): DD.MMSS = угол из центра выходного
+    зрачка на точку зонального луча в плоскости Гаусса, з.1.0
+    384.3287″ против банка .062432 = 0°06′24.32″."""
     res = compare_system('US00KI02')
     assert res['counts']['RED'] == 0
     assert res['counts']['YELLOW'] == 0
@@ -154,9 +156,14 @@ def test_us00ki02_reference_system_green():
     hzr = [r for r in res['rows'] if r[1] == 'Н ЗР (мм)']
     assert len(hzr) >= 4
     assert all(r[7] == 'GREEN' for r in hzr)
-    # поперечные — конвенция не сведена (досье §2.5): SKIP
+    # поперечные гр.мнсек (OD3): DD.MMSS = угол из центра выходного
+    # зрачка на пересечение зонального луча с плоскостью Гаусса —
+    # зелёные во всех зонах (зона 0 тривиальна)
     trans = [r for r in res['rows'] if r[1].startswith('попер')]
-    assert trans and all(r[7] == 'SKIP' for r in trans)
+    assert len(trans) >= 4
+    assert all(r[7] == 'GREEN' for r in trans if r[2] != 0.0)
+    assert trans[0][3] == pytest.approx(384.32, abs=0.02)   # .062432
+    assert trans[0][4] == pytest.approx(384.32, abs=0.02)
     # GFIX P4: вершина опорной сферы — центр выходного зрачка
     # (z_exit = последняя поверхность + sP′): зоны 1.0/0.866 ≤0.5 %
     wave = {r[2]: r for r in res['rows'] if r[1] == 'волновые'}
@@ -311,6 +318,44 @@ def test_optics1_virtual_image_vertex_reference():
     assert all(r[7] in ('GREEN', 'YELLOW') for r in trans)
     # знаки: попер мнимого изображения печатается с обратным знаком
     assert all((r[3] > 0) == (r[4] > 0) for r in trans)
+
+
+@requires_stand
+@pytest.mark.parametrize('name,z1_arcsec,z1_tol', [
+    ('KURSOVIK', -12030.17, 2.1e-3),      # веер 18.4911 по Н ЗР (кромка «к 10»)
+    ('LAB6_GAS', 68.90, 5e-4),            # афокал: вырождение в наклон
+    ('ST4', 2.18, 2.5e-3),                # афокал; печать 0.01″ на 2.18″
+])
+def test_transverse_ddmmss_pupil_angle(name, z1_arcsec, z1_tol):
+    """OD3 (REVERSE_OPALDIS §4): поперечные гр.мнсек = DD.MMSS-печать
+    угла из центра выходного зрачка на пересечение зонального луча с
+    параксиальной плоскостью изображения (y_гаусс/(L_паракс − sP′)),
+    секунды с двумя десятичными; афокальный выход — наклон луча.
+    KURSOVIK з.1.0: −12050.84″ против −3.203 = −3°20′30.17″."""
+    res = compare_system(name)
+    trans = [r for r in res['rows']
+             if r[1] == 'попер (гр.мнсек)' and r[2] != 0.0]
+    assert len(trans) == 4
+    assert trans[0][3] == pytest.approx(z1_arcsec, abs=0.02)
+    assert trans[0][4] == pytest.approx(z1_arcsec, abs=abs(z1_arcsec) * z1_tol)
+    assert all(r[7] in ('GREEN', 'YELLOW') for r in trans)
+
+
+@requires_stand
+def test_obektiv_rim_limited_fan_residual():
+    """OD3, кромка: OBEKTIV/OKULAR — габарит «Ограничения: к 3» (кромка
+    3-й поверхности), веер OPAL срезается ею: выходные высоты банка ниже
+    порта на ~4 % (з.1.0) с квадратичным по зоне профилем. Конвенция
+    печати та же (структура (l)); расхождение — в самом веере, RED
+    честный (порт трассирует полный NA-луч, REVERSE_OPALDIS §4.3)."""
+    res = compare_system('OBEKTIV')
+    trans = [r for r in res['rows']
+             if r[1] == 'попер (гр.мнсек)' and r[2] != 0.0]
+    assert len(trans) == 4
+    # квадратичный профиль остатка: убывает с зоной, ≤ 9 % на з.1.0
+    d = [r[5] for r in trans]
+    assert all(x < 0.09 for x in d)
+    assert d == sorted(d, reverse=True)
 
 
 @requires_stand

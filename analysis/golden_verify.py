@@ -408,11 +408,23 @@ def port_axial_rows(system, wl: float, zones, ax_semi: float) -> list:
                 lp_p = L_parax - sp_prime
                 if abs(lp_z) > 1e-9 and abs(lp_p) > 1e-9:
                     row['long_dptr'] = mm_to_dioptres(lp_z) - mm_to_dioptres(lp_p)
+            # поперечные в гр.мнсек (дальнее изображение, OD3): угол из
+            # центра выходного зрачка на пересечение зонального луча с
+            # параксиальной плоскостью изображения —
+            # y_зон(гаусс)/(L_паракс − sP′)·206264.8″; афокальный выход
+            # вырождается в наклон. Валидация: US00KI02 2.3e-5..5.8e-4,
+            # KURSOVIK ≤1.4e-3 (веер 18.49 по Н ЗР) — REVERSE_OPALDIS §4.
+            if ray['slope'] is not None and L_parax is not None \
+                    and sp_prime:
+                y_gauss = ray['y_exit'] + ray['slope'] * L_parax
+                d_pup = L_parax - sp_prime
+                if abs(d_pup) > 1e-9:
+                    row['trans_arcsec'] = -y_gauss / d_pup * _ARCSEC_PER_RAD
         else:
             row.update({'y_pupil': None, 'tg_prime100': None, 'wave': None,
                         'h_zr_mm': pupil_h_mm(zone, ax_semi), 'L': None,
                         'long_mm': None, 'long_dptr': None, 'dy_exit': None,
-                        'iso_pct': None})
+                        'trans_arcsec': None, 'iso_pct': None})
         rows.append(row)
     return rows
 
@@ -526,7 +538,8 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
                       0.0, -su, math.sqrt(1.0 - su * su))
         res = trace_ray_through_system(system, ray, wl)
         row = {'zone': zone, 'ok': False, 'L_p': L_p, 'L_ref': L_ref,
-               'u_parax': u_p, 'h_zr_mm': 100.0 * tu, 'wave': None}
+               'u_parax': u_p, 'sp_prime': sp_prime,
+               'h_zr_mm': 100.0 * tu, 'wave': None}
         if not (res.success and len(res.path) >= 2):
             fan.append(row)
             continue
@@ -713,14 +726,22 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 d = rel_diff(port_v, opal_v, floor)
                 rows.append(('осевой', f'прод ({units[0]})', zone, opal_v,
                              port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))
-            # поперечные — конвенция не сходится (досье §2.3): считаем
-            # кандидата (угол выхода vs паракс, гр.мнсек) для полноты
+            # поперечные (гр.мнсек, OD3): DD.MMSS → секунды дуги; порт —
+            # угол из центра выходного зрачка на точку зонального луча в
+            # плоскости Гаусса (досье REVERSE_OPALDIS §4). Пол 0.02″ —
+            # гранулярность печати секунд.
             if et['trans'] and et['trans'][0] is not None:
                 opal_v = et['trans'][0]
-                port_v = None
-                d = None
-                rows.append(('осевой', f'попер ({units[1]})', zone, opal_v,
-                             port_v, d, TOL_ABERR, 'SKIP'))
+                if units[1] == 'гр.мнсек':
+                    opal_as = arcsec_of_ddmmss(opal_v)
+                    port_v = (pr.get('trans_arcsec') if pr else None)
+                    d = rel_diff(port_v, opal_as, 0.02)
+                    rows.append(('осевой', 'попер (гр.мнсек)', zone, opal_as,
+                                 port_v, d, TOL_ABERR,
+                                 verdict(d, TOL_ABERR)))
+                else:
+                    rows.append(('осевой', f'попер ({units[1]})', zone, opal_v,
+                                 None, None, TOL_ABERR, 'SKIP'))
 
         # TABOC2: строки отсортированы ПО МЕТКЕ (убывание tg'*100), а не
         # по зоне — у 121 метка немонотонна по зонам. Идентичность зоны
@@ -826,11 +847,20 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 opal_v = et['trans'][0]
                 port_v = None
                 if units[1] == 'гр.мнсек':
-                    # сверка в секундах дуги (шкала линейна)
+                    # сверка в секундах дуги; порт — угол из центра
+                    # выходного зрачка на точку зонального луча в
+                    # плоскости Гаусса (OD3, досье REVERSE_OPALDIS §4);
+                    # афокальный выход (L_p=None/|u'|→0: ST4/LAB6_GAS) —
+                    # вырождается в наклон луча
                     opal_as = arcsec_of_ddmmss(opal_v)
                     if pr and pr['ok'] and pr['slope'] is not None:
-                        port_v = -(pr['slope'] - pr['u_parax']) \
-                                 * _ARCSEC_PER_RAD
+                        if pr.get('L_p') and pr.get('sp_prime') \
+                                and abs(pr['L_p'] - pr['sp_prime']) > 1e-9:
+                            y_g = pr['y_exit'] + pr['slope'] * pr['L_p']
+                            port_v = -y_g / (pr['L_p'] - pr['sp_prime']) \
+                                * _ARCSEC_PER_RAD
+                        else:
+                            port_v = -pr['slope'] * _ARCSEC_PER_RAD
                     d = rel_diff(port_v, opal_as, 0.02)
                     rows.append(('осевой', 'попер (гр.мнсек)', zone, opal_as,
                                  port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))

@@ -7,6 +7,7 @@ DOSBox-прогон OPAL, CP866); рецепты: C:\\GOLDEN_DOS\\*.OPJ (сте�
 Взломанные конвенции — analysis/REVERSE_GVERIFY.md §2.
 """
 from pathlib import Path
+import math
 
 import pytest
 
@@ -177,6 +178,24 @@ def test_us00ki02_axial_fan_slope_post_refraction():
     assert fan0['ok'] and fan1['ok']
     assert fan0['slope'] == pytest.approx(fan1['slope'], rel=1e-4), \
         f"наклон thickness=0: {fan0['slope']} vs 1e-3: {fan1['slope']}"
+
+
+@requires_stand
+@pytest.mark.parametrize('name', ['121', 'LAB6_GAS'])
+def test_isoplanatism_vignetted_fans_no_keyerror(name):
+    """GFIX/P3 (досье §4.3): интерполяция главного луча в
+    compute_isoplanatism — по ОБЩИМ высотам двух вееров. Часть лучей
+    осевого веера может виньетироваться (LAB6_GAS: высота 0.4737 есть
+    в веере поля ε, но не в осевом — KeyError; 121: KeyError(-1.0) до
+    унификации стопа P1). Обе системы считаются без исключения."""
+    from analysis.aberrations import compute_isoplanatism
+    from analysis.golden_verify import opj_to_system
+    system = opj_to_system(parse_golden_opj(GOLDEN_DOS / f'{name}.OPJ'))
+    pupils, vals = compute_isoplanatism(system,
+                                        wl=system.wavelengths[0].value)
+    assert len(pupils) >= 5, f'веер почти пуст: {len(pupils)} точек'
+    assert pupils == sorted(pupils)
+    assert all(math.isfinite(v) for v in vals)
 
 
 @requires_stand

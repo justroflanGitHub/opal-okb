@@ -62,6 +62,8 @@ class TestOplToReferenceSphere:
 
     def test_point_inside_sphere_backtracks(self):
         # точка внутри сферы — ближняя сторона сферы позади, L < 0
+        # (конвенция OPAL: замыкание на сторону выходного зрачка,
+        # 121/OPAL3/HELIOS8/S_KOND1 — P4/P6)
         opl = ab._opl_to_reference_sphere(
             5.0, (0.0, 0.0, 50.0), (0.0, 0.0, 1.0), self.CENTER, self.R)
         assert opl == pytest.approx(-45.0)  # 5 + (50 − 100)

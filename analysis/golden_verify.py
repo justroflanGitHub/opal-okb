@@ -468,10 +468,17 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
 
     Строка: геометрия выхода (терминальный сегмент, GFIX P2): ``L`` —
     мм от вершины последней поверхности до пересечения с осью, плюс
-    параксиальная опора ``L_p``/``u_parax`` от точки предмета и
-    ``y_pupil`` в плоскости выходного зрачка.
+    параксиальная опора ``L_p``/``u_parax`` от точки предмета,
+    ``y_pupil`` в плоскости выходного зрачка и ``wave`` — волновая
+    относительно главного (осевого) луча: ближнее изображение — опорная
+    сфера с центром в точке Гаусса и вершиной в выходном зрачке (как
+    P4 у дальнего предмета), афокальный выход (|u'|→0: ST4/LAB6_GAS —
+    предмет в переднем фокусе) — плоскость выходного зрачка (досье
+    §3.7; вергенция ~1e-5 рад — любая дальняя опора эквивалентна).
     """
     from ray_tracing import Ray, trace_ray_through_system
+    from analysis.aberrations import (_air_exit_direction,
+                                      _opl_to_reference_sphere)
 
     if z_obj < 0.0:
         y0_par, u0_par, z0_par = 0.0, 0.05, z_obj
@@ -483,6 +490,26 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
     L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None    # ∞ — афокальный выход
     sp_prime = paraxial_of(system, wl)['sP_prime']
     z_last = sum(s.thickness for s in system.surfaces[:-1])
+    z_pup = z_last + sp_prime
+    afocal = L_p is None or abs(u_p) <= 1e-6
+    if afocal:
+        center, r_ref = None, None
+    else:
+        center = (0.0, 0.0, z_last + L_p)
+        r_ref = (z_last + L_p) - z_pup
+
+    def _opl_close(res):
+        """OPL луча до опорной сферы/плоскости выходного зрачка."""
+        d = _air_exit_direction(system, res, wl)
+        if afocal:
+            return res.opl + (z_pup - res.path[-1][2]) / d[2]
+        return _opl_to_reference_sphere(res.opl, res.path[-1], d,
+                                        center, r_ref)
+
+    chief = trace_ray_through_system(
+        system, Ray(0.0, 0.0, z0_par if z_obj >= 0.0 else z_obj,
+                    0.0, 0.0, 1.0), wl)
+    opl_chief = _opl_close(chief) if chief.success else None
     fan = []
     for zone in zones:
         su = na * zone
@@ -495,7 +522,7 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
                       0.0, -su, math.sqrt(1.0 - su * su))
         res = trace_ray_through_system(system, ray, wl)
         row = {'zone': zone, 'ok': False, 'L_p': L_p, 'u_parax': u_p,
-               'h_zr_mm': 100.0 * tu}
+               'h_zr_mm': 100.0 * tu, 'wave': None}
         if not (res.success and len(res.path) >= 2):
             fan.append(row)
             continue
@@ -503,10 +530,13 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         dz = last[2] - prev[2]
         slope = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else None
         y_exit, z_exit = last[1], last[2]
+        opl = _opl_close(res)
         row.update({
             'ok': True, 'y_exit': y_exit, 'z_exit': z_exit, 'slope': slope,
             'L': (z_exit - y_exit / slope - z_last
                   if slope is not None and abs(slope) > 1e-15 else None),
+            'wave': ((opl - opl_chief) / (wl * 1e-3)
+                     if None not in (opl, opl_chief) else None),
         })
         if slope is not None:
             row['y_pupil'] = y_exit + slope * ((z_last + sp_prime) - z_exit)
@@ -586,16 +616,33 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
     if prn['gabarit'] and ax_row is None:
         notes.append('габариты без строки N=0')
     units_sp, units_sp2 = prn.get('gabarit_units', ('мм', 'мм'))
-    if ax_row is not None and not near_obj:
-        # Sp — мм от первой поверхности (дальний предмет). Sp' — мм от
-        # последней поверхности (дальнее изображение) либо дптр от
-        # плоскости Гаусса (ближнее изображение): HELIOS8/ST/121 —
-        # 1000/(sP'−bfd) совпадает с эталоном до 4 знаков (досье §1).
-        port_sp = parax['sP']
-        port_sp2 = parax['sP_prime']
-        if units_sp2 == 'дптр':
-            d = parax['sP_prime'] - parax['bfd']
-            port_sp2 = 1000.0 / d if abs(d) > 1e-9 else None
+    if ax_row is not None:
+        if near_obj:
+            # Ближний предмет (P6.1): Sp в дптр = 1000/(sP − z_obj) от
+            # входного зрачка (ST4 9.717 = 1000/(6.703+96.2046);
+            # OPTICS#1 мнимый предмет даёт Sp<0). Sp' — мм от последней
+            # поверхности (дальнее изображение) либо дптр от точки
+            # Гаусса: 1000/(sP'−L_p) (S_KOND1 −3.758, досье §3.7).
+            z_obj = opj['object_pos']
+            port_sp = (1000.0 / (parax['sP'] - z_obj)
+                       if units_sp == 'дптр' else parax['sP'])
+            if units_sp2 == 'дптр':
+                y_p, u_p = _paraxial_ray(system, wl, 0.0, 0.05, z_obj)
+                L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None
+                port_sp2 = (1000.0 / (parax['sP_prime'] - L_p)
+                            if L_p is not None else None)
+            else:
+                port_sp2 = parax['sP_prime']
+        else:
+            # Sp — мм от первой поверхности (дальний предмет). Sp' — мм
+            # от последней поверхности (дальнее изображение) либо дптр
+            # от плоскости Гаусса (ближнее изображение): HELIOS8/ST/121 —
+            # 1000/(sP'−bfd) совпадает с эталоном до 4 знаков (досье §1).
+            port_sp = parax['sP']
+            port_sp2 = parax['sP_prime']
+            if units_sp2 == 'дптр':
+                d = parax['sP_prime'] - parax['bfd']
+                port_sp2 = 1000.0 / d if abs(d) > 1e-9 else None
         for key, port_val, tol in (
                 ('Sp', port_sp, TOL_PARAX),
                 ('Sp2', port_sp2, TOL_PARAX),
@@ -713,6 +760,116 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 d = rel_diff(port_v, et['h_zr'])
                 rows.append(('осевой', 'Н ЗР (мм)', zone, et['h_zr'], port_v, d,
                              TOL_ABERR, verdict(d, TOL_ABERR)))
+
+    elif near_obj:
+        # ── осевой пучок: ближний предмет (P6.2) ──
+        # Веер по углу u = arcsin(zone·Ax) из точки предмета 0x4C;
+        # конвенции строк — досье §3.7: дальнее изображение — прод в дптр
+        # (вергенция пересечения с осью − параксиальная), попер в
+        # гр.мнсек (угол выхода vs паракс, DD.MMSS), метка Tg'*100 —
+        # высота луча в плоскости выходного зрачка; ближнее — прод/попер
+        # в мм (пересечение с осью/высота в плоскости Гаусса от точки
+        # предмета), метка = −100·tg u'.
+        units = prn['axial1'].get('units', ('мм', 'мм'))
+        a1_rows = prn['axial1'].get('rows', {})
+        na = ax_row['Ax'] if ax_row else opj['aperture_semi']
+        if not na:
+            hzr_max = max((r['h_zr'] for r in
+                           prn['axial2'].get('rows', {}).values()
+                           if r.get('h_zr') is not None), default=0.0)
+            na = hzr_max / 100.0
+        z_obj = opj['object_pos']
+        z_last = sum(s.thickness for s in system.surfaces[:-1])
+        port_rows = {r['zone']: r for r in
+                     near_object_axial_fan(system, wl, list(a1_rows.keys()),
+                                           na, z_obj)}
+        for zone, et in sorted(a1_rows.items(), reverse=True):
+            pr = port_rows.get(zone)
+            if et['long'] and et['long'][0] is not None:
+                opal_v = et['long'][0]
+                port_v = None
+                if pr and pr['ok'] and pr['L'] is not None:
+                    if units[0] == 'дптр':
+                        port_v = 1000.0 / pr['L']
+                        if pr['L_p'] is not None:
+                            port_v -= 1000.0 / pr['L_p']
+                    else:
+                        port_v = (pr['L'] - pr['L_p']
+                                  if pr['L_p'] is not None else None)
+                floor = (ABS_FLOOR_MM if units[0] == 'мм'
+                         else ABS_FLOOR_DPTR)
+                d = rel_diff(port_v, opal_v, floor)
+                rows.append(('осевой', f'прод ({units[0]})', zone, opal_v,
+                             port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))
+            if et['trans'] and et['trans'][0] is not None:
+                opal_v = et['trans'][0]
+                port_v = None
+                if units[1] == 'гр.мнсек':
+                    # сверка в секундах дуги (шкала линейна)
+                    opal_as = arcsec_of_ddmmss(opal_v)
+                    if pr and pr['ok'] and pr['slope'] is not None:
+                        port_v = -(pr['slope'] - pr['u_parax']) \
+                                 * _ARCSEC_PER_RAD
+                    d = rel_diff(port_v, opal_as, 0.02)
+                    rows.append(('осевой', 'попер (гр.мнсек)', zone, opal_as,
+                                 port_v, d, TOL_ABERR, verdict(d, TOL_ABERR)))
+                else:
+                    if pr and pr['ok'] and pr['slope'] is not None \
+                            and pr['L_p'] is not None:
+                        z_img = z_last + pr['L_p']
+                        port_v = pr['y_exit'] + pr['slope'] * (z_img
+                                                               - pr['z_exit'])
+                    d = rel_diff(port_v, opal_v, ABS_FLOOR_MM)
+                    rows.append(('осевой', f'попер ({units[1]})', zone,
+                                 opal_v, port_v, d, TOL_ABERR,
+                                 verdict(d, TOL_ABERR)))
+
+        # TABOC2: сшивка зон по Н ЗР = 100·tg(arcsin(zone·NA)) (та же
+        # схема, что и для дальнего предмета, масштаб 100·NA)
+        a2_list = sorted(prn['axial2'].get('rows', {}).values(),
+                         key=lambda r: -r['tg100'] if r['tg100'] is not None
+                         else 0)
+        zones_sorted = sorted(a1_rows.keys(), reverse=True)
+        scale = 100.0 * na
+        used, pairs = set(), []
+        for et in a2_list:
+            hzr = et.get('h_zr')
+            z = None
+            if hzr is not None and scale:
+                z = min(zones_sorted, key=lambda zz: abs(zz - hzr / scale))
+            if z is None or z in used:
+                z = next((zz for zz in zones_sorted if zz not in used), None)
+            if z is None:
+                break
+            used.add(z)
+            pairs.append((et, z))
+        far = (opj['img_type'] == 0)
+        for et, zone in pairs:
+            pr = port_rows.get(zone)
+            if et['tg100'] is not None:
+                port_v = None
+                if pr and pr['ok']:
+                    if far:
+                        port_v = pr.get('y_pupil')
+                        if port_v is not None and et['tg100'] < 0:
+                            port_v = -port_v
+                    else:
+                        port_v = (-100.0 * pr['slope']
+                                  if pr['slope'] is not None else None)
+                d = rel_diff(port_v, et['tg100'])
+                rows.append(('осевой', "Tg'*100" + (' (H`ЗР)' if far else ''),
+                             zone, et['tg100'], port_v, d, TOL_ABERR,
+                             verdict(d, TOL_ABERR)))
+            if et['wave'] and et['wave'][0] is not None:
+                port_v = pr.get('wave') if pr else None
+                d = rel_diff(port_v, et['wave'][0], ABS_FLOOR_WAVE)
+                rows.append(('осевой', 'волновые', zone, et['wave'][0], port_v,
+                             d, TOL_ABERR, verdict(d, TOL_ABERR)))
+            if et['h_zr'] is not None:
+                port_v = pr.get('h_zr_mm') if pr else None
+                d = rel_diff(port_v, et['h_zr'])
+                rows.append(('осевой', 'Н ЗР (мм)', zone, et['h_zr'], port_v,
+                             d, TOL_ABERR, verdict(d, TOL_ABERR)))
 
     counts = {'GREEN': 0, 'YELLOW': 0, 'RED': 0, 'SKIP': 0}
     for r in rows:

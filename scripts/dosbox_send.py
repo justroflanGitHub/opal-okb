@@ -6,6 +6,8 @@ PostMessage WM_KEYDOWN/WM_KEYUP со сканкодом в lParam — не тр�
 """
 import ctypes, subprocess, sys, time
 
+from _gb_win import find_hwnd
+
 VK = {'ESC': 0x1B, 'ENTER': 0x0D, 'SPACE': 0x20, 'TAB': 0x09,
       'UP': 0x26, 'DOWN': 0x28, 'LEFT': 0x25, 'RIGHT': 0x27,
       'F1': 0x70, 'F2': 0x71, 'F3': 0x72, 'F4': 0x73, 'F5': 0x74,
@@ -17,10 +19,7 @@ u32 = ctypes.windll.user32
 WM_KEYDOWN, WM_KEYUP, WM_CHAR = 0x0100, 0x0101, 0x0102
 
 def hwnd():
-    out = subprocess.run(['powershell', '-NoProfile',
-                          '(Get-Process DOSBox | Select-Object -First 1).MainWindowHandle'],
-                         capture_output=True, text=True).stdout.strip()
-    return int(out)
+    return find_hwnd()
 
 def main():
     if len(sys.argv) < 2:
@@ -56,6 +55,16 @@ def main():
             continue
         if k in ('UP', 'DOWN', 'LEFT', 'RIGHT', 'INS', 'DEL', 'HOME', 'END', 'PGUP', 'PGDN') or k.startswith('F') and k[1:].isdigit():
             tap(VK[k], char=False)
+            continue
+        if k in ('_', '#'):
+            # шифтованные символы: WM_CHAR их не доставляет — слать Shift+база (US)
+            sc_s = u32.MapVirtualKeyW(0x10, 0)
+            lp_s = 1 | (sc_s << 16)
+            u32.PostMessageW(h, WM_KEYDOWN, 0x10, lp_s)
+            time.sleep(0.03)
+            tap(0xBD if k == '_' else 0x33, char=False)
+            u32.PostMessageW(h, WM_KEYUP, 0x10, lp_s | (1 << 30) | (1 << 31))
+            time.sleep(0.05)
             continue
         vk = VK.get(k, ord(k[0]) if len(k) == 1 else 0x0D)
         tap(vk)

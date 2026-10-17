@@ -160,10 +160,24 @@ P4/P6. Sanity: US00KI02 G18 Y1 R2 S6 — зрачки/прод/метки зел
 - `test_wavefront_reference::TestAirExitDirection` — существующий
   тест нулевой толщины проходит без Снеллиус-обхода функции.
 
-## P3 — compute_isoplanatism KeyError
+## P3 — compute_isoplanatism KeyError (коммит fix(analysis))
 
-(запланировано) 121 KeyError(-1.0), LAB6_GAS KeyError(0.4737):
-интерполяция за пределами сетки — клип на границы.
+**Диагноз §4.3**: интерполяция высоты главного луча брала сетку из
+веера поля ε (`sorted(by_pupil_eps.keys())`), а значения дёргала из
+осевого веера — высоты, виньетированные только в осевом веере, давали
+KeyError (LAB6_GAS: 0.4737; 121: −1.0 — исчез после унификации стопа
+P1).
+
+**Фикс**: `aberrations.py::compute_isoplanatism` — сетка интерполяции
+`sorted(common)` (общие высоты двух вееров; они же идут в выходные
+`pupils` — возрастание для `_interp_at` сохранено). LAB6_GAS теперь
+даёт 6 общих точек (≥ ISO_MIN_RAYS), 121/US00KI02/OPAL3 — полные 20.
+
+Regression: `test_golden_verify::test_isoplanatism_vignetted_fans_
+no_keyerror[121|LAB6_GAS]` — без исключения, сетка возрастает,
+значения конечны. Полный pytest 1108 passed; вердикты харнесса не
+меняются (iso LAB6_GAS в сравнении не участвует — строки системы
+SKIP по ближнему предмету).
 
 ## P4 — опорная сфера волновых (§2.4)
 

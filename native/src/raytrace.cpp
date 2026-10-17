@@ -525,6 +525,19 @@ static void trace_one_core(const SurfaceData* surfaces, int32_t n_surf,
             goto finish;
         }
 
+        // -- физический cap (GFIX P6): в апертуре действует оболочка у
+        // ВЕРШИНЫ (стрела прогиба на semi_d); «спина» математической сферы
+        // (|hz−z_surf| ≈ 2|R|−sag) — не поверхность (Кассегрен с
+        // инвертированной толщиной, MISS-диагностика) --
+        if (!s.is_aspheric && R != 0.0) {
+            const double a_cap = std::fmin(s.semi_diameter, std::fabs(R));
+            const double sag = std::fabs(R) - std::sqrt(R * R - a_cap * a_cap);
+            if (std::fabs(hz - z_intersect) > sag + 1e-6) {
+                out.err = TraceErr::MISS;
+                goto finish;
+            }
+        }
+
         // -- OPL: n * геометрическое расстояние --
         opl += current_n * t;
         out.add_point(gx, gy, gz);

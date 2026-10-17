@@ -562,6 +562,23 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
             result.opl += current_n * t
             return result
 
+        # Физический cap (GFIX P6): в пределах апертуры действует оболочка
+        # у ВЕРШИНЫ (стрела прогиба на semi_d). Попадание в «спину»
+        # математической сферы — на той же высоте, но |hz−z_surf| ≈ 2|R|−sag
+        # — физической поверхностью не является: Кассегрен с инвертированной
+        # толщиной, луч изнутри сферы вторички выходит через спину (диагностика
+        # MISS из 169f940), выбор корня «ближе к вершине» изнутри не работает.
+        is_plain_sphere = (s.surface_type == SurfaceType.SPHERE
+                           and abs(s.conic_constant) <= TINY
+                           and not s.aspheric_coeffs)
+        if is_plain_sphere and R != 0.0:
+            a_cap = min(semi_d, abs(R))
+            sag = abs(R) - math.sqrt(R * R - a_cap * a_cap)
+            if abs(hz - z_intersect) > sag + 1e-6:
+                result.success = False
+                result.error = 'MISS'
+                return result
+
         # Накапливаем OPL: n * геометрическое расстояние
         result.opl += current_n * t
 

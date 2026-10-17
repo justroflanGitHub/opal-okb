@@ -283,6 +283,64 @@ class TestZeroTerminalThicknessExit:
             assert abs(dz) > 1e-6, f"вырожденный терминальный сегмент: {dz}"
 
 
+class TestPhysicalCapShell:
+    """GFIX/P6: физический cap математической сферы.
+
+    Два правила приёмки попадания (досье REVERSE_GFIX §P6):
+    1. из положительных корней — тот, чья точка ближе к вершине по z
+       (глубокая вогнутая S0: ST4 R=−20 при предмете z=−96 — луч сперва
+       протыкает «заднюю» оболочку, а физический cap у вершины);
+    2. попадание обязано лежать у вершины: |z−z_surf| ≤ сагитты на
+       semi_d. «Спина» сферы — та же высота, но 2|R|−sag от вершины —
+       поверхностью не является: Кассегрен с инвертированной толщиной
+       (+150 вместо −150), луч после первички выходит изнутри сферы
+       вторички через спину (z=−130 при вершине +150) — MISS.
+    """
+
+    @staticmethod
+    def _cassegrain(primary_thickness):
+        sys = OpticalSystem(name="cass")
+        sys.aperture_value = 20.0
+        sys.surfaces = [
+            Surface(radius=-400.0, thickness=primary_thickness,
+                    semi_diameter=40.0, is_reflective=True),
+            Surface(radius=-140.0, thickness=175.0, semi_diameter=5.0,
+                    is_reflective=True),
+            Surface(radius=0.0, thickness=25.0, semi_diameter=25.0),
+        ]
+        sys.wavelengths = [Wavelength(0.54607, 1.0, "e")]
+        return sys
+
+    @staticmethod
+    def _axial_ray():
+        return Ray(x=0, y=5.0, z=-1000, k=0, l=0, m=1)
+
+    def test_bad_thickness_diagnosed_on_primary_cap(self):
+        res = trace_ray_through_system(self._cassegrain(150.0),
+                                       self._axial_ray(), 0.54607)
+        assert not res.success and res.error == 'MISS'
+        # падение — на физическом cap первички (сагитта y=5 на R=−400
+        # равна 0.031), не на «задней» оболочке z=−800
+        assert res.path[-1][2] == pytest.approx(-0.031, abs=5e-3)
+
+    def test_valid_cassegrain_traces(self):
+        res = trace_ray_through_system(self._cassegrain(-150.0),
+                                       self._axial_ray(), 0.54607)
+        assert res.success and res.error is None
+        assert res.surfaces_hit == 3
+
+    def test_native_parity_cap_rules(self):
+        import ray_native
+        for thick, ok in ((150.0, False), (-150.0, True)):
+            s = self._cassegrain(thick)
+            ray = (0.0, 5.0, -1000.0, 0.0, 0.0, 1.0)
+            py = trace_ray_through_system(s, Ray(*ray), 0.54607)
+            nat = ray_native.trace_batch(s, [ray], wl=0.54607)[0]
+            assert py.success == nat.success == ok, thick
+            assert py.error == nat.error
+            assert tuple(py.path[-1]) == pytest.approx(tuple(nat.path[-1]))
+
+
 class TestIndustarFieldRays:
     """Field rays at 26° pass through system."""
     def test_axial_and_field_pass(self, industar):

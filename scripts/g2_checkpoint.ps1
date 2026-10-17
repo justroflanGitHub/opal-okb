@@ -3,7 +3,7 @@ Set-Location C:\Users\mikhail\.openclaw\workspace\opal_okb
 $git = 'C:\Program Files\Git\cmd\git.exe'
 while ($true) {
     Start-Sleep -Seconds 1200
-    & $git add analysis\REVERSE_G2_GOLDEN.md capture analysis\reverse_data\golden docs\tasks\TASK_OPCOM3.md 2>$null
+    & $git add analysis\REVERSE_G2_GOLDEN.md analysis\REVERSE_G2BANK.md capture analysis\reverse_data\golden docs\tasks\TASK_G2BANK.md 2>$null
     $staged = & $git diff --cached --name-only 2>$null
     if ($staged) {
         $ts = Get-Date -Format 'HH:mm'

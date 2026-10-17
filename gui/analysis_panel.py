@@ -1579,8 +1579,10 @@ class AnalysisPanel(QTabWidget):
         from optics_utils import compute_z_positions
         z_pos = compute_z_positions(sys)
         stop_idx = getattr(sys, 'stop_surface', -1)
-        z_stop = (z_pos[stop_idx] + getattr(sys, 'stop_offset', 0.0)
-                  if 0 <= stop_idx < len(z_pos) else None)
+        # stop_surface — 1-индексация (OPAL ND): плоскость диафрагмы =
+        # вершина поверхности stop_surface−1 + stop_offset
+        z_stop = (z_pos[stop_idx - 1] + getattr(sys, 'stop_offset', 0.0)
+                  if 1 <= stop_idx <= len(z_pos) else None)
         labels = []
         surf_no = 0
         n = len(points)
@@ -1592,7 +1594,7 @@ class AnalysisPanel(QTabWidget):
                 labels.append('Изобр.')
                 continue
             if (z_stop is not None and abs(z - z_stop) < 1e-6
-                    and surf_no > stop_idx):
+                    and surf_no >= stop_idx):
                 labels.append('Диафр.')
                 continue
             surf_no += 1

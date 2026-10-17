@@ -493,10 +493,12 @@ class _GLWidget(QOpenGLWidget):
         stop_idx = getattr(sys, 'stop_surface', 1)
         stop_off = getattr(sys, 'stop_offset', 0.0)
 
-        if stop_idx < 0 or stop_idx >= len(z_pos):
+        # stop_surface — 1-индексация (OPAL ND): плоскость = вершина
+        # поверхности stop_surface−1 + stop_offset
+        if stop_idx < 1 or stop_idx > len(z_pos):
             return
 
-        z_stop = z_pos[stop_idx] + stop_off
+        z_stop = z_pos[stop_idx - 1] + stop_off
 
         aperture = get_effective_aperture(sys, default=20.0)
         if aperture < 1.0:

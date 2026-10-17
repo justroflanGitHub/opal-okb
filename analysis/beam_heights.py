@@ -137,8 +137,10 @@ def _surface_heights(system: OpticalSystem, points):
     """
     z_pos = compute_z_positions(system)
     stop_idx = getattr(system, 'stop_surface', -1)
-    z_stop = (z_pos[stop_idx] + getattr(system, 'stop_offset', 0.0)
-              if 0 <= stop_idx < len(z_pos) else None)
+    # stop_surface — 1-индексация (OPAL ND): плоскость = вершина
+    # поверхности stop_surface−1 + stop_offset
+    z_stop = (z_pos[stop_idx - 1] + getattr(system, 'stop_offset', 0.0)
+              if 1 <= stop_idx <= len(z_pos) else None)
     n = len(system.surfaces)
     heights = [None] * n
     consumed = 0
@@ -381,8 +383,10 @@ def tabeap_rows(system: OpticalSystem, wl: float = None) -> list:
     ay = geo[0]['Ay'] if geo else get_effective_aperture(system, default=10.0) / 2.0
     z_pos = compute_z_positions(system)
     stop_idx = getattr(system, 'stop_surface', -1)
-    z_stop = (z_pos[stop_idx] + getattr(system, 'stop_offset', 0.0)
-              if 0 <= stop_idx < len(z_pos) else None)
+    # stop_surface — 1-индексация (OPAL ND): плоскость = вершина
+    # поверхности stop_surface−1 + stop_offset
+    z_stop = (z_pos[stop_idx - 1] + getattr(system, 'stop_offset', 0.0)
+              if 1 <= stop_idx <= len(z_pos) else None)
 
     fields = [fp.y for fp in (system.field_points or [])] or [0.0]
     rows = []

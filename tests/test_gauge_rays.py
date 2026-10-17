@@ -14,7 +14,12 @@ from ray_tracing import trace_ray_through_system, Ray
 
 
 def build_doublet() -> OpticalSystem:
-    """Клееный дублет K8/TF5 — базовая тестовая система."""
+    """Клееный дублет K8/TF5 — базовая тестовая система.
+
+    Диафрагма ND=2 + SD=1.0: плоскость z = 5.0 (вершина поверхности 2,
+    1-индексация OPAL) + 1.0 = 6.0 — строго внутри зазора между
+    поверхностями, поэтому наклонные лучи получают точку «Диафр.».
+    """
     s = OpticalSystem()
     s.wavelengths = [Wavelength(value=0.58756)]
     s.surfaces = [
@@ -22,6 +27,8 @@ def build_doublet() -> OpticalSystem:
         Surface(radius=-60, glass='TF5', thickness=3),
         Surface(radius=-200, glass='', thickness=70),
     ]
+    s.stop_surface = 2
+    s.stop_offset = 1.0
     return s
 
 
@@ -45,8 +52,8 @@ class TestGaugeRays:
         # наклонные лучи получают и точку в плоскости диафрагмы
         rays_by_key = {r['key']: r for r in rays}
         assert len(rays_by_key['upper']['points']) == 6
-        # главный идёт через вершины — точки диафрагмы нет
-        assert len(rays_by_key['chief']['points']) == 5
+        # главный тоже пересекает плоскость z=6.0 (она внутри хода)
+        assert len(rays_by_key['chief']['points']) == 6
 
     def test_directions_are_unit_vectors(self):
         for r in compute_gauge_rays(build_doublet()):

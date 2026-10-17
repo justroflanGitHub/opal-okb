@@ -443,8 +443,10 @@ def _path_surface_points(system: OpticalSystem, result):
         return out, image_pt
     z_pos = compute_z_positions(system)
     stop_idx = getattr(system, 'stop_surface', -1)
-    z_stop = (z_pos[stop_idx] + getattr(system, 'stop_offset', 0.0)
-              if 0 <= stop_idx < len(z_pos) else None)
+    # stop_surface — 1-индексация (OPAL ND): плоскость = вершина
+    # поверхности stop_surface−1 + stop_offset
+    z_stop = (z_pos[stop_idx - 1] + getattr(system, 'stop_offset', 0.0)
+              if 1 <= stop_idx <= len(z_pos) else None)
     consumed = 0
     for j, (x, y, z) in enumerate(pts):
         if j == 0:

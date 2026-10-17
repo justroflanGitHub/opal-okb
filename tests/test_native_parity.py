@@ -108,8 +108,16 @@ def test_fan_oversized_pupil(name):
 
 def test_error_branches_exercised():
     """Санити: увеличенный зрачок ахромата реально даёт EDGE и STOP
-    (паритет-тесты не вакуумные — ветки ошибок C++ покрыты)."""
+    (паритет-тесты не вакуумные — ветки ошибок C++ покрыты).
+
+    Диафрагма переставлена внутрь межлинзового зазора (ND=2 + SD=1.5
+    → плоскость z=7.5): у демо-ахромата стоп по умолчанию совпадает
+    с первой поверхностью (SD=0) — тогда клиппинг делает полудиаметр
+    самой поверхности и ветка STOP не открывается.
+    """
     system = create_demo_system_by_name('achromat')
+    system.stop_surface = 2
+    system.stop_offset = 1.5
     ref = trace_fan(system, 33, pupil_range=1.5, wl=0.54607, field_y=3.0)
     errors = {r.error for r in ref}
     assert 'EDGE' in errors, 'ожидались обрезанные краевые лучи (EDGE)'

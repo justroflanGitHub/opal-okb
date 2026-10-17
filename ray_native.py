@@ -236,9 +236,15 @@ def _system_params(system: OpticalSystem, wl: float) -> dict:
     stop_radius = raw_aperture / 2.0 if raw_aperture > 0 else 0.0
 
     # stop_surface — 1-индексация (как в paraxial_trace/OPAL ND):
-    # плоскость диафрагмы = вершина поверхности stop_surface−1 + stop_offset
+    # плоскость диафрагмы = вершина поверхности stop_surface−1 + stop_offset.
+    # Диафрагма НА поверхности (SD=0) — отдельная плоскость не нужна:
+    # обрезает полудиаметр самой поверхности (синхронно с
+    # analysis/ray_tracing.trace_ray_through_system).
     has_stop = 1 <= stop_surf_idx <= len(system.surfaces)
     z_stop = (z_positions[stop_surf_idx - 1] + stop_offset) if has_stop else 0.0
+    if has_stop and any(abs(z_stop - zv) <= 1e-6 for zv in z_positions):
+        has_stop = False
+        z_stop = 0.0
 
     last = system.surfaces[-1] if system.surfaces else None
     return dict(

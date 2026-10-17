@@ -447,6 +447,12 @@ def trace_ray_through_system(sys: OpticalSystem, ray: Ray, wl: float = 0.58756) 
     z_stop = None
     if 1 <= stop_surf_idx <= len(sys.surfaces):
         z_stop = z_positions[stop_surf_idx - 1] + stop_offset
+        # Диафрагма НА поверхности (SD=0, «совпадает с поверхностью»):
+        # обрезка — дело полудиаметра самой поверхности; отдельная
+        # плоскость не вставляется (иначе фантомная стоп-точка сдвигает
+        # начало луча и меняет ветви пересечения downstream).
+        if any(abs(z_stop - zv) <= 1e-6 for zv in z_positions):
+            z_stop = None
     
     for i, s in enumerate(sys.surfaces):
         z_surf = z_positions[i]

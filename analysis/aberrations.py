@@ -187,6 +187,39 @@ def _reference_sphere(system: OpticalSystem, field_y: float = 0.0,
     return (cx, cy, cz), R
 
 
+def _refract_at_last_surface(system: OpticalSystem, point, direction,
+                             wl: float) -> Tuple[float, float, float] | None:
+    """Преломление/отражение направления на последней поверхности.
+
+    ``point`` — точка падения на поверхности, ``direction`` — входное
+    направление (до события). Зеркало: d' = d − 2(d·n)n; иначе Снеллиус
+    n(glass_before) → n(последняя среда).
+    """
+    if not system.surfaces:
+        return direction
+    surf = system.surfaces[-1]
+    z_pos = compute_z_positions(system)
+    z_surf = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
+    if surf.surface_type in (SurfaceType.CONIC, SurfaceType.ASPHERIC) \
+            or surf.aspheric_coeffs or surf.deformation_coeffs:
+        nx, ny, nz = surface_normal_aspheric(
+            point[0], point[1], point[2], surf.radius, z_surf,
+            conic_k=surf.conic_constant,
+            aspheric_coeffs=surf.aspheric_coeffs or None)
+    else:
+        nx, ny, nz = surface_normal(point[0], point[1], point[2],
+                                    surf.radius, z_surf)
+    k, l, m = direction
+    if surf.is_reflective:
+        # Отражение: d' = d − 2(d·n)n
+        dot = k * nx + l * ny + m * nz
+        return (k - 2 * dot * nx, l - 2 * dot * ny, m - 2 * dot * nz)
+    glass_before = system.surfaces[-2].glass if len(system.surfaces) > 1 else ''
+    n1 = compute_refractive_index(glass_before, wl)
+    n2 = compute_refractive_index(surf.glass, wl)
+    return refract(k, l, m, nx, ny, nz, n1, n2)
+
+
 def _air_exit_direction(system: OpticalSystem, result,
                         wl: float) -> Tuple[float, float, float] | None:
     """Единичное направление луча в воздухе за последней поверхностью.
@@ -197,6 +230,15 @@ def _air_exit_direction(system: OpticalSystem, result,
     GFIX P2) — тот же случай. Если путь оборвался ДО последней
     поверхности (ошибка/стоп) — направление получается
     преломлением/отражением на ней по Снеллиусу.
+
+    Вырожденный терминальный сегмент (PLIOPT, досье REVERSE_GFIX §P6):
+    сагитта последней поверхности у высоты выхода больше
+    TERMINAL_EXIT_EPS — точка падения ЗА ε-плоскостью вершины,
+    терминальный сегмент направлен НАЗАД (концы сегмента коллинеарны
+    лучу, ориентация перевёрнута). Детекция: знаки Δz терминального и
+    входного сегментов противоположны при преломлении (при отражении
+    на последней поверхности знак меняется законно). Направление
+    восстанавливается по Снеллиусу от точки падения.
 
     Returns:
         ``(k, l, m)`` или ``None``, если направление определить не
@@ -219,30 +261,27 @@ def _air_exit_direction(system: OpticalSystem, result,
     # точка на TERMINAL_EXIT_EPS от плоскости и есть терминальная;
     # без допуска сегмент ошибочно «допреломлялся» по Снеллиусу.
     if abs(p1[2] - z_pos[-1]) <= EPSILON + TERMINAL_EXIT_EPS:
+        # вырожденный терминальный сегмент — ε-плоскость позади точки
+        # падения (сагитта > TERMINAL_EXIT_EPS): Δz «перевёрнут»
+        last_thick = (system.surfaces[-1].thickness
+                      if system.surfaces else 0.0)
+        if last_thick <= EPSILON and len(path) >= 3:
+            dz_in = p0[2] - path[-3][2]
+            flips = (system.surfaces[-1].is_reflective
+                     if system.surfaces else False)
+            if dz_in != 0.0 and ((dz > 0.0) != (dz_in > 0.0)) != flips:
+                dx_in = p0[0] - path[-3][0]
+                dy_in = p0[1] - path[-3][1]
+                n_in = math.sqrt(dx_in * dx_in + dy_in * dy_in
+                                 + dz_in * dz_in)
+                if n_in >= TINY:
+                    return _refract_at_last_surface(
+                        system, p0,
+                        (dx_in / n_in, dy_in / n_in, dz_in / n_in), wl)
         return (k, l, m)
 
     # Путь оборвался на последней поверхности: преломить направление
-    if not system.surfaces:
-        return (k, l, m)
-    surf = system.surfaces[-1]
-    z_surf = z_pos[-2] if len(z_pos) > 1 else z_pos[-1]
-    if surf.surface_type in (SurfaceType.CONIC, SurfaceType.ASPHERIC) \
-            or surf.aspheric_coeffs or surf.deformation_coeffs:
-        nx, ny, nz = surface_normal_aspheric(
-            p1[0], p1[1], p1[2], surf.radius, z_surf,
-            conic_k=surf.conic_constant,
-            aspheric_coeffs=surf.aspheric_coeffs or None)
-    else:
-        nx, ny, nz = surface_normal(p1[0], p1[1], p1[2],
-                                    surf.radius, z_surf)
-    if surf.is_reflective:
-        # Отражение: d' = d − 2(d·n)n
-        dot = k * nx + l * ny + m * nz
-        return (k - 2 * dot * nx, l - 2 * dot * ny, m - 2 * dot * nz)
-    glass_before = system.surfaces[-2].glass if len(system.surfaces) > 1 else ''
-    n1 = compute_refractive_index(glass_before, wl)
-    n2 = compute_refractive_index(surf.glass, wl)
-    return refract(k, l, m, nx, ny, nz, n1, n2)
+    return _refract_at_last_surface(system, p1, (k, l, m), wl)
 
 
 def _opl_to_reference_sphere(

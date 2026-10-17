@@ -128,7 +128,18 @@ def _create_from_opj(filepath):
     интерливом, fileio/opj_io.load_opj) и компактной LBO (fileio/decode_lbo).
     Пробуем оба декодера и выбираем лучший по объективным критериям
     (число поверхностей, стёкла, совпадение f' с именем системы).
+    GFIX P5: первым — строгий вход fileio/standalone_opj (валидированная
+    банком .PRN раскладка: точные ND/SD диафрагмы, поле, λ, RI-матрица);
+    успех строгого разбора = prescription достоверен, скоринг эвристик не
+    нужен. При несоответствии раскладки (StandaloneOpjError) — эвристики
+    как прежде.
     """
+    try:
+        from fileio.standalone_opj import (StandaloneOpjError,
+                                           load_standalone_opj)
+        return load_standalone_opj(filepath)[0]
+    except StandaloneOpjError:
+        pass                                            # не standalone — эвристики
     from opj_reader import load_opj
     sys_opj, _info = load_opj(filepath)
     try:
@@ -187,10 +198,19 @@ def _create_from_opj_bytes(opj_data, is_lbo=False):
     if is_lbo:
         from decode_lbo_opj import decode_lbo_opj
         return decode_lbo_opj(opj_data)
-    
+
+    # Standalone OPJ: строгий вход первым (GFIX P5), откат на эвристики
+    try:
+        from fileio.standalone_opj import (StandaloneOpjError,
+                                           parse_standalone_opj,
+                                           standalone_to_system)
+        return standalone_to_system(parse_standalone_opj(opj_data))
+    except StandaloneOpjError:
+        pass
+
     import tempfile
     from opj_reader import load_opj
-    
+
     # Standalone OPJ file
     tmpfd, tmppath = tempfile.mkstemp(suffix='.OPJ')
     try:

@@ -45,6 +45,13 @@ MIRROR_MARKERS = (0xFFFE, 0xFFFF)
 #: Диапазон λ standalone-записей, мкм (ИК-ГОЭ до 5, запас ×6).
 _WL_MIN, _WL_MAX = 0.1, 30.0
 
+#: Санитарные пределы prescription'а (синхронно decode_lbo:
+#: CURV_ABS_MAX/THICK_ABS_MAX) — компакт-LBO блоб, случайно прошедший
+#: смещения строгой раскладки, валится здесь на мусорных double.
+_CURV_ABS_MAX = 100.0      # |C| 1/мм
+_THICK_ABS_MAX = 1e4       # |d| мм (кроме маркера 1e20)
+_RI_MIN, _RI_MAX = 0.5, 5.0   # показатели RI-матрицы (ИК: Ge n≈4.0 при 10 мкм)
+
 _VOZDUH = 'ВОЗДУХ'.encode('cp866')
 _AIR = b'AIR'
 
@@ -118,9 +125,19 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
     curv_off = 0x9C + 4 * slots
     curv = [_f64(data, curv_off + 8 * i, f'кривизна S{i}', source)
             for i in range(ns)]
+    for i, c in enumerate(curv):
+        if not -_CURV_ABS_MAX <= c <= _CURV_ABS_MAX:
+            raise StandaloneOpjError(
+                f'кривизна S{i} = {c} вне ±{_CURV_ABS_MAX} 1/мм — блок '
+                f'кривизн не по строгой раскладке{f" [{source}]" if source else ""}')
     th_off = curv_off + 8 * ns
     thick = [_f64(data, th_off + 8 * i, f'толщина S{i}', source)
              for i in range(ns)]
+    for i, d in enumerate(thick):
+        if abs(d) < BIG_MARKER and not -_THICK_ABS_MAX <= d <= _THICK_ABS_MAX:
+            raise StandaloneOpjError(
+                f'толщина S{i} = {d} вне ±{_THICK_ABS_MAX} мм — блок '
+                f'толщин не по строгой раскладке{f" [{source}]" if source else ""}')
     if thick[-1] < BIG_MARKER:
         warnings.append(
             f'маркер 1e20 не в d[{ns - 1}] (d={thick[-1]:.6g}) — '
@@ -143,6 +160,12 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
     ri = [[_f64(data, ri_off + 8 * (row * len(wls) + col),
                 f'RI[{row}][{col}]', source)
            for col in range(len(wls))] for row in range(n_glass)]
+    for row in ri:
+        for v in row:
+            if not _RI_MIN < v < _RI_MAX:
+                raise StandaloneOpjError(
+                    f'показатель {v} вне {_RI_MIN}..{_RI_MAX} — RI-матрица '
+                    f'не по строгой раскладке{f" [{source}]" if source else ""}')
 
     # имена сред — якорь «ВОЗДУХ»/'AIR' сразу после RI-блока
     names = []

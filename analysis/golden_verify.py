@@ -86,166 +86,26 @@ ABS_FLOOR_MM = 2e-3
 ABS_FLOOR_DPTR = 2e-4
 ABS_FLOOR_WAVE = 1e-3
 
-#: 1e20-маркер конца цепочки толщин в standalone .OPJ.
-_BIG_MARKER = 1e19
-
-
 # ══════════════════════════════════════════════════════════════════════════
-# 1. Строгий разбор standalone .OPJ
+# 1. Строгий разбор standalone .OPJ — вход порта (GFIX P5)
 # ══════════════════════════════════════════════════════════════════════════
+
+from fileio.standalone_opj import (BIG_MARKER as _BIG_MARKER,  # noqa: E402
+                                   parse_standalone_opj,
+                                   standalone_to_system)
+
 
 def parse_golden_opj(path: str) -> dict:
-    """Строгий разбор standalone .OPJ (валидированная раскладка).
-
-    Раскладка (досье REVERSE_GVERIFY.md §3):
-
-    ===  ==========================================================
-    0x0C имя 40 байт CP866
-    0x34 ns u16 — число поверхностей
-    0x36 flags u16 — 1 → один слот λ f32, 3 → три слота
-    0x3A ND u16 — поверхность диафрагмы (1-индексация, OPAL ND)
-    0x3C тип предмета: 0 дальний (∞), 1 ближний
-    0x3E тип изображения: 0 дальний, 1 ближний
-    0x46 тип диафрагмы: 0 'd', 1 'z', 0xFFFF 'p' (зрачок)
-    0x5C апертура f64 (полу-, мм)
-    0x6C SD f64 — смещение диафрагмы от поверхности ND (мм)
-    0x74/0x7C поле Y/X f64 (радианы)
-    0x9C λ f32 × слоты (неиспользуемые слоты дублируют λ0)
-    далее кривизны f64 × ns; толщины f64 × ns (последняя = 1e20);
-    gidx u16 × (ns+1) (1 = воздух, g>1 = строка RI g−1);
-    RI f64 (1+nglass) × n_valid_λ, строка 0 = воздух; имена CP866.
-    ===  ==========================================================
-
-    Семантика диафрагмы (волна GFIX, досье REVERSE_GFIX.md §1): плоскость
-    диафрагмы = вершина поверхности ND−1 (0-индексация) + SD — для ВСЕХ
-    значений 0x46, включая 'p' (121: ND=4, SD=8.162 → z=16.152, sP=14.444
-    = эталон 14.444). Тип 0x46 — только способ ввода в UI OPAL.
-
-    Возвращает словарь с prescription'ом; ключ ``warnings`` собирает
-    отклонения раскладки (для досье).
-    """
-    data = open(path, 'rb').read()
-    warnings = []
-    name = data[0x0C:0x34].decode('cp866').rstrip('\0 ')
-    ns = struct.unpack_from('<H', data, 0x34)[0]
-    flags = struct.unpack_from('<H', data, 0x36)[0]
-    stop_nd = struct.unpack_from('<H', data, 0x3A)[0]
-    obj_type = struct.unpack_from('<H', data, 0x3C)[0]
-    img_type = struct.unpack_from('<H', data, 0x3E)[0]
-    stop_type = struct.unpack_from('<H', data, 0x46)[0]
-    aperture = struct.unpack_from('<d', data, 0x5C)[0]
-    pupil_pos = struct.unpack_from('<d', data, 0x6C)[0]
-    field_y = struct.unpack_from('<d', data, 0x74)[0]
-    field_x = struct.unpack_from('<d', data, 0x7C)[0]
-
-    slots = 3 if flags & 0x2 else 1
-    wl_slots = [struct.unpack_from('<f', data, 0x9C + 4 * i)[0]
-                for i in range(slots)]
-    wls = []
-    for wl in wl_slots:
-        if not wls or abs(wl - wls[0]) > 1e-6:
-            wls.append(float(wl))
-    curv_off = 0x9C + 4 * slots
-    curv = [struct.unpack_from('<d', data, curv_off + 8 * i)[0]
-            for i in range(ns)]
-    th_off = curv_off + 8 * ns
-    thick = [struct.unpack_from('<d', data, th_off + 8 * i)[0]
-             for i in range(ns)]
-    if thick[-1] < _BIG_MARKER:
-        warnings.append(
-            f'маркер 1e20 не в d[{ns - 1}] (d={thick[-1]:.6g}) — '
-            f'раскладка толщин сомнительна')
-    gidx_off = th_off + 8 * ns
-    gidx = [struct.unpack_from('<H', data, gidx_off + 2 * i)[0]
-            for i in range(ns + 1)]
-    ri_off = gidx_off + 2 * (ns + 1)
-    n_glass = max(gidx) if gidx else 1
-    ri = [[struct.unpack_from('<d', data, ri_off + 8 * (row * len(wls) + col))[0]
-           for col in range(len(wls))] for row in range(n_glass)]
-
-    # имена сред — якорь «ВОЗДУХ»/'AIR' сразу после RI-блока
-    names = []
-    tail = data[ri_off + 8 * n_glass * len(wls):]
-    anchor = tail.find('ВОЗДУХ'.encode('cp866'))
-    if anchor < 0:
-        anchor = tail.find(b'AIR')
-    if anchor >= 0:
-        pos = anchor
-        while pos < len(tail) and len(names) < n_glass:
-            nm = tail[pos:pos + 10].split(b'\0')[0].decode('cp866',
-                                                           'replace').strip()
-            if nm:
-                names.append(nm)
-            pos += 10
-
-    return {
-        'name': name, 'ns': ns, 'flags': flags, 'wls': wls,
-        'obj_type': obj_type, 'img_type': img_type, 'stop_type': stop_type,
-        'stop_nd': stop_nd,
-        'aperture_semi': aperture, 'pupil_pos': pupil_pos,
-        'field_y_rad': field_y, 'field_x_rad': field_x,
-        'curv': curv, 'thick': thick, 'gidx': gidx, 'ri': ri,
-        'names': names, 'warnings': warnings,
-    }
+    """Строгий разбор standalone .OPJ — обёртка портового входа
+    :func:`fileio.standalone_opj.parse_standalone_opj` (GFIX P5:
+    парсер интегрирован в порт как отдельный вход, харнесс копию не
+    держит; раскладка/семантика — докстринг портового модуля,
+    досье REVERSE_GVERIFY.md §3)."""
+    return parse_standalone_opj(open(path, 'rb').read(), source=str(path))
 
 
-def opj_to_system(opj: dict):
-    """Standalone-разбор → портовая :class:`OpticalSystem`.
-
-    Среды задаются ``n_override``-словарями из RI-матрицы OPJ (портовый
-    :func:`domain.calculations.refractive_index` берёт их при
-    ``|λ_ключ − λ| < 0.002``) — каталог стёкол порта не участвует,
-    показатели ровно те, что видел OPAL. Толщина изображения 1e20
-    обнуляется (порт трассирует до последней поверхности; позиция
-    изображения для дальнего типа = ∞ — семантика досье §2).
-
-    Диафрагма: ND (0x3A) + SD (0x6C) — плоскость диафрагмы для всех
-    типов 0x46 (досье §1); порт считает зрачки из этой плоскости сам
-    (:func:`domain.calculations.paraxial_trace`). ``aperture_value``
-    обнуляется — полудиаметр физической диафрагмы из 0x5C не
-    реверсирован (семантика меняется по системе), клиппинг трейсера
-    выключен: полу-диаметры поверхностей без виньетирования.
-    """
-    from domain.models import (ApertureType, FieldPoint, ObjectType,
-                               OpticalSystem, Surface, Wavelength)
-
-    ns, wls, ri = opj['ns'], opj['wls'], opj['ri']
-    system = OpticalSystem(name=opj['name'])
-    system.object_type = (ObjectType.INFINITE if opj['obj_type'] == 0
-                          else ObjectType.FINITE)
-    system.image_type = (ObjectType.INFINITE if opj['img_type'] == 0
-                         else ObjectType.FINITE)
-    system.stop_type = {0: 'd', 1: 'z', 0xFFFF: 'p'}.get(opj['stop_type'], 'd')
-    system.stop_surface = max(1, opj.get('stop_nd', 1))
-    system.stop_offset = opj['pupil_pos']
-    system.aperture_type = ApertureType.ENTRANCE_PUPIL
-    system.aperture_value = 0.0
-    system.wavelengths = [Wavelength(wl, 1.0, '') for wl in wls]
-    if opj['field_y_rad']:
-        system.field_points = [FieldPoint(y=math.degrees(opj['field_y_rad']))]
-
-    big = max(1.0, abs(opj['aperture_semi']) * 4)
-    for i in range(ns):
-        c = opj['curv'][i]
-        d = opj['thick'][i]
-        glass_row = opj['gidx'][i + 1] - 1  # среда ПОСЛЕ поверхности i
-        n_ov = {}
-        if glass_row >= 0 and glass_row < len(ri):
-            for k, wl in enumerate(wls):
-                if glass_row < len(ri) and k < len(ri[glass_row]):
-                    n_ov[wl] = ri[glass_row][k]
-        system.surfaces.append(Surface(
-            radius=(1.0 / c if abs(c) > 1e-15 else 0.0),
-            # Маркер конца цепочки → 0: терминальный сегмент с
-            # пост-рефракционным направлением трейсер строит сам
-            # (TERMINAL_EXIT_EPS, GFIX P2; досье §4.1 — прежде обход
-            # заглушкой толщины здесь).
-            thickness=(0.0 if d >= _BIG_MARKER else d),
-            glass='',
-            semi_diameter=big * 10.0,   # без виньетирования: сверка расчёта
-            n_override=n_ov,
-        ))
-    return system
+#: Standalone-разбор → портовая OpticalSystem (fileio.standalone_opj).
+opj_to_system = standalone_to_system
 
 
 # ══════════════════════════════════════════════════════════════════════════

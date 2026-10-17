@@ -1438,7 +1438,10 @@ def compute_isoplanatism(system: OpticalSystem, wl: float = None,
     # Высота изображения главного луча для поля ε: луч через центр зрачка
     # (h = 0). В сетке веера h = 0 есть при нечётном num_rays; иначе —
     # линейная интерполяция Δy'(h) по соседним лучам (dy нечётна + const).
-    pupil_sorted = sorted(by_pupil_eps.keys())
+    # Сетка — ОБЩИЕ высоты двух вееров: часть лучей осевого веера может
+    # виньетироваться (досье §4.3: LAB6_GAS KeyError(0.4737) — выска
+    # в веере поля ε, но не в осевом).
+    pupil_sorted = sorted(common)
     dy_eps_arr = np.array([by_pupil_eps[h] for h in pupil_sorted])
     dy_zero_arr = np.array([by_pupil_zero[h] for h in pupil_sorted])
     chief_shift = float(np.interp(0.0, pupil_sorted, dy_eps_arr - dy_zero_arr))

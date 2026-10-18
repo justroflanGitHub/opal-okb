@@ -1325,3 +1325,29 @@ analysis/beam_heights.py (TABESB/TABEAP), analysis/units.py + tables.py::taboc1/
 
 **Волна 9 недоделана (квота Claude 2026-10-15 ~23:55):** OPALLAP/OPALOS/GENIZE распакованы
 (OPALLAP_unp/OPALOS_full/GENIZE_unp+full.bin в reverse_data, тулзы _tools/), REVERSE_LAP/OS/O PCOM.md — писать заново при восстановлении квоты.
+
+
+---
+
+## §24. Указатели досье золотой верификации (2026-10-16..18)
+
+Волна G (золотой запуск + сверка порта с OPAL по эталонным .PRN):
+
+- **REVERSE_OPCOM.md** §21.0-21.12 — резидент OPAL.COM: int 90h-шина 16 сервисов,
+  OPAL.PSP-шифр, каталог 25 модулей 5×5, KEYRUS, адресные конвенции артефактов
+- **REVERSE_G2_GOLDEN.md** — золотой запуск DOSBox: рецепт F4→F9→ENTER,
+  print-блокер, US00KI02 побайтово, методики (сканкоды/ALT-focus, PNG-детектор)
+- **REVERSE_G2BANK.md** — банк 14 эталонных .PRN + драйвер scripts/g2bank.py
+- **REVERSE_GVERIFY.md** — сверка порта с банком: конвенции OPAL (дптр от
+  выходного зрачка, Tg*100=|H ЗР|/−100·tg u′, сортировка TABOC2), статусы систем
+- **REVERSE_GFIX.md** — волна фиксов P1-P6 + EDGE/STALE/E2: зрачки ND@0x3A/SD@0x6C,
+  предмет f64@0x4C, ближний предмет/мнимые, кромка TIR, λ-закон печати
+- **REVERSE_OPALDIS.md** — дизасм ядра OPALA_unp (789 функций): W₂-каскад,
+  двухпроходный веер OD2, DD.MMSS, per-λ Ax, κ_z-таблицы, тулзы _tools/
+- **REVERSE_GTIE.md** — ГОЭ-раскладка GTIE00.OPJ: маркер 0xFFFD, блок записи,
+  10 поверхностей, ARH-судьба
+- **REVERSE_GOE_MODEL.md** — физика ГОЭ в OPAL: C_eff(λ)=κ(λ)·C, replay λ0/λ
+  (0x9d7a), трансмиссионность, имплементация в порте
+
+Сводный итог банка: GREEN 301 / YELLOW 18 / RED 5 / SKIP 57
+(старт 48/22/30/60); pytest 1154/8. Коммиты 0f2301d..8ce40dd.

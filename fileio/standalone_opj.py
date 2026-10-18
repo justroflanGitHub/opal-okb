@@ -20,9 +20,14 @@
 0x9C λ f32 × слоты (неиспользуемые слоты дублируют λ0)
 далее кривизны f64 × ns; толщины f64 × ns (последняя = 1e20);
 gidx u16 × (ns+1) (1 = воздух, g>1 = строка RI g−1,
-      0xFFFE/0xFFFF = зеркало — RI-строку не потребляют);
+      0xFFFE/0xFFFF = зеркало — RI-строку не потребляют;
+      0xFFFD = ГОЭ-голограмма — RI-строки не потребляет тоже,
+      REVERSE_GTIE.md);
 RI f64 (n_glass × n_λ), строка 0 = воздух; имена CP866 10-байтовыми
-слотами от якоря «ВОЗДУХ»/'AIR'.
+слотами от якоря «ВОЗДУХ»/'AIR'. За именами — общий хвост всех
+OPJ: u32 = 202+2·ns (маркер записи), затем блок параметров
+дифракционного элемента (ГОЭ/решётка; best-effort: λ записи
+0.6328 HeNe у GTIE00) и скаляры/зоны — порт не разбирает.
 ===  ==========================================================
 
 Семантика диафрагмы (GFIX P1, досье REVERSE_GFIX.md §1): плоскость
@@ -45,6 +50,14 @@ BIG_MARKER = 1e19
 #: не потребляют (0xFFFE/0xFFFF; decode_lbo.Markers — те же).
 MIRROR_MARKERS = (0xFFFE, 0xFFFF)
 
+#: Маркер ГОЭ-поверхности в gidx (голограммный оптический элемент,
+#: досье REVERSE_GTIE.md): среду после поверхности не меняет и
+#: RI-строку не потребляет — как зеркало, но поверхность
+#: дифракционная. Пишется в слот СРЕДИ зеркальных маркеров
+#: (GTIE00: [1,2,1,FFFF,FFFD,FFFF,1,…] — ГОЭ S3 в зеркальном
+#: сэндвиче S2/S4), у решётки GTIN05 маркера нет — только FFFF.
+GOE_MARKER = 0xFFFD
+
 #: Диапазон λ standalone-записей, мкм (ИК-ГОЭ до 5, запас ×6).
 _WL_MIN, _WL_MAX = 0.1, 30.0
 
@@ -61,8 +74,7 @@ _AIR = b'AIR'
 
 class StandaloneOpjError(ValueError):
     """Раскладка не соответствует standalone-OPJ: данные выходят за
-    пределы файла либо индексы сред мусорные (например, ГОЭ-записи
-    OPAL пишут 0xFFFD — досье REVERSE_GVERIFY.md §6)."""
+    пределы файла либо индексы сред мусорные."""
 
 
 def _need(data: bytes, off: int, size: int, what: str, source: str):
@@ -151,14 +163,16 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
     gidx = [_u16(data, gidx_off + 2 * i, f'gidx S{i}', source)
             for i in range(ns + 1)]
     for g in gidx:
-        if g >= 0xFFFE and g not in MIRROR_MARKERS:
+        if g not in MIRROR_MARKERS and g != GOE_MARKER and g >= 0xFFFC:
             raise StandaloneOpjError(
                 f'неизвестный индекс среды {g} в gidx={gidx} — запись не '
-                f'standalone-OPJ (ГОЭ, досье §6){f" [{source}]" if source else ""}')
-    # зеркальные маркеры RI-строку не потребляют
-    n_glass = max((g for g in gidx if g < 0xFFFE), default=1)
+                f'standalone-OPJ{f" [{source}]" if source else ""}')
+    # зеркальные/ГОЭ-маркеры RI-строку не потребляют
+    n_glass = max((g for g in gidx if g < GOE_MARKER), default=1)
     mirrors = sorted(i for i in range(ns)
                      if gidx[i + 1] in MIRROR_MARKERS or gidx[i] in MIRROR_MARKERS)
+    #: ГОЭ-поверхности: маркер стоит в слоте среды ПОСЛЕ поверхности.
+    goe = sorted(i for i in range(ns) if gidx[i + 1] == GOE_MARKER)
 
     ri_off = gidx_off + 2 * (ns + 1)
     ri = [[_f64(data, ri_off + 8 * (row * len(wls) + col),

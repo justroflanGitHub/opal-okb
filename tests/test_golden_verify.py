@@ -396,6 +396,59 @@ def test_edge2_print_lambda_green(name):
 
 
 @requires_stand
+def test_optics1_mm_print_lambda_green():
+    """§FINAL(i): OPTICS#1 (мнимое изображение) — мм-семьи прод/попер
+    несут ОДНУ мультипликативную λ(z) = 1−(q0+q1·z²)·z² (λ¹/λ¹,
+    q-пары семейств совпадают до 3e-5 — общая λ луча печати марша);
+    снимает остаточный паттерн OD4 §5.2 ΔL≈−0.034·z² = Δy≈+0.005·z³.
+    Все зоны обеих семей GREEN (остатки фита ≤4.7e-4)."""
+    res = compare_system('OPTICS#1')
+    for kind in ('прод (мм)', 'попер (мм)'):
+        rows = [r for r in res['rows']
+                if r[1] == kind and r[2] != 0.0]
+        assert len(rows) == 4
+        bad = [(r[2], r[5], r[7]) for r in rows if r[7] != 'GREEN']
+        assert not bad, bad
+
+
+@requires_stand
+def test_121_tir_rim_mirror_tag():
+    """§FINAL(ii) / OD2 §3.3: у TIR-кромки 121 (габарит «о 4»,
+    h_TIR−Ax = 4.8e-5 мм) прямой прогон OPAL не дотрассировался —
+    зональная строка переживает из зеркального прохода с меткой Tg
+    обратного знака. Порт: признак tir_rim_mirror_tag (луч в +1e-4 мм
+    выше кромкой падает с 'TIR') — срабатывает у 121 и НЕ срабатывает
+    у прочих (HELIOS8/OPAL3 — img=1 без TIR-кромки). Tg з.1.0 GREEN."""
+    from analysis.golden_verify import opj_to_system, tir_rim_mirror_tag
+    opj = parse_golden_opj(GOLDEN_DOS / '121.OPJ')
+    system = opj_to_system(opj)
+    assert tir_rim_mirror_tag(system, opj['wls'][0], 1.0, 8.1004)
+    for name, ax in (('HELIOS8', 13.6059), ('OPAL3', None)):
+        opj_h = parse_golden_opj(GOLDEN_DOS / (name + '.OPJ'))
+        system_h = opj_to_system(opj_h)
+        prn_h = parse_golden_prn(BANK / (name + '.PRN'))
+        ax_h = ax or max(r['h_zr'] for r in prn_h['axial2']['rows'].values()
+                         if r.get('h_zr'))
+        assert not tir_rim_mirror_tag(system_h, opj_h['wls'][0], 1.0, ax_h)
+    res = compare_system('121')
+    tg10 = next(r for r in res['rows']
+                if r[1] == "Tg'*100" and r[2] == 1.0)
+    assert tg10[3] > 0 and tg10[4] > 0      # метка зеркального прохода
+    assert tg10[7] == 'GREEN'
+
+
+def test_gabarit_print_quantum_floor():
+    """§FINAL(iii): печать Sp/Sp' — 3 десятичных (PLIOPT «2.943»);
+    разность порта в полуразряде (2.94343→«2.943», |Δ|=4.3e-4) — шум
+    печати, не порт: парсер даёт Sp_floor = 5e-4, PLIOPT Sp GREEN."""
+    prn = parse_golden_prn(BANK / 'PLIOPT.PRN')
+    row = next(r for (wl, n), r in prn['gabarit'].items()
+               if n == 0 and wl == '.5461')
+    assert row['Sp_floor'] == pytest.approx(5e-4)
+    assert row['Sp2_floor'] == pytest.approx(5e-4)
+
+
+@requires_stand
 def test_run_all_fourteen_systems():
     results = run_all()
     names = {r['name'] for r in results}

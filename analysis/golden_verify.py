@@ -86,6 +86,12 @@ ABS_FLOOR_MM = 2e-3
 ABS_FLOOR_DPTR = 2e-4
 ABS_FLOOR_WAVE = 1e-3
 
+#: Шаг проверки кромки TIR (мм): зональный луч успешен, а луч на
+#: ``TIR_RIM_PROBE`` выше кромкой падает с 'TIR' → прямой прогон OPAL
+#: (f32 у скользящего преломления) не дотрассировался (OD2, §3.3).
+#: 121: h_TIR − Ax = 4.8e-5 мм < 1e-4; у прочих систем запас ≫.
+TIR_RIM_PROBE = 1e-4
+
 # ══════════════════════════════════════════════════════════════════════════
 # 1. Строгий разбор standalone .OPJ — вход порта (GFIX P5)
 # ══════════════════════════════════════════════════════════════════════════
@@ -200,6 +206,12 @@ def parse_golden_prn(path: str) -> dict:
                                 'Ax': float(toks[1]), 'Ay': float(toks[2]),
                                 'Ax2': float(toks[3]), 'Ay2': float(toks[4]),
                                 'Sp': float(toks[5]), 'Sp2': float(toks[6]),
+                                # полразряда печати Sp/Sp' (обычно 3
+                                # десятичных, GTIE00 — 2): |Δ| внутри
+                                # разряда — шум печати, не порт
+                                # (PLIOPT Sp: порт 2.94343 → «2.943»)
+                                'Sp_floor': half_print_quantum(toks[5]),
+                                'Sp2_floor': half_print_quantum(toks[6]),
                             }
                     i += 1
             continue
@@ -455,6 +467,14 @@ def ddmmss_value(arcsec: float) -> float:
     return sign * (deg + mm / 100.0 + ss / 10000.0)
 
 
+def half_print_quantum(tok: str) -> float:
+    """Половина разряда последней напечатанной цифры («2.943»→5e-4)."""
+    tok = tok.strip()
+    if '.' in tok:
+        return 0.5 * 10.0 ** -len(tok.split('.', 1)[1])
+    return 0.5
+
+
 def arcsec_of_ddmmss(value: float) -> float:
     """Обратная к :func:`ddmmss_value`: сверка поперечных идёт в
     секундах дуги — шкала линейна, числовое DD.MMSS кусочно."""
@@ -468,6 +488,31 @@ def arcsec_of_ddmmss(value: float) -> float:
     if mm >= 100:                           # печать без переноса разряда
         mm, deg = mm - 100, deg + 1
     return sign * (deg * 3600.0 + mm * 60.0 + ss)
+
+
+def tir_rim_mirror_tag(system, wl: float, zone: float,
+                       ax_semi: float) -> bool:
+    """OD2 (REVERSE_OPALDIS §3.3): у TIR-кромки прямой прогон OPAL не
+    дотрассировался (f32 у скользящего преломления, sin рефракции → 1) —
+    зональная строка переживает из ЗЕРКАЛЬНОГО прохода с меткой Tg
+    ОБРАТНОГО знака (|прод|/|попер|/|W| — те же по симметрии).
+
+    Признак порта, без чтения банка: краевой луч (зона 1.0) успешен,
+    а луч на ``TIR_RIM_PROBE`` выше кромкой падает с ошибкой 'TIR'.
+    Валидация банком: срабатывает единожды на 14 систем — 121 з.1.0
+    (габарит «о 4», h_TIR − Ax = 4.8e-5 мм; банк +20.845 при прямом
+    −20.824)."""
+    if zone < 0.999 or not ax_semi:
+        return False
+    from analysis.aberrations import _compute_ray_start
+    from optics_utils import make_field_ray
+    from ray_tracing import trace_ray_through_system
+    from domain.calculations import paraxial_trace
+    parax = paraxial_trace(system, wl=wl)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    ray = make_field_ray(system, 0.0, ax_semi + TIR_RIM_PROBE, 0.0,
+                         z_start, z_pupil)
+    return trace_ray_through_system(system, ray, wl).error == 'TIR'
 
 
 # R1 (TASK_RESID): κ-таблицы/замыкание мнимого изображения живут в порте
@@ -722,9 +767,12 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 ('Sp', port_sp, TOL_PARAX),
                 ('Sp2', port_sp2, TOL_PARAX),
         ):
+            # полразряда печати Sp/Sp' (парсер даёт *_floor от формата
+            # печати): PLIOPT Sp 2.94343 против «2.943» — шум печати
+            d_sp = rel_diff(port_val, ax_row[key],
+                            ax_row.get(key + '_floor', 0.0))
             rows.append(('габариты', key, '', ax_row[key], port_val,
-                         rel_diff(port_val, ax_row[key]), tol,
-                         verdict(rel_diff(port_val, ax_row[key]), tol)))
+                         d_sp, tol, verdict(d_sp, tol)))
 
     # Ax — реальная полувысота пучка: вход для веера (см. досье §5).
     # Цепочка: максимум колонки Н ЗР (зона 1.0: Н ЗР = отн.зр·Ax, точнее
@@ -829,6 +877,11 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                     else:
                         port_v = (-pr['tg_prime100']
                                   if pr.get('tg_prime100') is not None else None)
+                        # OD2: выжившая зеркальная строка у TIR-кромки —
+                        # метка обратного знака (121 з.1.0: банк +20.845)
+                        if port_v is not None and tir_rim_mirror_tag(
+                                system, wl, zone, ax_semi):
+                            port_v = -port_v
                 d = rel_diff(port_v, et['tg100'])
                 rows.append(('осевой', "Tg'*100" + (' (H`ЗР)' if far else ''),
                              zone, et['tg100'], port_v, d, TOL_ABERR,
@@ -897,6 +950,14 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                     else:
                         port_v = (pr['L'] - l_ref
                                   if l_ref is not None else None)
+                        # E2: мм-семья прод — тот же мультипликатор марша
+                        # λ¹ (OPTICS#1, мнимое изображение; дптр-семья —
+                        # выше), досье GFIX §FINAL(i)
+                        if port_v is not None:
+                            lam = _edge2_print_lambda(
+                                EDGE2_PRINT_LAMBDA.get(name), 'прод', zone)
+                            if lam is not None:
+                                port_v = lam * port_v
                 floor = (ABS_FLOOR_MM if units[0] == 'мм'
                          else ABS_FLOOR_DPTR)
                 d = rel_diff(port_v, opal_v, floor)
@@ -941,6 +1002,13 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                                 # мнимое изображение: ТА на вершине с
                                 # обратным знаком (OPTICS#1 +2.741, §P6)
                                 port_v = -port_v
+                    # E2: мм-семья попер — мультипликатор λ¹ (OPTICS#1),
+                    # досье GFIX §FINAL(i)
+                    if port_v is not None:
+                        lam = _edge2_print_lambda(
+                            EDGE2_PRINT_LAMBDA.get(name), 'попер', zone)
+                        if lam is not None:
+                            port_v *= lam
                     d = rel_diff(port_v, opal_v, ABS_FLOOR_MM)
                     rows.append(('осевой', f'попер ({units[1]})', zone,
                                  opal_v, port_v, d, TOL_ABERR,

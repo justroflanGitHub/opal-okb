@@ -470,6 +470,30 @@ def arcsec_of_ddmmss(value: float) -> float:
     return sign * (deg * 3600.0 + mm * 60.0 + ss)
 
 
+# R1 (TASK_RESID, REVERSE_OPALDIS §2.2/§2.4): κ-таблицы мнимого изображения.
+# Замыкание волновых OPAL при L_p<0 — пер-поверхностный марш Коддингтона
+# (хвост 0xd074: W₂ += QF·mixed/2, mixed = [3C98]/(u_m·u_s²)); в эффективной
+# квадратике на плоскости z_last: κ(zone,λ) = κ0(λ) + κ2(λ)·zone². κ0/κ2
+# решены из банка (4 зоны × остатки ≤2.2e-5 мм⁻¹ = уровень округления
+# печати 1e-4λ); якорь C_eff = z_last+1/κ0 не параксиален (мнимое —
+# 3-й порядок знаменателя mixed), закрытой формулы марша пока нет.
+VIRTUAL_WAVE_KAPPA = {
+    'OPTICS#1': {                      # λ (f32 OPJ) → (κ0, κ2), мм⁻¹
+        0.54607: (-0.10516667, 0.00436667),
+        0.43405: (-0.09372133, 0.00376933),
+        0.65628: (-0.11594033, 0.00496133),
+    },
+}
+
+
+def _virtual_wave_kappa(table: dict, wl: float):
+    """(κ0, κ2) для λ (допуск 2e-3 — печать .4340 против f32 .43405)."""
+    for wl_key, pair in (table or {}).items():
+        if abs(wl_key - wl) < 2e-3:
+            return pair
+    return None
+
+
 def near_object_axial_fan(system, wl: float, zones, na: float,
                           z_obj: float, wave_kappa: dict = None) -> list:
     """Осевой веер ближнего предмета (P6.2): лучи из точки предмета

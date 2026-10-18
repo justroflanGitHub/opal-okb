@@ -3,10 +3,30 @@ OPAL-OKB — Библиотека оптических систем
 Предустановленные системы (генераторы) + OPJ файлы из архива + LBO библиотеки.
 """
 import os
+import sys
 import glob
 
-# Базовая директория проекта — catalog/ is one level below project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def _resolve_base_dir():
+    """Каталог с данными extracted/opal_okb: dev-репо, каталог рядом с exe
+    (портативный режим) или бандл PyInstaller (_MEIPASS)."""
+    dev_base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if getattr(sys, 'frozen', False):  # PyInstaller: рядом с exe → бандл → dev
+        candidates = [os.path.dirname(sys.executable)]
+        meipass = getattr(sys, '_MEIPASS', None)
+        if meipass:
+            candidates.append(meipass)
+        candidates.append(dev_base)
+    else:
+        candidates = [dev_base]
+    for base in candidates:
+        if os.path.isdir(os.path.join(base, 'extracted', 'opal_okb')):
+            return base
+    return candidates[0]
+
+
+# Базовая директория проекта — catalog/ is one level ниже корня
+BASE_DIR = _resolve_base_dir()
 OPJ_DIR = os.path.join(BASE_DIR, "extracted", "opal_okb")
 LBO_DIR = os.path.join(BASE_DIR, "extracted", "opal_okb", "Lib")
 

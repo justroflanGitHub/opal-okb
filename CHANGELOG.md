@@ -2,6 +2,20 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.24.6] — 2026-10-18
+
+### 🐛 Библиотека оптических систем в exe (пустые деревья LBO/OPAL)
+
+- **catalog/library.py** — _resolve_base_dir(): в PyInstaller-бандле
+  BASE_DIR резолвился по __file__ в _MEIPASS, где данных нет — категории
+  «OPAL системы (.OPJ)» и «LBO библиотеки» оставались пустыми. Теперь
+  порядок: каталог рядом с exe (портативный режим) → бандл _MEIPASS →
+  dev-репозиторий.
+- **OPAL-PC.spec** — extracted/opal_okb (8.5 МБ: 83 OPJ + 13 LBO ≈ 700
+  систем) добавлены в datas: exe работает из коробки.
+- **	ests/test_library_data_paths.py** — 4 регресс-теста (резолв каталога,
+  frozen-режимы, непустые категории).
+
 ## [1.24.5] — 2026-10-18
 
 ### FINAL — банк до чиста: Tg-кромка 121 GREEN, E2-λ мнимого изображения, полразряда печати (TASK_FINAL)

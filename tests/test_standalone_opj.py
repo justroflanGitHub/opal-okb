@@ -200,6 +200,8 @@ def test_library_prefers_strict_entry():
     assert system.stop_offset == pytest.approx(-22.2)
     assert system.stop_type == 'p'
     assert len(system.surfaces) == 20
-    # не-standalone запись (ГОЭ) — откат на эвристики без исключения
-    fallback = _create_from_opj(str(GOLDEN_DOS / 'GTIE00.OPJ'))
-    assert fallback is not None and len(fallback.surfaces) >= 1
+    # ГОЭ GTIE00 — раньше откат на эвристики (0xFFFD вне раскладки §6);
+    # после GTIE — строгий разбор: 10 поверхностей, заглушка ГОЭ на S3
+    goe = _create_from_opj(str(GOLDEN_DOS / 'GTIE00.OPJ'))
+    assert len(goe.surfaces) == 10
+    assert goe.surfaces[3].glass == 'ГОЭ'

@@ -86,7 +86,8 @@ def probe(pi_exp=1, u_form='ms2', t_form='u', last=False, dz=1e-3,
             ysp, slp, _ = fan_states(system, wl, z_obj, zone, +dz, z0, z_last)
             ysm, slm, _ = fan_states(system, wl, z_obj, zone, -dz, z0, z_last)
             nrec = len(ys0)
-            hi = nrec - 1 if last else nrec - 2
+            hi = min(nrec - 1, len(media) - 1) if last else \
+                min(nrec - 2, len(media) - 1)
             closure = 0.0
             pi = 1.0
             for k in range(1, hi + 1):       # поверхности 1..ns(-1)

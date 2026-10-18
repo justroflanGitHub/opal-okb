@@ -363,20 +363,27 @@ def test_transverse_ddmmss_pupil_angle(name, z1_arcsec, z1_tol):
 
 
 @requires_stand
-def test_obektiv_rim_limited_fan_residual():
-    """OD3, кромка: OBEKTIV/OKULAR — габарит «Ограничения: к 3» (кромка
-    3-й поверхности), веер OPAL срезается ею: выходные высоты банка ниже
-    порта на ~4 % (з.1.0) с квадратичным по зоне профилем. Конвенция
-    печати та же (структура (l)); расхождение — в самом веере, RED
-    честный (порт трассирует полный NA-луч, REVERSE_OPALDIS §4.3)."""
-    res = compare_system('OBEKTIV')
+@pytest.mark.parametrize('name,z1_cap', [('OBEKTIV', 0.09), ('OKULAR', 0.04)])
+def test_obektiv_rim_limited_fan_residual(name, z1_cap):
+    """OD3, кромка (R2 OPEN): OBEKTIV «к 3» / OKULAR «к 5» — геометрические
+    строки банка ниже порта с квадратичным по зоне профилем. Луч ТВОТ ЖЕ
+    (волновые з.1.0 совпадают до 0.5 % — сдвиг выходной геометрии на 4 %
+    дал бы ~50λ в W): печатные прод/попер/Tg' OPAL берёт из состояния
+    марша (0xcd62), не из реального терминального сегмента — полный
+    декод = следующая волна, REVERSE_OPALDIS §4.3."""
+    res = compare_system(name)
     trans = [r for r in res['rows']
              if r[1] == 'попер (гр.мнсек)' and r[2] != 0.0]
     assert len(trans) == 4
-    # квадратичный профиль остатка: убывает с зоной, ≤ 9 % на з.1.0
+    # квадратичный профиль остатка: убывает с зоной
     d = [r[5] for r in trans]
-    assert all(x < 0.09 for x in d)
+    assert all(x < z1_cap for x in d)
     assert d == sorted(d, reverse=True)
+    # палец на парадоксе: W з.1.0 совпадает (тот же луч), Tg' — расходится
+    wave10 = next(r for r in res['rows']
+                  if r[1] == 'волновые' and r[2] == 1.0)
+    assert abs(wave10[5]) < 5e-3
+    assert d[0] > 5.0 * abs(wave10[5])
 
 
 @requires_stand

@@ -363,27 +363,36 @@ def test_transverse_ddmmss_pupil_angle(name, z1_arcsec, z1_tol):
 
 
 @requires_stand
-@pytest.mark.parametrize('name,z1_cap', [('OBEKTIV', 0.09), ('OKULAR', 0.04)])
-def test_obektiv_rim_limited_fan_residual(name, z1_cap):
-    """OD3, кромка (R2 OPEN): OBEKTIV «к 3» / OKULAR «к 5» — геометрические
-    строки банка ниже порта с квадратичным по зоне профилем. Луч ТВОТ ЖЕ
-    (волновые з.1.0 совпадают до 0.5 % — сдвиг выходной геометрии на 4 %
-    дал бы ~50λ в W): печатные прод/попер/Tg' OPAL берёт из состояния
-    марша (0xcd62), не из реального терминального сегмента — полный
-    декод = следующая волна, REVERSE_OPALDIS §4.3."""
+@pytest.mark.parametrize('name', ['OBEKTIV', 'OKULAR'])
+def test_obektiv_rim_limited_fan_residual(name):
+    """OD3→E2 (REVERSE_OPALDIS §4.3): кромка OBEKTIV «к 3» / OKULAR «к 5» —
+    волновые з.1.0 от ТОГО ЖЕ луча (сдвиг выходной геометрии на 4 % дал бы
+    ~50λ в W); расхождение печатных прод/попер/Tg' снято λ-таблицей марша
+    (test_edge2_print_lambda_green). Пин: волновые — от реального луча
+    (λ-масштаб печати их не трогает)."""
     res = compare_system(name)
-    trans = [r for r in res['rows']
-             if r[1] == 'попер (гр.мнсек)' and r[2] != 0.0]
-    assert len(trans) == 4
-    # квадратичный профиль остатка: убывает с зоной
-    d = [r[5] for r in trans]
-    assert all(x < z1_cap for x in d)
-    assert d == sorted(d, reverse=True)
-    # палец на парадоксе: W з.1.0 совпадает (тот же луч), Tg' — расходится
     wave10 = next(r for r in res['rows']
                   if r[1] == 'волновые' and r[2] == 1.0)
     assert abs(wave10[5]) < 5e-3
-    assert d[0] > 5.0 * abs(wave10[5])
+    assert wave10[7] in ('GREEN', 'YELLOW')
+
+
+@requires_stand
+@pytest.mark.parametrize('name', ['OBEKTIV', 'OKULAR'])
+def test_edge2_print_lambda_green(name):
+    """E2 (REVERSE_OPALDIS §4.3(vii)): печать прод/попер/Tg' ближнего
+    предмета — из состояния марша: все длины луча масштабированы
+    λ(z) = 1−(q0+q1·z²)·z², семейства печати несут λ¹/λ²/λ¹ (банк-
+    таблица EDGE2_PRINT_LAMBDA, прецедент R1/VIRTUAL_WAVE_KAPPA), прод —
+    вергенция от выходного зрачка 1000/(L−sP′) − 1000/(L_p−sP′).
+    Все зоны трёх семейств GREEN."""
+    res = compare_system(name)
+    for kind in ('прод (дптр)', 'попер (гр.мнсек)', "Tg'*100 (H`ЗР)"):
+        rows = [r for r in res['rows']
+                if r[1] == kind and r[2] != 0.0]
+        assert len(rows) == 4
+        bad = [(r[2], r[5], r[7]) for r in rows if r[7] != 'GREEN']
+        assert not bad, (name, kind, bad)
 
 
 @requires_stand

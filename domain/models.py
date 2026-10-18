@@ -53,6 +53,10 @@ class Surface:
     hologram_order: float = 1.0
     hologram_wavelength: float = 0.6328  # мкм
     hologram_coeffs: List[float] = field(default_factory=list)
+    # Параксиальная эффективизация кривизны ГОЭ C_eff(λ) = κ(λ)·C
+    # (REVERSE_GOE_MODEL §3): (κ_design, dκ/dλ 1/мкм, λ_design мкм);
+    # пустой кортеж — обычная поверхность.
+    hologram_kappa: tuple = ()
     # Override refractive index (if set, used instead of glass_catalog)
     n_override: dict = field(default_factory=dict)  # {wl_value: n}
     # Coordinate break / tilt / decenter (п. 17; преобразования — domain/spatial.py)

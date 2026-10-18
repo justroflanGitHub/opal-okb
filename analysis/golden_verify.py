@@ -472,8 +472,11 @@ def arcsec_of_ddmmss(value: float) -> float:
 
 # R1 (TASK_RESID): κ-таблицы/замыкание мнимого изображения живут в порте
 # (aberrations.VIRTUAL_WAVE_KAPPA / virtual_wave_kappa / opl_to_last_vertex)
+# E2 (TASK_EDGE2): λ-таблицы печати ближнего предмета там же
 from analysis.aberrations import (VIRTUAL_WAVE_KAPPA,
-                                  virtual_wave_kappa as _virtual_wave_kappa)
+                                  virtual_wave_kappa as _virtual_wave_kappa,
+                                  EDGE2_PRINT_LAMBDA,
+                                  edge2_print_lambda as _edge2_print_lambda)
 
 
 def near_object_axial_fan(system, wl: float, zones, na: float,
@@ -873,9 +876,24 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 if pr and pr['ok'] and pr['L'] is not None:
                     l_ref = pr.get('L_ref', pr['L_p'])
                     if units[0] == 'дптр':
-                        port_v = 1000.0 / pr['L']
-                        if l_ref:
-                            port_v -= 1000.0 / l_ref
+                        # E2: банк печатает вергентность от ВЫХОДНОГО
+                        # ЗРАЧКА (1000/(L−sP′) − 1000/(L_p−sP′)) с
+                        # множителем марша λ — только для систем λ-таблицы
+                        # (OBEKTIV/OKULAR, досье §4.3(vii)); прочие
+                        # ближние (ST4/LAB6_GAS, афокальные) — старая
+                        # схема от параксиальной вергенции
+                        lam = _edge2_print_lambda(
+                            EDGE2_PRINT_LAMBDA.get(name), 'прод', zone)
+                        if (lam is not None
+                                and pr.get('L_p') is not None
+                                and pr.get('sp_prime') is not None):
+                            port_v = lam * (
+                                1000.0 / (pr['L'] - pr['sp_prime'])
+                                - 1000.0 / (pr['L_p'] - pr['sp_prime']))
+                        else:
+                            port_v = 1000.0 / pr['L']
+                            if l_ref:
+                                port_v -= 1000.0 / l_ref
                     else:
                         port_v = (pr['L'] - l_ref
                                   if l_ref is not None else None)
@@ -900,6 +918,12 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                             y_g = pr['y_exit'] + pr['slope'] * pr['L_p']
                             port_v = -y_g / (pr['L_p'] - pr['sp_prime']) \
                                 * _ARCSEC_PER_RAD
+                            # E2: поперечные — из состояния марша, λ²
+                            # (длины числителя и знаменателя), §4.3(vii)
+                            lam = _edge2_print_lambda(
+                                EDGE2_PRINT_LAMBDA.get(name), 'попер', zone)
+                            if lam is not None:
+                                port_v *= lam * lam
                         else:
                             port_v = -pr['slope'] * _ARCSEC_PER_RAD
                     d = rel_diff(port_v, opal_as, 0.02)
@@ -949,6 +973,13 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 if pr and pr['ok']:
                     if far:
                         port_v = pr.get('y_pupil')
+                        # E2: Tg' (H`ЗР) — из состояния марша, λ
+                        # (масштаб высоты зрачка), §4.3(vii)
+                        if port_v is not None and near_obj:
+                            lam = _edge2_print_lambda(
+                                EDGE2_PRINT_LAMBDA.get(name), 'Tg', zone)
+                            if lam is not None:
+                                port_v *= lam
                         if port_v is not None and et['tg100'] < 0:
                             port_v = -port_v
                     else:

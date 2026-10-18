@@ -7,6 +7,10 @@ REVERSE_GVERIFY.md §3). До P5 парсер жил только в харне�
 маркерах gidx (0xFFFE/0xFFFF раздували n_glass = max(gidx)). Теперь:
 харнесс алиасит портовый вход, библиотека (catalog/library) пробует
 строгий разбор первым, lbo-путь не тронут.
+
+GTIE (REVERSE_GTIE.md): ГОЭ-маркер 0xFFFD в gidx принят — GTIE00
+разбирается (заглушка ГОЭ-поверхности, λ записи HeNe в ключе goe),
+отказов на стенде больше нет.
 """
 import math
 from pathlib import Path
@@ -14,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from fileio.standalone_opj import (
-    BIG_MARKER, MIRROR_MARKERS, StandaloneOpjError,
+    BIG_MARKER, GOE_MARKER, MIRROR_MARKERS, StandaloneOpjError,
     parse_standalone_opj, standalone_to_system,
 )
 
@@ -22,11 +26,6 @@ GOLDEN_DOS = Path(r'C:\GOLDEN_DOS')
 
 requires_stand = pytest.mark.skipif(
     not GOLDEN_DOS.exists(), reason='нет стенда C:\\GOLDEN_DOS')
-
-#: Записи стенда/архива, не соответствующие standalone-раскладке:
-#: ГОЭ GTIE00 пишет мусорный индекс среды 0xFFFD и RI за пределами
-#: файла (досье §6) — строгий вход обязан падать ЧИСТОЙ ошибкой.
-NOT_STANDALONE = {'GTIE00'}
 
 
 def _opj_files(root: Path):
@@ -36,32 +35,26 @@ def _opj_files(root: Path):
 
 @requires_stand
 def test_all_stand_files_strict_parse():
-    """Все ~85 записей стенда: строгий разбор либо succeeds с инвариантами
-    раскладки, либо ЧИСТАЯ StandaloneOpjError — и такие ровно одна
-    (GTIE00, ГОЭ). Прежде парсер харнесса валился struct.error ещё и на
-    зеркальных YBBS77_/GTIN05."""
+    """Все ~85 записей стенда: строгий разбор succeeds с инвариантами
+    раскладки, чистых отказов нет. Прежде парсер харнесса валился
+    struct.error на зеркальных YBBS77_/GTIN05, затем единственным
+    отказом оставался ГОЭ GTIE00 (0xFFFD раздувал n_glass, досье §6)."""
     files = _opj_files(GOLDEN_DOS)
     assert len(files) >= 80                      # стенд целиком
-    rejected = []
     for p in files:
-        try:
-            opj = parse_standalone_opj(p.read_bytes(), source=p.name)
-        except StandaloneOpjError:
-            rejected.append(p.stem)
-            continue
+        opj = parse_standalone_opj(p.read_bytes(), source=p.name)
         # инварианты раскладки
         assert opj['ns'] == len(opj['curv']) == len(opj['thick'])
         assert len(opj['gidx']) == opj['ns'] + 1
-        assert len(opj['ri']) == max(g for g in opj['gidx']
-                                     if g not in MIRROR_MARKERS)
+        assert len(opj['ri']) == max(g for g in opj['gidx'] if g < GOE_MARKER)
         assert all(len(row) == len(opj['wls']) for row in opj['ri'])
         assert 1 <= len(opj['wls']) <= 3
         assert all(0.1 < wl < 30.0 for wl in opj['wls'])
         assert all(math.isfinite(v) for row in opj['ri'] for v in row)
         assert all(m < opj['ns'] for m in opj['mirrors'])
+        assert all(g < opj['ns'] for g in opj['goe']['surfaces'])
         system = standalone_to_system(opj)
         assert len(system.surfaces) == opj['ns']
-    assert set(rejected) == NOT_STANDALONE, rejected
 
 
 @requires_stand
@@ -76,6 +69,12 @@ def test_all_stand_files_strict_parse():
     ('121', 'stop_nd', 4),                       # ND 1-индексация (GFIX P1)
     ('121', 'pupil_pos', 8.162),                 # SD от вершины ND−1
     ('YBBS77_', 'mirrors', [0, 1]),              # зеркальные маркеры gidx
+    # GTIE (REVERSE_GTIE.md): заголовок канонический, ИК-ГОЭ 3-5 мкм
+    ('GTIE00', 'ns', 10),
+    ('GTIE00', 'wls', [4.25, 3.5, 5.0]),         # эталон GTIE00.PRN
+    ('GTIE00', 'stop_nd', 3),
+    ('GTIE00', 'aperture_semi', 26.0),           # Ax эталона 26.17
+    ('GTIE00', 'mirrors', [2, 3, 4, 5]),         # зеркальный сэндвич ГОЭ
     # P6.1: положение предмета — f64@0x4C (мм от первой поверхности):
     # <0 действительный слева, >0 мнимый справа; 1000/(sP − z_obj) = Sp
     ('ST4', 'object_pos', -96.2046),             # Sp 9.717 дптр
@@ -120,6 +119,41 @@ def test_mirror_markers_flag_reflective():
     assert all(s.is_reflective for s in system.surfaces)
     assert all(s.glass == 'ЗЕРКАЛО' for s in system.surfaces)
     assert all(not s.n_override for s in system.surfaces)
+
+
+@requires_stand
+def test_goe_marker_stub_surface():
+    """GTIE00 (ЭКРАН - ГОЭ, досье REVERSE_GTIE.md): маркер 0xFFFD в
+    gidx[4] = среда после S3 — ГОЭ в зеркальном сэндвиче S2/S4. До GTIE
+    0xFFFD раздувал n_glass (65533) и RI уходил за пределы файла;
+    теперь поверхность = заглушка (отражение, дифракция записи не
+    смоделирована), параметры записи — в ключе goe (λ HeNe 0.6328).
+    Прочие поверхности честные: R/d из OPJ, RI-матрица 3 сред ИК
+    (CaF2-подобная 1.407 / 1.664 / Ge 4.022 при 4.25 мкм)."""
+    opj = parse_standalone_opj((GOLDEN_DOS / 'GTIE00.OPJ').read_bytes())
+    assert opj['gidx'][4] == GOE_MARKER
+    assert opj['goe']['surfaces'] == [3]
+    assert opj['goe']['wlh'] == pytest.approx(0.6328, abs=1e-4)
+    assert opj['goe']['rec'][4] == pytest.approx(0.6328, abs=1e-4)
+    # толщина изображения 0 вместо 1e20 — допустимое отклонение (§6)
+    assert opj['thick'][-1] == 0.0
+    assert any('ГОЭ' in w for w in opj['warnings'])
+    # кривизны: R = [36.98, 34.04, −71.82, −17.06, −15.70, ∞×5]
+    radii = [1.0 / c if c else 0.0 for c in opj['curv']]
+    assert radii[0] == pytest.approx(36.98, abs=1e-2)   # = Sp эталона
+    assert radii[2] == pytest.approx(-71.8165, abs=1e-2)
+    assert radii[3] == pytest.approx(-17.061, abs=1e-3)  # сама ГОЭ
+    assert opj['thick'][2:5] == [-17.0, -2.0, -8.0]
+    system = standalone_to_system(opj)
+    goe_s = system.surfaces[3]
+    assert goe_s.glass == 'ГОЭ' and goe_s.is_reflective
+    assert not goe_s.n_override                       # RI-строку не берёт
+    assert goe_s.radius == pytest.approx(-17.061, abs=1e-3)
+    # окружение честное: S2/S4 — зеркала, S6 — окно Ge по RI-матрице
+    assert system.surfaces[2].glass == 'ЗЕРКАЛО'
+    assert system.surfaces[4].glass == 'ЗЕРКАЛО'
+    n_ov = system.surfaces[6].n_override
+    assert n_ov[4.25] == pytest.approx(4.02166, abs=1e-4)
 
 
 @requires_stand

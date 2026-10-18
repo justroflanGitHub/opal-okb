@@ -200,6 +200,30 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
                 names.append(nm)
             pos += 10
 
+    # блок параметров ГОЭ (досье REVERSE_GTIE.md): за именами u32 =
+    # 202+2·ns — маркер записи (сверен GTIE00/GTIN05/US00KI02), затем
+    # запись дифракционного элемента: эхо u16 0xFFFD … u16 ns (≤0x40
+    # байт) … f32×8 — у GTIE00 λ записи 0.6328 (HeNe) в слоте 4.
+    # Best-effort: неудачный скан не валит разбор.
+    goe_info = {'surfaces': goe, 'rec': None, 'wlh': None}
+    if goe:
+        m = tail.find(struct.pack('<H', GOE_MARKER))
+        ns_pos = -1
+        if m >= 0:
+            for off in range(m + 2, min(m + 0x40, len(tail) - 1), 2):
+                if struct.unpack_from('<H', tail, off)[0] == ns:
+                    ns_pos = off
+                    break
+        if ns_pos >= 0 and ns_pos + 0xA + 32 <= len(tail):
+            rec = list(struct.unpack_from('<8f', tail, ns_pos + 0xA))
+            goe_info['rec'] = rec
+            if _WL_MIN < rec[4] < _WL_MAX:
+                goe_info['wlh'] = float(rec[4])
+        warnings.append(
+            f'ГОЭ-поверхность {", S".join(map(str, goe))}: дифракция не '
+            f'смоделирована — заглушка (отражение, параметры записи '
+            f'в ключе goe)')
+
     return {
         'name': name, 'ns': ns, 'flags': flags, 'wls': wls,
         'obj_type': obj_type, 'img_type': img_type, 'stop_type': stop_type,
@@ -207,8 +231,8 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
         'aperture_semi': aperture, 'pupil_pos': pupil_pos,
         'field_y_rad': field_y, 'field_x_rad': field_x,
         'curv': curv, 'thick': thick, 'gidx': gidx, 'ri': ri,
-        'names': names, 'mirrors': mirrors, 'warnings': warnings,
-        'source': source,
+        'names': names, 'mirrors': mirrors, 'goe': goe_info,
+        'warnings': warnings, 'source': source,
     }
 
 
@@ -231,6 +255,11 @@ def standalone_to_system(opj: dict):
 
     Зеркальные маркеры gidx → ``is_reflective`` поверхности (среда
     зеркального промежутка не меняется — n_override не назначается).
+
+    ГОЭ-маркер 0xFFFD → заглушка (REVERSE_GTIE.md): поверхность
+    ``is_reflective`` с кривизной/толщиной из OPJ и ``glass='ГОЭ'``,
+    дифракция записи НЕ смоделирована (λ записи и сырая таблица
+    параметров — в ``opj['goe']``); прочие поверхности честные.
     """
     from optics_engine import (ApertureType, FieldPoint, ObjectType,
                                OpticalSystem, Surface, Wavelength)
@@ -238,6 +267,7 @@ def standalone_to_system(opj: dict):
 
     ns, wls, ri = opj['ns'], opj['wls'], opj['ri']
     mirrors = set(opj.get('mirrors', ()))
+    goe = set(opj.get('goe', {}).get('surfaces', ()))
     system = OpticalSystem(name=opj['name'])
     system.object_type = (ObjectType.INFINITE if opj['obj_type'] == 0
                           else ObjectType.FINITE)
@@ -264,14 +294,15 @@ def standalone_to_system(opj: dict):
         surf = Surface(
             radius=(1.0 / c if abs(c) > 1e-15 else 0.0),
             thickness=(0.0 if d >= BIG_MARKER else d),
-            glass=('ЗЕРКАЛО' if i in mirrors else ''),
+            glass=('ГОЭ' if i in goe else
+                   'ЗЕРКАЛО' if i in mirrors else ''),
             # 0 → UNLIMITED_SD трейсера: полудиаметры поверхностей в OPJ
             # не хранятся, клиппинг выключен — сверка расчёта без
             # виньетирования (ST4: вход zone 1.0 = 12.6 мм у S0)
             semi_diameter=0.0,
             n_override=n_ov,
         )
-        if i in mirrors:
+        if i in mirrors or i in goe:
             surf.is_reflective = True
         system.surfaces.append(surf)
     return system

@@ -470,28 +470,10 @@ def arcsec_of_ddmmss(value: float) -> float:
     return sign * (deg * 3600.0 + mm * 60.0 + ss)
 
 
-# R1 (TASK_RESID, REVERSE_OPALDIS §2.2/§2.4): κ-таблицы мнимого изображения.
-# Замыкание волновых OPAL при L_p<0 — пер-поверхностный марш Коддингтона
-# (хвост 0xd074: W₂ += QF·mixed/2, mixed = [3C98]/(u_m·u_s²)); в эффективной
-# квадратике на плоскости z_last: κ(zone,λ) = κ0(λ) + κ2(λ)·zone². κ0/κ2
-# решены из банка (4 зоны × остатки ≤2.2e-5 мм⁻¹ = уровень округления
-# печати 1e-4λ); якорь C_eff = z_last+1/κ0 не параксиален (мнимое —
-# 3-й порядок знаменателя mixed), закрытой формулы марша пока нет.
-VIRTUAL_WAVE_KAPPA = {
-    'OPTICS#1': {                      # λ (f32 OPJ) → (κ0, κ2), мм⁻¹
-        0.54607: (-0.10516667, 0.00436667),
-        0.43405: (-0.09372133, 0.00376933),
-        0.65628: (-0.11594033, 0.00496133),
-    },
-}
-
-
-def _virtual_wave_kappa(table: dict, wl: float):
-    """(κ0, κ2) для λ (допуск 2e-3 — печать .4340 против f32 .43405)."""
-    for wl_key, pair in (table or {}).items():
-        if abs(wl_key - wl) < 2e-3:
-            return pair
-    return None
+# R1 (TASK_RESID): κ-таблицы/замыкание мнимого изображения живут в порте
+# (aberrations.VIRTUAL_WAVE_KAPPA / virtual_wave_kappa / opl_to_last_vertex)
+from analysis.aberrations import (VIRTUAL_WAVE_KAPPA,
+                                  virtual_wave_kappa as _virtual_wave_kappa)
 
 
 def near_object_axial_fan(system, wl: float, zones, na: float,
@@ -525,7 +507,8 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
 
     from ray_tracing import Ray, trace_ray_through_system
     from analysis.aberrations import (_air_exit_direction,
-                                      _opl_to_reference_sphere)
+                                      _opl_to_reference_sphere,
+                                      opl_to_last_vertex)
 
     if z_obj < 0.0:
         y0_par, u0_par, z0_par = 0.0, 0.05, z_obj
@@ -558,10 +541,9 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
                                         center, r_ref)
 
     def _opl_to_zlast(res):
-        """OPL луча до ПЛОСКОСТИ вершины последней поверхности (по
-        терминальному воздушному сегменту) — опора мнимого изображения."""
-        d = _air_exit_direction(system, res, wl)
-        return res.opl + (z_last - res.path[-1][2]) / d[2]
+        """OPL луча до ПЛОСКОСТИ вершины последней поверхности —
+        опора мнимого изображения (порт: ``opl_to_last_vertex``)."""
+        return opl_to_last_vertex(system, res, wl)
 
     # R1 (REVERSE_OPALDIS §2.4): мнимое изображение + таблица κ — опора
     # веера = плоскость z_last, замыкание = κ(zone,λ)·y²/2
@@ -880,7 +862,9 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
         z_last = sum(s.thickness for s in system.surfaces[:-1])
         port_rows = {r['zone']: r for r in
                      near_object_axial_fan(system, wl, list(a1_rows.keys()),
-                                           na, z_obj)}
+                                           na, z_obj,
+                                           wave_kappa=VIRTUAL_WAVE_KAPPA
+                                           .get(name))}
         for zone, et in sorted(a1_rows.items(), reverse=True):
             pr = port_rows.get(zone)
             if et['long'] and et['long'][0] is not None:

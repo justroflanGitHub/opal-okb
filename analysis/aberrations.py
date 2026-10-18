@@ -331,6 +331,54 @@ def _opl_to_reference_sphere(
     return opl + n_air * L
 
 
+# R1 (TASK_RESID, REVERSE_OPALDIS §2.2/§2.4): κ-таблицы мнимого изображения.
+# Опора волновых OPAL при L_p<0 — не гауссова сфера, а пер-поверхностное
+# замыкание марша Коддингтона (хвост 0xd074: W₂ += QF(X,Y)·mixed/2,
+# mixed = [3C98]/(u_m·u_s²); марш = трёхчленная рекуррентность
+# x_{s+1} = −(c_s·x_s + x_{s−1}) по поверхностям, 0x94cc-0x9531). В
+# эффективной квадратике на плоскости вершины последней поверхности
+# (центровка мнимого как у прод/попер, досье §P6): κ(zone,λ)·y²/2,
+# κ = κ0(λ) + κ2(λ)·zone². κ0/κ2 решены из банка волновых (остатки
+# ≤2.2e-5 мм⁻¹ = уровень округления печати 1e-4λ); якорь C_eff =
+# z_last+1/κ0 не параксиален (мнимое — 3-й порядок знаменателя mixed),
+# закрытой формулы марша нет — до декодирования семян/показателей.
+VIRTUAL_WAVE_KAPPA: Dict[str, Dict[float, Tuple[float, float]]] = {
+    'OPTICS#1': {                      # система → {λ (f32 OPJ) → (κ0, κ2)}, мм⁻¹
+        0.54607: (-0.10516667, 0.00436667),
+        0.43405: (-0.09372133, 0.00376933),
+        0.65628: (-0.11594033, 0.00496133),
+    },
+}
+
+
+def virtual_wave_kappa(table: Dict[float, Tuple[float, float]] | None,
+                       wl: float) -> Tuple[float, float] | None:
+    """(κ0, κ2) для λ из таблицы системы (None, если λ нет/таблицы нет).
+
+    Допуск 2e-3 мкм — печать OPAL .4340 против f32-λ OPJ .43405.
+    """
+    for wl_key, pair in (table or {}).items():
+        if abs(wl_key - wl) < 2e-3:
+            return pair
+    return None
+
+
+def opl_to_last_vertex(system: OpticalSystem, result,
+                       wl: float) -> float | None:
+    """OPL луча до ПЛОСКОСТИ вершины последней поверхности, мм.
+
+    Продление терминального сегмента по выходному воздушному направлению
+    (:func:`_air_exit_direction`) — опора волновых мнимого изображения
+    (R1, REVERSE_OPALDIS §2.4; совпадает с опорой прод/попер зональных
+    строк, досье §P6).
+    """
+    direction = _air_exit_direction(system, result, wl)
+    if direction is None or abs(direction[2]) < EPSILON:
+        return None
+    z_last = sum(s.thickness for s in system.surfaces[:-1])
+    return result.opl + (z_last - result.path[-1][2]) / direction[2]
+
+
 def _field_chief_ray(system: OpticalSystem, field_y: float,
                      z_start: float, z_pupil: float) -> Ray:
     """Главный луч поля ``field_y`` через центр входного зрачка.

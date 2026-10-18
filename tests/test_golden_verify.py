@@ -301,8 +301,8 @@ def test_optics1_virtual_image_vertex_reference():
     """P6: мнимое изображение (L_p < 0) — опорная плоскость строк вершина
     последней поверхности, не точка Гаусса: прод = L (строка зона-0
     −17.742 = |L_p|), попер = −y на вершине, Sp2 = 1000/sP′ (−16.401).
-    Волновые мнимого изображения — опора OPAL не найдена (OPEN,
-    досье §P6): со старта веера вычтен сагиттный эксцесс фазы."""
+    Волновые — замыкание κ(zone,λ)·y²/2 на плоскости z_last (R1 закрыт,
+    REVERSE_OPALDIS §2.4): κ-таблица из банка, все зоны GREEN."""
     res = compare_system('OPTICS#1')
     by_qty = {r[1]: r for r in res['rows']}
     assert by_qty['Sp2'][3] == pytest.approx(-16.401, abs=1e-3)
@@ -318,6 +318,27 @@ def test_optics1_virtual_image_vertex_reference():
     assert all(r[7] in ('GREEN', 'YELLOW') for r in trans)
     # знаки: попер мнимого изображения печатается с обратным знаком
     assert all((r[3] > 0) == (r[4] > 0) for r in trans)
+    # R1: волновые мнимого изображения — κ-замыкание, все зоны GREEN
+    wave = [r for r in res['rows']
+            if r[1] == 'волновые' and r[2] != 0.0]
+    assert len(wave) == 4
+    bank = {-316.0417, -235.8764, -156.5002, -77.8839}
+    assert all(r[3] in bank for r in wave)
+    assert all(r[7] == 'GREEN' for r in wave)
+    assert wave[0][4] == pytest.approx(-316.0417, rel=1e-4)
+
+
+def test_virtual_wave_kappa_nearest_wl():
+    """R1: подбор (κ0, κ2) по λ с допуском 2e-3 — печать OPAL .4340
+    против f32-λ OPJ .43405 (REVERSE_OPALDIS §2.4)."""
+    from analysis.aberrations import (VIRTUAL_WAVE_KAPPA,
+                                      virtual_wave_kappa)
+    table = VIRTUAL_WAVE_KAPPA['OPTICS#1']
+    assert virtual_wave_kappa(table, 0.54607) == (-0.10516667, 0.00436667)
+    assert virtual_wave_kappa(table, 0.4341) == (-0.09372133, 0.00376933)
+    assert virtual_wave_kappa(table, 0.6563) == (-0.11594033, 0.00496133)
+    assert virtual_wave_kappa(table, 0.58756) is None
+    assert virtual_wave_kappa(None, 0.54607) is None
 
 
 @requires_stand

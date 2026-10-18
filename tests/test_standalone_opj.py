@@ -8,9 +8,10 @@ REVERSE_GVERIFY.md §3). До P5 парсер жил только в харне�
 харнесс алиасит портовый вход, библиотека (catalog/library) пробует
 строгий разбор первым, lbo-путь не тронут.
 
-GTIE (REVERSE_GTIE.md): ГОЭ-маркер 0xFFFD в gidx принят — GTIE00
-разбирается (заглушка ГОЭ-поверхности, λ записи HeNe в ключе goe),
-отказов на стенде больше нет.
+GTIE (REVERSE_GTIE.md, REVERSE_GOE_MODEL.md): ГОЭ-маркер 0xFFFD в
+gidx принят — GTIE00 разбирается (поверхность HOLOGRAM с параксиальной
+эффективной кривизной κ(λ)·C, λ записи HeNe в ключе goe), вергенции
+Sp′ эталона сходятся, отказов на стенде нет.
 """
 import math
 from pathlib import Path
@@ -19,7 +20,7 @@ import pytest
 
 from fileio.standalone_opj import (
     BIG_MARKER, GOE_MARKER, MIRROR_MARKERS, StandaloneOpjError,
-    parse_standalone_opj, standalone_to_system,
+    load_standalone_opj, parse_standalone_opj, standalone_to_system,
 )
 
 GOLDEN_DOS = Path(r'C:\GOLDEN_DOS')
@@ -122,14 +123,17 @@ def test_mirror_markers_flag_reflective():
 
 
 @requires_stand
-def test_goe_marker_stub_surface():
-    """GTIE00 (ЭКРАН - ГОЭ, досье REVERSE_GTIE.md): маркер 0xFFFD в
-    gidx[4] = среда после S3 — ГОЭ в зеркальном сэндвиче S2/S4. До GTIE
-    0xFFFD раздувал n_glass (65533) и RI уходил за пределы файла;
-    теперь поверхность = заглушка (отражение, дифракция записи не
-    смоделирована), параметры записи — в ключе goe (λ HeNe 0.6328).
-    Прочие поверхности честные: R/d из OPJ, RI-матрица 3 сред ИК
+def test_goe_marker_hologram_surface():
+    """GTIE00 (ЭКРАН - ГОЭ, досье REVERSE_GTIE.md + REVERSE_GOE_MODEL.md):
+    маркер 0xFFFD в gidx[4] = среда после S3 — ГОЭ в зеркальном сэндвиче
+    S2/S4. До GTIE 0xFFFD раздувал n_glass (65533) и RI уходил за
+    пределы файла; теперь поверхность = HOLOGRAM: физика элемента
+    трансмиссионная (дифракция с replay λ0/λ), параксиальное звено
+    видит зеркало с эффективной кривизной κ(λ)·C (GOE_KAPPA_LAW),
+    параметры записи — rec-таблица f32×8 (λ HeNe 0.6328). Прочие
+    поверхности честные: R/d из OPJ, RI-матрица 3 сред ИК
     (CaF2-подобная 1.407 / 1.664 / Ge 4.022 при 4.25 мкм)."""
+    from domain.models import SurfaceType
     opj = parse_standalone_opj((GOLDEN_DOS / 'GTIE00.OPJ').read_bytes())
     assert opj['gidx'][4] == GOE_MARKER
     assert opj['goe']['surfaces'] == [3]
@@ -147,13 +151,40 @@ def test_goe_marker_stub_surface():
     system = standalone_to_system(opj)
     goe_s = system.surfaces[3]
     assert goe_s.glass == 'ГОЭ' and goe_s.is_reflective
+    assert goe_s.surface_type == SurfaceType.HOLOGRAM
     assert not goe_s.n_override                       # RI-строку не берёт
     assert goe_s.radius == pytest.approx(-17.061, abs=1e-3)
+    # запись: λ0 HeNe + rec-таблица на поверхности
+    assert goe_s.hologram_wavelength == pytest.approx(0.6328, abs=1e-4)
+    assert goe_s.hologram_coeffs[0] == pytest.approx(0.9015, abs=1e-3)
+    assert goe_s.hologram_coeffs[4] == pytest.approx(0.6328, abs=1e-4)
+    # эффективная кривизна κ(λ)·C: R_eff = R/κ (GOE_KAPPA_LAW, пин GTIE00)
+    assert goe_s.hologram_kappa[0] == pytest.approx(1.089185, abs=1e-6)
+    assert goe_s.hologram_kappa[2] == pytest.approx(4.25)  # λ привязки
     # окружение честное: S2/S4 — зеркала, S6 — окно Ge по RI-матрице
     assert system.surfaces[2].glass == 'ЗЕРКАЛО'
     assert system.surfaces[4].glass == 'ЗЕРКАЛО'
     n_ov = system.surfaces[6].n_override
     assert n_ov[4.25] == pytest.approx(4.02166, abs=1e-4)
+
+
+@requires_stand
+def test_goe_paraxial_vergences_vs_bank():
+    """Regression TASK_GOE: вергенции GTIE00 (габарит Sp2, дптр) банка
+    против порта с моделью ГОЭ C_eff(λ) = κ(λ)·C — три λ эталона
+    GTIE00.PRN. Без модели заглушка давала RED ~25 %; κ-закон держит
+    все три λ в пределах 0.08 дптр (банк печатает 3 знака, Δотн
+    верификатора 6.7e-05 на основной λ). bfd-хроматизм порта
+    −0.016/+0.009 мм против банка −0.011/+0.014 (REVERSE_GOE_MODEL §3).
+    """
+    from domain.calculations import paraxial_trace
+    system, _ = load_standalone_opj(str(GOLDEN_DOS / 'GTIE00.OPJ'))
+    bank = {4.25: -29.772, 3.5: -29.833, 5.0: -29.691}   # GTIE00.PRN
+    for wl, target in sorted(bank.items()):
+        p = paraxial_trace(system, wl=wl)
+        assert p['sP'] == pytest.approx(36.98, abs=1e-2), wl
+        verg = 1000.0 / (p['sP_prime'] - p['back_focal_distance'])
+        assert verg == pytest.approx(target, abs=0.08), (wl, verg)
 
 
 @requires_stand

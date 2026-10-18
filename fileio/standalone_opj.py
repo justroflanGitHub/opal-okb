@@ -220,9 +220,9 @@ def parse_standalone_opj(data: bytes, source: str = '') -> dict:
             if _WL_MIN < rec[4] < _WL_MAX:
                 goe_info['wlh'] = float(rec[4])
         warnings.append(
-            f'ГОЭ-поверхность {", S".join(map(str, goe))}: дифракция не '
-            f'смоделирована — заглушка (отражение, параметры записи '
-            f'в ключе goe)')
+            f'ГОЭ-поверхность {", S".join(map(str, goe))}: параксиальная '
+            f'эффективная кривизна κ(λ) (REVERSE_GOE_MODEL), реальный '
+            f'трейсер — зеркальная семантика; параметры записи в ключе goe')
 
     return {
         'name': name, 'ns': ns, 'flags': flags, 'wls': wls,
@@ -256,18 +256,30 @@ def standalone_to_system(opj: dict):
     Зеркальные маркеры gidx → ``is_reflective`` поверхности (среда
     зеркального промежутка не меняется — n_override не назначается).
 
-    ГОЭ-маркер 0xFFFD → заглушка (REVERSE_GTIE.md): поверхность
-    ``is_reflective`` с кривизной/толщиной из OPJ и ``glass='ГОЭ'``,
-    дифракция записи НЕ смоделирована (λ записи и сырая таблица
-    параметров — в ``opj['goe']``); прочие поверхности честные.
+    ГОЭ-маркер 0xFFFD → поверхность типа HOLOGRAM (REVERSE_GOE_MODEL):
+    физически элемент трансмиссионный (дифракция с replay λ0/λ), но
+    параксиальное звено видит его как зеркало с эффективной кривизной
+    C_eff(λ) = κ(λ)·C (:data:`domain.calculations.GOE_KAPPA_LAW`);
+    ``is_reflective`` сохранён именно для этой параксиальной
+    эффективизации. Реальный трейсёр — зеркальная семантика:
+    полудиаметры OPJ не сохраняет (REVERSE_GTIE §4), геометрическое
+    замыкание комбинаторного отклонения ГОЭ непроизводимо, реальные
+    веера SKIP. Параметры записи (λ0 HeNe, rec-таблица f32×8) —
+    ``hologram_wavelength``/``hologram_coeffs`` и ``opj['goe']``.
     """
     from optics_engine import (ApertureType, FieldPoint, ObjectType,
-                               OpticalSystem, Surface, Wavelength)
+                               OpticalSystem, Surface, SurfaceType,
+                               Wavelength)
+    from domain.calculations import GOE_KAPPA_LAW
     import math
 
     ns, wls, ri = opj['ns'], opj['wls'], opj['ri']
     mirrors = set(opj.get('mirrors', ()))
     goe = set(opj.get('goe', {}).get('surfaces', ()))
+    goe_info = opj.get('goe', {})
+    # λ привязки κ-закона = основная λ системы (у GTIE00 4.25)
+    goe_kappa = (GOE_KAPPA_LAW[0], GOE_KAPPA_LAW[1],
+                 wls[0] if wls else GOE_KAPPA_LAW[2])
     system = OpticalSystem(name=opj['name'])
     system.object_type = (ObjectType.INFINITE if opj['obj_type'] == 0
                           else ObjectType.FINITE)
@@ -302,7 +314,17 @@ def standalone_to_system(opj: dict):
             semi_diameter=0.0,
             n_override=n_ov,
         )
-        if i in mirrors or i in goe:
+        if i in goe:
+            # ГОЭ: параксиальная сила через эффективную кривизну κ(λ)
+            # (REVERSE_GOE_MODEL §3); запись — параметры из rec-таблицы.
+            surf.surface_type = SurfaceType.HOLOGRAM
+            surf.is_reflective = True
+            surf.hologram_wavelength = (goe_info.get('wlh')
+                                        or surf.hologram_wavelength)
+            if goe_info.get('rec'):
+                surf.hologram_coeffs = list(goe_info['rec'])
+            surf.hologram_kappa = goe_kappa
+        elif i in mirrors:
             surf.is_reflective = True
         system.surfaces.append(surf)
     return system

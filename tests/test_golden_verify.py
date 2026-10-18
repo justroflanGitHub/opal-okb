@@ -401,13 +401,16 @@ def test_run_all_fourteen_systems():
     names = {r['name'] for r in results}
     assert names == set(BANK_SYSTEMS)
     by_name = {r['name']: r for r in results}
-    # ГОЭ GTIE00 разбирается (REVERSE_GTIE.md): заглушка не моделирует
-    # дифракцию — Sp параксиалки зелёный, Sp′ RED (±25 %), осевые SKIP
+    # ГОЭ GTIE00 (REVERSE_GTIE.md + REVERSE_GOE_MODEL.md): модель
+    # эффективной кривизны κ(λ) закрывает вергенции — Sp/Sp′ зелёные
+    # (Δотн 6.7e-05 на основной λ); реальные веера SKIP: полудиаметры
+    # OPJ не сохраняет, геометрическое замыкание комбинаторного
+    # отклонения ГОЭ непроизводимо (досье §1.6)
     gtie = by_name['GTIE00']
     assert not any('ОШИБКА' in n for n in gtie['notes'])
     rows = {(r[1], r[2]): r for r in gtie['rows']}
     assert rows[('Sp', '')][7] == 'GREEN'
-    assert rows[('Sp2', '')][7] == 'RED'
+    assert rows[('Sp2', '')][7] == 'GREEN'
     assert gtie['counts']['SKIP'] >= 20
     # опорная система — в банке и со строками
     assert by_name['US00KI02']['counts']['GREEN'] >= 15

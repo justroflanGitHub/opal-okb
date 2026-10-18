@@ -22,6 +22,30 @@ from optics_utils import (
 )
 
 
+#: Закон параксиальной эффективизации кривизны ГОЭ (REVERSE_GOE_MODEL §3):
+#: κ(λ) = κ_design + dκ/dλ·(λ − λ_design). Пин — GTIE00 (единственный
+#: ГОЭ-файл стенда): вергенции Sp′ до 0.07 дптр, bfd-хроматизм до 6 мкм.
+#: Физика — дифракционная сила записи с replay-скейлингом λ0/λ; закон
+#: феноменологический (замкнутая формула OPAL не выведена, досье §5).
+GOE_KAPPA_LAW = (1.089185, 5.27e-4, 4.25)
+
+
+def goe_effective_radius(surface: Surface, wl: float) -> float:
+    """Радиус поверхности с учётом параксиальной силы ГОЭ.
+
+    Дифракционная добавка ГОЭ λ-зависима (replay λ0/λ + компенсация
+    дисперсии окна) — параксиальное звено видит эффективную кривизну
+    C_eff(λ) = κ(λ)·C, т.е. R_eff = R/κ(λ) (REVERSE_GOE_MODEL §3).
+    Обычные поверхности проходят насквозь.
+    """
+    if surface.surface_type == SurfaceType.HOLOGRAM and surface.hologram_kappa:
+        k0, slope, wl0 = surface.hologram_kappa
+        kappa = k0 + slope * (wl - wl0)
+        if abs(kappa) > 1e-9:
+            return surface.radius / kappa
+    return surface.radius
+
+
 def apply_vignetting(system: OpticalSystem, field_y: float, ray_y: float,
                      ray_x: float = 0.0, sharp_edge: bool = True) -> bool:
     """
@@ -210,7 +234,8 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
 
     for i in range(ns):
         s = sys.surfaces[i]
-        R = s.radius if s.radius != 0 else 1e15
+        R = goe_effective_radius(s, wl_used)
+        R = R if R != 0 else 1e15
         n_b = n_medium[i]
         n_a = n_medium[i + 1]
 
@@ -239,7 +264,8 @@ def paraxial_trace(sys: OpticalSystem, catalog: dict = None,
 
     for i in range(ns):
         s = sys.surfaces[i]
-        R = s.radius if s.radius != 0 else 1e15
+        R = goe_effective_radius(s, wl_used)
+        R = R if R != 0 else 1e15
         n_b = n_medium[i]
         n_a = n_medium[i + 1]
 

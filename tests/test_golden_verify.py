@@ -437,6 +437,49 @@ def test_121_tir_rim_mirror_tag():
     assert tg10[7] == 'GREEN'
 
 
+@requires_stand
+def test_kursovik_march_tube_limit_ray():
+    """§MARCH M.3/M.4 (REVERSE_OPALDIS): банк KURSOVIK волновые з.1.0
+    67.7269λ = W₂ луча на высоте h*=18.441824 мм, а НЕ на печатном
+    Ax=18.4911 (там W=68.711, +0.984λ) и не на кромке MISS h_lim=
+    18.5085: зональный луч печати марша упирается в предел трубы
+    Коддингтона (0x138b7 делит на √[3c00]) раньше кромки. Пин: банк =
+    W(h*) до 1e-3λ (в корне brentq — 3e-7λ), W(Ax) ≠ банк."""
+    from analysis.aberrations import (_chief_reference_opl,
+                                      _compute_ray_start, _ray_wavefront,
+                                      _reference_sphere)
+    from analysis.golden_verify import opj_to_system
+    from domain.calculations import paraxial_trace
+    from optics_utils import make_field_ray
+    from ray_tracing import trace_ray_through_system
+
+    opj = parse_golden_opj(GOLDEN_DOS / 'KURSOVIK.OPJ')
+    system = opj_to_system(opj)
+    wl = opj['wls'][0]
+    prn = parse_golden_prn(BANK / 'KURSOVIK.PRN')
+    row10 = max((r for r in prn['axial2']['rows'].values()
+                 if r.get('wave') and r['wave'][0] is not None),
+                key=lambda r: r['tg100'])
+    bank, ax_print = row10['wave'][0], row10['h_zr']
+    assert bank == pytest.approx(67.7269, abs=1e-6)
+
+    parax = paraxial_trace(system, wl=wl)
+    z_start, z_pupil = _compute_ray_start(system, parax)
+    rc, R = _reference_sphere(system, 0.0, parax)
+    oplc = _chief_reference_opl(system, wl, 0.0, z_start, z_pupil, rc, R)
+
+    def wave_at(h):
+        res = trace_ray_through_system(
+            system, make_field_ray(system, 0.0, h, 0.0, z_start, z_pupil), wl)
+        assert res.success and len(res.path) >= 2
+        return _ray_wavefront(system, res, oplc, rc, R, wl)
+
+    h_star = 18.441824
+    assert wave_at(h_star) == pytest.approx(bank, abs=1e-3)
+    assert wave_at(ax_print) == pytest.approx(68.711, abs=5e-3)
+    assert abs(wave_at(ax_print) - bank) > 0.5
+
+
 def test_gabarit_print_quantum_floor():
     """§FINAL(iii): печать Sp/Sp' — 3 десятичных (PLIOPT «2.943»);
     разность порта в полуразряде (2.94343→«2.943», |Δ|=4.3e-4) — шум

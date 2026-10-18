@@ -1,0 +1,621 @@
+00c6bc: b8 20 4d                 mov ax, 0x4d20
+00c6bf: 1e                       push ds
+00c6c0: 50                       push ax
+00c6c1: b8 78 3a                 mov ax, 0x3a78
+00c6c4: 1e                       push ds
+00c6c5: 50                       push ax
+00c6c6: b8 80 3a                 mov ax, 0x3a80
+00c6c9: 1e                       push ds
+00c6ca: 50                       push ax
+00c6cb: b8 68 3a                 mov ax, 0x3a68
+00c6ce: 1e                       push ds
+00c6cf: 50                       push ax
+00c6d0: b8 70 3a                 mov ax, 0x3a70
+00c6d3: 1e                       push ds
+00c6d4: 50                       push ax
+00c6d5: b8 10 3a                 mov ax, 0x3a10
+00c6d8: 1e                       push ds
+00c6d9: 50                       push ax
+00c6da: b8 38 3a                 mov ax, 0x3a38
+00c6dd: 1e                       push ds
+00c6de: 50                       push ax
+00c6df: 90                       nop 
+00c6e0: 0e                       push cs
+00c6e1: e8 0f cd                 call 0x93f3
+00c6e4: b8 6a 4d                 mov ax, 0x4d6a
+00c6e7: 1e                       push ds
+00c6e8: 50                       push ax
+00c6e9: b8 5a 4d                 mov ax, 0x4d5a
+00c6ec: 1e                       push ds
+00c6ed: 50                       push ax
+00c6ee: b8 20 4d                 mov ax, 0x4d20
+00c6f1: 1e                       push ds
+00c6f2: 50                       push ax
+00c6f3: b8 10 3a                 mov ax, 0x3a10
+00c6f6: 1e                       push ds
+00c6f7: 50                       push ax
+00c6f8: b8 38 3a                 mov ax, 0x3a38
+00c6fb: 1e                       push ds
+00c6fc: 50                       push ax
+00c6fd: b8 48 3a                 mov ax, 0x3a48
+00c700: 1e                       push ds
+00c701: 50                       push ax
+00c702: b8 5c 3a                 mov ax, 0x3a5c
+00c705: 1e                       push ds
+00c706: 50                       push ax
+00c707: 90                       nop 
+00c708: 0e                       push cs
+00c709: e8 56 06                 call 0xcd62
+00c70c: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00c710: 26 8b 07                 mov ax, word ptr es:[bx]
+00c713: d1 e0                    shl ax, 1
+00c715: d1 e0                    shl ax, 1
+00c717: 8b f0                    mov si, ax
+00c719: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c71c: f7 66 ce                 mul word ptr [bp - 0x32]
+00c71f: 8b d8                    mov bx, ax
+00c721: 03 5e 3e                 add bx, word ptr [bp + 0x3e]
+00c724: 8e 46 40                 mov es, word ptr [bp + 0x40]
+00c727: 2b 5e d0                 sub bx, word ptr [bp - 0x30]
+00c72a: cd 39 06 f0 3b           fld qword [3bf0]
+00c72f: cd 3c d9 18              fstp dword [bx+si]
+00c733: cd 3d                    fistp dx:ax (emu)
+00c735: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c738: f7 66 d2                 mul word ptr [bp - 0x2e]
+00c73b: 8b d8                    mov bx, ax
+00c73d: 03 5e 3a                 add bx, word ptr [bp + 0x3a]
+00c740: 8e 46 3c                 mov es, word ptr [bp + 0x3c]
+00c743: 2b 5e d4                 sub bx, word ptr [bp - 0x2c]
+00c746: cd 39 06 f0 3b           fld qword [3bf0]
+00c74b: cd 3c d9 18              fstp dword [bx+si]
+00c74f: cd 3d                    fistp dx:ax (emu)
+00c751: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c754: f7 66 f8                 mul word ptr [bp - 8]
+00c757: 8b d8                    mov bx, ax
+00c759: 03 5e 06                 add bx, word ptr [bp + 6]
+00c75c: 8e 46 08                 mov es, word ptr [bp + 8]
+00c75f: 2b 5e fa                 sub bx, word ptr [bp - 6]
+00c762: a1 c4 3e                 mov ax, word ptr [0x3ec4]
+00c765: 26 89 40 02              mov word ptr es:[bx + si + 2], ax
+00c769: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c76c: f7 66 f8                 mul word ptr [bp - 8]
+00c76f: 8b d8                    mov bx, ax
+00c771: c4 b6 92 00              les si, ptr [bp + 0x92]
+00c775: 26 8b 04                 mov ax, word ptr es:[si]
+00c778: d1 e0                    shl ax, 1
+00c77a: d1 e0                    shl ax, 1
+00c77c: 03 d8                    add bx, ax
+00c77e: 03 5e 06                 add bx, word ptr [bp + 6]
+00c781: 8e 46 08                 mov es, word ptr [bp + 8]
+00c784: 2b 5e fa                 sub bx, word ptr [bp - 6]
+00c787: a1 c4 3e                 mov ax, word ptr [0x3ec4]
+00c78a: 26 89 47 04              mov word ptr es:[bx + 4], ax
+00c78e: 83 3e 4e 4d 01           cmp word ptr [0x4d4e], 1
+00c793: 75 28                    jne 0xc7bd
+00c795: 83 3e 50 4d 00           cmp word ptr [0x4d50], 0
+00c79a: 75 21                    jne 0xc7bd
+00c79c: 8b 1e 52 4d              mov bx, word ptr [0x4d52]
+00c7a0: d1 e3                    shl bx, 1
+00c7a2: d1 e3                    shl bx, 1
+00c7a4: 03 5e f0                 add bx, word ptr [bp - 0x10]
+00c7a7: 03 5e 12                 add bx, word ptr [bp + 0x12]
+00c7aa: 8e 46 14                 mov es, word ptr [bp + 0x14]
+00c7ad: 2b 5e f2                 sub bx, word ptr [bp - 0xe]
+00c7b0: cd 3c d9 07              fld dword [bx]
+00c7b4: c4 5e 76                 les bx, ptr [bp + 0x76]
+00c7b7: cd 3c dd 1f              fstp qword [bx]
+00c7bb: cd 3d                    fistp dx:ax (emu)
+00c7bd: 83 3e 98 4d 00           cmp word ptr [0x4d98], 0
+00c7c2: 7d 03                    jge 0xc7c7
+00c7c4: e9 8e 00                 jmp 0xc855
+00c7c7: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c7ca: f7 66 d6                 mul word ptr [bp - 0x2a]
+00c7cd: 8b f0                    mov si, ax
+00c7cf: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00c7d3: 26 8b 07                 mov ax, word ptr es:[bx]
+00c7d6: d1 e0                    shl ax, 1
+00c7d8: d1 e0                    shl ax, 1
+00c7da: 03 f0                    add si, ax
+00c7dc: 8b 5e d8                 mov bx, word ptr [bp - 0x28]
+00c7df: 03 5e 36                 add bx, word ptr [bp + 0x36]
+00c7e2: 8e 46 38                 mov es, word ptr [bp + 0x38]
+00c7e5: 2b 5e da                 sub bx, word ptr [bp - 0x26]
+00c7e8: 8b 3e 52 4d              mov di, word ptr [0x4d52]
+00c7ec: d1 e7                    shl di, 1
+00c7ee: d1 e7                    shl di, 1
+00c7f0: 03 7e f0                 add di, word ptr [bp - 0x10]
+00c7f3: 8d 00                    lea ax, [bx + si]
+00c7f5: 8c c2                    mov dx, es
+00c7f7: 03 7e 12                 add di, word ptr [bp + 0x12]
+00c7fa: 8e 46 14                 mov es, word ptr [bp + 0x14]
+00c7fd: 2b 7e f2                 sub di, word ptr [bp - 0xe]
+00c800: cd 3c d9 05              fld dword [di]
+00c804: c4 5e 76                 les bx, ptr [bp + 0x76]
+00c807: cd 3c dc 37              fdiv qword [bx]
+00c80b: cd 38 2e 02 2e           fsubr qword [2e02]
+00c810: 8b d8                    mov bx, ax
+00c812: 8e c2                    mov es, dx
+00c814: cd 3c d9 1f              fstp dword [bx]
+00c818: cd 3d                    fistp dx:ax (emu)
+00c81a: 8b 5e d8                 mov bx, word ptr [bp - 0x28]
+00c81d: d1 e3                    shl bx, 1
+00c81f: 03 5e 36                 add bx, word ptr [bp + 0x36]
+00c822: 2b 5e da                 sub bx, word ptr [bp - 0x26]
+00c825: 8b 3e 52 4d              mov di, word ptr [0x4d52]
+00c829: d1 e7                    shl di, 1
+00c82b: d1 e7                    shl di, 1
+00c82d: 03 7e f0                 add di, word ptr [bp - 0x10]
+00c830: 8d 00                    lea ax, [bx + si]
+00c832: 03 7e 12                 add di, word ptr [bp + 0x12]
+00c835: 8e 46 14                 mov es, word ptr [bp + 0x14]
+00c838: 2b 7e f2                 sub di, word ptr [bp - 0xe]
+00c83b: cd 3c d9 05              fld dword [di]
+00c83f: c4 5e 76                 les bx, ptr [bp + 0x76]
+00c842: cd 3c dc 37              fdiv qword [bx]
+00c846: cd 38 2e 02 2e           fsubr qword [2e02]
+00c84b: 8b d8                    mov bx, ax
+00c84d: 8e c2                    mov es, dx
+00c84f: cd 3c d9 1f              fstp dword [bx]
+00c853: cd 3d                    fistp dx:ax (emu)
+00c855: 8b 46 e8                 mov ax, word ptr [bp - 0x18]
+00c858: d1 e0                    shl ax, 1
+00c85a: 03 46 1a                 add ax, word ptr [bp + 0x1a]
+00c85d: 8b 56 1c                 mov dx, word ptr [bp + 0x1c]
+00c860: 2b 46 ea                 sub ax, word ptr [bp - 0x16]
+00c863: 05 04 00                 add ax, 4
+00c866: 52                       push dx
+00c867: 50                       push ax
+00c868: 52                       push dx
+00c869: ff 76 1a                 push word ptr [bp + 0x1a]
+00c86c: 8b 46 ec                 mov ax, word ptr [bp - 0x14]
+00c86f: d1 e0                    shl ax, 1
+00c871: 03 46 16                 add ax, word ptr [bp + 0x16]
+00c874: 8b 56 18                 mov dx, word ptr [bp + 0x18]
+00c877: 2b 46 ee                 sub ax, word ptr [bp - 0x12]
+00c87a: 05 04 00                 add ax, 4
+00c87d: 52                       push dx
+00c87e: 50                       push ax
+00c87f: 52                       push dx
+00c880: ff 76 16                 push word ptr [bp + 0x16]
+00c883: b8 52 4d                 mov ax, 0x4d52
+00c886: 1e                       push ds
+00c887: 50                       push ax
+00c888: b8 96 4d                 mov ax, 0x4d96
+00c88b: 1e                       push ds
+00c88c: 50                       push ax
+00c88d: 9a 47 20 f9 0f           lcall 0xff9, 0x2047
+00c892: c4 9e 9e 00              les bx, ptr [bp + 0x9e]
+00c896: 26 8b 07                 mov ax, word ptr es:[bx]
+00c899: 26 0b 47 02              or ax, word ptr es:[bx + 2]
+00c89d: 75 03                    jne 0xc8a2
+00c89f: e9 ac 00                 jmp 0xc94e
+00c8a2: 83 3e 50 4d 00           cmp word ptr [0x4d50], 0
+00c8a7: 7e 03                    jle 0xc8ac
+00c8a9: e9 a2 00                 jmp 0xc94e
+00c8ac: 7c 0a                    jl 0xc8b8
+00c8ae: 83 3e 4e 4d 01           cmp word ptr [0x4d4e], 1
+00c8b3: 76 03                    jbe 0xc8b8
+00c8b5: e9 96 00                 jmp 0xc94e
+00c8b8: c7 06 48 4d 02 00        mov word ptr [0x4d48], 2
+00c8be: c7 06 4a 4d 00 00        mov word ptr [0x4d4a], 0
+00c8c4: a1 52 4d                 mov ax, word ptr [0x4d52]
+00c8c7: 89 46 b0                 mov word ptr [bp - 0x50], ax
+00c8ca: c7 06 4c 4d 01 00        mov word ptr [0x4d4c], 1
+00c8d0: a1 4c 4d                 mov ax, word ptr [0x4d4c]
+00c8d3: 39 46 b0                 cmp word ptr [bp - 0x50], ax
+00c8d6: 7c 76                    jl 0xc94e
+00c8d8: 99                       cdq 
+00c8d9: c4 9e 86 00              les bx, ptr [bp + 0x86]
+00c8dd: 26 39 57 02              cmp word ptr es:[bx + 2], dx
+00c8e1: 7c 65                    jl 0xc948
+00c8e3: 7f 05                    jg 0xc8ea
+00c8e5: 26 39 07                 cmp word ptr es:[bx], ax
+00c8e8: 72 5e                    jb 0xc948
+00c8ea: 8b 36 4c 4d              mov si, word ptr [0x4d4c]
+00c8ee: b1 02                    mov cl, 2
+00c8f0: d3 e6                    shl si, cl
+00c8f2: 8b 5e f0                 mov bx, word ptr [bp - 0x10]
+00c8f5: 03 5e 12                 add bx, word ptr [bp + 0x12]
+00c8f8: 8e 46 14                 mov es, word ptr [bp + 0x14]
+00c8fb: 2b 5e f2                 sub bx, word ptr [bp - 0xe]
+00c8fe: 26 8b 00                 mov ax, word ptr es:[bx + si]
+00c901: 26 8b 50 02              mov dx, word ptr es:[bx + si + 2]
+00c905: 8b c8                    mov cx, ax
+00c907: a1 48 4d                 mov ax, word ptr [0x4d48]
+00c90a: 8b da                    mov bx, dx
+00c90c: f7 66 f0                 mul word ptr [bp - 0x10]
+00c90f: 8b d3                    mov dx, bx
+00c911: 8b d8                    mov bx, ax
+00c913: 03 5e 12                 add bx, word ptr [bp + 0x12]
+00c916: 2b 5e f2                 sub bx, word ptr [bp - 0xe]
+00c919: 26 89 08                 mov word ptr es:[bx + si], cx
+00c91c: 26 89 50 02              mov word ptr es:[bx + si + 2], dx
+00c920: 83 3e 98 4d 00           cmp word ptr [0x4d98], 0
+00c925: 7c 21                    jl 0xc948
+00c927: 8b 5e f4                 mov bx, word ptr [bp - 0xc]
+00c92a: 03 5e 0e                 add bx, word ptr [bp + 0xe]
+00c92d: 8e 46 10                 mov es, word ptr [bp + 0x10]
+00c930: 2b 5e f6                 sub bx, word ptr [bp - 0xa]
+00c933: 8b 3e 4c 4d              mov di, word ptr [0x4d4c]
+00c937: 26 8a 01                 mov al, byte ptr es:[bx + di]
+00c93a: 8b 5e f4                 mov bx, word ptr [bp - 0xc]
+00c93d: d1 e3                    shl bx, 1
+00c93f: 03 5e 0e                 add bx, word ptr [bp + 0xe]
+00c942: 2b 5e f6                 sub bx, word ptr [bp - 0xa]
+00c945: 26 88 01                 mov byte ptr es:[bx + di], al
+00c948: ff 06 4c 4d              inc word ptr [0x4d4c]
+00c94c: 71 82                    jno 0xc8d0
+00c94e: a1 d0 39                 mov ax, word ptr [0x39d0]
+00c951: 0b 06 d2 39              or ax, word ptr [0x39d2]
+00c955: 75 60                    jne 0xc9b7
+00c957: c4 9e 9e 00              les bx, ptr [bp + 0x9e]
+00c95b: 26 8b 47 08              mov ax, word ptr es:[bx + 8]
+00c95f: 26 0b 47 0a              or ax, word ptr es:[bx + 0xa]
+00c963: 74 52                    je 0xc9b7
+00c965: 26 83 7f 0a 00           cmp word ptr es:[bx + 0xa], 0
+00c96a: 7f 4b                    jg 0xc9b7
+00c96c: 7c 07                    jl 0xc975
+00c96e: 26 83 7f 08 0a           cmp word ptr es:[bx + 8], 0xa
+00c973: 73 42                    jae 0xc9b7
+00c975: ff b6 80 00              push word ptr [bp + 0x80]
+00c979: ff 76 7e                 push word ptr [bp + 0x7e]
+00c97c: b8 4e 4d                 mov ax, 0x4d4e
+00c97f: 1e                       push ds
+00c980: 50                       push ax
+00c981: ff b6 84 00              push word ptr [bp + 0x84]
+00c985: ff b6 82 00              push word ptr [bp + 0x82]
+00c989: b8 66 4d                 mov ax, 0x4d66
+00c98c: 1e                       push ds
+00c98d: 50                       push ax
+00c98e: ff 76 34                 push word ptr [bp + 0x34]
+00c991: ff 76 32                 push word ptr [bp + 0x32]
+00c994: ff 76 30                 push word ptr [bp + 0x30]
+00c997: ff 76 2e                 push word ptr [bp + 0x2e]
+00c99a: ff 76 2c                 push word ptr [bp + 0x2c]
+00c99d: ff 76 2a                 push word ptr [bp + 0x2a]
+00c9a0: ff 76 28                 push word ptr [bp + 0x28]
+00c9a3: ff 76 26                 push word ptr [bp + 0x26]
+00c9a6: ff 76 24                 push word ptr [bp + 0x24]
+00c9a9: ff 76 22                 push word ptr [bp + 0x22]
+00c9ac: ff 76 20                 push word ptr [bp + 0x20]
+00c9af: ff 76 1e                 push word ptr [bp + 0x1e]
+00c9b2: 9a 20 26 f9 0f           lcall 0xff9, 0x2620
+00c9b7: 83 06 4e 4d 01           add word ptr [0x4d4e], 1
+00c9bc: 83 16 50 4d 00           adc word ptr [0x4d50], 0
+00c9c1: 71 03                    jno 0xc9c6
+00c9c3: e9 94 03                 jmp 0xcd5a
+00c9c6: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00c9c9: 8b 16 50 4d              mov dx, word ptr [0x4d50]
+00c9cd: 39 56 b6                 cmp word ptr [bp - 0x4a], dx
+00c9d0: 7d 03                    jge 0xc9d5
+00c9d2: e9 85 03                 jmp 0xcd5a
+00c9d5: 7f 08                    jg 0xc9df
+00c9d7: 39 46 b4                 cmp word ptr [bp - 0x4c], ax
+00c9da: 73 03                    jae 0xc9df
+00c9dc: e9 7b 03                 jmp 0xcd5a
+00c9df: 2b c0                    sub ax, ax
+00c9e1: a3 9c 4d                 mov word ptr [0x4d9c], ax
+00c9e4: a3 9a 4d                 mov word ptr [0x4d9a], ax
+00c9e7: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00c9eb: 26 8b 1f                 mov bx, word ptr es:[bx]
+00c9ee: d1 e3                    shl bx, 1
+00c9f0: d1 e3                    shl bx, 1
+00c9f2: 03 5e ca                 add bx, word ptr [bp - 0x36]
+00c9f5: 03 5e 42                 add bx, word ptr [bp + 0x42]
+00c9f8: 8e 46 44                 mov es, word ptr [bp + 0x44]
+00c9fb: 2b 5e cc                 sub bx, word ptr [bp - 0x34]
+00c9fe: cd 3c d9 07              fld dword [bx]
+00ca02: cd 39 1e 80 3b           fstp qword [3b80]
+00ca07: cd 3d                    fistp dx:ax (emu)
+00ca09: bf 90 3b                 mov di, 0x3b90
+00ca0c: be 80 3b                 mov si, 0x3b80
+00ca0f: 1e                       push ds
+00ca10: 07                       pop es
+00ca11: a5                       movsw word ptr es:[di], word ptr [si]
+00ca12: a5                       movsw word ptr es:[di], word ptr [si]
+00ca13: a5                       movsw word ptr es:[di], word ptr [si]
+00ca14: a5                       movsw word ptr es:[di], word ptr [si]
+00ca15: 83 3e 4e 4d 01           cmp word ptr [0x4d4e], 1
+00ca1a: 75 07                    jne 0xca23
+00ca1c: 83 3e 50 4d 00           cmp word ptr [0x4d50], 0
+00ca21: 74 5e                    je 0xca81
+00ca23: c4 5e 76                 les bx, ptr [bp + 0x76]
+00ca26: cd 3c dd 07              fld qword [bx]
+00ca2a: cd 35 1e 86 4d           fstp dword [4d86]
+00ca2f: cd 3d                    fistp dx:ax (emu)
+00ca31: a1 86 4d                 mov ax, word ptr [0x4d86]
+00ca34: 8b 16 88 4d              mov dx, word ptr [0x4d88]
+00ca38: a3 8a 4d                 mov word ptr [0x4d8a], ax
+00ca3b: 89 16 8c 4d              mov word ptr [0x4d8c], dx
+00ca3f: 83 3e 56 4d 01           cmp word ptr [0x4d56], 1
+00ca44: 75 13                    jne 0xca59
+00ca46: 83 3e 58 4d 00           cmp word ptr [0x4d58], 0
+00ca4b: 75 0c                    jne 0xca59
+00ca4d: c7 06 6e 4d 01 00        mov word ptr [0x4d6e], 1
+00ca53: c7 06 70 4d 00 00        mov word ptr [0x4d70], 0
+00ca59: 83 3e 58 4d 00           cmp word ptr [0x4d58], 0
+00ca5e: 7c 15                    jl 0xca75
+00ca60: 7f 07                    jg 0xca69
+00ca62: 83 3e 56 4d 01           cmp word ptr [0x4d56], 1
+00ca67: 76 0c                    jbe 0xca75
+00ca69: c7 06 6e 4d fd ff        mov word ptr [0x4d6e], 0xfffd
+00ca6f: c7 06 70 4d ff ff        mov word ptr [0x4d70], 0xffff
+00ca75: c7 06 fc 39 01 00        mov word ptr [0x39fc], 1
+00ca7b: c7 06 fe 39 00 00        mov word ptr [0x39fe], 0
+00ca81: c7 46 fe 01 00           mov word ptr [bp - 2], 1
+00ca86: b8 4e 4d                 mov ax, 0x4d4e
+00ca89: 1e                       push ds
+00ca8a: 50                       push ax
+00ca8b: ff b6 b0 00              push word ptr [bp + 0xb0]
+00ca8f: ff b6 ae 00              push word ptr [bp + 0xae]
+00ca93: ff b6 ac 00              push word ptr [bp + 0xac]
+00ca97: ff b6 aa 00              push word ptr [bp + 0xaa]
+00ca9b: ff b6 a4 00              push word ptr [bp + 0xa4]
+00ca9f: ff b6 a2 00              push word ptr [bp + 0xa2]
+00caa3: b8 96 4d                 mov ax, 0x4d96
+00caa6: 1e                       push ds
+00caa7: 50                       push ax
+00caa8: 8b 86 9e 00              mov ax, word ptr [bp + 0x9e]
+00caac: 8b 96 a0 00              mov dx, word ptr [bp + 0xa0]
+00cab0: 05 14 00                 add ax, 0x14
+00cab3: 52                       push dx
+00cab4: 50                       push ax
+00cab5: b8 1c 4d                 mov ax, 0x4d1c
+00cab8: 1e                       push ds
+00cab9: 50                       push ax
+00caba: b8 6e 4d                 mov ax, 0x4d6e
+00cabd: 1e                       push ds
+00cabe: 50                       push ax
+00cabf: b8 7a 4d                 mov ax, 0x4d7a
+00cac2: 1e                       push ds
+00cac3: 50                       push ax
+00cac4: ff b6 8c 00              push word ptr [bp + 0x8c]
+00cac8: ff b6 8a 00              push word ptr [bp + 0x8a]
+00cacc: ff 76 6c                 push word ptr [bp + 0x6c]
+00cacf: ff 76 6a                 push word ptr [bp + 0x6a]
+00cad2: ff 76 68                 push word ptr [bp + 0x68]
+00cad5: ff 76 66                 push word ptr [bp + 0x66]
+00cad8: ff 76 64                 push word ptr [bp + 0x64]
+00cadb: ff 76 62                 push word ptr [bp + 0x62]
+00cade: ff 76 60                 push word ptr [bp + 0x60]
+00cae1: ff 76 5e                 push word ptr [bp + 0x5e]
+00cae4: ff 76 5c                 push word ptr [bp + 0x5c]
+00cae7: ff 76 5a                 push word ptr [bp + 0x5a]
+00caea: ff 76 58                 push word ptr [bp + 0x58]
+00caed: ff 76 56                 push word ptr [bp + 0x56]
+00caf0: ff 76 54                 push word ptr [bp + 0x54]
+00caf3: ff 76 52                 push word ptr [bp + 0x52]
+00caf6: ff 76 50                 push word ptr [bp + 0x50]
+00caf9: ff 76 4e                 push word ptr [bp + 0x4e]
+00cafc: ff 76 4c                 push word ptr [bp + 0x4c]
+00caff: ff 76 4a                 push word ptr [bp + 0x4a]
+00cb02: b8 62 4d                 mov ax, 0x4d62
+00cb05: 1e                       push ds
+00cb06: 50                       push ax
+00cb07: b8 e8 3e                 mov ax, 0x3ee8
+00cb0a: 1e                       push ds
+00cb0b: 50                       push ax
+00cb0c: ff 76 7c                 push word ptr [bp + 0x7c]
+00cb0f: ff 76 7a                 push word ptr [bp + 0x7a]
+00cb12: b8 7e 4d                 mov ax, 0x4d7e
+00cb15: 1e                       push ds
+00cb16: 50                       push ax
+00cb17: b8 86 4d                 mov ax, 0x4d86
+00cb1a: 1e                       push ds
+00cb1b: 50                       push ax
+00cb1c: b8 8e 4d                 mov ax, 0x4d8e
+00cb1f: 1e                       push ds
+00cb20: 50                       push ax
+00cb21: b8 72 4d                 mov ax, 0x4d72
+00cb24: 1e                       push ds
+00cb25: 50                       push ax
+00cb26: ff 76 14                 push word ptr [bp + 0x14]
+00cb29: ff 76 12                 push word ptr [bp + 0x12]
+00cb2c: ff 76 1c                 push word ptr [bp + 0x1c]
+00cb2f: ff 76 1a                 push word ptr [bp + 0x1a]
+00cb32: ff 76 18                 push word ptr [bp + 0x18]
+00cb35: ff 76 16                 push word ptr [bp + 0x16]
+00cb38: ff 76 10                 push word ptr [bp + 0x10]
+00cb3b: ff 76 0e                 push word ptr [bp + 0xe]
+00cb3e: 8b 86 9e 00              mov ax, word ptr [bp + 0x9e]
+00cb42: 05 20 00                 add ax, 0x20
+00cb45: 52                       push dx
+00cb46: 50                       push ax
+00cb47: 8b 86 9e 00              mov ax, word ptr [bp + 0x9e]
+00cb4b: 05 24 00                 add ax, 0x24
+00cb4e: 52                       push dx
+00cb4f: 50                       push ax
+00cb50: 8d 46 fc                 lea ax, [bp - 4]
+00cb53: a3 44 19                 mov word ptr [0x1944], ax
+00cb56: 8c 16 46 19              mov word ptr [0x1946], ss
+00cb5a: 9a 59 4c f9 0f           lcall 0xff9, 0x4c59
+00cb5f: a1 d0 39                 mov ax, word ptr [0x39d0]
+00cb62: 0b 06 d2 39              or ax, word ptr [0x39d2]
+00cb66: 74 16                    je 0xcb7e
+00cb68: 83 3e 58 4d 00           cmp word ptr [0x4d58], 0
+00cb6d: 7e 03                    jle 0xcb72
+00cb6f: e9 46 01                 jmp 0xccb8
+00cb72: 7c 0a                    jl 0xcb7e
+00cb74: 83 3e 56 4d 01           cmp word ptr [0x4d56], 1
+00cb79: 76 03                    jbe 0xcb7e
+00cb7b: e9 3a 01                 jmp 0xccb8
+00cb7e: 83 3e 98 4d 00           cmp word ptr [0x4d98], 0
+00cb83: 7c 5f                    jl 0xcbe4
+00cb85: a1 d0 39                 mov ax, word ptr [0x39d0]
+00cb88: 0b 06 d2 39              or ax, word ptr [0x39d2]
+00cb8c: 74 39                    je 0xcbc7
+00cb8e: b8 50 69                 mov ax, 0x6950
+00cb91: ba 0f 00                 mov dx, 0xf
+00cb94: 52                       push dx
+00cb95: 50                       push ax
+00cb96: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00cb99: 8b 16 50 4d              mov dx, word ptr [0x4d50]
+00cb9d: 8b c8                    mov cx, ax
+00cb9f: 8b da                    mov bx, dx
+00cba1: d1 e0                    shl ax, 1
+00cba3: d1 d2                    rcl dx, 1
+00cba5: d1 e0                    shl ax, 1
+00cba7: d1 d2                    rcl dx, 1
+00cba9: 03 c1                    add ax, cx
+00cbab: 13 d3                    adc dx, bx
+00cbad: d1 e0                    shl ax, 1
+00cbaf: d1 d2                    rcl dx, 1
+00cbb1: 03 06 d0 39              add ax, word ptr [0x39d0]
+00cbb5: 13 16 d2 39              adc dx, word ptr [0x39d2]
+00cbb9: 52                       push dx
+00cbba: 50                       push ax
+00cbbb: 9a 5a 0d 73 2e           lcall 0x2e73, 0xd5a
+00cbc0: a3 d0 39                 mov word ptr [0x39d0], ax
+00cbc3: 89 16 d2 39              mov word ptr [0x39d2], dx
+00cbc7: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00cbcb: 26 8b 37                 mov si, word ptr es:[bx]
+00cbce: d1 e6                    shl si, 1
+00cbd0: d1 e6                    shl si, 1
+00cbd2: c4 5e 0a                 les bx, ptr [bp + 0xa]
+00cbd5: a1 d0 39                 mov ax, word ptr [0x39d0]
+00cbd8: 8b 16 d2 39              mov dx, word ptr [0x39d2]
+00cbdc: 26 89 40 fc              mov word ptr es:[bx + si - 4], ax
+00cbe0: 26 89 50 fe              mov word ptr es:[bx + si - 2], dx
+00cbe4: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00cbe8: 26 8b 07                 mov ax, word ptr es:[bx]
+00cbeb: d1 e0                    shl ax, 1
+00cbed: d1 e0                    shl ax, 1
+00cbef: 8b f0                    mov si, ax
+00cbf1: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00cbf4: f7 66 c6                 mul word ptr [bp - 0x3a]
+00cbf7: 8b d8                    mov bx, ax
+00cbf9: 03 5e 46                 add bx, word ptr [bp + 0x46]
+00cbfc: 8e 46 48                 mov es, word ptr [bp + 0x48]
+00cbff: 2b 5e c8                 sub bx, word ptr [bp - 0x38]
+00cc02: cd 39 06 80 3b           fld qword [3b80]
+00cc07: cd 3c d9 18              fstp dword [bx+si]
+00cc0b: cd 3d                    fistp dx:ax (emu)
+00cc0d: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00cc10: f7 66 ca                 mul word ptr [bp - 0x36]
+00cc13: 8b d8                    mov bx, ax
+00cc15: 03 5e 42                 add bx, word ptr [bp + 0x42]
+00cc18: 8e 46 44                 mov es, word ptr [bp + 0x44]
+00cc1b: 2b 5e cc                 sub bx, word ptr [bp - 0x34]
+00cc1e: cd 39 06 80 3b           fld qword [3b80]
+00cc23: cd 3c d9 18              fstp dword [bx+si]
+00cc27: cd 3d                    fistp dx:ax (emu)
+00cc29: a1 d0 39                 mov ax, word ptr [0x39d0]
+00cc2c: 0b 06 d2 39              or ax, word ptr [0x39d2]
+00cc30: 74 03                    je 0xcc35
+00cc32: e9 20 fc                 jmp 0xc855
+00cc35: 8b 3e 52 4d              mov di, word ptr [0x4d52]
+00cc39: d1 e7                    shl di, 1
+00cc3b: c4 5e 62                 les bx, ptr [bp + 0x62]
+00cc3e: 26 8b 71 fe              mov si, word ptr es:[bx + di - 2]
+00cc42: 8b c6                    mov ax, si
+00cc44: 99                       cdq 
+00cc45: 33 c2                    xor ax, dx
+00cc47: 2b c2                    sub ax, dx
+00cc49: f7 66 be                 mul word ptr [bp - 0x42]
+00cc4c: 8b d8                    mov bx, ax
+00cc4e: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00cc51: b1 03                    mov cl, 3
+00cc53: d3 e0                    shl ax, cl
+00cc55: 03 d8                    add bx, ax
+00cc57: 03 5e 5e                 add bx, word ptr [bp + 0x5e]
+00cc5a: 8e 46 60                 mov es, word ptr [bp + 0x60]
+00cc5d: 2b 5e c0                 sub bx, word ptr [bp - 0x40]
+00cc60: cd 3c dd 07              fld qword [bx]
+00cc64: 89 76 b2                 mov word ptr [bp - 0x4e], si
+00cc67: cd 3b 46 b2              fild word [bp]-4e
+00cc6b: 9a 43 3e 73 2e           lcall 0x2e73, 0x3e43
+00cc70: cd 39 1e 20 4d           fstp qword [4d20]
+00cc75: cd 3d                    fistp dx:ax (emu)
+00cc77: c4 9e a6 00              les bx, ptr [bp + 0xa6]
+00cc7b: 26 8b 07                 mov ax, word ptr es:[bx]
+00cc7e: 26 0b 47 02              or ax, word ptr es:[bx + 2]
+00cc82: 75 03                    jne 0xcc87
+00cc84: e9 35 fa                 jmp 0xc6bc
+00cc87: ff 76 70                 push word ptr [bp + 0x70]
+00cc8a: ff 76 6e                 push word ptr [bp + 0x6e]
+00cc8d: b8 20 4d                 mov ax, 0x4d20
+00cc90: 1e                       push ds
+00cc91: 50                       push ax
+00cc92: b8 78 3a                 mov ax, 0x3a78
+00cc95: 1e                       push ds
+00cc96: 50                       push ax
+00cc97: b8 80 3a                 mov ax, 0x3a80
+00cc9a: 1e                       push ds
+00cc9b: 50                       push ax
+00cc9c: b8 68 3a                 mov ax, 0x3a68
+00cc9f: 1e                       push ds
+00cca0: 50                       push ax
+00cca1: b8 70 3a                 mov ax, 0x3a70
+00cca4: 1e                       push ds
+00cca5: 50                       push ax
+00cca6: b8 10 3a                 mov ax, 0x3a10
+00cca9: 1e                       push ds
+00ccaa: 50                       push ax
+00ccab: b8 38 3a                 mov ax, 0x3a38
+00ccae: 1e                       push ds
+00ccaf: 50                       push ax
+00ccb0: 90                       nop 
+00ccb1: 0e                       push cs
+00ccb2: e8 e2 cb                 call 0x9897
+00ccb5: e9 2c fa                 jmp 0xc6e4
+00ccb8: 83 06 9a 4d 01           add word ptr [0x4d9a], 1
+00ccbd: 83 16 9c 4d 00           adc word ptr [0x4d9c], 0
+00ccc2: 83 3e 9c 4d 00           cmp word ptr [0x4d9c], 0
+00ccc7: 7c 51                    jl 0xcd1a
+00ccc9: 7f 07                    jg 0xccd2
+00cccb: 83 3e 9a 4d 14           cmp word ptr [0x4d9a], 0x14
+00ccd0: 76 48                    jbe 0xcd1a
+00ccd2: b8 50 69                 mov ax, 0x6950
+00ccd5: ba 0f 00                 mov dx, 0xf
+00ccd8: 52                       push dx
+00ccd9: 50                       push ax
+00ccda: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00ccdd: 8b 16 50 4d              mov dx, word ptr [0x4d50]
+00cce1: 8b c8                    mov cx, ax
+00cce3: 8b da                    mov bx, dx
+00cce5: d1 e0                    shl ax, 1
+00cce7: d1 d2                    rcl dx, 1
+00cce9: d1 e0                    shl ax, 1
+00cceb: d1 d2                    rcl dx, 1
+00cced: 03 c1                    add ax, cx
+00ccef: 13 d3                    adc dx, bx
+00ccf1: d1 e0                    shl ax, 1
+00ccf3: d1 d2                    rcl dx, 1
+00ccf5: 03 06 d0 39              add ax, word ptr [0x39d0]
+00ccf9: 13 16 d2 39              adc dx, word ptr [0x39d2]
+00ccfd: 52                       push dx
+00ccfe: 50                       push ax
+00ccff: 9a 5a 0d 73 2e           lcall 0x2e73, 0xd5a
+00cd04: c4 9e 92 00              les bx, ptr [bp + 0x92]
+00cd08: 26 8b 37                 mov si, word ptr es:[bx]
+00cd0b: d1 e6                    shl si, 1
+00cd0d: d1 e6                    shl si, 1
+00cd0f: c4 5e 0a                 les bx, ptr [bp + 0xa]
+00cd12: 26 89 40 fc              mov word ptr es:[bx + si - 4], ax
+00cd16: 26 89 50 fe              mov word ptr es:[bx + si - 2], dx
+00cd1a: 83 3e 9c 4d 00           cmp word ptr [0x4d9c], 0
+00cd1f: 7c 09                    jl 0xcd2a
+00cd21: 7f 37                    jg 0xcd5a
+00cd23: 83 3e 9a 4d 14           cmp word ptr [0x4d9a], 0x14
+00cd28: 77 30                    ja 0xcd5a
+00cd2a: a1 4e 4d                 mov ax, word ptr [0x4d4e]
+00cd2d: f7 66 ca                 mul word ptr [bp - 0x36]
+00cd30: 8b d8                    mov bx, ax
+00cd32: c4 b6 92 00              les si, ptr [bp + 0x92]
+00cd36: 26 8b 04                 mov ax, word ptr es:[si]
+00cd39: d1 e0                    shl ax, 1
+00cd3b: d1 e0                    shl ax, 1
+00cd3d: 03 d8                    add bx, ax
+00cd3f: 03 5e 42                 add bx, word ptr [bp + 0x42]
+00cd42: 8e 46 44                 mov es, word ptr [bp + 0x44]
+00cd45: 2b 5e cc                 sub bx, word ptr [bp - 0x34]
+00cd48: cd 35 06 0a 2e           fld dword [2e0a]
+00cd4d: cd 3c d8 0f              fmul dword [bx]
+00cd51: cd 3c d9 1f              fstp dword [bx]
+00cd55: cd 3d                    fistp dx:ax (emu)
+00cd57: e9 8d fc                 jmp 0xc9e7
+00cd5a: 5e                       pop si
+00cd5b: 5f                       pop di
+00cd5c: 8b e5                    mov sp, bp
+00cd5e: 5d                       pop bp
+00cd5f: ca ac 00                 retf 0xac

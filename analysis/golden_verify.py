@@ -471,7 +471,7 @@ def arcsec_of_ddmmss(value: float) -> float:
 
 
 def near_object_axial_fan(system, wl: float, zones, na: float,
-                          z_obj: float) -> list:
+                          z_obj: float, wave_kappa: dict = None) -> list:
     """Осевой веер ближнего предмета (P6.2): лучи из точки предмета
     (0, 0, z_obj — f64@0x4C) под углом ``u = arcsin(zone·NA)`` к оси —
     OPAL Ax = sin NA габаритной строки (ST4 0.125, досье §3.7). Мнимый
@@ -487,7 +487,18 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
     P4 у дальнего предмета), афокальный выход (|u'|→0: ST4/LAB6_GAS —
     предмет в переднем фокусе) — плоскость выходного зрачка (досье
     §3.7; вергенция ~1e-5 рад — любая дальняя опора эквивалентна).
+
+    Мнимое ИЗОБРАЖЕНИЕ (L_p < 0) с ``wave_kappa``-таблицей (R1,
+    REVERSE_OPALDIS §2.4): опора OPAL — не гауссова сфера, а
+    пер-поверхностное замыкание марша Коддингтона
+    ``W₂ += QF(X,Y)·mixed/2`` (хвост 0xd074, mixed = [3C98]/(u_m·u_s²));
+    в эффективной квадратике на плоскости последней поверхности это
+    ``κ(zone,λ)·y²/2`` с κ = κ0 + κ2·zone² (мнимое изображение —
+    центровка на вершину z_last, как прод/попер P6). Таблица
+    ``{wl: (κ0, κ2)}`` — решена из банка; якорь C_eff = z_last+1/κ0
+    не параксиален (мнимое — 3-й порядок знаменателя mixed).
     """
+
     from ray_tracing import Ray, trace_ray_through_system
     from analysis.aberrations import (_air_exit_direction,
                                       _opl_to_reference_sphere)
@@ -522,10 +533,23 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         return _opl_to_reference_sphere(res.opl, res.path[-1], d,
                                         center, r_ref)
 
+    def _opl_to_zlast(res):
+        """OPL луча до ПЛОСКОСТИ вершины последней поверхности (по
+        терминальному воздушному сегменту) — опора мнимого изображения."""
+        d = _air_exit_direction(system, res, wl)
+        return res.opl + (z_last - res.path[-1][2]) / d[2]
+
+    # R1 (REVERSE_OPALDIS §2.4): мнимое изображение + таблица κ — опора
+    # веера = плоскость z_last, замыкание = κ(zone,λ)·y²/2
+    virtual_kappa = _virtual_wave_kappa(wave_kappa, wl) \
+        if (wave_kappa and L_p is not None and L_p < 0.0) else None
+
     chief = trace_ray_through_system(
         system, Ray(0.0, 0.0, z0_par if z_obj >= 0.0 else z_obj,
                     0.0, 0.0, 1.0), wl)
     opl_chief = _opl_close(chief) if chief.success else None
+    opl_chief_zl = _opl_to_zlast(chief) if (
+        chief.success and virtual_kappa) else None
     fan = []
     for zone in zones:
         su = na * zone
@@ -555,12 +579,21 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         slope = (last[1] - prev[1]) / dz if abs(dz) > 1e-12 else None
         y_exit, z_exit = last[1], last[2]
         opl = _opl_close(res)
+        if virtual_kappa and opl_chief_zl is not None:
+            # R1: замыкание марша на плоскости z_last — эффективная
+            # квадратика κ(zone,λ)·y²/2 (мнимое изображение)
+            k0, k2 = virtual_kappa
+            opl = (_opl_to_zlast(res) - opl_chief_zl
+                   + (k0 + k2 * zone * zone) * y_exit * y_exit / 2.0)
+            opl_chief_ref = 0.0
+        else:
+            opl_chief_ref = opl_chief
         row.update({
             'ok': True, 'y_exit': y_exit, 'z_exit': z_exit, 'slope': slope,
             'L': (z_exit - y_exit / slope - z_last
                   if slope is not None and abs(slope) > 1e-15 else None),
-            'wave': ((opl - opl_chief) / (wl * 1e-3)
-                     if None not in (opl, opl_chief) else None),
+            'wave': ((opl - opl_chief_ref) / (wl * 1e-3)
+                     if None not in (opl, opl_chief_ref) else None),
         })
         if slope is not None:
             row['y_pupil'] = y_exit + slope * ((z_last + sp_prime) - z_exit)

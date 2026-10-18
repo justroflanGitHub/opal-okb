@@ -48,7 +48,7 @@ import sys
 
 from analysis.golden_verify import (  # noqa: E402
     parse_golden_prn, parse_golden_opj, opj_to_system, _n_media,
-    paraxial_of, _paraxial_ray, _GOLDEN_DOS,
+    _GOLDEN_DOS,
 )
 
 BANK_DIR = os.path.join(os.path.dirname(__file__), 'reverse_data',
@@ -216,7 +216,13 @@ def march_ray(system, wl, media, res, semis):
 # сверка с банком: строка → причина остатка
 # --------------------------------------------------------------------------
 def march_report(name, verbose=True):
-    """Таблица зон: банк, порт-ОPL-часть марша, кромка/TIR, причина."""
+    """Таблица зон: банк, ΔW₂(OPL)-часть марша, кромка/TIR, причина."""
+    from analysis.golden_verify import compare_system
+    cmp_rows = compare_system(name)['rows']
+    verd_by_zone = {}
+    for r in cmp_rows:
+        if r[1] == 'волновые':
+            verd_by_zone[round(r[2], 4)] = r[7]
     prn, opj, system, wl, near, ax_semi, na, wave_rows = fan_context(name)
     media = _n_media(system, wl)
     semis = surface_semis(prn, wl)
@@ -236,13 +242,18 @@ def march_report(name, verbose=True):
         if st['tir_surf'] is not None:
             causes.append(f'TIR@пов{st["tir_surf"]} — зеркальная ветка '
                           'марша (0xd6d4), порт не имеет зеркальной трубы')
-        if st['rim_max'] > 0.97:
+        if 0.97 < st['rim_max'] <= 1.05:
             causes.append(f'кромка пов{st["rim_surf"]} '
                           f'({st["rim_max"]:.3f}·габарит) — приповерхностная'
                           ' ветка [4dca]')
         if zone == 1.0 and not causes and opj['img_type'] == 0:
             causes.append('зона 1.0 у афокала — предел трубы '
                           '(пин-тест test_kursovik_march_tube_limit_ray)')
+        verd = verd_by_zone.get(round(zone, 4))
+        if not causes and verd in ('RED', 'YELLOW'):
+            causes.append('замыкание тензора/трубы λ-уровня — семена '
+                          '[4d20]/[4c4a] рантаймовые (ff9:19/0xbe4f), '
+                          'статически недостижимы')
         rows.append({'zone': zone, 'bank': bank, 'dw2_lambda':
                      d_w2 / (wl * 1e-3), **st, 'causes': causes})
     if verbose:
@@ -255,9 +266,12 @@ def march_report(name, verbose=True):
                 print(f"  {r['zone']:>6.3f}  trace fail")
                 continue
             diff = r['bank'] - r['dw2_lambda']
+            # кромка вне окна 0.97–1.05 — габарит несравним (иные
+            # единицы/таблица), в печать не выводим
+            rim = f'{r["rim_max"]:.3f}' if r['rim_max'] <= 1.05 else '—'
             print(f"  {r['zone']:>6.3f} {r['bank']:>10.4f}"
                   f" {r['dw2_lambda']:>11.4f} {diff:>10.4f}"
-                  f" {r['rim_max']:>7.3f} {r['rim_surf'] or '—':>4}"
+                  f" {rim:>7} {r['rim_surf'] or '—':>4}"
                   f" {r['tir_surf'] or '—':>4}  {'; '.join(r['causes'])}")
     return rows
 

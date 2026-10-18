@@ -121,12 +121,22 @@ def fan_context(name, bank_dir=BANK_DIR, opj_dir=_GOLDEN_DOS):
 
 
 def surface_semis(prn, wl):
-    """Пер-поверхностные y-полудиаметры габарита (столбец Ay)."""
-    out = {}
+    """Пер-поверхностные y-полудиаметры габарита (столбец Ay).
+
+    Ключ габарита — строка λ из PRN; при точном совпадении (в допуске
+    0.002) берётся она, иначе максимум по всем λ-таблицам.
+    """
+    exact, any_ = {}, {}
     for (ws, n), row in prn['gabarit'].items():
-        if ws == wl or wl is None:
-            out[n] = max(abs(row.get('Ay', 0.0)), abs(row.get('Ax', 0.0)))
-    return out
+        semi = max(abs(row.get('Ay', 0.0)), abs(row.get('Ax', 0.0)))
+        try:
+            wsf = float(ws.replace(',', '.'))
+        except ValueError:
+            wsf = None
+        any_[n] = max(any_.get(n, 0.0), semi)
+        if wl is not None and wsf is not None and abs(wsf - wl) < 0.002:
+            exact[n] = max(exact.get(n, 0.0), semi)
+    return exact or any_
 
 
 # --------------------------------------------------------------------------
@@ -178,13 +188,19 @@ def march_ray(system, wl, media, res, semis):
         if (tir_surf is None and surf is not None and not is_mirror
                 and n_ref != n_inc and n_ref > 0):
             rad = surf.radius or 0.0
-            zc = (sum(s.thickness for s in system.surfaces[:i])
-                  + (rad if rad else 0.0))
-            ry = hit[1]
-            rn = math.sqrt(ry * ry + (hit[2] - zc) ** 2) or 1.0
-            cos_i = abs((hit[2] - zc) * (p1[2] - p0[2])
-                        + ry * (p1[1] - p0[1])) / (
-                seg * rn) if seg > 1e-12 else 1.0
+            z_v = sum(s.thickness for s in system.surfaces[:i])
+            if seg > 1e-12:
+                dy_u = (p1[1] - p0[1]) / seg
+                dz_u = (p1[2] - p0[2]) / seg
+            else:
+                dy_u, dz_u = 0.0, 1.0
+            if rad == 0.0:
+                cos_i = abs(dz_u)             # плоская: нормаль вдоль z
+            else:
+                zc = z_v + rad                # центр сферы
+                ry = hit[1]
+                rn = math.sqrt(ry * ry + (hit[2] - zc) ** 2) or 1.0
+                cos_i = abs((hit[2] - zc) * dz_u + ry * dy_u) / rn
             cos_i = min(1.0, max(0.0, cos_i))
             if n_inc * n_inc * (1.0 - cos_i * cos_i) > n_ref * n_ref:
                 tir_surf = sidx
@@ -224,9 +240,9 @@ def march_report(name, verbose=True):
             causes.append(f'кромка пов{st["rim_surf"]} '
                           f'({st["rim_max"]:.3f}·габарит) — приповерхностная'
                           ' ветка [4dca]')
-        if zone == 1.0 and abs(st['head_prod'] - 1.0) < 1e-12 and not causes:
-            causes.append('зона 1.0: идентификация луча (см. пин-тест '
-                          'test_kursovik_march_tube_limit_ray)')
+        if zone == 1.0 and not causes and opj['img_type'] == 0:
+            causes.append('зона 1.0 у афокала — предел трубы '
+                          '(пин-тест test_kursovik_march_tube_limit_ray)')
         rows.append({'zone': zone, 'bank': bank, 'dw2_lambda':
                      d_w2 / (wl * 1e-3), **st, 'causes': causes})
     if verbose:

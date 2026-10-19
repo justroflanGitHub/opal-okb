@@ -4,7 +4,7 @@
 > NII OMP / VNTs SAM, USSR) in **Python 3.10+ / PyQt5** — fully verified
 > against the original.
 
-**🇬🇧 English version** | **🇷🇺 [Русская версия](README_RU.md)**
+GB: English version | RU: [Русская версия](README_RU.md)
 
 [![Tests](https://img.shields.io/badge/pytest-1177%20passed%20%2F%208%20skipped-brightgreen)]()
 [![Verification](https://img.shields.io/badge/golden%20bank-307%20GREEN-blue)]()

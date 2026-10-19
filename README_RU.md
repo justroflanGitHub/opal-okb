@@ -1,6 +1,6 @@
 # OPAL-OKB — САПР оптики
 
-GB: [English version](README.md) | RU: Русская версия
+📘 [English version](README.md) | 📗 Русская версия
 
 > An open-source, clean-room reimplementation of **OPAL-PC** (MS-DOS, 1990-е,
 > НИИ ОМП / ВНЦ САМ) on **Python 3.10+ / PyQt5** — с полной верификацией против оригинала.

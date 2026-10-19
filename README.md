@@ -1,176 +1,182 @@
-# OPAL-OKB — САПР оптики
+# OPAL-OKB — Optical CAD
 
-> An open-source, clean-room reimplementation of **OPAL-PC** (MS-DOS, 1990-е,
-> НИИ ОМП / ВНЦ САМ) on **Python 3.10+ / PyQt5** — с полной верификацией против оригинала.
+> An open-source, clean-room reimplementation of **OPAL-PC** (MS-DOS, 1990s,
+> NII OMP / VNTs SAM, USSR) in **Python 3.10+ / PyQt5** — fully verified
+> against the original.
+
+**🇬🇧 English version** | **🇷🇺 [Русская версия](README_RU.md)**
 
 [![Tests](https://img.shields.io/badge/pytest-1177%20passed%20%2F%208%20skipped-brightgreen)]()
 [![Verification](https://img.shields.io/badge/golden%20bank-307%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.24.6-orange)]()
 
-Расчёт, анализ, оптимизация и визуализация оптических систем: линз, объективов,
-окуляров, зеркально-линзовых схем и ГОЭ-голограмм. Оригинальный MS-DOS пакет
-полностью реверс-инжинирен (дизасм Ghidra + DOSBox-стенд), эталонные прогоны
-1997 года воспроизводятся байт-в-байт. Формулы — в [docs/FORMULAS.md](docs/FORMULAS.md).
+Design, analysis, optimization and visualization of optical systems: lenses,
+objectives, eyepieces, catadioptric schemes and holographic optical elements
+(HOE). The original MS-DOS package has been fully reverse-engineered
+(Ghidra disassembly + automated DOSBox rig); reference runs from 1997 are
+reproduced byte-for-byte. Formulas: [docs/FORMULAS.md](docs/FORMULAS.md)
+(Russian).
 
 ## 🤖 Built for agents
 
-Планируется: каждый пункт меню, инструмент и диалог будет запускать команду
-из единого реестра **500+ команд**. UI, CLI, JSON-канал управления и
-MCP-сервер вызывают одни и те же команды — всё, что можно кликнуть мышью,
-сможет сделать скрипт или AI-агент.
+Planned: every menu item, tool and dialog will run a command from a single
+registry of **500+ commands**. The UI, the CLI, the JSON control channel and
+the MCP server all call the same commands — so anything you can click,
+a script or an AI agent can do too.
 
 ---
 
-## Установка и запуск
+## Install & run
 
 ```bash
 pip install PyQt5 numpy
-py main.py
+python main.py
 ```
 
-- Python 3.10+ (рекомендуется 3.13), на Windows — `py` launcher
-- Готовый **OPAL-PC.exe** — в [Releases](https://github.com/justroflanGitHub/opal-okb/releases)
-  (библиотека 700+ систем упакована внутрь, работает из коробки и портативно)
-- Тесты: `py -X utf8 -m pytest -q` — **1177 passed / 8 skipped**
+- Python 3.10+ (3.13 recommended)
+- Ready-to-use **OPAL-PC.exe** — see [Releases](https://github.com/justroflanGitHub/opal-okb/releases)
+  (the 700+ system library is bundled; works out of the box and portably)
+- Tests: `python -X utf8 -m pytest -q` — **1177 passed / 8 skipped**
 
-## Возможности
+## Features
 
-### Расчётное ядро
-- **Параксиальный расчёт** (y-nu): фокусные отрезки, кардинальные точки, зрачки (мм/дптр)
-- **Реальная трассировка лучей**: векторный Снеллиус, TIR, OPL, асферика (коника + полиномы)
-- **Пространственные системы**: наклоны и децентрировки поверхностей, трассировка в локальной СК
-- **Зеркала и катадиоптика**: знаковые конвенции, экранирование, нечётное число отражений
-- **ГОЭ-голограммы**: `SurfaceType.HOLOGRAM` — эффективная кривизна по реверснутому
-  κ(λ)-закону (верифицирована на трёх длинах волн до 0.073 дптр)
-- **Многоволновый расчёт** — до 5 λ, дисперсия Герцбергера + точные `n` из OPAL
+### Computation core
+- **Paraxial analysis** (y-nu): focal segments, cardinal points, pupils (mm/dioptre)
+- **Real ray tracing**: vectorial Snell's law, TIR, OPL, aspheres (conic + polynomials)
+- **Tilted & decentered systems**: exact tracing in local surface coordinates
+- **Mirrors & catadioptrics**: sign conventions, obscuration, odd reflection counts
+- **Holographic optical elements**: `SurfaceType.HOLOGRAM` — effective curvature
+  via the reverse-engineered κ(λ) law (verified to 0.073 dioptre across 3 λ)
+- **Multi-wavelength** — up to 5 λ, Herzberger dispersion + exact OPAL indices
 
-### Библиотека и каталог
-- **83 standalone .OPJ + 13 LBO-библиотек** (LENS 116, OCULAR 76, RUSSAR 84, BINOCUL 22 …
-  ≈ 700 систем): строгий парсер standalone-OPJ (валидирован банком эталонов),
-  LBO-декодер (все поля заголовка, зеркала, smart glass-split)
-- **Каталог стёкол — 891 марка**: ГОСТ, Schott, HOYA, Ohara; диаграмма nd–νd
-- **Ахроматизация** — автоподбор радиусов для пар крон+флинт
+### Library & catalogs
+- **83 standalone .OPJ + 13 LBO libraries** (LENS 116, OCULAR 76, RUSSAR 84,
+  BINOCUL 22 … ≈ 700 systems): strict standalone-OPJ parser (validated against
+  the golden bank), full LBO decoder (mirrors, smart glass-split)
+- **Glass catalog — 891 grades**: GOST, Schott, HOYA, Ohara; nd–νd diagram
+- **Achromatization** — automatic radius matching for crown+flint pairs
 
-### Анализ — 28 вкладок
-Параксиальные · Точечная диаграмма (2D/3D) · Фокус-диаграммы · Осевой пучок 2×2 ·
-поперечные Δy′ · продольные Δs′ · волновая W (OPL) · ЧКХ (геом.+дифр.) ·
-Дисторсия · Астигматизм · Кома · Фокусировка · PSF/PSF 3D · LSF · ESF ·
-Изображение (миры) · ENC · PTF · Топограмма · Габариты/виньетирование ·
-Главные лучи · Цернике (+глоб.) · Волновой фронт 2D/3D · Мира · Таблица лучей ·
-Зейдель SI–SV
+### Analysis — 28 tabs
+Paraxial · Spot diagram (2D/3D) · Through-focus · Axial fan 2×2 · transverse
+Δy′ · longitudinal Δs′ · wavefront W (OPL) · MTF (geometric + diffraction) ·
+Distortion · Astigmatism · Coma · Focusing · PSF / PSF 3D · LSF · ESF ·
+Image simulation (test charts) · ENC · PTF · Topogram · Beam footprint /
+vignetting · Chief rays · Zernike (+ global) · Wavefront map 2D/3D · Bar
+chart · Ray table · Seidel SI–SV
 
-**OPAL-таблицы протокола** (байт-в-байт с оригиналом): TABGL, TABPR2, TABOC1,
-TABOC2, TABBEA (виньетирование/светораспределение), TABESB (световые высоты),
-TABEAP (экранные зоны), ФРТ/ФРЛ/ОПФ/ФКЭ, Штрель (Марешаль + FFT-точный).
+**OPAL protocol tables** (byte-for-byte with the original): TABGL, TABPR2,
+TABOC1, TABOC2, TABBEA (vignetting/illumination), TABESB (beam heights),
+TABEAP (obscuration zones), PSF/LSF/OTF/EE sections, Strehl (Maréchal +
+exact FFT).
 
-### Оптимизация
-- **ЛАП/GTISL** — полный порт оптимизатора OPALLAP: якобиан центральными
-  разностями, демпированные нормальные уравнения Маркардта, лимитер шага,
-  λ-адаптация, istop-коды OPAL, границы штрафами, связи переменных,
-  solve-режим 1×1; входной язык PAR/EQF/MF
-- DLS и Nelder-Mead — для быстрого старта
-- **Подгонка характеристик** (f′, BFD × любой параметр) + диалог с подтверждением
+### Optimization
+- **LAP/GTISL** — a complete port of the OPALLAP optimizer: central-difference
+  Jacobian, damped Marquardt normal equations, step limiter, λ adaptation,
+  OPAL istop codes, penalty bounds, variable linking, 1×1 solve mode;
+  PAR/EQF/MF input language
+- DLS and Nelder-Mead for quick starts
+- **Fit characteristics** (f′, BFD × any parameter) with preview dialog
 
 ### GUI
-Ход лучей в стиле OPAL-PC (чёрный фон/зелёные лучи), хроматические лучи,
-зум/пан/крестокурс, полноэкранный режим; многопоточный расчёт (фаза 1
-мгновенно, фаза 2 — до 8 потоков); протокол .txt; импорт/экспорт .OPJ/.JSON;
-reverse/масштаб/ГОСТ-радиусы.
+OPAL-PC-style ray layout (black background, green rays), chromatic rays,
+zoom/pan/crosshair, fullscreen; multithreaded computation (phase 1 instant,
+phase 2 up to 8 threads); .txt report; .OPJ/.JSON import-export;
+reverse/scale/GOST radii.
 
 ---
 
-## Roadmap реверс-инжиниринга
+## Reverse-engineering roadmap
 
-Мастер-указатель — `analysis/REVERSE_TRACE.md` (§0–§24), план волн —
-`docs/REVERSE_PLAN.md`, досье — `analysis/REVERSE_*.md`.
+Master index — `analysis/REVERSE_TRACE.md` (§0–§24, Russian), wave plan —
+`docs/REVERSE_PLAN.md`, dossiers — `analysis/REVERSE_*.md`.
 
-### ✅ Фаза I — Форматы данных и таблицы (волны 1–7)
+### ✅ Phase I — Data formats & tables (waves 1–7)
 
-- [x] **Бинарные форматы OPAL** — .LBO (заголовок, зеркала, smart glass-split),
-      standalone .OPJ (λ-слоты, положение предмета, диафрагма ND+SD)
-- [x] **10 таблиц протокола байт-в-байт**: TABGL, TABPR2, TABOC1, TABOC2,
-      TABBEA, TABESB, TABEAP + секции ФРТ/ОПФ *(TRACE §11–§19)*
-- [x] **Система единиц OPAL**: «гр.мнсек», зрачковые координаты, мм↔дптр *(REVERSE_NZR)*
-- [x] **Оркестратор Э0–Э19** — карта вызовов расчётного конвейера OPALA *(REVERSE_0746)*
-- [x] **EXEPACK-распаковка OPALA** *(REVERSE_TSR)*
-- [x] **Форматник FORTRAN RTL** — округление HALF_UP, фикс порта *(REVERSE_FMT)*
-- [x] **DOSBox-стенд** — архитектура запуска, .REG, OPALPCX *(REVERSE_G1)*
+- [x] **OPAL binary formats** — .LBO (header, mirrors, smart glass-split),
+      standalone .OPJ (λ-slots, object position, ND+SD stop plane)
+- [x] **10 protocol tables byte-for-byte**: TABGL, TABPR2, TABOC1, TABOC2,
+      TABBEA, TABESB, TABEAP + PSF/OTF sections *(TRACE §11–§19)*
+- [x] **OPAL unit system**: gr.minsec, pupil coordinates, mm↔dioptre *(REVERSE_NZR)*
+- [x] **Orchestrator E0–E19** — call map of the OPALA computation pipeline *(REVERSE_0746)*
+- [x] **EXEPACK unpacking of OPALA** *(REVERSE_TSR)*
+- [x] **FORTRAN RTL formatter** — HALF_UP rounding, port fix *(REVERSE_FMT)*
+- [x] **DOSBox rig** — boot architecture, .REG, OPALPCX *(REVERSE_G1)*
 
-### ✅ Фаза II — Расчётные модули (волны 8–10)
+### ✅ Phase II — Computation modules (waves 8–10)
 
-- [x] **Дифракционный движок OPALO/OPALOW** — ФРТ, ФРЛ, ЧКХ, ФКЭ,
-      центральное экранирование *(REVERSE_OPALO)*
-- [x] **Цернике OPAVA** — базис 28 членов (n ≤ 12), МНК-разложение *(REVERSE_OPAVA)*
-- [x] **Оптимизатор OPALLAP** — ЛАП/GTISL, istop-коды, входной язык
-      PAR/EQF/MF + починен fit_dialog *(REVERSE_LAP, OPTDOC)*
-- [x] **Словарь стёкол OPALOS** — 71 марка, парсер OPT-файлов *(REVERSE_OS)*
-- [x] **Критерии оптимального фокуса** — min RMS / max Штрель / min пятно /
-      зонный / EQF *(REVERSE_TRACE §20)*
-- [x] **Реальное экранирование** — зоны прохождения, эллипс, сверка Зейделя
+- [x] **Diffraction engine OPALO/OPALOW** — PSF, LSF, MTF, EE,
+      central obscuration *(REVERSE_OPALO)*
+- [x] **Zernike OPAVA** — 28-term basis (n ≤ 12), least-squares fit *(REVERSE_OPAVA)*
+- [x] **Optimizer OPALLAP** — LAP/GTISL, istop codes, PAR/EQF/MF language;
+      fit_dialog repaired *(REVERSE_LAP, OPTDOC)*
+- [x] **Glass dictionary OPALOS** — 71 grades, OPT-file parser *(REVERSE_OS)*
+- [x] **Best-focus criteria** — min RMS / max Strehl / min spot / zonal / EQF *(TRACE §20)*
+- [x] **Real obscuration** — passage zones, ellipse, Seidel cross-check
 
-### ✅ Фаза III — Золотая верификация (G-волна)
+### ✅ Phase III — Golden verification (G-wave)
 
-- [x] **Резидент OPAL.COM** — int 90h-шина 16 сервисов, шифр OPAL.PSP,
-      каталог 25 модулей *(REVERSE_OPCOM §21)*
-- [x] **Золотой запуск** — рецепт DOSBox → .PRN, банк 14 эталонных систем,
-      побайтовое совпадение с архивом 1997 г. *(REVERSE_G2_GOLDEN, G2BANK)*
-- [x] **Сверка порта с банком** — 48 → **307 GREEN**; зрачки z/d/p, ближний
-      предмет, мнимые изображения, кромки, λ-закон печати *(REVERSE_GVERIFY, GFIX)*
-- [x] **Дизасм ядра OPALA** — 789 функций (Ghidra), полный конвейер печати
-      волновой аберрации, двухпроходный веер *(REVERSE_OPALDIS)*
-- [x] **ГОЭ-голограмма GTIE00** — маркер 0xFFFD, блок записи, κ(λ)-закон в порте
-      *(REVERSE_GTIE, GOE_MODEL)*
+- [x] **OPAL.COM resident** — int 90h service bus (16 services), OPAL.PSP
+      cipher, 25-module catalog *(REVERSE_OPCOM §21)*
+- [x] **Golden run** — DOSBox→.PRN recipe, bank of 14 reference systems,
+      byte-exact match with the 1997 archive *(REVERSE_G2_GOLDEN, G2BANK)*
+- [x] **Port vs bank verification** — 48 → **307 GREEN**; pupils z/d/p, near
+      object, virtual images, rim rays, print λ-law *(REVERSE_GVERIFY, GFIX)*
+- [x] **OPALA core disassembly** — 789 functions (Ghidra), full wavefront
+      print pipeline, two-pass fan *(REVERSE_OPALDIS)*
+- [x] **HOE system GTIE00** — 0xFFFD marker, recording block, κ(λ) law
+      in the port *(REVERSE_GTIE, GOE_MODEL)*
 
-### 🔜 Фаза IV — Будущее (по приоритету)
+### 🔜 Phase IV — Future (by priority)
 
-- [ ] **Built for agents** — единый реестр 500+ команд (UI/CLI/JSON/MCP
-      вызывают одно и то же): всё кликабельное доступно скриптам и AI-агентам
-      *(крупная волна)*
-- [ ] **X. x87-эмулятор марша** — мини-эмулятор 8086+x87 над распакованным
-      образом OPALA с ловушками на рантайм-семенах → закрыть последние
-      17 строк банка; альтернатива — DOSBox-debugger *(неделя)*
-- [ ] **OPALTOL «допуски»** — чувствительность к допускам изготовления:
-      последний крупный нереверснутый модуль *(2–3 волны)*
-- [ ] **OPALCALC / OPALEDIT / OPALTRAN / OPALSHOW** — остальные модули пакета
-      (декомпил OPALSHOW уже лежит) *(пачкой)*
-- [ ] **ГОЭ-дифракция честная** — лучевая трассировка через голограмму
-      (сейчас параксиальная κ-модель) *(1 волна)*
-- [ ] **OPAL.COM §21.12** — runtime-зонд первого EXEC *(1 сессия)*
-- [ ] **Расширение банка эталонов** — 14 → 30–50 систем батчем *(1 ночь)*
+- [ ] **Built for agents** — single registry of 500+ commands (UI/CLI/JSON/MCP
+      call the same layer): everything clickable is scriptable and
+      agent-accessible *(major wave)*
+- [ ] **X. x87 march emulator** — mini 8086+x87 emulator over the unpacked
+      OPALA image with traps on runtime seeds → close the last 17 bank rows;
+      alternative: DOSBox debugger *(a week)*
+- [ ] **OPALTOL "tolerances"** — manufacturing sensitivity analysis: the last
+      major unreverse-engineered module *(2–3 waves)*
+- [ ] **OPALCALC / OPALEDIT / OPALTRAN / OPALSHOW** — remaining package
+      modules (OPALSHOW decompile already on disk) *(in batch)*
+- [ ] **True HOE diffraction** — ray tracing through holograms (currently a
+      paraxial κ-model) *(1 wave)*
+- [ ] **OPAL.COM §21.12** — runtime probe of the first EXEC *(1 session)*
+- [ ] **Golden bank extension** — 14 → 30–50 systems batch export *(1 night)*
 
 ---
 
-## Структура проекта
+## Project layout
 
 ```
-main.py                  # GUI (QMainWindow, 28 вкладок анализа)
-domain/                  # модели, параксиалка, пространственные системы
-analysis/                # ядро: трассировка, аберрации, таблицы OPAL,
-                         #   оптимизация ЛАП, psf_mtf, zernike, golden_*
-                         #   + реверс-тулзы _tools/ и досье REVERSE_*.md
-fileio/                  # OPJ/LBO/JSON io, standalone_opj (строгий), protocol
-catalog/                 # библиотека систем, каталог стёкол (891)
-gui/                     # контроллеры, диалоги, виджеты
-native/                  # C++-ядро лучевой трассировки (паритет с Python)
-tests/                   # 1177 тестов, вкл. golden bank + марш-пины
+main.py                  # GUI (QMainWindow, 28 analysis tabs)
+domain/                  # models, paraxial math, spatial systems
+analysis/                # core: ray tracing, aberrations, OPAL tables,
+                         #   LAP optimization, psf_mtf, zernike, golden_*
+                         #   + reverse-engineering tools & dossiers (RU)
+fileio/                  # OPJ/LBO/JSON io, strict standalone_opj, protocol
+catalog/                 # system library, glass catalog (891)
+gui/                     # controllers, dialogs, widgets
+native/                  # C++ ray-tracing core (parity with Python)
+tests/                   # 1177 tests, incl. golden bank + march pins
 docs/                    # REVERSE_PLAN, FORMULAS, LBO_FORMAT, tasks/
-extracted/opal_okb/      # оригинальный пакет OPAL-PC (OPJ/LBO/ARH/DOC)
-scripts/                 # DOSBox-автоматизация, g2bank, диагностические
+extracted/opal_okb/      # original OPAL-PC package (OPJ/LBO/ARH/DOC)
+scripts/                 # DOSBox automation, g2bank, diagnostics
 ```
 
-## Документация
+## Documentation
 
-- `docs/FORMULAS.md` — справочник формул ядра и конвенций OPAL
-- `analysis/REVERSE_TRACE.md` — мастер-указатель реверса (§0–§24)
-- `docs/REVERSE_PLAN.md` — план волн + фронт X (будущее)
-- `docs/LBO_FORMAT.md` — спецификация бинарного формата .LBO
-- `CHANGELOG.md` — история версий (1.22.0–1.24.8: золотая верификация)
+- `README_RU.md` — detailed README in Russian
+- `docs/FORMULAS.md` — formula reference (core math & OPAL print conventions, RU)
+- `analysis/REVERSE_TRACE.md` — reverse-engineering master index §0–§24 (RU)
+- `docs/REVERSE_PLAN.md` — wave plan + future front X (RU)
+- `docs/LBO_FORMAT.md` — .LBO binary format specification
+- `CHANGELOG.md` — version history (1.22.0–1.24.8: golden verification)
 
-## Релизы
+## Releases
 
-- **v1.24.6** — фикс библиотеки в exe (данные в бандле) · [Download OPAL-PC.exe](https://github.com/justroflanGitHub/opal-okb/releases/latest)
-- v1.24.5 — золотая верификация (307 GREEN)
+- **v1.24.6** — library data bundled into the exe · [Download OPAL-PC.exe](https://github.com/justroflanGitHub/opal-okb/releases/latest)
+- v1.24.5 — golden verification (307 GREEN)
 
-## Лицензия
+## License
 
-Образовательный проект. OPAL-PC © НИИ ОМП / ВНЦ САМ (СССР, 1990-е).
+Educational project. OPAL-PC © NII OMP / VNTs SAM (USSR, 1990s).

@@ -25,3 +25,7 @@ screenshots/
 OPAL-PC.spec
 _opal_native.pyd
 OPALTEMP/
+
+# Оригинальные бинарники OPAL-PC (чистая комната: в репо только производные
+# тексты дизасма/декомпила и прогоны; образы — локально у разработчика)
+analysis/reverse_data/*.bin

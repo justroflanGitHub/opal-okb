@@ -2,6 +2,58 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.25.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 1 — Command Registry + CLI + JSON-канал (TASK_COMMANDS_W1)
+
+- **`commands/`** — единый реестр команд поверх domain/analysis/fileio/catalog,
+  headless, без Qt (`py -c "import commands"` — чисто; UI не тронут).
+  Архитектура по образцам VS Code Commands / Blender Operators:
+  single source of truth, команды регистрируются декоратором
+  `@registry.command(...)`, CLI и JSONL-REPL — тонкие фронтенды.
+- **Контракты (`base.py`)**: `Command`/`Param`/`CommandResult`/`CommandError`
+  (единственный тип ошибок, коды `ERR_*` — константы), типы параметров
+  `PARAM_STR/FLOAT/INT/BOOL/LIST/DICT`; единый `coerce_value` для разбора
+  значений CLI/JSON (float/int/bool/list[JSON|csv]/dict) и `sanitize_json`
+  (NaN/±inf → null — на выходе всегда строгий JSON, проверяется при
+  выполнении).
+- **Реестр (`registry.py`)**: register/декоратор/get/has/names/list/search/
+  categories/schema/schema_all/execute; валидация имён
+  `^[a-z0-9_]+(\.[a-z0-9_]+)+$`; execute валидирует параметры по схеме
+  (unknown/missing/invalid/choices) и никогда не бросает — наружу всегда
+  `CommandResult`; `default_registry` + `reset_registry()` для тестов.
+  Контекст (`context.py`): CLI — свежий на вызов (stateless), REPL —
+  персистентный (`state.system`).
+- **32 builtin-команды** (`commands/builtin/`): `file.*` (open/save/info/
+  convert/formats), `system.*` (new/load/current/info, surfaces.list/
+  add/set/remove, fields.list/add, wavelengths.list/add), `calc.*`
+  (paraxial, paraxial.multi_wl, aperture.real, beam_geometry, seidel),
+  `catalog.*` (info, glass.get, glass.search, library.list),
+  `analyze.*` (ray_fan, field_aberrations, spot, psf, tables.tabgl,
+  tables.tabpr2). Обёртки без изменений нижних слоёв.
+- **Адаптер `systemio.py`**: форматы по расширению (opj/lbo/json), загрузка
+  (standalone-строгий вход → эвристика opj_io; .lbo — по имени записи или
+  индексу), сериализация системы в JSON-словарь, разрешение источника
+  (file → имя в контексте → текущая). Починка раундтрипа OPJ: эвристика
+  `opj_io.load_opj` теряет стёкла на файлах собственного писателя
+  `save_opj` (имена слева-выровнены, паттерн читателя — после пробелов;
+  раундтрип в fileio тестами не покрыт) — адаптер восстанавливает имена по
+  строгой сигнатуре раскладки писателя, fileio не тронут.
+- **CLI `py -m commands`**: `list [--category] [--json]`, `info`, `schema
+  [--json]`, `run <cmd> --param k=v [--json]` (типы значений — по схеме),
+  `repl`. Ошибки: ненулевой exit; при `--json` — JSON в stderr, stdout чист.
+- **JSONL-REPL `py -m commands repl`**: запрос `{"id","cmd","args"}` →
+  ответ `{"id","ok","data|error"}`, по строке на команду с flush; битый
+  JSON/нет cmd → `bad_request`, сессия жива; EOF → exit 0. Персистентное
+  состояние: `system.load` → `calc.*`/мутации без повторной загрузки.
+- **Тесты (+123, всего 1300)**: `test_commands_base.py` (реестр, валидация
+  имён, coerce, ошибки, санитайз), `test_commands_builtin.py` (smoke КАЖДОЙ
+  команды, демо через `system.new+save`; calc.* сверены с прямыми вызовами
+  domain), `test_commands_cli.py` (subprocess: list/info/schema/run,
+  `--json`, ошибки в stderr, e2e opj), `test_commands_repl.py` (протокол,
+  персистентность, паритет REPL↔CLI — числа совпадают). Полный прогон:
+  1300 passed, 8 skipped.
+
 ## [1.24.8] — 2026-10-19
 
 ### 🔬 MARCH2 — симуляция марш-конвейера и судьба RED 4 (TASK_MARCH2, досье REVERSE_OPALDIS §M.6–M.7)

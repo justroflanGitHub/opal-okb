@@ -21,22 +21,15 @@ from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QFont, QIcon, QColor
 
 from optics_engine import (
-    OpticalSystem, Surface, Wavelength, FieldPoint,
-    ObjectType, ApertureType, SurfaceType,
-    paraxial_trace, paraxial_trace_all_wavelengths,
-    seidel_aberrations, create_demo_system,
-    apply_vignetting
+    OpticalSystem, Wavelength,
+    ObjectType, ApertureType,
 )
 from visualization import OpticalSystemView
 from visualization3d import Visualization3D
 from analysis_gui import AnalysisPanel
-from system_utils import reverse_system, scale_system, nearest_standard_radius, standardize_radii, get_radii_changes
-from io_utils import save_json, load_json, append_system, export_protocol
-from library import build_library, create_system_from_entry
-from achromat import design_achromat, GLASS_PAIRS
-from strehl import compute_strehl, format_strehl, strehl_tooltip
+from strehl import format_strehl, strehl_tooltip
 from optics_utils import (
-    get_primary_wl, get_effective_aperture, copy_table_selection,
+    get_effective_aperture, copy_table_selection,
     get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
     PUPIL_UNIT_CHOICES, format_pupil_position, INFINITY_TEXT,
     format_coord_cell,
@@ -44,6 +37,7 @@ from optics_utils import (
 
 from gui.controllers.calculation_controller import CalculationController
 from gui.controllers.system_controller import SystemController
+from gui.cmdbridge import CURRENT_KEY, bridge, report_error
 from gui.dialogs.library_dialog import LibraryDialog
 from gui.dialogs.spectral_dialog import SpectralDialog
 from gui.dialogs.field_dialog import FieldPointsDialog
@@ -492,9 +486,13 @@ class ResultsPanel(QWidget):
         self.strehl_label.setToolTip(strehl_tooltip(strehl or {}))
 
     def update_results(self, sys: OpticalSystem):
-        """Обновить результаты."""
-        parax = paraxial_trace(sys)
-        seidel = seidel_aberrations(sys)
+        """Обновить результаты (расчёты — команды реестра, Волна 4)."""
+        # calc.*/strehl.* через мост: виджеты только рендерят результат
+        bridge.set_current(sys)
+        parax_res = bridge.execute("calc.paraxial")
+        parax = parax_res.data if parax_res.ok else {}
+        seidel_res = bridge.execute("calc.seidel")
+        seidel = seidel_res.data if seidel_res.ok else {}
 
         self._parax_result = parax
         self._current_system_ref = sys
@@ -514,7 +512,8 @@ class ResultsPanel(QWidget):
 
         # Число Штреля: полихроматически при нескольких λ системы
         try:
-            self.update_strehl(compute_strehl(sys))
+            strehl_res = bridge.execute("strehl.calc")
+            self.update_strehl(strehl_res.data if strehl_res.ok else {})
         except Exception:
             self.update_strehl({})
 
@@ -531,7 +530,9 @@ class ResultsPanel(QWidget):
 
         # Параксиалы для каждой λ (п. 13 GAP v2) — общий расчёт без копий
         # системы; первая λ — база для хроматических разностей.
-        per_wl = paraxial_trace_all_wavelengths(sys)
+        bridge.set_current(sys)
+        wl_res = bridge.execute("calc.paraxial.multi_wl")
+        per_wl = wl_res.data.get("results", []) if wl_res.ok else []
         base_f = per_wl[0].get('focal_length', 0)
         rows_data = []
         for wl, parax_wl in zip(sys.wavelengths, per_wl):
@@ -1188,11 +1189,9 @@ class MainWindow(QMainWindow):
 
     def _init_new_system(self):
         """Silent init - no dialog, just defaults."""
-        from optics_engine import _std_wavelengths
-        self.current_system = OpticalSystem(name="Новая система")
-        self.current_system.wavelengths = _std_wavelengths()
-        self.current_system.field_points = [FieldPoint(0.0)]
-        self.current_system.stop_surface = 1
+        system, _res = bridge.create_empty("Новая система")
+        if system is not None:
+            self.current_system = system
         self._current_file = None
 
     def _new_system(self):
@@ -1223,23 +1222,30 @@ class MainWindow(QMainWindow):
         if dlg.exec_() != QDialog.Accepted:
             return
 
-        self.current_system = OpticalSystem(name="Новая система")
-        from optics_engine import _std_wavelengths
-        self.current_system.wavelengths = _std_wavelengths()
-        self.current_system.field_points = [FieldPoint(0.0)]
-        self.current_system.stop_surface = 1
+        system, res = bridge.create_empty("Новая система")
+        if system is None:
+            report_error(self, res, "system.new")
+            return
+        self.current_system = system
         self._current_file = None
         self._refresh_ui()
         self.statusBar().showMessage("Новая система создана")
 
     def _load_demo(self):
-        self.current_system = create_demo_system()
+        system, res = bridge.create_demo("default")
+        if system is None:
+            report_error(self, res, "system.new")
+            return
+        self.current_system = system
         self._refresh_ui()
         self.statusBar().showMessage("Демо-система загружена")
 
     def _load_demo_by_name(self, name):
-        from optics_engine import create_demo_system_by_name
-        self.current_system = create_demo_system_by_name(name)
+        system, res = bridge.create_demo(name)
+        if system is None:
+            report_error(self, res, "system.new")
+            return
+        self.current_system = system
         self._refresh_ui()
         self.statusBar().showMessage(f"Демо: {self.current_system.name}")
 
@@ -1253,10 +1259,9 @@ class MainWindow(QMainWindow):
         self.results.log_text.clear()
         self.viz.set_system(self.current_system, trace_rays=False)
         # Число Штреля — вместе с остальными результатами при смене системы
-        try:
-            self.results.update_strehl(compute_strehl(self.current_system))
-        except Exception:
-            self.results.update_strehl({})
+        bridge.set_current(self.current_system)
+        strehl_res = bridge.execute("strehl.calc")
+        self.results.update_strehl(strehl_res.data if strehl_res.ok else {})
 
     def _add_surface(self):
         """Insert a blank surface before the selected row."""
@@ -1304,26 +1309,28 @@ class MainWindow(QMainWindow):
             "OPJ files (*.opj);;JSON (*.opal.json);;Все файлы (*)")
         if not path:
             return
-        try:
-            if path.lower().endswith('.opj'):
-                from opj_reader import load_opj
-                self.current_system, _info = load_opj(path)
-            else:
-                self.current_system = load_json(path)
-            self._current_file = path
-            self._refresh_ui()
-            self.statusBar().showMessage(f"Загружено: {path}")
-        except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось открыть файл:\n{e}")
+        system, res = bridge.load_file(path)
+        if system is None:
+            report_error(self, res, "system.load")
+            return
+        self.current_system = system
+        self._current_file = path
+        self._refresh_ui()
+        self.statusBar().showMessage(f"Загружено: {path}")
 
     def _save_file(self):
         if self._current_file:
             try:
                 self._collect_system_from_ui()
-                save_json(self.current_system, self._current_file)
-                self.statusBar().showMessage(f"Сохранено: {self._current_file}")
             except Exception as e:
-                QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить:\n{e}")
+                QMessageBox.critical(self, "Ошибка", f"Не удалось собрать систему из UI:\n{e}")
+                return
+            bridge.set_current(self.current_system)
+            res = bridge.execute("file.save", file=self._current_file)
+            if not res.ok:
+                report_error(self, res, "file.save")
+                return
+            self.statusBar().showMessage(f"Сохранено: {self._current_file}")
         else:
             self._save_file_as()
 
@@ -1338,11 +1345,16 @@ class MainWindow(QMainWindow):
             path += ".opal.json"
         try:
             self._collect_system_from_ui()
-            save_json(self.current_system, path)
-            self._current_file = path
-            self.statusBar().showMessage(f"Сохранено: {path}")
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить:\n{e}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось собрать систему из UI:\n{e}")
+            return
+        bridge.set_current(self.current_system)
+        res = bridge.execute("file.save", file=path)
+        if not res.ok:
+            report_error(self, res, "file.save")
+            return
+        self._current_file = path
+        self.statusBar().showMessage(f"Сохранено: {path}")
 
     def _collect_system_from_ui(self):
         """Collect current UI data into ``current_system`` (without calculation)."""
@@ -1353,7 +1365,12 @@ class MainWindow(QMainWindow):
         if not self.current_system.surfaces:
             self.statusBar().showMessage("Нет поверхностей для оборачивания")
             return
-        self.current_system = reverse_system(self.current_system)
+        bridge.set_current(self.current_system)
+        res = bridge.execute("system.reverse")
+        if not res.ok:
+            report_error(self, res, "system.reverse")
+            return
+        self.current_system = bridge.current_system()
         self._refresh_ui()
         self.statusBar().showMessage("Система обращена. Нажмите «Рассчитать»")
 
@@ -1366,17 +1383,25 @@ class MainWindow(QMainWindow):
         )
         if not ok or abs(factor) < 1e-15:
             return
-        try:
-            self.current_system = scale_system(self.current_system, factor)
-            self._refresh_ui()
-            self.statusBar().showMessage(f"Система масштабирована (×{factor:.4g})")
-        except ValueError as e:
-            QMessageBox.warning(self, "Ошибка", str(e))
+        bridge.set_current(self.current_system)
+        res = bridge.execute("system.scale", factor=factor)
+        if not res.ok:
+            report_error(self, res, "system.scale")
+            return
+        self.current_system = bridge.current_system()
+        self._refresh_ui()
+        self.statusBar().showMessage(f"Система масштабирована (×{factor:.4g})")
 
     def _standardize_radii(self):
         """Показать диалог приведения радиусов к ГОСТ 1807-75."""
         self._collect_system_from_ui()
-        changes = get_radii_changes(self.current_system)
+        bridge.set_current(self.current_system)
+        res = bridge.execute("system.radii.changes")
+        if not res.ok:
+            report_error(self, res, "system.radii.changes")
+            return
+        changes = [(c["index"], c["old_radius"], c["new_radius"],
+                    c["delta_percent"]) for c in res.data["changes"]]
 
         if not changes:
             QMessageBox.information(self, "Стандартные радиусы",
@@ -1402,7 +1427,12 @@ class MainWindow(QMainWindow):
         dlg.setDefaultButton(QMessageBox.Yes)
 
         if dlg.exec_() == QMessageBox.Yes:
-            self.current_system = standardize_radii(self.current_system)
+            bridge.set_current(self.current_system)
+            res = bridge.execute("system.radii.standardize")
+            if not res.ok:
+                report_error(self, res, "system.radii.standardize")
+                return
+            self.current_system = bridge.current_system()
             self._refresh_ui()
             self.statusBar().showMessage(f"Радиусы приведены к ГОСТ 1807-75 ({len(changes)} замен)")
 
@@ -1418,7 +1448,17 @@ class MainWindow(QMainWindow):
         """Open the field points editing dialog."""
         dlg = FieldPointsDialog(self.current_system, FieldPointsWidget, self)
         if dlg.exec_():
-            self.current_system.field_points = dlg.get_field_points()
+            points = dlg.get_field_points()
+            # Волна 4: замена набора — команда system.fields.set
+            bridge.set_current(self.current_system)
+            res = bridge.execute(
+                "system.fields.set",
+                fields=[{"y": fp.y, "x": fp.x, "weight": fp.weight}
+                        for fp in points])
+            if not res.ok:
+                report_error(self, res, "system.fields.set")
+                return
+            self.current_system = bridge.current_system()
             self.sys_params.field_points_widget.load_system(self.current_system)
             self._calculate()
 
@@ -1428,7 +1468,16 @@ class MainWindow(QMainWindow):
         if dlg.exec_():
             new_wls = dlg.get_wavelengths()
             if new_wls:
-                self.current_system.wavelengths = new_wls
+                # Волна 4: замена набора — команда system.wavelengths.set
+                bridge.set_current(self.current_system)
+                res = bridge.execute(
+                    "system.wavelengths.set",
+                    wavelengths=[{"value": wl.value, "weight": wl.weight,
+                                  "name": wl.name} for wl in new_wls])
+                if not res.ok:
+                    report_error(self, res, "system.wavelengths.set")
+                    return
+                self.current_system = bridge.current_system()
                 self.sys_params.load_system(self.current_system)
                 self._calculate()
 
@@ -1439,16 +1488,17 @@ class MainWindow(QMainWindow):
             return
 
         f_val, ap_val, crown, flint = dlg.get_parameters()
-        try:
-            system = design_achromat(f_val, crown, flint, ap_val)
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Ошибка расчёта ахромата:\n{e}")
+        res = bridge.execute("system.achromat", focal_length=f_val,
+                             aperture=ap_val, crown=crown, flint=flint,
+                             name=CURRENT_KEY)
+        if not res.ok:
+            report_error(self, res, "system.achromat")
             return
 
-        self.current_system = system
+        self.current_system = bridge.current_system()
         self._refresh_ui()
         self.statusBar().showMessage(
-            f"Ахромат: {system.name},  f'={self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else '-'}"
+            f"Ахромат: {self.current_system.name},  f'={self.results.parax_table.item(1, 1).text() if self.results.parax_table.rowCount() > 1 else '-'}"
         )
 
     def _show_library(self):
@@ -1461,12 +1511,20 @@ class MainWindow(QMainWindow):
         if entry is None:
             return
 
-        try:
-            self.current_system = create_system_from_entry(entry)
-            self._refresh_ui()
-            self.statusBar().showMessage(f"Загружено из библиотеки: {entry['name']}")
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Не удалось загрузить систему:\n{e}")
+        res = bridge.execute(
+            "catalog.library.create",
+            generator=entry.get("generator"),
+            file=entry.get("file"),
+            lbo_path=entry.get("lbo_path"),
+            lbo_filename=entry.get("lbo_filename"),
+            name=CURRENT_KEY)
+        if not res.ok:
+            report_error(self, res, "catalog.library.create")
+            return
+
+        self.current_system = bridge.current_system()
+        self._refresh_ui()
+        self.statusBar().showMessage(f"Загружено из библиотеки: {entry['name']}")
 
     def _append_system(self):
         """Присоединить оптическую систему из файла."""
@@ -1477,35 +1535,17 @@ class MainWindow(QMainWindow):
             return
         try:
             self._collect_system_from_ui()
-            if path.lower().endswith('.opj'):
-                from opj_reader import load_opj
-                appended_sys, _info = load_opj(path)
-                from system_utils import reverse_system as _rev
-                # Use io_utils.append_system logic inline for OPJ
-                from optics_engine import OpticalSystem as _OS
-                if not appended_sys.surfaces:
-                    pass
-                else:
-                    result = _OS(
-                        name=self.current_system.name + " + " + appended_sys.name,
-                        object_type=self.current_system.object_type,
-                        object_height=self.current_system.object_height,
-                        aperture_type=self.current_system.aperture_type,
-                        aperture_value=self.current_system.aperture_value,
-                        wavelengths=list(self.current_system.wavelengths),
-                        field_points=list(self.current_system.field_points),
-                        stop_surface=self.current_system.stop_surface,
-                        obscuration_ratio=self.current_system.obscuration_ratio,
-                        comment=self.current_system.comment,
-                    )
-                    result.surfaces = list(self.current_system.surfaces) + list(appended_sys.surfaces)
-                    self.current_system = result
-            else:
-                self.current_system = append_system(self.current_system, path)
-            self._refresh_ui()
-            self.statusBar().showMessage(f"Система присоединена из: {path}")
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось присоединить систему:\n{e}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось собрать систему из UI:\n{e}")
+            return
+        bridge.set_current(self.current_system)
+        res = bridge.execute("system.append", append=path)
+        if not res.ok:
+            report_error(self, res, "system.append")
+            return
+        self.current_system = bridge.current_system()
+        self._refresh_ui()
+        self.statusBar().showMessage(f"Система присоединена из: {path}")
 
     def _export_protocol(self):
         """Экспорт протокола расчёта в текстовый файл или .OPJ."""
@@ -1515,22 +1555,23 @@ class MainWindow(QMainWindow):
         if not path:
             return
         try:
-            if path.lower().endswith('.opj') or 'OPJ' in selected_filter:
-                if not path.lower().endswith('.opj'):
-                    path += '.opj'
-                from opj_writer import save_opj
-                self._collect_system_from_ui()
-                save_opj(self.current_system, path)
-            else:
-                if not path.endswith(".txt"):
-                    path += ".txt"
-                self._collect_system_from_ui()
-                parax = paraxial_trace(self.current_system)
-                seidel = seidel_aberrations(self.current_system)
-                export_protocol(self.current_system, parax, seidel, path)
-            self.statusBar().showMessage(f"Протокол экспортирован: {path}")
+            self._collect_system_from_ui()
         except Exception as e:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось экспортировать протокол:\n{e}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось собрать систему из UI:\n{e}")
+            return
+        bridge.set_current(self.current_system)
+        if path.lower().endswith('.opj') or 'OPJ' in selected_filter:
+            if not path.lower().endswith('.opj'):
+                path += '.opj'
+            res = bridge.execute("file.save", file=path)
+        else:
+            if not path.endswith(".txt"):
+                path += ".txt"
+            res = bridge.execute("file.export.protocol", out=path)
+        if not res.ok:
+            report_error(self, res, "file.export.protocol" if path.endswith(".txt") else "file.save")
+            return
+        self.statusBar().showMessage(f"Протокол экспортирован: {path}")
 
     def _show_glass_diagram(self):
         """Показать диаграмму стёкол."""
@@ -1551,18 +1592,16 @@ class MainWindow(QMainWindow):
 
     def _fit_dialog(self):
         """Open the parameter fitting dialog (подгонка 1×1 / ЛАП)."""
-        from analysis.optimization import solve_single
-
         self._collect_system_from_ui()
 
         # Текущие параксиальные характеристики — умные дефолты диалога
+        # (Волна 4: calc.paraxial через мост)
         current_efl = current_bfd = None
-        try:
-            parax = paraxial_trace(self.current_system)
-            current_efl = parax.get('focal_length')
-            current_bfd = parax.get('back_focal_distance')
-        except Exception:
-            pass  # диалог откроется без дефолтов
+        bridge.set_current(self.current_system)
+        parax_res = bridge.execute("calc.paraxial")
+        if parax_res.ok:
+            current_efl = parax_res.data.get('focal_length')
+            current_bfd = parax_res.data.get('back_focal_distance')
 
         mirror_surfaces = {i for i, s in enumerate(self.current_system.surfaces)
                            if s.is_reflective}
@@ -1590,25 +1629,25 @@ class MainWindow(QMainWindow):
         old_ach_txt = f"{old_ach:.4f}" if old_ach is not None else "—"
         param_name = 'R' if param_type == 'radius' else 'd'
 
-        try:
-            # Solve-режим ЛАП (REVERSE_LAP §9.4): Ньютон по центрально-
-            # разностной чувствительности с явными ошибками «не влияет»
-            kind = 'efl' if target_type == FitDialog.TARGET_FOCAL else 'bfd'
-            result_sys = solve_single(
-                old_system, kind, target_val, surf_idx, param_type).system
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Ошибка подгонки:\n{e}")
+        # Solve-режим ЛАП (REVERSE_LAP §9.4) — команда opt.solve: тот же
+        # Ньютон по центрально-разностной чувствительности (solve_single),
+        # achieved/value — из ответа команды (Волна 4: через мост)
+        kind = 'efl' if target_type == FitDialog.TARGET_FOCAL else 'bfd'
+        bridge.set_current(old_system)
+        res = bridge.execute("opt.solve", kind=kind, target=target_val,
+                             surface=surf_idx, param=param_type,
+                             name=CURRENT_KEY)
+        if not res.ok:
+            report_error(self, res, "opt.solve")
             return
+        ach_value = res.data['achieved']
+        new_value = res.data['value']
+        result_sys = bridge.current_system()
 
-        parax = paraxial_trace(result_sys)
         if target_type == FitDialog.TARGET_FOCAL:
             ach_name = "f'"
-            ach_value = parax.get('focal_length', 0)
         else:
             ach_name = "BFD"
-            ach_value = parax.get('back_focal_distance', 0)
-        new_surf = result_sys.surfaces[surf_idx]
-        new_value = new_surf.radius if param_type == 'radius' else new_surf.thickness
 
         # Изменение деструктивно — подтверждение с возможностью отмены
         answer = QMessageBox.question(
@@ -1633,6 +1672,11 @@ class MainWindow(QMainWindow):
         Задача берётся из вкладки «Оптимизация (ЛАП)» диалога
         (OptVariable/OptGoal/max_iter/damping), прогресс — в статусбар,
         результат — подтверждение с протоколом GTISL и обновление системы.
+
+        Волна 4: остаётся прямым вызовом (direct-keep) — контракт
+        ``opt.run`` не имеет параметров damping/callback, а пошаговый
+        прогресс и параметры решателя существенны для интерактивного
+        прогона (см. W4_INVENTORY_main.md).
         """
         from analysis import optimization
 
@@ -1686,14 +1730,16 @@ class MainWindow(QMainWindow):
 
         Те же таблицы, что на вкладке «Лучи (ход)» панели анализа
         (единая точка построения — ``_build_gauge_rays_tables``).
+        Волна 4: трассировка — команда aber.gauge_rays (wl по умолчанию —
+        основная λ, поле 0).
         """
-        from aberrations import compute_gauge_rays
         sys = self.current_system
-        try:
-            rays = compute_gauge_rays(sys, wl=get_primary_wl(sys), field_y=0.0)
-        except Exception as e:
-            QMessageBox.warning(self, "Ошибка", f"Ошибка трассировки: {e}")
+        bridge.set_current(sys)
+        res = bridge.execute("aber.gauge_rays", field_y=0.0)
+        if not res.ok:
+            report_error(self, res, "aber.gauge_rays")
             return
+        rays = res.data["rays"]
         if not rays:
             QMessageBox.information(self, "Таблица", "Нет данных")
             return

@@ -12,6 +12,8 @@ import math
 
 import pytest
 
+from tests.conftest import REASON_NO_LBO, has_lbo, requires_lbo
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decode_lbo_opj import decode_lbo_opj
@@ -56,6 +58,8 @@ def _get_all_libraries():
 @pytest.fixture(scope="module")
 def industar():
     """Декодированная система Индустар-23у — golden reference."""
+    if not has_lbo("LENS"):
+        pytest.skip(REASON_NO_LBO)
     return _load_industar()
 
 
@@ -385,6 +389,7 @@ class TestIndustarNoCrash:
 class TestAllSystemsLoadAndTrace:
     """Every system in every library loads and traces without exceptions."""
 
+    @requires_lbo
     def test_all_systems_success_rate(self):
         libs = _get_all_libraries()
         assert len(libs) > 0, "No .LBO libraries found"

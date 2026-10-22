@@ -11,6 +11,8 @@ import math
 
 import pytest
 
+from tests.conftest import REASON_NO_LBO, has_lbo, requires_lbo_of
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lbo_reader import load_lbo_fast
@@ -38,6 +40,8 @@ _REPROD_LBO = os.path.join(_LIB_DIR, "REPROD.LBO")
 @pytest.fixture(scope="module")
 def industar_sys():
     """Декодированная система Индустар-23у (LENS.LBO index 3)."""
+    if not has_lbo("LENS"):
+        pytest.skip(REASON_NO_LBO)
     systems = load_lbo_fast(_LENS_LBO)
     return decode_lbo_opj(systems[3]['opj_data'])
 
@@ -45,6 +49,8 @@ def industar_sys():
 @pytest.fixture(scope="module")
 def mirror450_sys():
     """Декодированная зеркально-линзовая система f'=450 (LENS_SPC.LBO index 1)."""
+    if not has_lbo("LENS_SPC"):
+        pytest.skip(REASON_NO_LBO)
     systems = load_lbo_fast(_LENS_SPC_LBO)
     return decode_lbo_opj(systems[1]['opj_data'])
 
@@ -259,6 +265,7 @@ class TestMirrorLens450:
 
 class TestObjectImageTypes:
 
+    @requires_lbo_of("LENS")
     def test_lens_infinite_finite(self):
         """LENS: дальний → ближний (фотообъектив)."""
         systems = load_lbo_fast(_LENS_LBO)
@@ -266,6 +273,7 @@ class TestObjectImageTypes:
         assert s.object_type == ObjectType.INFINITE
         assert s.image_type == ObjectType.FINITE
 
+    @requires_lbo_of("MICROLEN")
     def test_microlen_finite_finite(self):
         """MICROLEN: ближний → ближний."""
         systems = load_lbo_fast(_MICROLEN_LBO)
@@ -273,6 +281,7 @@ class TestObjectImageTypes:
         assert s.object_type == ObjectType.FINITE
         assert s.image_type == ObjectType.FINITE
 
+    @requires_lbo_of("OCULAR")
     def test_ocular_infinite_finite(self):
         """OCULAR: дальний → ближний."""
         systems = load_lbo_fast(_OCULAR_LBO)
@@ -280,12 +289,14 @@ class TestObjectImageTypes:
         assert s.object_type == ObjectType.INFINITE
         assert s.image_type == ObjectType.FINITE
 
+    @requires_lbo_of("REPROD")
     def test_reprod_finite(self):
         """REPROD: ближний → ближний."""
         systems = load_lbo_fast(_REPROD_LBO)
         s = decode_lbo_opj(systems[0]['opj_data'])
         assert s.object_type == ObjectType.FINITE
 
+    @requires_lbo_of("LENS_SPC")
     def test_lens_spc_infinite_finite(self):
         """LENS_SPC: дальний → ближний (зеркально-линзовый)."""
         systems = load_lbo_fast(_LENS_SPC_LBO)
@@ -300,6 +311,7 @@ class TestObjectImageTypes:
 
 class TestBatchLensLbo:
 
+    @requires_lbo_of("LENS")
     def test_lens_lbo_focal_length_within_15_percent(self):
         """Все системы LENS.LBO с f'=N в имени: расчётный f' в пределах 15%."""
         systems = load_lbo_fast(_LENS_LBO)

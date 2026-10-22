@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import requires_fil
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 EXTRACTED_DIR = BASE_DIR / "extracted" / "opal_okb"
 
@@ -553,6 +555,7 @@ class TestFILReader:
         # HOYA catalog may have encoding issues; require at least 30% valid
         assert pct > 30, f"{fname}: only {pct:.0f}% C0 in range"
 
+    @requires_fil
     def test_total_glasses(self):
         from fil_reader_v2 import parse_gctg
         total = 0

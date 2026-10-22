@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import REASON_NO_LBO, has_lbo, requires_prn_rt2250
+
 from lbo_reader import load_lbo_fast
 from fileio.decode_lbo import decode_lbo_opj
 from fileio.protocol import export_protocol
@@ -76,10 +78,13 @@ def ir_system():
     (all-air) — главные лучи не проходят, численная golden-сверка
     только по предметным колонкам (зависят от поля, не от сред).
     """
+    if not has_lbo("USBINOCL"):
+        pytest.skip(REASON_NO_LBO)
     entries = load_lbo_fast(str(USBINOCL))
     return decode_lbo_opj(entries[1]['opj_data'])
 
 
+@requires_prn_rt2250
 class TestGoldenRT2250:
     """Golden против эталона RT__2250.PRN."""
 

@@ -9,6 +9,7 @@ import os
 
 import pytest
 
+from tests.conftest import requires_fil
 from commands import CommandContext, default_registry
 from commands.base import CommandError
 from domain.calculations import (
@@ -387,6 +388,7 @@ class TestCalcCommands:
 # --------------------------------------------------------------------------- #
 
 class TestCatalogCommands:
+    @requires_fil
     def test_info_counts(self):
         data = run("catalog.info")
         assert data["glasses"]["gost"] >= 25

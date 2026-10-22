@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import requires_prn_rt2236, requires_prn_rt2250
+
 from optics_engine import OpticalSystem, Surface, Wavelength
 from optics_utils import get_effective_aperture
 
@@ -127,6 +129,7 @@ class TestDegToGms:
         assert deg_to_gms(-0.89273) == '-.535638'.rjust(12)
         assert deg_to_gms(0.5) == '.300000'.rjust(12)   # 0°30.0000'
 
+    @requires_prn_rt2250
     def test_etalon_tabgl_field_cell(self):
         """Ячейка «(гр.мнсек)» предмета зоны 1.000 в TABGL эталона
         RT__2250 совпадает с deg_to_gms(−36°) символ в символ."""
@@ -186,6 +189,7 @@ def _etalon_taboc2_lines():
     return lines[start - 1:]
 
 
+@requires_prn_rt2236
 class TestTaboc2GoldenRT2236:
     """Эталон RT__2236: шапки побайтово, H ЗР = зона × Ax точно."""
 
@@ -308,6 +312,7 @@ class TestFormatTaboc:
         for line in lines[3:]:
             assert len(line) == 38
 
+    @requires_prn_rt2236
     def test_taboc1_header_alignment(self):
         """│ шапки (мм-вариант формы 0x50619) стоят над ┴ оси графика —
         ось совпадает с эталоном RT__2236 побайтово."""
@@ -317,6 +322,7 @@ class TestFormatTaboc:
         etalon_axis = _etalon_lines(RT2236)[3]
         assert axis == etalon_axis
 
+    @requires_prn_rt2236
     def test_default_header_matches_etalon(self):
         text = format_taboc2(taboc2_rows(build_doublet()))
         assert text.splitlines()[:3] == _etalon_taboc2_lines()[:3]

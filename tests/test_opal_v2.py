@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import requires_opj
+
 try:
     import PyQt5
     HAS_PYQT = True
@@ -329,6 +331,7 @@ class TestDataModel:
 # --------------------------------------------------------------------------- #
 
 class TestOPJFormat:
+    @requires_opj
     def test_opj_files_exist(self):
         assert len(list(EXTRACTED_DIR.glob("*.OPJ"))) > 0
 
@@ -337,6 +340,7 @@ class TestOPJFormat:
             data = f.read_bytes()
             assert len(data) >= 10
 
+    @requires_opj
     def test_opj_air(self):
         for f in EXTRACTED_DIR.glob("*.OPJ"):
             data = f.read_bytes()

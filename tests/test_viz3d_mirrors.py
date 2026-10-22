@@ -21,6 +21,8 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 import pytest
 
+from tests.conftest import HAS_PYOPENGL, REASON_NO_PYOPENGL, requires_pyopengl
+
 from domain.models import create_demo_system_by_name
 
 W, H = 900, 600
@@ -70,6 +72,8 @@ def viz_mirror(app):
 @pytest.fixture(scope='module')
 def painted(viz_mirror):
     """Кадр + поток примитивов настоящего paintGL через GL-стаб."""
+    if not HAS_PYOPENGL:
+        pytest.skip(REASON_NO_PYOPENGL)
     from tests._viz3d_glstub import render_framebuffer
     img, stub = render_framebuffer(viz_mirror.gl_widget, W, H)
     assert not img.isNull()
@@ -81,6 +85,7 @@ def painted(viz_mirror):
 # --------------------------------------------------------------------------- #
 
 class TestSmoke:
+    @requires_pyopengl
     def test_widget_offscreen_grab(self, app):
         """Виджет создаётся offscreen, set_system(_demo_mirror) не падает,
         grab() возвращает QImage размером > 0 пикселей."""
@@ -107,6 +112,7 @@ class TestSmoke:
 # --------------------------------------------------------------------------- #
 
 class TestGlassVolume:
+    @requires_pyopengl
     def test_no_glass_volume_for_mirror_system(self, app):
         """Для системы с зеркалом _draw_glass_volume не вызывается вовсе
         (после отражения среды за поверхностью нет)."""
@@ -132,6 +138,7 @@ class TestGlassVolume:
         quads = [p for p in stub.primitives if p[0] == GL_QUADS]
         assert quads == [], 'GL_QUADS (объём стекла) в сцене зеркала'
 
+    @requires_pyopengl
     def test_glass_volume_still_drawn_for_lenses(self, app):
         """Регресс: у обычной линзы объём стекла рисуется как раньше."""
         from visualization3d import Visualization3D
@@ -294,6 +301,7 @@ class TestRealMirrorLens:
         _, n_mirrors = lbo_mirror
         assert n_mirrors == 2
 
+    @requires_pyopengl
     def test_paint_mirrors_no_glass_volume(self, lbo_mirror):
         """Сцена «з-л» рисуется: подложек столько же, сколько зеркал;
         объём стекла рисуют только настоящие линзы — ни один вызов

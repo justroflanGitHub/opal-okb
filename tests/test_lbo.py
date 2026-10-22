@@ -7,11 +7,14 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import requires_lbo, requires_lbo_of
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 LBO_DIR = BASE_DIR / "extracted" / "opal_okb" / "Lib"
 LENS_LBO = LBO_DIR / "LENS.LBO"
 
 
+@requires_lbo_of("LENS")
 class TestLBOReader:
     def test_lbo_file_exists(self):
         """LENS.LBO существует."""
@@ -106,6 +109,7 @@ class TestLBOReader:
         assert info['num_systems'] == 116
         assert info['size'] == 80804
 
+    @requires_lbo
     def test_scan_lbo_directory(self):
         """scan_lbo_directory находит все .LBO файлы."""
         from lbo_reader import scan_lbo_directory
@@ -144,6 +148,7 @@ class TestLBOReader:
         # (standalone-ридер давал здесь R=1.0 — показатель преломления)
         assert 10.0 < surfs[0].radius < 200.0, f"bad R0: {surfs[0].radius}"
 
+    @requires_lbo
     def test_library_integration(self):
         """Интеграция с library.py — LBO в build_library()."""
         from library import build_library, expand_lbo, create_system_from_entry

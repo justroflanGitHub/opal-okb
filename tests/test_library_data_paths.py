@@ -10,9 +10,12 @@ datas в spec.
 import os
 import sys
 
+from tests.conftest import requires_lbo, requires_opal_dir, requires_opj
+
 from catalog.library import LBO_DIR, OPJ_DIR, _resolve_base_dir, build_library
 
 
+@requires_opal_dir
 def test_base_dir_resolves_to_repo_with_data():
     base = _resolve_base_dir()
     assert os.path.isdir(os.path.join(base, 'extracted', 'opal_okb'))
@@ -35,6 +38,8 @@ def test_frozen_falls_back_to_meipass(tmp_path, monkeypatch):
     assert _resolve_base_dir() == str(tmp_path / '_mei')
 
 
+@requires_opj
+@requires_lbo
 def test_library_categories_nonempty():
     lib = build_library()
     assert len(lib['OPAL системы (.OPJ)']) > 50

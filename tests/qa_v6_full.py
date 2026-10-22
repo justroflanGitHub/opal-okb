@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import requires_fil, requires_opj
+
 try:
     import PyQt5
     HAS_PYQT = True
@@ -95,6 +97,7 @@ class TestCatalogs:
         n = compute_refractive_index('К8', 0.5876)
         assert abs(n - 1.5163) < 0.01, f"K8 nd={n}"
 
+    @requires_fil
     def test_full_catalog_count(self):
         try:
             import glass_catalog_full as gcf
@@ -280,10 +283,12 @@ class TestOptimization:
 # --------------------------------------------------------------------------- #
 
 class TestFiles:
+    @requires_opj
     def test_opj_count(self):
         opj_files = list(OPJ_DIR.glob("*.OPJ"))
         assert len(opj_files) >= 83, f"Only {len(opj_files)} .OPJ files"
 
+    @requires_opj
     def test_opj_glasses_extracted(self):
         from opj_reader import load_opj
         opj_files = list(OPJ_DIR.glob("*.OPJ"))

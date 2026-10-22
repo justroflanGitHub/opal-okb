@@ -19,6 +19,13 @@ from domain.calculations import (
 from domain.models import create_demo_system
 from fileio.json_io import load_json
 
+# Волна 4 (src=main): команды регистрируются лениво (gui.cmdbridge при
+# импорте main) — здесь регистрируем явно, чтобы smoke-инвариант был
+# детерминирован и в изолированном прогоне модуля (guard-правило 5 ТЗ).
+from commands.builtin import w4_main_cmds
+if not default_registry.has("system.append"):
+    w4_main_cmds.register(default_registry)
+
 
 # --------------------------------------------------------------------------- #
 # Фикстуры: демо-система, сгенерированная самим реестром (system.new+save)
@@ -93,22 +100,35 @@ def _smoke_args(demo_files):
     opj, jsn = demo_files
     return {
         "file.convert": {"src": opj, "dst": opj + ".converted.json"},
+        "file.export.protocol": {"file": opj, "out": opj + ".protocol.txt"},
         "file.info": {"file": opj},
         "file.open": {"file": opj},
         "file.save": {"src": opj, "file": opj + ".saved.opj"},
         "file.formats": {},
         "system.current": {"__ctx__": True},
+        "system.achromat": {"focal_length": 100.0},
+        "system.append": {"file": opj, "append": jsn},
         "system.fields.add": {"file": opj, "y": 7.0},
         "system.fields.list": {"file": opj},
+        "system.fields.set": {"file": opj,
+                              "fields": [{"y": 0.0}, {"y": 5.0, "x": 1.0,
+                                                      "weight": 0.5}]},
         "system.info": {"file": opj},
         "system.load": {"file": opj},
         "system.new": {},
+        "system.radii.changes": {"file": opj},
+        "system.radii.standardize": {"file": opj},
+        "system.reverse": {"file": opj},
+        "system.scale": {"file": opj, "factor": 2.0},
         "system.surface.add": {"file": opj, "radius": -60.0},
         "system.surface.remove": {"file": opj, "index": 2},
         "system.surface.set": {"file": opj, "index": 0, "radius": 55.0},
         "system.surfaces.list": {"file": opj},
         "system.wavelengths.add": {"file": opj, "value": 0.48613},
         "system.wavelengths.list": {"file": opj},
+        "system.wavelengths.set": {"file": opj,
+                                   "wavelengths": [{"value": 0.58756,
+                                                    "name": "d"}]},
         "calc.aperture.real": {"file": opj},
         "calc.beam_geometry": {"file": opj},
         "calc.paraxial": {"file": opj},
@@ -117,6 +137,7 @@ def _smoke_args(demo_files):
         "catalog.glass.get": {"name": "К8", "wl": 0.54607},
         "catalog.glass.search": {"query": "ТФ"},
         "catalog.info": {},
+        "catalog.library.create": {"generator": "achromat_100"},
         "catalog.library.list": {},
         "analyze.field_aberrations": {"file": opj},
         "analyze.psf": {"file": opj},

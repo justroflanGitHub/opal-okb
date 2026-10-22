@@ -2,6 +2,37 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.27.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 4 — src=main: главное окно на реестре команд
+
+- **`gui/cmdbridge.py`** — общий мост UI ↔ реестр (агент src=main создаёт,
+  src=panel только импортирует): `bridge.execute(cmd, **kwargs)` с
+  персистентным контекстом UI-сессии (`set_current`/`current_system`),
+  адаптеры `load_file`/`create_demo`/`create_empty` (живые объекты из
+  контекста — без десериализации), `report_error(parent, result)`.
+  Без бизнес-логики и без Qt на уровне модуля.
+- **10 gap-команд** (`commands/builtin/w4_main_cmds.py`, регистрация
+  ленивая через `ensure_w4_registered` — `builtin/__init__` не тронут до
+  мержа): `system.reverse`, `system.scale`, `system.radii.changes` (предпросмотр
+  ГОСТ 1807-75), `system.radii.standardize`, `system.append` (присоединение
+  системы, имя «A + B»), `system.achromat` (дублет), `system.fields.set`,
+  `system.wavelengths.set` (полная замена наборов, REPL-замена текущей),
+  `catalog.library.create` (генератор/.OPJ/.LBO), `file.export.protocol`
+  (.txt-протокол расчёта).
+- **main.py перевязан на команды** (инвентаризация 42 экшенов —
+  `docs/tasks/W4_INVENTORY_main.md`): 23 bound + 8 gap + 3 метода с логикой
+  (`update_results`, `_refresh_ui`, `_init_new_system`); 18 ui-only не
+  тронуты; direct-keep — делегирование `gui/controllers` (зона panel) и
+  ЛАП-оптимизация (прямой `optimize` с damping/callback — контракт
+  `opt.run` их не содержит, тест пинит прямой вызов). Видимое поведение
+  не меняется; единственное осознанное отклонение — «Сохранить» в `.opj`
+  теперь пишет корректный бинарный OPJ (раньше — JSON-текст).
+- **Тесты (+18)**: `tests/test_commands_w4_main.py` — smoke каждой новой
+  команды, сверка с прямыми вызовами utils/achromat/catalog/fileio,
+  REPL-семантика замены текущей системы, stateless file=-режим,
+  ошибки валидации.
+
 ## [1.26.0] — 2026-10-22
 
 ### 🤖 Built for agents, Волна 3 — домен «Трассировка и таблицы» (trace_cmds)

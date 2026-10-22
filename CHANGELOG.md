@@ -2,6 +2,47 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.26.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 3 — домен «Трассировка и таблицы» (trace_cmds)
+
+- **19 builtin-команд** (`commands/builtin/trace_cmds.py`) над ОСТАЛЬНЫМИ
+  публичными точками входа `analysis/ray_tracing.py`, `beam_heights.py`,
+  `vignetting.py`, `tables.py` (trace_fan / tabgl_rows / tabpr2_rows уже
+  обёрнуты Волной 1 как `analyze.*` — не дублируются):
+  - **`trace.*` (8)**: `ray` (одиночный луч, направление нормируется),
+    `grid3d` (кольца × азимуты, путь по `include_path`), `focal_spot`,
+    геометрия Снеллиуса без системы — `intersect.sphere`,
+    `intersect.aspheric`, `normal.sphere`, `normal.aspheric`, `refract`
+    (TIR → `tir: true`);
+  - **`beam.*` (2)**: `heights` (TABESB — световые высоты габаритных
+    лучей по поверхностям), `screen_zones` (TABEAP — экранные зоны);
+    rows + текстовый формат OPAL;
+  - **`vign.*` (5)**: `compute` (виньетирование верх/низ + код
+    «Ограничения» D/P/M), `light` (светораспределение, дефолт полей —
+    точки поля системы), `tabbea` (апертурные характеристики пучков),
+    `passage_zones` (зоны прохождения по ВСЕМ поверхностям),
+    `real_obscuration` («габариты экранов», эллипс на входном зрачке);
+  - **`tables.*` (4)**: `taboc1`, `taboc2` (остаточные аберрации осевого
+    пучка; селектор `columns` — ровно 3 из wave/iso/h_zr/z_m/c_s,
+    невалидный → `invalid_param`), `field_zones` (зоны равной площади),
+    `max_field`.
+- Контракты Волны 1 без изменений: `system_source_params` (file/system/
+  lbo_index/lbo_name), `wl=None` → основная λ (в ответе — `wl`),
+  CLI-csv списки приводятся к float внутри обёртки, `sanitize_json` на
+  выходе. Нулевой вектор направления `trace.ray` → `invalid_param`.
+- **Тесты (+41, всего 1341)**: `tests/test_commands_trace.py` — smoke
+  КАЖДОЙ команды домена (покрытие скоупится на категории
+  trace/beam/vign/tables), сверка с прямыми вызовами analysis (числа
+  совпадают), виньетированный дублет/экранированное зеркало как в
+  test_vignetting, REPL-сценарий через текущую систему контекста.
+  Smoke-покрытие `test_commands_builtin.py` скоупится на категории
+  Волны 1 (`W1_CATEGORIES`) — поздние волны держат свои наборы.
+- Окружение worktree: скопированы локальные гитигноренные данные
+  (`extracted/`, `analysis/reverse_data/golden/bank/`) из основного
+  стенда — без них 44 golden/каталожных теста падают по FileNotFound
+  (в репо не попадают, чистая комната не затронута).
+
 ## [1.25.0] — 2026-10-22
 
 ### 🤖 Built for agents, Волна 1 — Command Registry + CLI + JSON-канал (TASK_COMMANDS_W1)

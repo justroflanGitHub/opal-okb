@@ -14,6 +14,9 @@ _BUILTIN_MODULES = (
     "commands.builtin.catalog_cmds",
     "commands.builtin.analyze_cmds",
     "commands.builtin.trace_cmds",
+    "commands.builtin.aber_cmds",
+    "commands.builtin.psf_cmds",
+    "commands.builtin.opt_cmds",
 )
 
 

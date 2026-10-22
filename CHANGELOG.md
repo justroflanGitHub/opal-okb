@@ -42,6 +42,41 @@ All notable changes to OPAL-OKB will be documented in this file.
   (`extracted/`, `analysis/reverse_data/golden/bank/`) из основного
   стенда — без них 44 golden/каталожных теста падают по FileNotFound
   (в репо не попадают, чистая комната не затронута).
+### 🤖 Built for agents, Волна 3 — домен «Дифракция и волновой фронт» (+29 команд, ветка w3/psf)
+
+- **`commands/builtin/psf_cmds.py`** — обёртки публичных точек входа
+  пяти модулей анализа (psf_mtf, diffraction, strehl, zernike,
+  focus_criteria), нижние слои не тронуты. Реестр: 61 команда
+  (32 Волны 1 + 29 Волны 3), категории psf/mtf/diffr/strehl/zern/focus.
+- **`psf.*` (4)**: `psf.lsf` (ФРЛ — профили мер/саг из ФРТ),
+  `psf.encircled` (ФКЭ-кривая + радиусы 50 %/80 % и пятно Эйри),
+  `psf.target` (миры: синус/шпальные, контраст Михельсона = MTF(ν)),
+  `psf.section` (секция протокола ФРТ/ОПФ, опция Цернике). Сама ФРТ
+  (`psf_grid`) не дублирована — уже `analyze.psf` Волны 1.
+- **`mtf.*` (1)**: `mtf.curve` — ОПФ из ФРТ (сечения tan/sag, срез,
+  Найквист). **`diffr.*` (5)**: `wavefront` (карта W на опорной сфере,
+  СКВ/PV), `mtf` (FFT-автокорреляция зрачка), `mtf.quick` (сетка 32),
+  `mtf.poly` (полихроматическая), `mtf.limited` (безаберрационный
+  эталон, аналитика круглого зрачка).
+- **`strehl.*` (2)**: `marechal` (формула из σ), `calc` (Марешаль +
+  точный FFT-PSF, полихроматически по λ системы, `include_text` —
+  строка и tooltip GUI). **`zern.*` (11)**: `terms` (базисы: классика
+  n≤4 и OPAL-28 с марками «C xIJ»), `coeffs` (+`coeffs.fit` по точкам),
+  `wavefront` (2D-карта), `chromatic` (по λ + разности),
+  `global` (поле × λ + таблица), `fit_points` (OPAL-28 по точкам),
+  `reconstruct` (W = Σc·Z, СКВ/PV), `strehl` (из коэффициентов),
+  `decompose` (OPAL-28: вклады в СКВ, Штрель Марешаля), `protocol`.
+- **`focus.*` (6)**: `min_rms`, `max_strehl`, `zone_best` (W(0.7)=W(1)),
+  `min_spot` (геометрическое пятно), `eqf` («равнофокусность» OPAL,
+  паритет СКВ зон), `all` (сводка + лучшая плоскость OPAL).
+- **Тесты (+50, файл `tests/test_commands_psf.py`)**: smoke всех 29
+  команд со строгим JSON-контрактом; числовой паритет с прямыми
+  вызовами analysis (обёртка не меняет числа); физические инварианты —
+  контраст синус-миры = MTF(ν), MTF(0)=1, ФКЭ монотонна, СКВ
+  Noll-члена = 1 (реконструкция), аналитика дифракционно-ограниченной
+  ЧКХ; контракт ошибок (no_system/missing/invalid/unknown); CLI
+  subprocess. Smoke-карта `test_commands_builtin.py` расширена
+  (инвариант «у каждой команды реестра есть smoke» сохранён).
 
 ## [1.25.0] — 2026-10-22
 

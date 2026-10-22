@@ -63,6 +63,12 @@ def run(name, args=None, ctx=None):
 # Полное покрытие: каждая команда реестра имеет smoke
 # --------------------------------------------------------------------------- #
 
+#: Категории Волны 1 — этот smoke-набор покрывает только их; команды
+#: более поздних волн (trace/beam/vign/tables, ...) держат собственные
+#: исчерпывающие наборы в своих тест-модулях (test_commands_trace.py ...).
+W1_CATEGORIES = {"file", "system", "calc", "catalog", "analyze"}
+
+
 def _smoke_args(demo_files):
     opj, jsn = demo_files
     return {
@@ -103,7 +109,8 @@ def _smoke_args(demo_files):
 
 def test_every_registered_command_has_smoke(demo_files):
     """Реестр Волны 1 = 32 команды, все покрыты smoke-набором."""
-    names = set(default_registry.names())
+    names = {n for n in default_registry.names()
+             if default_registry.get(n).category in W1_CATEGORIES}
     smoke = _smoke_args(demo_files)
     missing = names - set(smoke)
     extra = set(smoke) - names

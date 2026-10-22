@@ -1,4 +1,5 @@
-"""Builtin-команды реестра: файлы, системы, расчёты, каталог, анализ.
+"""Builtin-команды реестра: файлы, системы, расчёты, каталог, анализ,
+трассировка и таблицы (Волна 3).
 
 Каждый модуль экспортирует ``register(registry)``; регистрация всех —
 :func:`register_builtin` (вызывается ``commands.register_all``).
@@ -12,6 +13,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.calc_cmds",
     "commands.builtin.catalog_cmds",
     "commands.builtin.analyze_cmds",
+    "commands.builtin.trace_cmds",
 )
 
 

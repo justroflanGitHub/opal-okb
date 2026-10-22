@@ -11,8 +11,9 @@ OPAL-OKB — мост UI ↔ реестр команд (Волна 4, TASK_COMMA
 результата (правило 4 ТЗ: несоответствие формы решается здесь, а не
 в контрактах команд Волн 1+3).
 
-Модуль общий для агентов Волны 4: создаёт агент src=main; агент
-src=panel только импортирует его (не дублирует).
+Два уровня API (объединение вкладов src=main и src=panel):
+* класс :class:`CommandBridge` + синглтон :data:`bridge` — главное окно;
+* модульные :func:`execute` / :func:`report_error` — панель анализа.
 """
 from typing import Any, Optional, Tuple
 
@@ -23,8 +24,9 @@ from commands.registry import Registry, default_registry
 #: Ключ текущей системы UI-сессии в контексте моста.
 CURRENT_KEY = "ui.current"
 
-#: Первая команда Волны 4 (src=main) — маркер ленивой регистрации.
+#: Первые команды Волны 4 — маркеры ленивой регистрации (src=main/panel).
 _W4_MAIN_SENTINEL = "system.append"
+_W4_PANEL_SENTINEL = "panel.spot.summary"
 
 
 def ensure_w4_registered(registry: Optional[Registry] = None) -> None:
@@ -32,13 +34,15 @@ def ensure_w4_registered(registry: Optional[Registry] = None) -> None:
 
     ``commands/builtin/__init__.py`` не трогается (правило 5 ТЗ —
     координатор добавит регистрацию после мержа); мост регистрирует
-    свои модули лениво и идемпотентно.
+    модули В4 лениво и идемпотентно.
     """
     reg = registry if registry is not None else default_registry
-    if reg.has(_W4_MAIN_SENTINEL):
-        return
-    from commands.builtin import w4_main_cmds
-    w4_main_cmds.register(reg)
+    if not reg.has(_W4_MAIN_SENTINEL):
+        from commands.builtin import w4_main_cmds
+        w4_main_cmds.register(reg)
+    if not reg.has(_W4_PANEL_SENTINEL):
+        from commands.builtin import w4_panel_cmds
+        w4_panel_cmds.register(reg)
 
 
 class CommandBridge:
@@ -158,6 +162,18 @@ class CommandBridge:
 
 #: Мост главного окна (единый экземпляр UI-сессии).
 bridge = CommandBridge()
+
+
+def execute(name: str, ctx: Optional[CommandContext] = None,
+            **kwargs: Any) -> CommandResult:
+    """Модульный шорткат панели анализа: выполнить команду ``name``.
+
+    Синоним ``bridge.execute(name, ctx, **kwargs)`` для кода, которому
+    нужен собственный контекст (панель держит отдельный контекст, а не
+    сессию главного окна).
+    """
+    ensure_w4_registered()
+    return bridge.execute(name, ctx, **kwargs)
 
 
 def report_error(parent, result: CommandResult,

@@ -32,6 +32,43 @@ All notable changes to OPAL-OKB will be documented in this file.
   команды, сверка с прямыми вызовами utils/achromat/catalog/fileio,
   REPL-семантика замены текущей системы, stateless file=-режим,
   ошибки валидации.
+### 🤖 Built for agents, Волна 4 — перевязка панели анализа на реестр команд (src=panel, ветка w4/panel)
+
+- **`gui/cmdbridge.py`** — единая точка вызова команд из UI (спецификация
+  ТЗ Волны 4, п. 2): `execute(name, ctx, **kwargs) -> CommandResult`
+  (обёртка над `default_registry.execute`) и `report_error(parent, result)`
+  (единый QMessageBox с кодом команды). Без бизнес-логики; контексты
+  создаёт вызывающая сторона.
+- **`gui/analysis_panel.py` перевязан**: вся логика живого расчёта таблиц
+  идёт командами через bridge (33 вызова `_run_cmd` → 18 команд Волн 1+3
+  + 2 новых; `_run_cmd` кладёт живую систему GUI в `CommandContext` под
+  именем `'gui'`). Прямые compute-импорты analysis/domain из обработчиков
+  убраны (guard-тест); поведение для пользователя не менялось — те же
+  таблицы, те же параметры расчёта (num_rays/num_freqs/… как в живом
+  коде до перевязки). Адаптеры форматов — на стороне виджетов, контракты
+  команд Волн 1+3 не менялись. `analyze()` при ошибке команды теперь
+  показывает единый `report_error` и продолжает с пустыми данными
+  (раньше — необработанное исключение).
+- **`commands/builtin/w4_panel_cmds.py`** — gap-команды панели (категория
+  `panel`, регистрация `register()`/`ensure_registered()`, идемпотентно;
+  `commands/builtin/__init__.py` не тронут до мержа):
+  - **`panel.spot.summary`** — сводка точечной диаграммы для таблицы
+    «Точечная диагр.»: строки по каждой рабочей λ + полихроматическая
+    (RMS/RMS_X/RMS_Y/центроид/макс. радиус; num_points);
+  - **`panel.psf.stats`** — скалярные метрики ФРТ для таблицы «PSF»:
+    пиксель, максимум, центр пика, ширины мер/саг по полумаксимуму
+    (формулы перенесены из панели без изменений).
+- Инвентаризация всех 68 методов панели —
+  `docs/tasks/W4_INVENTORY_panel.md`: bound 26 / gap 2 (команды выше) /
+  ui-only 39 / direct-keep 1 (`_export_zernike_global` — QFileDialog,
+  живой Qt-интерактив без расчёта).
+- **Тесты (+21)**: `tests/test_commands_w4_panel.py` — smoke и паритет
+  gap-команд с прямыми вызовами analysis, идемпотентность регистрации,
+  bridge `execute`/`report_error`, перевязка живых таблиц offscreen
+  (chief/spot/psf/axial/rays/zern.global/analyze), деградация при ошибке
+  команды («Нет данных», не исключение) и guard исходника панели.
+  Существующие pytest-qt наборы панели (gauge_rays/global_zernike/
+  focus_diagrams, 40 тестов) проходят без изменений.
 
 ## [1.26.0] — 2026-10-22
 

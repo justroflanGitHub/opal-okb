@@ -1,25 +1,29 @@
-"""
-OPAL-OKB — мост UI ↔ реестр команд (Волна 4, TASK_COMMANDS_W4.md).
+"""OPAL-OKB — мост UI ↔ реестр команд (Волна 4, TASK_COMMANDS_W4.md).
 
-Единая точка вызова команд из GUI: обработчики меню/кнопок собирают
-параметры из диалогов и состояния окна, выполняют команду через
-:meth:`CommandBridge.execute` и рендерят результат прежними виджетами.
-Кнопка не считает сама — считает команда (принцип VS Code).
-
-Мост НЕ содержит бизнес-логики: только вызов ``default_registry``,
-персистентный контекст сессии (как у JSON-REPL) и адаптеры формы
-результата (правило 4 ТЗ: несоответствие формы решается здесь, а не
-в контрактах команд Волн 1+3).
+Единая точка вызова команд из GUI (принцип VS Code: кнопка не считает
+сама — считает команда; обработчики собирают параметры и рендерят
+результат). Мост НЕ содержит бизнес-логики.
 
 Два уровня API (объединение вкладов src=main и src=panel):
-* класс :class:`CommandBridge` + синглтон :data:`bridge` — главное окно;
-* модульные :func:`execute` / :func:`report_error` — панель анализа.
+* модульные :func:`execute` / :func:`report_error` — панель анализа
+  (прямой вызов реестра с контекстом вызывающей стороны);
+* класс :class:`CommandBridge` + ленивый синглтон ``bridge`` — главное
+  окно (персистентный контекст UI-сессии + адаптеры формы результата).
+
+Синглтон создаётся лениво (PEP 562): раннее создание экземпляра при
+импорте модуля до QApplication приводило к сегфолту (0xC0000005) при
+завершении pytest-сеансов с matplotlib-канвасами панели.
 """
 from typing import Any, Optional, Tuple
+
+from PyQt5.QtWidgets import QMessageBox
 
 from commands.base import CommandResult
 from commands.context import CommandContext
 from commands.registry import Registry, default_registry
+
+#: Заголовок окна единого показа ошибок команд.
+_ERROR_TITLE = "Команда"
 
 #: Ключ текущей системы UI-сессии в контексте моста.
 CURRENT_KEY = "ui.current"
@@ -32,9 +36,9 @@ _W4_PANEL_SENTINEL = "panel.spot.summary"
 def ensure_w4_registered(registry: Optional[Registry] = None) -> None:
     """Зарегистрировать команды Волны 4 в реестре, если их ещё нет.
 
-    ``commands/builtin/__init__.py`` не трогается (правило 5 ТЗ —
-    координатор добавит регистрацию после мержа); мост регистрирует
-    модули В4 лениво и идемпотентно.
+    ``commands/builtin/__init__.py`` включает w4-модуули после мержа;
+    мост регистрирует их лениво и идемпотентно (для изолированных
+    реестров и старых веток).
     """
     reg = registry if registry is not None else default_registry
     if not reg.has(_W4_MAIN_SENTINEL):
@@ -44,6 +48,49 @@ def ensure_w4_registered(registry: Optional[Registry] = None) -> None:
         from commands.builtin import w4_panel_cmds
         w4_panel_cmds.register(reg)
 
+
+# --------------------------------------------------------------------------- #
+# Модульный уровень (панель анализа)
+# --------------------------------------------------------------------------- #
+
+def execute(name: str, ctx, **kwargs: Any) -> CommandResult:
+    """Выполнить команду реестра для контекста ``ctx`` (панель анализа).
+
+    Args:
+        name: имя команды (например ``calc.paraxial``).
+        ctx: контекст выполнения с текущей системой GUI
+            (:class:`commands.context.CommandContext`).
+        **kwargs: параметры команды по схеме реестра.
+
+    Returns:
+        :class:`CommandResult` — исключения наружу не поднимаются
+        (контракт реестра); ошибку показывает :func:`report_error`.
+    """
+    return default_registry.execute(name, ctx, kwargs)
+
+
+def report_error(parent, result: CommandResult,
+                 cmd: Optional[str] = None) -> bool:
+    """Показать ошибку выполнения команды (единый формат для UI).
+
+    Для успешного результата ничего не делает. Возвращает ``True``,
+    если ошибка была показана.
+    """
+    if result is None or result.ok:
+        return False
+    error = result.error or {}
+    code = error.get("code", "error")
+    message = error.get("message", "")
+    title = f"Ошибка команды {cmd}" if cmd else _ERROR_TITLE
+    QMessageBox.warning(
+        parent, title,
+        f"Команда не выполнена (код: {code}).\n{message}")
+    return True
+
+
+# --------------------------------------------------------------------------- #
+# Мост главного окна (персистентная UI-сессия)
+# --------------------------------------------------------------------------- #
 
 class CommandBridge:
     """Персистентный контекст UI-сессии + вызовы реестра команд.
@@ -160,35 +207,19 @@ class CommandBridge:
         return self.current_system(), res
 
 
-#: Мост главного окна (единый экземпляр UI-сессии).
-bridge = CommandBridge()
+#: Ленивый синглтон моста главного окна (PEP 562 — см. докстринг модуля).
+_bridge: Optional[CommandBridge] = None
 
 
-def execute(name: str, ctx: Optional[CommandContext] = None,
-            **kwargs: Any) -> CommandResult:
-    """Модульный шорткат панели анализа: выполнить команду ``name``.
-
-    Синоним ``bridge.execute(name, ctx, **kwargs)`` для кода, которому
-    нужен собственный контекст (панель держит отдельный контекст, а не
-    сессию главного окна).
-    """
-    ensure_w4_registered()
-    return bridge.execute(name, ctx, **kwargs)
+def _get_bridge() -> CommandBridge:
+    """Ленивая инициализация синглтона (см. ``__getattr__`` ниже)."""
+    global _bridge
+    if _bridge is None:
+        _bridge = CommandBridge()
+    return _bridge
 
 
-def report_error(parent, result: CommandResult,
-                 cmd: Optional[str] = None) -> None:
-    """Единый показ ошибки команды (QMessageBox с кодом).
-
-    Args:
-        parent: родительский виджет для диалога.
-        result: неудачный :class:`CommandResult`.
-        cmd: имя команды для заголовка (если известен вызывающему).
-    """
-    from PyQt5.QtWidgets import QMessageBox  # лениво: модуль моста не тянет Qt
-
-    error = result.error or {}
-    code = error.get("code", "error")
-    message = error.get("message", "")
-    title = f"Ошибка команды {cmd}" if cmd else "Ошибка команды"
-    QMessageBox.critical(parent, title, f"[{code}] {message}")
+def __getattr__(name: str):
+    if name == "bridge":
+        return _get_bridge()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

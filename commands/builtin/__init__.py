@@ -17,6 +17,8 @@ _BUILTIN_MODULES = (
     "commands.builtin.aber_cmds",
     "commands.builtin.psf_cmds",
     "commands.builtin.opt_cmds",
+    "commands.builtin.w4_main_cmds",
+    "commands.builtin.w4_panel_cmds",
 )
 
 

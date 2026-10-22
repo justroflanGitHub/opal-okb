@@ -24,6 +24,31 @@ registry of **500+ commands**. The UI, the CLI, the JSON control channel and
 the MCP server all call the same commands — so anything you can click,
 a script or an AI agent can do too.
 
+### MCP server
+
+OPAL-OKB ships an MCP server (Model Context Protocol, JSON-RPC 2.0 over
+stdio, pure stdlib): every registry command is published as an agent tool
+(`calc.paraxial` → tool `calc_paraxial`, full JSON Schema for arguments).
+The session context is persistent — create or load a system once, then run
+calculations without re-passing the file. Oversized outputs are truncated
+with a hint, keeping the agent's context small. Logs go to stderr only;
+stdout is reserved for the protocol.
+
+Run it: `py -m commands mcp`. Connect from any MCP client (Claude Code,
+OpenClaw, …):
+
+```json
+{
+  "mcpServers": {
+    "opal-okb": {
+      "command": "py",
+      "args": ["-m", "commands", "mcp"],
+      "cwd": "C:/path/to/opal_okb"
+    }
+  }
+}
+```
+
 ---
 
 ## Install & run

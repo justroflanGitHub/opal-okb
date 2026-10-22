@@ -2,6 +2,43 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.28.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 5 — MCP-сервер поверх реестра команд
+
+- **`commands/mcp.py`** — MCP-сервер (Model Context Protocol) over stdio:
+  JSON-RPC 2.0, JSONL stdin→stdout (flush после каждого ответа), чистая
+  stdlib — без новых зависимостей. Тонкий слой над `default_registry`,
+  никакой бизнес-логики и Qt. Методы: `initialize` (negotiation версий
+  2024-11-05…2025-06-18, `capabilities: {tools: {}}`, serverInfo),
+  `notifications/initialized` (без ответа), `ping`, `tools/list`,
+  `tools/call`; неизвестный метод → -32601, битый JSON → -32700,
+  неизвестный tool → -32602. stdout зарезервирован протоколом, логи —
+  только stderr.
+- **Имена tools**: точки запрещены валидатором MCP-клиентов →
+  `calc.paraxial` → `calc_paraxial` (обратный маппинг в tools/call;
+  коллизий нет — 140 уникальных имён, пинится тестом). Каноническое имя —
+  первым словом в description tool.
+- **inputSchema** из Param по единому маппингу типов (str/float/int/bool/
+  list/dict → string/number/integer/boolean/array/object), required-массив,
+  default, enum из choices, description из help.
+- **Контекст сессии** — один персистентный `CommandContext` на процесс
+  сервера (как у REPL): `system.new`/`system.load` кладёт систему,
+  дальнейшие команды без `file=`/`system=` работают с текущей.
+- **Усечение вывода** (`MAX_TOOL_RESULT_BYTES = 20000`): результат больше
+  лимита → конверт `{"truncated": true, "size_bytes", "limit_bytes",
+  "preview", "hint"}` (сохранить в файл / запросить меньший срез) —
+  контекст агента не раздувается.
+- **CLI**: подкоманда `py -m commands mcp` добавлена в существующий
+  builder `commands/cli.py` (роутинг как у `repl`, дублей нет) +
+  быстрый путь в `commands/__main__.py`.
+- **Тесты (+31)**: `tests/test_commands_mcp.py` — handshake и negotiation,
+  все 140 tools (валидность `^[A-Za-z0-9_-]+$`, уникальность, round-trip
+  маппинга), JSON-Schema-валидность inputSchema, stateful-сессия
+  (system_new → calc_paraxial), isError / -32601 / -32602 / -32700 /
+  -32600, усечение, subprocess-смоук полного цикла (initialize +
+  initialized + tools/list + tools/call, stderr чист).
+
 ## [1.27.0] — 2026-10-22
 
 ### 🤖 Built for agents, Волна 4 — src=main: главное окно на реестре команд

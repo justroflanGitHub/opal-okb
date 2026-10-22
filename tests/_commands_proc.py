@@ -42,6 +42,21 @@ def run_repl(requests, timeout=180):
     return proc, responses
 
 
+def run_mcp(requests, timeout=180):
+    """MCP-сервер: список JSON-RPC-запросов → список ответов (один
+    subprocess; уведомления ответа не дают — только responses)."""
+    lines = [json.dumps(r, ensure_ascii=False) for r in requests]
+    proc = subprocess.run(
+        [sys.executable, "-X", "utf8", "-m", "commands", "mcp"],
+        input="\n".join(lines), capture_output=True, text=True,
+        encoding="utf-8", cwd=str(REPO_ROOT), timeout=timeout,
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+    )
+    responses = [json.loads(line)
+                 for line in proc.stdout.strip().splitlines() if line]
+    return proc, responses
+
+
 def make_demo_system(path_stem):
     """Демо-система через сам реестр: system.new+save (критерий ТЗ).
 

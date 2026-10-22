@@ -7,6 +7,7 @@ OPAL-OKB — CLI поверх реестра команд.
     schema [--json]                 схема всех команд
     run    <cmd> [--param k=v …]    выполнить команду
     repl                             JSONL-REPL (роутинг в jsonrepl)
+    mcp                              MCP-сервер over stdio (роутинг в mcp)
 
 Ошибки: ненулевой код выхода; при ``--json`` — JSON-ответ в stderr.
 """
@@ -62,6 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="вывод результата в JSON")
 
     sub.add_parser("repl", help="JSONL-REPL: запросы со stdin")
+    sub.add_parser("mcp", help="MCP-сервер over stdio: команды реестра "
+                               "как tools (JSON-RPC 2.0)")
 
     return parser
 
@@ -210,6 +213,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.subcommand == "repl":
         from commands.jsonrepl import main as repl_main
         return repl_main()
+
+    if args.subcommand == "mcp":
+        from commands.mcp import main as mcp_main
+        return mcp_main()
 
     if args.subcommand == "list":
         return _cmd_list(args)

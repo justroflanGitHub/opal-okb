@@ -4,6 +4,11 @@
 * Two-phase result application (parax/seidel → full analysis).
 * Graph/table mode toggling per tab.
 * Table construction from precomputed or live-computed data.
+
+Волна 4: живой расчёт таблиц идёт командами реестра через
+:mod:`gui.cmdbridge` (кнопка/вкладка не считает сама — вызывает команду
+и рендерит результат). Чисто UI-действия (переключение график/таблица,
+вкладки, экспорт с Qt-диалогом) командами не становятся.
 """
 
 from __future__ import annotations
@@ -22,44 +27,25 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QHeaderView
 
+# Волна 4: панель не считает сама — данные приходят из реестра команд
+# (gui.cmdbridge → commands). Из нижних слоёв остаются только константы
+# раскладки таблиц (PARAXIAL_WL_ROWS, BEAM_SEMI_MODES, DEFAULT_FOCUS_STEP_MM)
+# и форматтер текста готового результата (format_global_zernike_text).
 from optics_engine import (
-    OpticalSystem, paraxial_trace, seidel_aberrations,
-    paraxial_trace_all_wavelengths, PARAXIAL_WL_ROWS, PUPIL_POSITION_KEYS,
-    BEAM_SEMI_MODES,
+    OpticalSystem, PARAXIAL_WL_ROWS, PUPIL_POSITION_KEYS, BEAM_SEMI_MODES,
 )
-from aberrations import (
-    trace_aberration_fan,
-    compute_spot_diagram,
-    compute_spot_diagram_polychromatic,
-    compute_polychromatic_rms,
-    compute_rms_spot,
-    compute_rms_spot_xy,
-    compute_geometric_mtf,
-    compute_field_aberrations,
-    compute_focus_curve,
-    compute_chief_ray_characteristics,
-    compute_isoplanatism,
-    compute_gauge_rays,
-    DEFAULT_FOCUS_STEP_MM,
-)
-from advanced_analysis import (
-    compute_psf, compute_lsf, compute_enc, compute_ptf, compute_esf,
-    compute_bar_target_mtf_table,
-    TEST_OBJECT_KINDS, compute_test_object_image,
-)
-from zernike import (
-    compute_zernike_coefficients,
-    compute_wavefront_map_2d,
-    compute_zernike_chromatic,
-    compute_global_zernike,
-    format_global_zernike_text,
-)
+from aberrations import DEFAULT_FOCUS_STEP_MM
+from zernike import format_global_zernike_text
 from optics_utils import (
     get_primary_wl, fmt_val, wl_name,
     get_pupil_unit, set_pupil_unit, add_pupil_unit_observer,
     PUPIL_UNIT_CHOICES, format_pupil_position,
     field_native_unit, field_unit_display, format_field,
 )
+from commands.context import CommandContext
+from commands.builtin import w4_panel_cmds
+
+from . import cmdbridge
 
 from .widgets import (
     # Table helpers
@@ -92,7 +78,8 @@ from .widgets import (
     BarTargetWidget,
     TestObjectWidget,
 )
-from .analysis_pipeline import compute_all_analysis
+#: Имя живой системы GUI в контексте команд (Волна 4).
+_GUI_SYSTEM_NAME = 'gui'
 
 
 class AnalysisPanel(QTabWidget):
@@ -100,6 +87,12 @@ class AnalysisPanel(QTabWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # Командный мост (Волна 4): контекст с живой системой GUI.
+        # Gap-команды panel.* регистрируются здесь (commands/builtin/
+        # __init__.py собирает координатор после мержа веток Волны 4).
+        self._cmd_ctx = CommandContext()
+        w4_panel_cmds.ensure_registered()
 
         # ── Global settings bar ──
         self._settings_widget = QWidget()
@@ -345,6 +338,23 @@ class AnalysisPanel(QTabWidget):
             self.addTab(tab_page, title)
 
     # ------------------------------------------------------------------
+    #  Командный мост (Волна 4): панель → реестр команд
+    # ------------------------------------------------------------------
+
+    def _run_cmd(self, name: str, sys: OpticalSystem, **kwargs):
+        """Выполнить команду реестра для живой системы панели.
+
+        Система кладётся в контекст панели под постоянным именем,
+        вызов идёт через :mod:`gui.cmdbridge`. Ошибки не поднимаются
+        (контракт реестра): вызывающий решает — показать ошибку
+        единым способом (``cmdbridge.report_error``) или молча
+        деградировать до «Нет данных», как живой расчёт до Волны 4.
+        """
+        self._cmd_ctx.put_system(_GUI_SYSTEM_NAME, sys)
+        return cmdbridge.execute(name, self._cmd_ctx,
+                                 system=_GUI_SYSTEM_NAME, **kwargs)
+
+    # ------------------------------------------------------------------
     #  Mode toggle
     # ------------------------------------------------------------------
 
@@ -425,10 +435,14 @@ class AnalysisPanel(QTabWidget):
             return
 
         # Параксиалы для каждой рабочей λ (п. 13 GAP v2) — один расчёт,
-        # без копий системы: paraxial_trace принимает λ напрямую.
+        # без копий системы (команда calc.paraxial.multi_wl, Волна 4).
         sys = getattr(self, '_parax_sys', None)
-        per_wl = (paraxial_trace_all_wavelengths(sys)
-                  if sys is not None else [parax])
+        per_wl = None
+        if sys is not None:
+            res = self._run_cmd('calc.paraxial.multi_wl', sys)
+            per_wl = res.data.get('results') if res.ok else None
+        if not per_wl:
+            per_wl = [parax]
         if sys is not None and sys.wavelengths:
             labels = [w.name if w.name else wl_name(w.value)
                       for w in sys.wavelengths]
@@ -503,8 +517,9 @@ class AnalysisPanel(QTabWidget):
         """Азимутальный угол сечения (°), нормализованный к [0, 360)."""
         if not hasattr(self, 'azimuth_spin'):
             return 0.0
-        from aberrations import normalize_azimuth_deg
-        return normalize_azimuth_deg(self.azimuth_spin.value())
+        # нормализация значения спинбокса, как normalize_azimuth_deg
+        # (analysis): приведение к [0, 360) без обращения к расчёту
+        return self.azimuth_spin.value() % 360.0
 
     def get_focus_step(self) -> float:
         """Шаг фокусировки ΔS' (мм) для фокусировочных диаграмм."""
@@ -569,7 +584,9 @@ class AnalysisPanel(QTabWidget):
             return cached_efl
         efl = (self._parax_data or {}).get('focal_length', 0)
         if not efl:
-            efl = paraxial_trace(sys).get('focal_length', 0)
+            res = self._run_cmd('calc.paraxial', sys)
+            efl = ((res.data or {}).get('focal_length', 0)
+                   if res.ok else 0)
         self._efl_cache = (sys, efl or 0.0)
         return efl or 0.0
 
@@ -926,10 +943,9 @@ class AnalysisPanel(QTabWidget):
 
         gauge_rays = d.get('gauge_rays')
         if gauge_rays is None:
-            try:
-                gauge_rays = compute_gauge_rays(sys, wl=wl)
-            except Exception:
-                gauge_rays = []
+            # живой fallback — командой (Волна 4)
+            res = self._run_cmd('aber.gauge_rays', sys, wl=wl)
+            gauge_rays = res.data.get('rays', []) if res.ok else []
         self._set_table('rays', self._build_gauge_rays_tables(sys, gauge_rays))
 
         self._update_zernike_global(sys, d.get('zernike_global'))
@@ -1202,13 +1218,21 @@ class AnalysisPanel(QTabWidget):
         """Compute all analysis data and update all widgets synchronously."""
         defocus = self.get_defocus_offset()
         azimuth = self.get_azimuth()
-        from optics_engine import paraxial_trace, seidel_aberrations
-        parax = paraxial_trace(sys)
+        # Параксиалы/Зейдель — командами реестра (Волна 4); при ошибке
+        # команды — единый показ ошибки + пустые таблицы (до Волны 4
+        # исключение расчёта поднималось наружу необработанным).
+        parax_res = self._run_cmd('calc.paraxial', sys)
+        if not parax_res.ok:
+            cmdbridge.report_error(self, parax_res)
+        parax = parax_res.data if parax_res.ok and parax_res.data else {}
         efl = parax.get('focal_length', 0)
         epd = sys.aperture_value if sys.aperture_value > 0 else efl / 4.0
         fno = efl / epd if epd > 0 else 0
         self.update_parax(parax, fno, epd, sys=sys)
-        self.update_seidel(seidel_aberrations(sys))
+        seidel_res = self._run_cmd('calc.seidel', sys)
+        if not seidel_res.ok:
+            cmdbridge.report_error(self, seidel_res)
+        self.update_seidel(seidel_res.data if seidel_res.ok else {})
         self.spot_diagram.set_data(sys)
         self.axial.set_data(sys, azimuth_deg=azimuth)
         self.transverse.set_data(sys, azimuth_deg=azimuth)
@@ -1273,27 +1297,19 @@ class AnalysisPanel(QTabWidget):
     #  -----------------------------------------------------------------
 
     def _update_spot_table(self, sys: OpticalSystem) -> None:
-        wl_list = [w.value for w in sys.wavelengths] if sys.wavelengths else [0.58756]
+        """Таблица «Точечная диагр.»: сводка по λ + полихроматическая
+        строка (команда panel.spot.summary, Волна 4)."""
+        res = self._run_cmd('panel.spot.summary', sys, num_rays=40)
         rows = []
-        for field_y in [0.0]:
-            for wl in wl_list:
-                spots = compute_spot_diagram(sys, wl=wl, num_rays=40, field_y=field_y)
-                rms = compute_rms_spot(spots)
-                rms_xy = compute_rms_spot_xy(spots)
-                max_r = max((math.sqrt(dx**2+dy**2) for dx,dy in spots), default=0)
-                rows.append([f"{field_y:.1f}", f"{wl:.4f}", str(len(spots)),
-                             f"{rms:.4f}", f"{rms_xy['rms_x']:.4f}",
-                             f"{rms_xy['rms_y']:.4f}", f"{rms_xy['centroid_y']:.4f}",
-                             f"{max_r:.4f}"])
-        if len(wl_list) > 1:
-            poly_spots = compute_spot_diagram_polychromatic(sys, num_rays=40, field_y=0.0)
-            poly_rms = compute_polychromatic_rms(sys, num_rays=40, field_y=0.0)
-            poly_rms_xy = compute_rms_spot_xy([(dx, dy) for dx, dy, _ in poly_spots])
-            poly_max = max((math.sqrt(dx**2+dy**2) for dx,dy,_ in poly_spots), default=0)
-            rows.append(["0.0", "полихр.", str(len(poly_spots)),
-                         f"{poly_rms:.4f}", f"{poly_rms_xy['rms_x']:.4f}",
-                         f"{poly_rms_xy['rms_y']:.4f}", f"{poly_rms_xy['centroid_y']:.4f}",
-                         f"{poly_max:.4f}"])
+        if res.ok:
+            field_txt = f"{res.data.get('field_y', 0.0):.1f}"
+            for r in res.data.get('rows', []):
+                wl_txt = (f"{r['wl']:.4f}" if r['kind'] == 'mono'
+                          else "полихр.")
+                rows.append([field_txt, wl_txt, str(r['num_points']),
+                             f"{r['rms']:.4f}", f"{r['rms_x']:.4f}",
+                             f"{r['rms_y']:.4f}", f"{r['centroid_y']:.4f}",
+                             f"{r['max_r']:.4f}"])
         self._set_table('spot', make_table(
             ["Поле", "λ, мкм", "Лучей", "RMS, мм", "RMS_X, мм", "RMS_Y, мм",
              "Yцэ, мм", "Макс R, мм"],
@@ -1302,9 +1318,12 @@ class AnalysisPanel(QTabWidget):
     def _update_axial_table(self, sys: OpticalSystem) -> None:
         """Таблица осевого пучка: h, Δy', Δs', W, неизопланатизм η."""
         wl = get_primary_wl(sys)
-        fan = trace_aberration_fan(sys, wl, num_rays=30)
-        iso_pupils, iso_vals = compute_isoplanatism(sys, wl=wl, num_rays=30)
-        iso_by_pupil = dict(zip(iso_pupils, iso_vals))
+        fan_res = self._run_cmd('aber.fan', sys, wl=wl, num_rays=30)
+        fan = fan_res.data.get('rays', []) if fan_res.ok else []
+        iso_res = self._run_cmd('aber.isoplanatism', sys, wl=wl, num_rays=30)
+        iso_by_pupil = (dict(zip(iso_res.data.get('pupil', []),
+                                 iso_res.data.get('eta', [])))
+                        if iso_res.ok else {})
         rows = []
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
@@ -1320,7 +1339,8 @@ class AnalysisPanel(QTabWidget):
 
     def _update_transverse_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)
-        fan = trace_aberration_fan(sys, wl, num_rays=30)
+        res = self._run_cmd('aber.fan', sys, wl=wl, num_rays=30)
+        fan = res.data.get('rays', []) if res.ok else []
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
             r = fan[i]
@@ -1330,7 +1350,8 @@ class AnalysisPanel(QTabWidget):
 
     def _update_longitudinal_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)
-        fan = trace_aberration_fan(sys, wl, num_rays=30)
+        res = self._run_cmd('aber.fan', sys, wl=wl, num_rays=30)
+        fan = res.data.get('rays', []) if res.ok else []
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
             r = fan[i]
@@ -1340,7 +1361,8 @@ class AnalysisPanel(QTabWidget):
 
     def _update_wavefront_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)
-        fan = trace_aberration_fan(sys, wl, num_rays=30)
+        res = self._run_cmd('aber.fan', sys, wl=wl, num_rays=30)
+        fan = res.data.get('rays', []) if res.ok else []
         step = max(1, len(fan) // 13)
         for i in range(0, len(fan), step):
             r = fan[i]
@@ -1350,20 +1372,15 @@ class AnalysisPanel(QTabWidget):
 
     def _update_mtf_table(self, sys: OpticalSystem) -> None:
         rows = []; wl = get_primary_wl(sys)
-        spots = compute_spot_diagram(sys, wl=wl, num_rays=40)
-        geo_mtf = compute_geometric_mtf(spots, max_freq=100, num_freqs=20)
-        diff_mtf = None
-        try:
-            from diffraction_mtf import compute_diffraction_mtf_quick
-            diff_mtf = compute_diffraction_mtf_quick(sys, wl=wl)
-        except Exception:
-            pass
-        diff_limited_mtf = None
-        try:
-            from diffraction_mtf import compute_diffraction_limited_mtf
-            diff_limited_mtf = compute_diffraction_limited_mtf(sys, wl=wl)
-        except Exception:
-            pass
+        # геометрическая/дифракционная/безаберрационная ЧКХ — тремя
+        # командами (Волна 4); дифракционные опциональны, как раньше
+        geo_res = self._run_cmd('aber.mtf_geo', sys, wl=wl,
+                                max_freq=100.0, num_freqs=20, num_rays=40)
+        geo_mtf = geo_res.data.get('mtf', []) if geo_res.ok else []
+        diff_res = self._run_cmd('diffr.mtf.quick', sys, wl=wl)
+        diff_mtf = diff_res.data if diff_res.ok else None
+        ltd_res = self._run_cmd('diffr.mtf.limited', sys, wl=wl)
+        diff_limited_mtf = ltd_res.data if ltd_res.ok else None
         for i, (freq, mtf_t, mtf_s) in enumerate(geo_mtf):
             d_t = ""; d_s = ""; dl = ""; poly = ""
             if diff_mtf and i < len(diff_mtf['freqs']):
@@ -1379,7 +1396,9 @@ class AnalysisPanel(QTabWidget):
     def _update_distortion_table(self, sys: OpticalSystem,
                                  data: list | None = None) -> None:
         if data is None:
-            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+            res = self._run_cmd('analyze.field_aberrations', sys,
+                                wl=get_primary_wl(sys))
+            data = res.data.get('fields', []) if res.ok else []
         unit = self._field_unit_label(sys)
         rows = []
         for d in data:
@@ -1394,7 +1413,9 @@ class AnalysisPanel(QTabWidget):
     def _update_astigmatism_table(self, sys: OpticalSystem,
                                   data: list | None = None) -> None:
         if data is None:
-            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+            res = self._run_cmd('analyze.field_aberrations', sys,
+                                wl=get_primary_wl(sys))
+            data = res.data.get('fields', []) if res.ok else []
         unit = self._field_unit_label(sys)
         rows = []
         for d in data:
@@ -1409,7 +1430,9 @@ class AnalysisPanel(QTabWidget):
     def _update_coma_table(self, sys: OpticalSystem,
                            data: list | None = None) -> None:
         if data is None:
-            data = compute_field_aberrations(sys, wl=get_primary_wl(sys))
+            res = self._run_cmd('analyze.field_aberrations', sys,
+                                wl=get_primary_wl(sys))
+            data = res.data.get('fields', []) if res.ok else []
         unit = self._field_unit_label(sys)
         rows = []
         for d in data:
@@ -1423,7 +1446,10 @@ class AnalysisPanel(QTabWidget):
 
     def _update_focus_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
-        curve = compute_focus_curve(sys, wl=wl, num_points=40, defocus_range=2.0, freq_lpmm=50.0, num_rays=25, field_y=0.0)
+        res = self._run_cmd('aber.focus_curve', sys, wl=wl, num_points=40,
+                            defocus_range=2.0, freq_lpmm=50.0, num_rays=25,
+                            field_y=0.0)
+        curve = res.data.get('curve') if res.ok else None
         if not curve:
             self._set_table('focus', None); return
         best_defocus = max(curve, key=lambda p: p[1])[0]
@@ -1444,49 +1470,45 @@ class AnalysisPanel(QTabWidget):
         self._set_table('focus', table)
 
     def _update_psf_table(self, sys: OpticalSystem) -> None:
+        """Таблица «PSF»: скалярные метрики ФРТ (panel.psf.stats, Волна 4)."""
         wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
-        try:
-            psf_data, dx, dy = compute_psf(sys, wl=wl, num_rays=64)
-            if psf_data is not None:
-                pix_size = (dx.max() - dx.min()) / len(dx) if len(dx) > 1 else 0
-                max_intens = psf_data.max()
-                cy, cx = np.unravel_index(np.argmax(psf_data), psf_data.shape)
-                center_x = dx[cx] if cx < len(dx) else 0
-                center_y = dy[cy] if cy < len(dy) else 0
-                row_center = psf_data[cy, :]; col_center = psf_data[:, cx]
-                half_max = max_intens / 2
-                try:
-                    w_mer = (dx.max() - dx.min()) / len(dx) * np.sum(row_center > half_max)
-                    w_sag = (dy.max() - dy.min()) / len(dy) * np.sum(col_center > half_max)
-                except Exception:
-                    w_mer = w_sag = 0
-                rows.append(["Разм. пикс.", f"{pix_size:.4f} мкм"])
-                rows.append(["Макс. интенс.", f"{max_intens:.5f}"])
-                rows.append(["Центр X", f"{center_x:.4f} мкм"])
-                rows.append(["Центр Y", f"{center_y:.4f} мкм"])
-                rows.append(["Шир. мер.", f"{w_mer:.4f} мкм"])
-                rows.append(["Шир. саг.", f"{w_sag:.4f} мкм"])
-        except Exception:
+        res = self._run_cmd('panel.psf.stats', sys, wl=wl, num_rays=64)
+        if res.ok and res.data and 'pixel_um' in res.data:
+            d = res.data
+            rows.append(["Разм. пикс.", f"{d['pixel_um']:.4f} мкм"])
+            rows.append(["Макс. интенс.", f"{d['max_intensity']:.5f}"])
+            rows.append(["Центр X", f"{d['center_x_um']:.4f} мкм"])
+            rows.append(["Центр Y", f"{d['center_y_um']:.4f} мкм"])
+            rows.append(["Шир. мер.", f"{d['width_mer_um']:.4f} мкм"])
+            rows.append(["Шир. саг.", f"{d['width_sag_um']:.4f} мкм"])
+        else:
             rows.append(["Ошибка", "—"])
         self._set_table('psf', make_table(["Параметр", "Значение"], rows, [100, 120]))
 
     def _update_lsf_table(self, sys: OpticalSystem) -> None:
+        """Таблица «LSF»: два сечения ФРЛ (adv.lsf мер/саг, Волна 4)."""
         wl = get_primary_wl(sys)
-        try:
-            lsf_t, ax1 = compute_lsf(sys, wl=wl, num_rays=64, direction='tangential')
-            lsf_s, ax2 = compute_lsf(sys, wl=wl, num_rays=64, direction='sagittal')
+        t_res = self._run_cmd('adv.lsf', sys, wl=wl, num_rays=64,
+                              direction='tangential')
+        s_res = self._run_cmd('adv.lsf', sys, wl=wl, num_rays=64,
+                              direction='sagittal')
+        if t_res.ok and s_res.ok:
+            lsf_t = t_res.data['lsf']; ax1 = t_res.data['x_um']
+            lsf_s = s_res.data['lsf']
             rows = []; n = len(ax1); step = max(1, n // 15)
             for i in range(0, n, step):
                 rows.append([f"{ax1[i]:.4f}", f"{lsf_t[i]:.5f}", f"{lsf_s[i]:.5f}"])
             self._set_table('lsf', make_table(["Коорд. (мкм)", "Мерид. LSF", "Сагит. LSF"], rows, [75, 75, 75]))
-        except Exception:
+        else:
             self._set_table('lsf', None)
 
     def _update_enc_table(self, sys: OpticalSystem) -> None:
+        """Таблица «ENC»: ФКЭ (adv.enc, Волна 4)."""
         wl = get_primary_wl(sys)
-        try:
-            r_um, enc = compute_enc(sys, wl=wl, num_rays=100)
+        res = self._run_cmd('adv.enc', sys, wl=wl, num_rays=100)
+        if res.ok:
+            r_um = res.data['r_um']; enc = res.data['enc']
             rows = []; n = len(r_um); step = max(1, n // 13)
             for i in range(0, n, step):
                 rows.append([f"{r_um[i]*2:.4f}", f"{enc[i]*100:.2f}"])
@@ -1496,22 +1518,23 @@ class AnalysisPanel(QTabWidget):
                     d = r_um[idx] * 2
                     rows.append([f"D@{int(pct*100)}%={d:.4f}", f"{pct*100:.2f}%"])
             self._set_table('enc', make_table(["D круга (мкм)", "Полихр. %"], rows, [110, 80]))
-        except Exception:
+        else:
             self._set_table('enc', None)
 
     def _update_ptf_table(self, sys: OpticalSystem) -> None:
+        """Таблица «PTF»: фазовая ЧКХ (adv.ptf, Волна 4)."""
         wl = get_primary_wl(sys)
-        try:
-            ptf = compute_ptf(sys, wl=wl, num_rays=64)
-            if ptf is None:
-                self._set_table('ptf', None); return
-            freqs = ptf['freqs']; ptf_t = ptf['ptf_tangential']; ptf_s = ptf['ptf_sagittal']
-            rows = []; n = len(freqs); step = max(1, n // 15)
-            for i in range(0, n, step):
-                rows.append([f"{freqs[i]:.2f}", f"{ptf_t[i]:.5f}", f"{ptf_s[i]:.5f}"])
-            self._set_table('ptf', make_table(["Частота (л/мм)", "PTF мер. (рад)", "PTF саг. (рад)"], rows, [75, 80, 80]))
-        except Exception:
-            self._set_table('ptf', None)
+        res = self._run_cmd('adv.ptf', sys, wl=wl, num_rays=64)
+        if not res.ok:
+            self._set_table('ptf', None); return
+        ptf = res.data
+        if ptf is None:
+            self._set_table('ptf', None); return
+        freqs = ptf['freqs']; ptf_t = ptf['ptf_tangential']; ptf_s = ptf['ptf_sagittal']
+        rows = []; n = len(freqs); step = max(1, n // 15)
+        for i in range(0, n, step):
+            rows.append([f"{freqs[i]:.2f}", f"{ptf_t[i]:.5f}", f"{ptf_s[i]:.5f}"])
+        self._set_table('ptf', make_table(["Частота (л/мм)", "PTF мер. (рад)", "PTF саг. (рад)"], rows, [75, 80, 80]))
 
     def _update_heatmap_table(self, sys: OpticalSystem) -> None:
         wl = get_primary_wl(sys)
@@ -1532,10 +1555,10 @@ class AnalysisPanel(QTabWidget):
     def _update_beam_table(self, sys: OpticalSystem,
                            beam_data: list | None = None) -> None:
         if beam_data is None:
-            from optics_engine import compute_beam_geometry
-            beam_data = compute_beam_geometry(
-                sys, semi_mode=self.get_beam_semi_mode(),
-                sharp_edge=self.get_beam_sharp_edge())
+            res = self._run_cmd('calc.beam_geometry', sys,
+                                semi_mode=self.get_beam_semi_mode(),
+                                sharp_edge=self.get_beam_sharp_edge())
+            beam_data = res.data.get('fields', []) if res.ok else []
         unit = self._field_unit_label(sys)
         rows = []
         for bd in beam_data:
@@ -1550,7 +1573,8 @@ class AnalysisPanel(QTabWidget):
     def _update_chief_table(self, sys: OpticalSystem,
                             chief_data: list | None = None) -> None:
         if chief_data is None:
-            chief_data = compute_chief_ray_characteristics(sys)
+            res = self._run_cmd('aber.chief', sys)
+            chief_data = res.data.get('rows', []) if res.ok else []
         unit = self._field_unit_label(sys)
         rows = []
         for cd in chief_data:
@@ -1675,11 +1699,10 @@ class AnalysisPanel(QTabWidget):
         return [table_coords, table_params, table_summary]
 
     def _update_gauge_rays_table(self, sys: OpticalSystem) -> None:
-        """Вкладка «Лучи (ход)»: построить таблицы (живой расчёт)."""
-        try:
-            rays = compute_gauge_rays(sys)
-        except Exception:
-            rays = []
+        """Вкладка «Лучи (ход)»: построить таблицы (живой расчёт
+        командой aber.gauge_rays, Волна 4)."""
+        res = self._run_cmd('aber.gauge_rays', sys)
+        rays = res.data.get('rays', []) if res.ok else []
         self._set_table('rays', self._build_gauge_rays_tables(sys, rays))
 
     @staticmethod
@@ -1713,30 +1736,39 @@ class AnalysisPanel(QTabWidget):
             self._update_zernike_table(sys)
 
     def _update_zernike_table(self, sys: OpticalSystem) -> None:
+        """Таблица коэффициентов Цернике (+ хроматическая Z_nm(λ)).
+
+        Живой расчёт — командами zern.coeffs/zern.chromatic (Волна 4);
+        виджет переиспользует свои кэшированные коэффициенты.
+        """
         wl = get_primary_wl(sys); defocus = self.get_defocus_offset()
-        try:
-            coeffs = self.zernike_w.coeffs or compute_zernike_coefficients(
-                sys, wl=wl, num_rays=32, max_order=4, defocus_offset=defocus)
-            chromatic = None
-            if len(sys.wavelengths) > 1:
-                chromatic = self.zernike_w.chromatic_data
-                if chromatic is None:
-                    try:
-                        chromatic = compute_zernike_chromatic(
-                            sys, num_rays=32, max_order=4)
-                    except Exception:
-                        chromatic = None
-            if chromatic and self.zernike_w._show_chromatic:
-                self._zernike_table = self._build_zernike_chromatic_table(
-                    coeffs, chromatic)
-            else:
-                rows = [[name, f"{val:+.6f}"] for val, name in coeffs]
-                self._zernike_table = make_table(
-                    ["Полином", "Коэфф. (λ)"], rows, [120, 90])
-            self._refresh_zernike_tables()
-        except Exception:
+        coeffs = self.zernike_w.coeffs
+        if not coeffs:
+            res = self._run_cmd('zern.coeffs', sys, wl=wl, num_rays=32,
+                                max_order=4, defocus_offset=defocus)
+            coeffs = ([(row['coeff'], row['name'])
+                       for row in res.data.get('coeffs', [])]
+                      if res.ok else [])
+        if not coeffs:
             self._zernike_table = None
             self._refresh_zernike_tables()
+            return
+        chromatic = None
+        if len(sys.wavelengths) > 1:
+            chromatic = self.zernike_w.chromatic_data
+            if chromatic is None:
+                res = self._run_cmd('zern.chromatic', sys, num_rays=32,
+                                    max_order=4)
+                chromatic = (res.data.get('by_wavelength')
+                             if res.ok else None)
+        if chromatic and self.zernike_w._show_chromatic:
+            self._zernike_table = self._build_zernike_chromatic_table(
+                coeffs, chromatic)
+        else:
+            rows = [[name, f"{val:+.6f}"] for val, name in coeffs]
+            self._zernike_table = make_table(
+                ["Полином", "Коэфф. (λ)"], rows, [120, 90])
+        self._refresh_zernike_tables()
 
     # ------------------------------------------------------------------
     #  Глобальное разложение Цернике (пункт 9): текст + экспорт
@@ -1749,15 +1781,20 @@ class AnalysisPanel(QTabWidget):
 
     def _update_zernike_global(self, sys: OpticalSystem,
                                result: dict = None) -> None:
-        """Вкладка «Цернике (глоб.)»: текстовая таблица поле × λ."""
+        """Вкладка «Цернике (глоб.)»: текстовая таблица поле × λ.
+
+        Живой расчёт — командой zern.global (Волна 4, готовый текст в
+        ответе); готовый результат пайплайна форматируется здесь
+        (``format_global_zernike_text`` — форматтер, не расчёт).
+        """
         if result is None:
-            try:
-                result = compute_global_zernike(sys)
-            except Exception:
-                result = None
-        text = (format_global_zernike_text(result,
-                                            wl_names=self._wl_names(sys))
-                if result else 'Нет данных')
+            res = self._run_cmd('zern.global', sys)
+            text = (res.data.get('text')
+                    if res.ok and res.data else None) or 'Нет данных'
+        else:
+            text = (format_global_zernike_text(result,
+                                               wl_names=self._wl_names(sys))
+                    if result else 'Нет данных')
         self.zernike_global_text.setPlainText(text)
 
         page = QWidget()
@@ -1807,6 +1844,8 @@ class AnalysisPanel(QTabWidget):
         return self.wavefront_stack.currentIndex() == 1
 
     def _update_wfmap_table(self, sys: OpticalSystem) -> None:
+        """Таблица «Волн. фронт»: статистика карты W (zern.wavefront,
+        Волна 4); переиспользует карту, уже рассчитанную виджетом."""
         wl = get_primary_wl(sys)
         rows = [["λ перв.", f"{wl:.4f} мкм"]]
         try:
@@ -1814,9 +1853,13 @@ class AnalysisPanel(QTabWidget):
             wf = self.wavefront_map_w.wf_data
             mask = self.wavefront_map_w.mask
             if wf is None:
-                wf, coords, mask = compute_wavefront_map_2d(
-                    sys, wl=wl, grid_size=48,
-                    defocus_offset=self.get_defocus_offset())
+                res = self._run_cmd('zern.wavefront', sys, wl=wl,
+                                    grid_size=48,
+                                    defocus_offset=self.get_defocus_offset(),
+                                    include_grid=True)
+                if res.ok:
+                    wf = np.array(res.data['wavefront'])
+                    mask = np.array(res.data['pupil_mask'])
             if wf is not None and mask is not None:
                 valid = wf[mask > 0]; valid = valid[np.isfinite(valid)]
                 if valid.size > 0:
@@ -1834,16 +1877,18 @@ class AnalysisPanel(QTabWidget):
         self._set_table('wfmap', make_table(["Параметр", "Значение"], rows, [100, 120]))
 
     def _update_esf_table(self, sys: OpticalSystem) -> None:
+        """Таблица «ESF»: отклик на резкий край (adv.esf, Волна 4)."""
         wl = get_primary_wl(sys)
-        try:
-            x_um, esf = compute_esf(sys, wl=wl)
+        res = self._run_cmd('adv.esf', sys, wl=wl)
+        if res.ok:
+            x_um = res.data['x_um']; esf = res.data['esf']
             if x_um is None:
                 self._set_table('esf', None); return
             rows = []; n = len(x_um); step = max(1, n // 15)
             for i in range(0, n, step):
                 rows.append([f"{x_um[i]:.4f}", f"{esf[i]:.5f}"])
             self._set_table('esf', make_table(["Коорд. (мкм)", "ESF"], rows, [90, 90]))
-        except Exception:
+        else:
             self._set_table('esf', None)
 
     def _update_focus_diag_table(self, sys: OpticalSystem) -> None:
@@ -1893,16 +1938,18 @@ class AnalysisPanel(QTabWidget):
         self._refresh_zernike_tables()
 
     def _update_bar_target_table(self, sys: OpticalSystem) -> None:
+        """Таблица «Мира»: MTF по штриховой мире (adv.bar_mtf, Волна 4)."""
         wl = get_primary_wl(sys)
-        try:
-            mtf_data = self.bar_target_w.mtf_table
-            if not mtf_data:
-                mtf_data = compute_bar_target_mtf_table(sys, wl=wl)
-            rows = []
-            for entry in mtf_data:
-                rows.append([f"{entry['freq']}", f"{entry['contrast_ideal']:.4f}",
-                             f"{entry['contrast_real']:.4f}", f"{entry['mtf']:.4f}"])
-            self._set_table('bar_target', make_table(
-                ["Частота (л/мм)", "Контр. идеал", "Контр. реал.", "MTF"], rows, [80, 80, 80, 80]))
-        except Exception:
+        mtf_data = self.bar_target_w.mtf_table
+        if not mtf_data:
+            res = self._run_cmd('adv.bar_mtf', sys, wl=wl)
+            mtf_data = res.data.get('rows', []) if res.ok else None
+        if mtf_data is None:
             self._set_table('bar_target', None)
+            return
+        rows = []
+        for entry in mtf_data:
+            rows.append([f"{entry['freq']}", f"{entry['contrast_ideal']:.4f}",
+                         f"{entry['contrast_real']:.4f}", f"{entry['mtf']:.4f}"])
+        self._set_table('bar_target', make_table(
+            ["Частота (л/мм)", "Контр. идеал", "Контр. реал.", "MTF"], rows, [80, 80, 80, 80]))

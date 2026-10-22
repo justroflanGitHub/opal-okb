@@ -2,6 +2,247 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.28.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 5 — MCP-сервер поверх реестра команд
+
+- **`commands/mcp.py`** — MCP-сервер (Model Context Protocol) over stdio:
+  JSON-RPC 2.0, JSONL stdin→stdout (flush после каждого ответа), чистая
+  stdlib — без новых зависимостей. Тонкий слой над `default_registry`,
+  никакой бизнес-логики и Qt. Методы: `initialize` (negotiation версий
+  2024-11-05…2025-06-18, `capabilities: {tools: {}}`, serverInfo),
+  `notifications/initialized` (без ответа), `ping`, `tools/list`,
+  `tools/call`; неизвестный метод → -32601, битый JSON → -32700,
+  неизвестный tool → -32602. stdout зарезервирован протоколом, логи —
+  только stderr.
+- **Имена tools**: точки запрещены валидатором MCP-клиентов →
+  `calc.paraxial` → `calc_paraxial` (обратный маппинг в tools/call;
+  коллизий нет — 140 уникальных имён, пинится тестом). Каноническое имя —
+  первым словом в description tool.
+- **inputSchema** из Param по единому маппингу типов (str/float/int/bool/
+  list/dict → string/number/integer/boolean/array/object), required-массив,
+  default, enum из choices, description из help.
+- **Контекст сессии** — один персистентный `CommandContext` на процесс
+  сервера (как у REPL): `system.new`/`system.load` кладёт систему,
+  дальнейшие команды без `file=`/`system=` работают с текущей.
+- **Усечение вывода** (`MAX_TOOL_RESULT_BYTES = 20000`): результат больше
+  лимита → конверт `{"truncated": true, "size_bytes", "limit_bytes",
+  "preview", "hint"}` (сохранить в файл / запросить меньший срез) —
+  контекст агента не раздувается.
+- **CLI**: подкоманда `py -m commands mcp` добавлена в существующий
+  builder `commands/cli.py` (роутинг как у `repl`, дублей нет) +
+  быстрый путь в `commands/__main__.py`.
+- **Тесты (+31)**: `tests/test_commands_mcp.py` — handshake и negotiation,
+  все 140 tools (валидность `^[A-Za-z0-9_-]+$`, уникальность, round-trip
+  маппинга), JSON-Schema-валидность inputSchema, stateful-сессия
+  (system_new → calc_paraxial), isError / -32601 / -32602 / -32700 /
+  -32600, усечение, subprocess-смоук полного цикла (initialize +
+  initialized + tools/list + tools/call, stderr чист).
+
+## [1.27.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 4 — src=main: главное окно на реестре команд
+
+- **`gui/cmdbridge.py`** — общий мост UI ↔ реестр (агент src=main создаёт,
+  src=panel только импортирует): `bridge.execute(cmd, **kwargs)` с
+  персистентным контекстом UI-сессии (`set_current`/`current_system`),
+  адаптеры `load_file`/`create_demo`/`create_empty` (живые объекты из
+  контекста — без десериализации), `report_error(parent, result)`.
+  Без бизнес-логики и без Qt на уровне модуля.
+- **10 gap-команд** (`commands/builtin/w4_main_cmds.py`, регистрация
+  ленивая через `ensure_w4_registered` — `builtin/__init__` не тронут до
+  мержа): `system.reverse`, `system.scale`, `system.radii.changes` (предпросмотр
+  ГОСТ 1807-75), `system.radii.standardize`, `system.append` (присоединение
+  системы, имя «A + B»), `system.achromat` (дублет), `system.fields.set`,
+  `system.wavelengths.set` (полная замена наборов, REPL-замена текущей),
+  `catalog.library.create` (генератор/.OPJ/.LBO), `file.export.protocol`
+  (.txt-протокол расчёта).
+- **main.py перевязан на команды** (инвентаризация 42 экшенов —
+  `docs/tasks/W4_INVENTORY_main.md`): 23 bound + 8 gap + 3 метода с логикой
+  (`update_results`, `_refresh_ui`, `_init_new_system`); 18 ui-only не
+  тронуты; direct-keep — делегирование `gui/controllers` (зона panel) и
+  ЛАП-оптимизация (прямой `optimize` с damping/callback — контракт
+  `opt.run` их не содержит, тест пинит прямой вызов). Видимое поведение
+  не меняется; единственное осознанное отклонение — «Сохранить» в `.opj`
+  теперь пишет корректный бинарный OPJ (раньше — JSON-текст).
+- **Тесты (+18)**: `tests/test_commands_w4_main.py` — smoke каждой новой
+  команды, сверка с прямыми вызовами utils/achromat/catalog/fileio,
+  REPL-семантика замены текущей системы, stateless file=-режим,
+  ошибки валидации.
+### 🤖 Built for agents, Волна 4 — перевязка панели анализа на реестр команд (src=panel, ветка w4/panel)
+
+- **`gui/cmdbridge.py`** — единая точка вызова команд из UI (спецификация
+  ТЗ Волны 4, п. 2): `execute(name, ctx, **kwargs) -> CommandResult`
+  (обёртка над `default_registry.execute`) и `report_error(parent, result)`
+  (единый QMessageBox с кодом команды). Без бизнес-логики; контексты
+  создаёт вызывающая сторона.
+- **`gui/analysis_panel.py` перевязан**: вся логика живого расчёта таблиц
+  идёт командами через bridge (33 вызова `_run_cmd` → 18 команд Волн 1+3
+  + 2 новых; `_run_cmd` кладёт живую систему GUI в `CommandContext` под
+  именем `'gui'`). Прямые compute-импорты analysis/domain из обработчиков
+  убраны (guard-тест); поведение для пользователя не менялось — те же
+  таблицы, те же параметры расчёта (num_rays/num_freqs/… как в живом
+  коде до перевязки). Адаптеры форматов — на стороне виджетов, контракты
+  команд Волн 1+3 не менялись. `analyze()` при ошибке команды теперь
+  показывает единый `report_error` и продолжает с пустыми данными
+  (раньше — необработанное исключение).
+- **`commands/builtin/w4_panel_cmds.py`** — gap-команды панели (категория
+  `panel`, регистрация `register()`/`ensure_registered()`, идемпотентно;
+  `commands/builtin/__init__.py` не тронут до мержа):
+  - **`panel.spot.summary`** — сводка точечной диаграммы для таблицы
+    «Точечная диагр.»: строки по каждой рабочей λ + полихроматическая
+    (RMS/RMS_X/RMS_Y/центроид/макс. радиус; num_points);
+  - **`panel.psf.stats`** — скалярные метрики ФРТ для таблицы «PSF»:
+    пиксель, максимум, центр пика, ширины мер/саг по полумаксимуму
+    (формулы перенесены из панели без изменений).
+- Инвентаризация всех 68 методов панели —
+  `docs/tasks/W4_INVENTORY_panel.md`: bound 26 / gap 2 (команды выше) /
+  ui-only 39 / direct-keep 1 (`_export_zernike_global` — QFileDialog,
+  живой Qt-интерактив без расчёта).
+- **Тесты (+21)**: `tests/test_commands_w4_panel.py` — smoke и паритет
+  gap-команд с прямыми вызовами analysis, идемпотентность регистрации,
+  bridge `execute`/`report_error`, перевязка живых таблиц offscreen
+  (chief/spot/psf/axial/rays/zern.global/analyze), деградация при ошибке
+  команды («Нет данных», не исключение) и guard исходника панели.
+  Существующие pytest-qt наборы панели (gauge_rays/global_zernike/
+  focus_diagrams, 40 тестов) проходят без изменений.
+
+## [1.26.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 3 — домен «Трассировка и таблицы» (trace_cmds)
+
+- **19 builtin-команд** (`commands/builtin/trace_cmds.py`) над ОСТАЛЬНЫМИ
+  публичными точками входа `analysis/ray_tracing.py`, `beam_heights.py`,
+  `vignetting.py`, `tables.py` (trace_fan / tabgl_rows / tabpr2_rows уже
+  обёрнуты Волной 1 как `analyze.*` — не дублируются):
+  - **`trace.*` (8)**: `ray` (одиночный луч, направление нормируется),
+    `grid3d` (кольца × азимуты, путь по `include_path`), `focal_spot`,
+    геометрия Снеллиуса без системы — `intersect.sphere`,
+    `intersect.aspheric`, `normal.sphere`, `normal.aspheric`, `refract`
+    (TIR → `tir: true`);
+  - **`beam.*` (2)**: `heights` (TABESB — световые высоты габаритных
+    лучей по поверхностям), `screen_zones` (TABEAP — экранные зоны);
+    rows + текстовый формат OPAL;
+  - **`vign.*` (5)**: `compute` (виньетирование верх/низ + код
+    «Ограничения» D/P/M), `light` (светораспределение, дефолт полей —
+    точки поля системы), `tabbea` (апертурные характеристики пучков),
+    `passage_zones` (зоны прохождения по ВСЕМ поверхностям),
+    `real_obscuration` («габариты экранов», эллипс на входном зрачке);
+  - **`tables.*` (4)**: `taboc1`, `taboc2` (остаточные аберрации осевого
+    пучка; селектор `columns` — ровно 3 из wave/iso/h_zr/z_m/c_s,
+    невалидный → `invalid_param`), `field_zones` (зоны равной площади),
+    `max_field`.
+- Контракты Волны 1 без изменений: `system_source_params` (file/system/
+  lbo_index/lbo_name), `wl=None` → основная λ (в ответе — `wl`),
+  CLI-csv списки приводятся к float внутри обёртки, `sanitize_json` на
+  выходе. Нулевой вектор направления `trace.ray` → `invalid_param`.
+- **Тесты (+41, всего 1341)**: `tests/test_commands_trace.py` — smoke
+  КАЖДОЙ команды домена (покрытие скоупится на категории
+  trace/beam/vign/tables), сверка с прямыми вызовами analysis (числа
+  совпадают), виньетированный дублет/экранированное зеркало как в
+  test_vignetting, REPL-сценарий через текущую систему контекста.
+  Smoke-покрытие `test_commands_builtin.py` скоупится на категории
+  Волны 1 (`W1_CATEGORIES`) — поздние волны держат свои наборы.
+- Окружение worktree: скопированы локальные гитигноренные данные
+  (`extracted/`, `analysis/reverse_data/golden/bank/`) из основного
+  стенда — без них 44 golden/каталожных теста падают по FileNotFound
+  (в репо не попадают, чистая комната не затронута).
+### 🤖 Built for agents, Волна 3 — домен «Аберрации» (+31 команда, ветка w3/aber)
+
+- **`commands/builtin/aber_cmds.py`** — обёртки публичных точек входа
+  `analysis/{aberrations,chromatism,seidel_check,advanced}.py` без Qt;
+  дубли Волны 1 не создаются. Категории: aber (18), adv (8),
+  seidel (4), chrom (1); `seidel.sums` сходится с `calc.seidel`
+  Волны 1 (тест паритета). Тесты: `tests/test_commands_aber.py`.
+
+### 🤖 Built for agents, Волна 3 — домен «Дифракция и волновой фронт» (+29 команд, ветка w3/psf)
+
+- **`commands/builtin/psf_cmds.py`** — обёртки публичных точек входа
+  пяти модулей анализа (psf_mtf, diffraction, strehl, zernike,
+  focus_criteria), нижние слои не тронуты. Реестр: 61 команда
+  (32 Волны 1 + 29 Волны 3), категории psf/mtf/diffr/strehl/zern/focus.
+- **`psf.*` (4)**: `psf.lsf` (ФРЛ — профили мер/саг из ФРТ),
+  `psf.encircled` (ФКЭ-кривая + радиусы 50 %/80 % и пятно Эйри),
+  `psf.target` (миры: синус/шпальные, контраст Михельсона = MTF(ν)),
+  `psf.section` (секция протокола ФРТ/ОПФ, опция Цернике). Сама ФРТ
+  (`psf_grid`) не дублирована — уже `analyze.psf` Волны 1.
+- **`mtf.*` (1)**: `mtf.curve` — ОПФ из ФРТ (сечения tan/sag, срез,
+  Найквист). **`diffr.*` (5)**: `wavefront` (карта W на опорной сфере,
+  СКВ/PV), `mtf` (FFT-автокорреляция зрачка), `mtf.quick` (сетка 32),
+  `mtf.poly` (полихроматическая), `mtf.limited` (безаберрационный
+  эталон, аналитика круглого зрачка).
+- **`strehl.*` (2)**: `marechal` (формула из σ), `calc` (Марешаль +
+  точный FFT-PSF, полихроматически по λ системы, `include_text` —
+  строка и tooltip GUI). **`zern.*` (11)**: `terms` (базисы: классика
+  n≤4 и OPAL-28 с марками «C xIJ»), `coeffs` (+`coeffs.fit` по точкам),
+  `wavefront` (2D-карта), `chromatic` (по λ + разности),
+  `global` (поле × λ + таблица), `fit_points` (OPAL-28 по точкам),
+  `reconstruct` (W = Σc·Z, СКВ/PV), `strehl` (из коэффициентов),
+  `decompose` (OPAL-28: вклады в СКВ, Штрель Марешаля), `protocol`.
+- **`focus.*` (6)**: `min_rms`, `max_strehl`, `zone_best` (W(0.7)=W(1)),
+  `min_spot` (геометрическое пятно), `eqf` («равнофокусность» OPAL,
+  паритет СКВ зон), `all` (сводка + лучшая плоскость OPAL).
+- **Тесты (+50, файл `tests/test_commands_psf.py`)**: smoke всех 29
+  команд со строгим JSON-контрактом; числовой паритет с прямыми
+  вызовами analysis (обёртка не меняет числа); физические инварианты —
+  контраст синус-миры = MTF(ν), MTF(0)=1, ФКЭ монотонна, СКВ
+  Noll-члена = 1 (реконструкция), аналитика дифракционно-ограниченной
+  ЧКХ; контракт ошибок (no_system/missing/invalid/unknown); CLI
+  subprocess. Smoke-карта `test_commands_builtin.py` расширена
+  (инвариант «у каждой команды реестра есть smoke» сохранён).
+
+## [1.25.0] — 2026-10-22
+
+### 🤖 Built for agents, Волна 1 — Command Registry + CLI + JSON-канал (TASK_COMMANDS_W1)
+
+- **`commands/`** — единый реестр команд поверх domain/analysis/fileio/catalog,
+  headless, без Qt (`py -c "import commands"` — чисто; UI не тронут).
+  Архитектура по образцам VS Code Commands / Blender Operators:
+  single source of truth, команды регистрируются декоратором
+  `@registry.command(...)`, CLI и JSONL-REPL — тонкие фронтенды.
+- **Контракты (`base.py`)**: `Command`/`Param`/`CommandResult`/`CommandError`
+  (единственный тип ошибок, коды `ERR_*` — константы), типы параметров
+  `PARAM_STR/FLOAT/INT/BOOL/LIST/DICT`; единый `coerce_value` для разбора
+  значений CLI/JSON (float/int/bool/list[JSON|csv]/dict) и `sanitize_json`
+  (NaN/±inf → null — на выходе всегда строгий JSON, проверяется при
+  выполнении).
+- **Реестр (`registry.py`)**: register/декоратор/get/has/names/list/search/
+  categories/schema/schema_all/execute; валидация имён
+  `^[a-z0-9_]+(\.[a-z0-9_]+)+$`; execute валидирует параметры по схеме
+  (unknown/missing/invalid/choices) и никогда не бросает — наружу всегда
+  `CommandResult`; `default_registry` + `reset_registry()` для тестов.
+  Контекст (`context.py`): CLI — свежий на вызов (stateless), REPL —
+  персистентный (`state.system`).
+- **32 builtin-команды** (`commands/builtin/`): `file.*` (open/save/info/
+  convert/formats), `system.*` (new/load/current/info, surfaces.list/
+  add/set/remove, fields.list/add, wavelengths.list/add), `calc.*`
+  (paraxial, paraxial.multi_wl, aperture.real, beam_geometry, seidel),
+  `catalog.*` (info, glass.get, glass.search, library.list),
+  `analyze.*` (ray_fan, field_aberrations, spot, psf, tables.tabgl,
+  tables.tabpr2). Обёртки без изменений нижних слоёв.
+- **Адаптер `systemio.py`**: форматы по расширению (opj/lbo/json), загрузка
+  (standalone-строгий вход → эвристика opj_io; .lbo — по имени записи или
+  индексу), сериализация системы в JSON-словарь, разрешение источника
+  (file → имя в контексте → текущая). Починка раундтрипа OPJ: эвристика
+  `opj_io.load_opj` теряет стёкла на файлах собственного писателя
+  `save_opj` (имена слева-выровнены, паттерн читателя — после пробелов;
+  раундтрип в fileio тестами не покрыт) — адаптер восстанавливает имена по
+  строгой сигнатуре раскладки писателя, fileio не тронут.
+- **CLI `py -m commands`**: `list [--category] [--json]`, `info`, `schema
+  [--json]`, `run <cmd> --param k=v [--json]` (типы значений — по схеме),
+  `repl`. Ошибки: ненулевой exit; при `--json` — JSON в stderr, stdout чист.
+- **JSONL-REPL `py -m commands repl`**: запрос `{"id","cmd","args"}` →
+  ответ `{"id","ok","data|error"}`, по строке на команду с flush; битый
+  JSON/нет cmd → `bad_request`, сессия жива; EOF → exit 0. Персистентное
+  состояние: `system.load` → `calc.*`/мутации без повторной загрузки.
+- **Тесты (+123, всего 1300)**: `test_commands_base.py` (реестр, валидация
+  имён, coerce, ошибки, санитайз), `test_commands_builtin.py` (smoke КАЖДОЙ
+  команды, демо через `system.new+save`; calc.* сверены с прямыми вызовами
+  domain), `test_commands_cli.py` (subprocess: list/info/schema/run,
+  `--json`, ошибки в stderr, e2e opj), `test_commands_repl.py` (протокол,
+  персистентность, паритет REPL↔CLI — числа совпадают). Полный прогон:
+  1300 passed, 8 skipped.
+
 ## [1.24.8] — 2026-10-19
 
 ### 🔬 MARCH2 — симуляция марш-конвейера и судьба RED 4 (TASK_MARCH2, досье REVERSE_OPALDIS §M.6–M.7)

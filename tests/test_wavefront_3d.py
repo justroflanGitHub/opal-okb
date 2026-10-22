@@ -185,16 +185,20 @@ class TestPanelWfmap:
         panel.wavefront_map_w.wf_data = wf
         panel.wavefront_map_w.coords = coords
         panel.wavefront_map_w.mask = mask
+        # Волна 4: живой пересчёт идёт командой zern.wavefront через
+        # bridge — шпионим на bridge (символ analysis в панели удалён)
+        from gui import cmdbridge
         calls = []
-        real = ap.compute_wavefront_map_2d
+        real = cmdbridge.execute
 
-        def spy(*a, **k):
-            calls.append(a)
-            return real(*a, **k)
+        def spy(name, ctx, **kwargs):
+            calls.append(name)
+            return real(name, ctx, **kwargs)
 
-        monkeypatch.setattr(ap, 'compute_wavefront_map_2d', spy)
+        monkeypatch.setattr(cmdbridge, 'execute', spy)
         panel._update_wfmap_table(build_achromat())
-        assert not calls, 'таблица пересчитывает уже готовую карту W'
+        assert 'zern.wavefront' not in calls, \
+            'таблица пересчитывает уже готовую карту W'
         table = panel._table_containers['wfmap'].layout().itemAt(0).widget()
         rows = {table.item(r, 0).text(): table.item(r, 1).text()
                 for r in range(table.rowCount())}

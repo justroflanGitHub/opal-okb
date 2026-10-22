@@ -143,14 +143,23 @@ def test_domain_commands_registered(registry):
     for name, category in DOMAIN_COMMANDS.items():
         assert registry.has(name), name
         assert registry.get(name).category == category, name
-    assert len(registry.names()) == 32 + len(DOMAIN_COMMANDS)
-
-
-def test_default_registry_untouched(registry):
-    """Изолированная регистрация: default_registry без команд домена
-    (до мержа; тесты Волны 1 не должны видеть aber.*)."""
+    # Волна 3 смержена: register_builtin включает все домены (128 команд),
+    # изолированная фиксттура — надмножество Wave1 + aber.
+    assert len(registry.names()) >= 32 + len(DOMAIN_COMMANDS)
     from commands import default_registry
-    assert not default_registry.has(_DOMAIN_MARK)
+    import commands as _commands
+    _commands.register_all(default_registry)
+    for name in DOMAIN_COMMANDS:
+        assert default_registry.has(name), name
+
+
+def test_default_registry_contains_domain():
+    """После мержа Волны 3 aber-команды входят в default_registry
+    (register_all подключает aber_cmds через builtin/__init__)."""
+    import commands as _commands
+    from commands import default_registry
+    _commands.register_all(default_registry)
+    assert default_registry.has(_DOMAIN_MARK)
 
 
 def _smoke_args(demo_files, prn_empty):

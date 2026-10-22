@@ -29,8 +29,9 @@ from analysis.optimization import (
 # --------------------------------------------------------------------------- #
 
 registry = Registry()
-commands.register_all(registry)
-opt_cmds.register(registry)
+commands.register_all(registry)  # включает opt_cmds (Волна 3, мерж)
+if not registry.has("opt.goals"):  # защита при ручной регистрации без builtin
+    opt_cmds.register(registry)
 
 #: Все команды модуля (для проверки полноты smoke-покрытия).
 OPT_COMMANDS = (

@@ -42,6 +42,14 @@ All notable changes to OPAL-OKB will be documented in this file.
   (`extracted/`, `analysis/reverse_data/golden/bank/`) из основного
   стенда — без них 44 golden/каталожных теста падают по FileNotFound
   (в репо не попадают, чистая комната не затронута).
+### 🤖 Built for agents, Волна 3 — домен «Аберрации» (+31 команда, ветка w3/aber)
+
+- **`commands/builtin/aber_cmds.py`** — обёртки публичных точек входа
+  `analysis/{aberrations,chromatism,seidel_check,advanced}.py` без Qt;
+  дубли Волны 1 не создаются. Категории: aber (18), adv (8),
+  seidel (4), chrom (1); `seidel.sums` сходится с `calc.seidel`
+  Волны 1 (тест паритета). Тесты: `tests/test_commands_aber.py`.
+
 ### 🤖 Built for agents, Волна 3 — домен «Дифракция и волновой фронт» (+29 команд, ветка w3/psf)
 
 - **`commands/builtin/psf_cmds.py`** — обёртки публичных точек входа

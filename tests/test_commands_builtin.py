@@ -160,14 +160,12 @@ def _smoke_args(demo_files):
 
 
 def test_every_registered_command_has_smoke(demo_files):
-<<<<<<< HEAD
-    """Реестр Волны 1 = 32 команды, все покрыты smoke-набором."""
+    """Реестр Волн 1+3(psf) покрыт smoke-набором; trace/aber/opt держат
+    свои исчерпывающие наборы в собственных тест-модулях."""
+    covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
+                               "focus"}
     names = {n for n in default_registry.names()
-             if default_registry.get(n).category in W1_CATEGORIES}
-=======
-    """Все команды реестра (Волна 1 + добавленные волны) покрыты smoke."""
-    names = set(default_registry.names())
->>>>>>> w3/psf
+             if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
     missing = names - set(smoke)
     extra = set(smoke) - names

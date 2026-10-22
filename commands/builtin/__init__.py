@@ -12,6 +12,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.calc_cmds",
     "commands.builtin.catalog_cmds",
     "commands.builtin.analyze_cmds",
+    "commands.builtin.psf_cmds",
 )
 
 

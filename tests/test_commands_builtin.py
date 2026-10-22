@@ -1,8 +1,9 @@
-"""Builtin-команды Волны 1: smoke КАЖДОЙ команды реестра.
+"""Builtin-команды реестра: smoke КАЖДОЙ команды (Волна 1 + Волна 3 psf).
 
 Демо-данные генерируются самим реестром (system.new + save) — как в
 TASK_COMMANDS_W1 §5. Дополнительно — сверка calc.* с прямыми вызовами
-domain (обёртка не должна менять числа).
+domain (обёртка не должна менять числа). Инвариант: у каждой команды
+реестра есть smoke-набор здесь (волны добавляют свои записи в карту).
 """
 import os
 
@@ -63,6 +64,26 @@ def run(name, args=None, ctx=None):
 # Полное покрытие: каждая команда реестра имеет smoke
 # --------------------------------------------------------------------------- #
 
+#: Синтетические точки зрачка (px, py, W) для команд разложения Цернике:
+#: 16 точек ≥ 15 членов классического базиса n≤4,
+#: 28 точек ≥ 28 членов базиса OPAL (zern.fit_points).
+_SMOKE_POINTS_16 = [
+    [0.0, 0.0, 0.10], [0.5, 0.0, 0.20], [0.0, 0.5, -0.10],
+    [0.7, 0.7, 0.05], [-0.3, 0.6, 0.02], [0.9, -0.2, -0.30],
+    [0.1, -0.8, 0.15], [-0.5, -0.5, 0.0], [0.3, 0.3, 0.01],
+    [-0.9, 0.1, 0.20], [0.2, 0.9, -0.05], [-0.1, -0.9, 0.30],
+    [0.6, -0.6, -0.02], [-0.7, 0.4, 0.04], [0.8, 0.5, 0.03],
+    [0.0, 0.3, 0.0],
+]
+_SMOKE_POINTS_28 = _SMOKE_POINTS_16 + [
+    [0.4, -0.4, 0.0], [-0.2, 0.8, 0.10], [0.55, 0.55, 0.20],
+    [0.95, 0.0, -0.10], [0.0, 0.95, 0.25], [-0.95, -0.05, 0.0],
+    [0.25, -0.95, -0.20], [0.33, 0.66, 0.05], [-0.66, 0.33, -0.05],
+    [0.66, -0.33, 0.10], [0.1, 0.1, 0.0], [-0.1, 0.1, 0.05],
+    [0.2, -0.2, -0.05],
+]
+
+
 def _smoke_args(demo_files):
     opj, jsn = demo_files
     return {
@@ -98,11 +119,43 @@ def _smoke_args(demo_files):
         "analyze.spot": {"file": opj, "num_rays": 10},
         "analyze.tables.tabgl": {"file": opj},
         "analyze.tables.tabpr2": {"file": opj},
+        # Волна 3, домен «Дифракция и волновой фронт» (psf_cmds.py);
+        # тяжёлые решётки уменьшены, покрываем контракт, не точность.
+        "diffr.mtf": {"file": opj, "grid_size": 32},
+        "diffr.mtf.limited": {"file": opj},
+        "diffr.mtf.poly": {"file": opj, "grid_size": 32},
+        "diffr.mtf.quick": {"file": opj},
+        "diffr.wavefront": {"file": opj, "grid_size": 32},
+        "focus.all": {"file": opj},
+        "focus.eqf": {"file": opj},
+        "focus.max_strehl": {"file": opj},
+        "focus.min_rms": {"file": opj},
+        "focus.min_spot": {"file": opj},
+        "focus.zone_best": {"file": opj},
+        "mtf.curve": {"file": opj},
+        "psf.encircled": {"file": opj},
+        "psf.lsf": {"file": opj},
+        "psf.section": {"file": opj},
+        "psf.target": {"file": opj, "freq_lpmm": 50.0},
+        "strehl.calc": {"file": opj, "wl": 0.58756},
+        "strehl.marechal": {"sigma_w": 0.05},
+        "zern.chromatic": {"file": opj, "num_rays": 16},
+        "zern.coeffs": {"file": opj, "num_rays": 16},
+        "zern.coeffs.fit": {"points": _SMOKE_POINTS_16},
+        "zern.decompose": {"file": opj},
+        "zern.fit_points": {"points": _SMOKE_POINTS_28},
+        "zern.global": {"file": opj, "num_rings": 3, "num_fields": 3},
+        "zern.protocol": {"file": opj},
+        "zern.reconstruct": {"coeffs": [0.1, 0.0, -0.2, 0.05],
+                             "grid": 16},
+        "zern.strehl": {"coeffs": [0.1, 0.02, -0.05]},
+        "zern.terms": {},
+        "zern.wavefront": {"file": opj, "grid_size": 32},
     }
 
 
 def test_every_registered_command_has_smoke(demo_files):
-    """Реестр Волны 1 = 32 команды, все покрыты smoke-набором."""
+    """Все команды реестра (Волна 1 + добавленные волны) покрыты smoke."""
     names = set(default_registry.names())
     smoke = _smoke_args(demo_files)
     missing = names - set(smoke)

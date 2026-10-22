@@ -305,6 +305,12 @@ def run_one(name, sanity=False):
 
 
 def main():
+    # Редирект вывода в файл (Start-Process -RedirectStandardOutput) даёт
+    # неконсольный stdout с locale-encoding (cp1251) — '→' в log() падает
+    # UnicodeEncodeError. Принудительный utf-8 + replace.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors='replace')
     names = sys.argv[1:]
     if not names:
         raise SystemExit('usage: py scripts/g2bank.py ИМЯ [ИМЯ...]')

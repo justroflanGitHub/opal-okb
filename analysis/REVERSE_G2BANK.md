@@ -195,3 +195,63 @@ OKULAR r1==r2, новый дамп = состояние OKULAR.OPJ (λ.5461, Sp/
 Вердикты: OBEKTIV 12/2/12/1 (без изм.), OKULAR 8/0/14/5 -> 9/5/12/1, банк 254/14/34/47 -> 255/19/32/43.
 Источник загрузки = файл OPJ каталога; OPAL.ARH (нет okular/obektiv в оригинале) деградирует от Чтения — детали REVERSE_GFIX §STALE.
 Стенд свободен, DOSBox прибит 21:58.
+| --help | - | - | NOOPALA2 | Анализ не запустил RT |
+- `--help NOOPALA2`
+
+## Волна 3 (батч 30) — ночь 2026-10-23
+
+Очередь из 85 имён `C:\GOLDEN_DOS\*.OPJ`: исключены 14 уже в банке
+(121, GTIE00, HELIOS8, KURSOVIK, LAB6_GAS, OBEKTIV, OKULAR, OPAL3, OPTICS#1,
+PLIOPT, ST, ST4, S_KOND1, US00KI02) и 2 отклонённых (GTIN05 — решётка,
+YBBS77_ — pulldown). Серии ограничены ≤3: DEMON×3, LEXA×3, SERGEY×3.
+Смоук — первые два (PRIMER, WA1), остальные 28 — detached-батч
+(`py scripts/g2bank.py …`, лог `g2batch_night.log` в корне репо).
+
+| # | Имя | Роль |
+|---|---|---|
+| 1 | PRIMER | смоук |
+| 2 | WA1 | смоук |
+| 3 | WA2 | батч |
+| 4 | OPT1 | батч |
+| 5 | LAB3 | батч |
+| 6 | LABA2 | батч |
+| 7 | KUZNEC | батч |
+| 8 | KUZNEC1 | батч |
+| 9 | GUTAN | батч |
+| 10 | PETRO1 | батч |
+| 11 | KOLLEKT | батч |
+| 12 | KURSOV | батч |
+| 13 | LOV | батч |
+| 14 | PLI501 | батч |
+| 15 | TWO_1 | батч |
+| 16 | VV | батч |
+| 17 | 1 | батч |
+| 18 | 222 | батч |
+| 19 | 2222 | батч |
+| 20 | DEMON | батч |
+| 21 | DEMON3 | батч |
+| 22 | DEMONNEW | батч |
+| 23 | LEXA01 | батч |
+| 24 | LEXA13 | батч |
+| 25 | LEXA31 | батч |
+| 26 | SERGEY | батч |
+| 27 | SERGEY2 | батч |
+| 28 | SERGEY4 | батч |
+| 29 | S_KOND | батч |
+| 30 | S_KOND2 | батч |
+
+Остаток пула (37 имён) — кандидат на волну 4: ANDREW_2, D2, DEM, DEM1, DEMDA,
+DEMON2, DEMON4, DEMON5, DEMON6, DIP, DIP1, EGOR_2, G, G1, G2, G5, G6, G7,
+GTIN0, GUTAN4, LAB31S, LAB3S, LAB3_GAS, LEXA02, LEXA03, LEXA11, LEXA12,
+LEXA23, LOVCHIY, OPT2, OPT3, PETRO3, SERGEY0, SERGEY3, S_KOND3, WA3, YBBG00.
+Итог волны — таблица ниже (добавляется драйвером).
+| PRIMER | RT___113.PRN | 2426 | OK | секций~5, габариты=да; Cистема-                                  Работа |
+- `PRIMER: RT___113.PRN 2426б axial=True seps~5 PROTOCOL 0->2471; head='Cистема-                                  Работа-RT                   '`
+| WA1 | RT___114.PRN | 2418 | OK | секций~5, габариты=да; Cистема-opal                              Работа |
+- `WA1: RT___114.PRN 2418б axial=True seps~5 PROTOCOL 0->2463; head='Cистема-opal                              Работа-RT                   '`
+| WA2 | RT___117.PRN | 2418 | OK | секций~5, габариты=да; Cистема-opal                              Работа |
+- `WA2: RT___117.PRN 2418б axial=True seps~5 PROTOCOL 0->2463; head='Cистема-opal                              Работа-RT                   '`
+| OPT1 | RT___118.PRN | 2418 | OK | секций~5, габариты=да; Cистема-OPAL                              Работа |
+- `OPT1: RT___118.PRN 2418б axial=True seps~5 PROTOCOL 0->2463; head='Cистема-OPAL                              Работа-RT                   '`
+| LAB3 | RT___119.PRN | 2003 | OK | секций~4, габариты=да; Cистема-                                  Работа |
+- `LAB3: RT___119.PRN 2003б axial=True seps~4 PROTOCOL 0->2046; head='Cистема-                                  Работа-RT                   '`

@@ -2,6 +2,25 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.28.1] — 2026-10-23
+
+### 🐛 G2BANK — encoding-фикс драйвера + волна 3 (батч 30)
+
+- **`scripts/g2bank.py`**: при редиректе вывода в файл (`Start-Process
+  -RedirectStandardOutput`, ночной батч) неконсольный stdout получал
+  locale-кодировку (cp1251), и `log()` падал `UnicodeEncodeError` на
+  `'→'` (U+2192) в сообщении «→ автоповтор». Фикс: в начале `main()`
+  `sys.stdout`/`sys.stderr` reconfigure в utf-8 + `errors='replace'`
+  (стрим None под pythonw не трогаем). Рецепт (клавиши, тайминги) не
+  менялся.
+- **Волна 3 (батч 30)**: очередь 30 систем из `C:\GOLDEN_DOS` в
+  `analysis/REVERSE_G2BANK.md` §«Волна 3» (85 имён минус 14 в банке, минус
+  2 отклонённых; серии DEMON/LEXA/SERGEY ограничены ≤3). Смоук PRIMER +
+  WA1 — оба OK с первой попытки (габар + осевой); остальные 28 —
+  detached-батч (Hidden, лог `g2batch_night*.log` в корне, добавлен в
+  .gitignore). Данные `bank/*.PRN` волны коммитит координатор после
+  сверки.
+
 ## [1.28.0] — 2026-10-22
 
 ### 🤖 Built for agents, Волна 5 — MCP-сервер поверх реестра команд

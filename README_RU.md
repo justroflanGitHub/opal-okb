@@ -5,9 +5,9 @@
 > An open-source, clean-room reimplementation of **OPAL-PC** (MS-DOS, 1990-е,
 > НИИ ОМП / ВНЦ САМ) on **Python 3.10+ / PyQt5** — с полной верификацией против оригинала.
 
-[![Tests](https://img.shields.io/badge/pytest-1177%20passed%20%2F%208%20skipped-brightgreen)]()
+[![Tests](https://img.shields.io/badge/pytest-1542%20passed%20%2F%208%20skipped-brightgreen)]()
 [![Verification](https://img.shields.io/badge/golden%20bank-307%20GREEN-blue)]()
-[![Release](https://img.shields.io/badge/release-v1.24.6-orange)]()
+[![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
 Расчёт, анализ, оптимизация и визуализация оптических систем: линз, объективов,
 окуляров, зеркально-линзовых схем и ГОЭ-голограмм. Оригинальный MS-DOS пакет

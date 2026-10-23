@@ -97,6 +97,26 @@ All notable changes to OPAL-OKB will be documented in this file.
   `tests/test_commands_quality.py` + smoke-инвариант категории quality
   и счётчик реестра 331 в `tests/test_commands_builtin.py`.
 
+- **Пакет 11 — report (+16 команд, итого 347)**:
+  `commands/builtin/report_cmds.py` — текстовые отчёты для печати
+  (готовый форматированный ``text`` в ответе, стиль fileio/protocol.py;
+  опция ``out`` пишет .txt через exportio). Расчёт — композиция
+  сестринских команд через registry.execute (живая система под
+  служебным именем в контексте, логика не дублируется): структурные
+  перечни (report.system/surfaces/fields/glasses — n из каталога),
+  параксиальные характеристики (calc.paraxial), суммы Зейделя
+  (seidel.sums), хроматизм по λ (calc.paraxial.multi_wl), внеосевые
+  аберрации по полям (analyze.field_aberrations), RMS кружка
+  (quality.spot.summary), зоны энергии (quality.ee.diameters), матрица
+  ЧКХ (quality.mtf.matrix), Штрель (quality.strehl.summary), СКВ
+  волнового фронта (quality.wavefront.summary), свод качества
+  (quality.passport + quality.regime), таблицы порта текстом
+  (report.tables: TABOC1/TABOC2/TABGL/TABPR2/TABAX3/TABBEA/TABESB/
+  TABEAP — селектор, сбой секции не роняет отчёт) и полный свод всех
+  секций (report.full). Тесты: `tests/test_commands_report.py` +
+  smoke-инвариант категории report и счётчик реестра 347 в
+  `tests/test_commands_builtin.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

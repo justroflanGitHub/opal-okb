@@ -26,6 +26,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.sweep_cmds",
     "commands.builtin.tol_cmds",
     "commands.builtin.quality_cmds",
+    "commands.builtin.report_cmds",
     "commands.builtin.w4_main_cmds",
     "commands.builtin.w4_panel_cmds",
 )

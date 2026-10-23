@@ -334,6 +334,25 @@ def _smoke_args(demo_files):
         "quality.check.all": {"file": opj, "strehl_min": 0.01,
                               "fields": [0.0]},
         "quality.regime": {"file": opj, "num_rays": 10},
+        # R500-11: текстовые отчёты (категория report; команды с полями
+        # системы — на .json: .opj теряет field_points)
+        "report.system": {"file": opj},
+        "report.surfaces": {"file": opj},
+        "report.fields": {"file": jsn},
+        "report.glasses": {"file": opj},
+        "report.paraxial": {"file": opj},
+        "report.seidel": {"file": opj},
+        "report.chromatism": {"file": opj},
+        "report.aberrations": {"file": jsn},
+        "report.spot": {"file": jsn, "num_rays": 10},
+        "report.ee": {"file": jsn, "fields": [0.0, 3.0],
+                      "num_rays": 40},
+        "report.mtf": {"file": jsn, "fields": [0.0], "freqs": [20.0]},
+        "report.strehl": {"file": jsn, "fields": [0.0]},
+        "report.wavefront": {"file": opj},
+        "report.quality": {"file": opj, "num_rays": 10},
+        "report.tables": {"file": opj},
+        "report.full": {"file": jsn, "num_rays": 10, "freq_lpmm": 30.0},
     }
 
 
@@ -341,7 +360,7 @@ def test_every_registered_command_has_smoke(demo_files):
     """Реестр Волн 1+3(psf) покрыт smoke-набором; trace/aber/opt держат
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
-                               "focus", "export", "quality"}
+                               "focus", "export", "quality", "report"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -353,8 +372,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) = 331).
-REGISTRY_TOTAL_COMMANDS = 331
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) = 347).
+REGISTRY_TOTAL_COMMANDS = 347
 
 
 def test_registry_total_count():

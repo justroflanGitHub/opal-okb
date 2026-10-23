@@ -78,6 +78,23 @@ def test_prn_duplicate_gabarit_sections_deduped_kursovik():
     assert ax[0]['Sp'] == pytest.approx(-59.976, abs=1e-3)
 
 
+def test_prn_taboc2_star_filler_row_vv():
+    """G44 (Пакет B): у VV зона 1.0 не трассирована — строка печатана
+    звёздочками без метки зоны; прежде она обрывала разбор TABOC2
+    (axial2 пуст), теперь пропускается, остальные 4 зоны читаются.
+    Звёздочное заполнение КОЛОНОК при метке-числе (TABOC1 з.1.0) —
+    как было: None-ячейки."""
+    prn = parse_golden_prn(BANK / 'VV.PRN')
+    a1 = prn['axial1']['rows']
+    assert sorted(a1) == [0.0, 0.5, 0.707, 0.866, 1.0]
+    assert a1[1.0]['long'] == [None, None, None]   # звёзды в колонках
+    assert a1[0.866]['long'][0] == pytest.approx(-0.67830, abs=1e-5)
+    a2 = prn['axial2']['rows']
+    assert sorted(a2) == [-0.090, -0.074, -0.052, 0.0]   # з.1.0 — звёзды
+    assert a2[-0.090]['wave'][0] == pytest.approx(-0.0002, abs=1e-5)
+    assert a2[-0.090]['h_zr'] == pytest.approx(3.2134, abs=1e-4)
+
+
 # ── Строгий OPJ-лоадер ────────────────────────────────────────────────────
 
 @requires_stand

@@ -135,11 +135,29 @@ def _fixed_cells(line: str, edges, left0: int):
     values = []
     prev = left0
     for e in edges:
-        text = line[prev:e].strip() if prev < len(line) else ''
+        text = line[prev:e] if prev < len(line) else ''
         m = _NUM.search(text)
+        if m is not None and m.end() == len(text) and e < len(line) \
+                and (line[e].isdigit() or line[e] == '.'):
+            # число упёрлось в правую границу поля и продолжается за ней —
+            # печать шире стандартной раскладки (VV): дочитываем до конца
+            # числа, иначе значение молча обрезается (-.67830 → -.678)
+            j = e
+            while j < len(line) and (line[j].isdigit() or line[j] == '.'):
+                j += 1
+            m = _NUM.search(line[prev:j])
         values.append(float(m.group(0)) if m else None)
         prev = e
     return values
+
+
+def _is_star_filler(line: str) -> bool:
+    """Строка-заполнитель OPAL: невыполненный зональный луч печатается
+    звёздочками во всех колонках без метки зоны (VV з.1.0) — такую строку
+    таблицы пропускаем, не обрывая разбор (не путать с звёздочным
+    ЗАПОЛНЕНИЕМ колонок при метке-числе — его снимает _NUM-поиск в
+    _fixed_cells)."""
+    return bool(line) and set(line) <= {'*', ' '}
 
 
 def parse_golden_prn(path: str) -> dict:
@@ -228,6 +246,9 @@ def parse_golden_prn(path: str) -> dict:
                     i += 1
                     while i < n:
                         row = lines[i]
+                        if _is_star_filler(row):
+                            i += 1
+                            continue
                         m = _NUM.match(row.strip())
                         if not m:
                             break
@@ -245,6 +266,9 @@ def parse_golden_prn(path: str) -> dict:
                     k = j + 1
                     while k < n:
                         row = lines[k]
+                        if _is_star_filler(row):
+                            k += 1
+                            continue
                         m = _NUM.match(row.strip())
                         if not m:
                             break

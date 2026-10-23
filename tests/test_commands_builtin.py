@@ -106,6 +106,13 @@ def _smoke_args(demo_files):
         "file.open": {"file": opj},
         "file.save": {"src": opj, "file": opj + ".saved.opj"},
         "file.formats": {},
+        # R500-3: сравнение файлов + контрольная сумма
+        "file.diff": {"file_a": opj, "file_b": jsn},
+        "file.compare.paraxial": {"file_a": opj, "file_b": jsn},
+        "file.compare.seidel": {"file_a": opj, "file_b": jsn},
+        "file.compare.spot": {"file_a": opj, "file_b": jsn,
+                              "num_rays": 10},
+        "file.checksum": {"file": opj},
         "system.current": {"__ctx__": True},
         "system.achromat": {"focal_length": 100.0},
         "system.append": {"file": opj, "append": jsn},
@@ -276,8 +283,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) = 200).
-REGISTRY_TOTAL_COMMANDS = 200
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) = 221).
+REGISTRY_TOTAL_COMMANDS = 221
 
 
 def test_registry_total_count():

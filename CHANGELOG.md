@@ -27,6 +27,16 @@ All notable changes to OPAL-OKB will be documented in this file.
   `system.validate` (санити). Тесты: `tests/test_commands_system_ext.py`
   + smoke-инвариант (мутации на свежих копиях file).
 
+- **Пакет 3 — LBO/библиотеки/сравнение (+21 команда, итого 221)**:
+  `commands/builtin/lbo_cmds.py` — `file.lbo.*` (info/list/count/get/
+  search/save/save_all/scan; движок fileio/lbo_io + выбор записи
+  systemio), `library.*` (summary/categories/entries/search/generators/
+  dirs/load/batch — пакетный прогон по LBO с фильтром и метриками
+  surfaces/paraxial/seidel/spot_rms), `file.diff` + `file.compare.*`
+  (структура/параксиал/Зейдель/пятно) + `file.checksum`. LBO-тесты —
+  `requires_lbo*` (extracted/ локальны); категории lbo/library держат
+  свой набор в `tests/test_commands_lbo.py` (конвенция trace/aber).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

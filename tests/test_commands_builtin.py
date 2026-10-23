@@ -303,6 +303,37 @@ def _smoke_args(demo_files):
         "trace.ray_bundle.export": {"file": opj, "out": opj + ".bundle.csv"},
         "calc.paraxial.export": {"file": opj, "out": opj + ".parax.json"},
         "calc.seidel.export": {"file": opj, "out": opj + ".seidel.json"},
+        # R500-10: сводные метрики качества (категория quality;
+        # команды с полями системы — на .json: .opj теряет field_points)
+        "quality.ee.diameters": {"file": jsn, "fields": [0.0, 3.0],
+                                 "num_rays": 40},
+        "quality.ee.diameters.psf": {"file": opj},
+        "quality.spot.summary": {"file": jsn, "num_rays": 10},
+        "quality.fields.summary": {"file": jsn, "num_rays": 10,
+                                   "freq_lpmm": 30.0},
+        "quality.mtf.matrix": {"file": opj, "fields": [0.0],
+                               "freqs": [20.0]},
+        "quality.mtf.poly": {"file": opj, "freqs": [20.0]},
+        "quality.mtf.limit_freq": {"file": opj, "threshold": 0.3,
+                                   "fields": [0.0]},
+        "quality.mtf.area": {"file": opj},
+        "quality.mtf.geo_vs_diff": {"file": opj, "num_rays": 20},
+        "quality.strehl.summary": {"file": jsn},
+        "quality.wavefront.summary": {"file": opj},
+        "quality.passport": {"file": opj, "num_rays": 10},
+        "quality.compare": {"file_a": opj, "file_b": jsn,
+                            "num_rays": 10},
+        "quality.check.mtf": {"file": opj, "threshold": 0.05,
+                              "freq_lpmm": 30.0, "fields": [0.0]},
+        "quality.check.strehl": {"file": opj, "fields": [0.0],
+                                 "threshold": 0.01},
+        "quality.check.spot": {"file": opj, "fields": [0.0],
+                               "threshold_um": 500.0, "num_rays": 10},
+        "quality.check.ee": {"file": opj, "fields": [0.0],
+                             "threshold_um": 1000.0, "num_rays": 40},
+        "quality.check.all": {"file": opj, "strehl_min": 0.01,
+                              "fields": [0.0]},
+        "quality.regime": {"file": opj, "num_rays": 10},
     }
 
 
@@ -310,7 +341,7 @@ def test_every_registered_command_has_smoke(demo_files):
     """Реестр Волн 1+3(psf) покрыт smoke-набором; trace/aber/opt держат
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
-                               "focus", "export"}
+                               "focus", "export", "quality"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -322,8 +353,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) = 312).
-REGISTRY_TOTAL_COMMANDS = 312
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) = 331).
+REGISTRY_TOTAL_COMMANDS = 331
 
 
 def test_registry_total_count():

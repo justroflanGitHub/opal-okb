@@ -88,3 +88,37 @@ JSON пишется `ensure_ascii=False`, encoding utf-8. Числа — float �
 - 2026-10-24, SA-3 (оркестратор, субагентам мешали сетевые сбои провайдера): CORPUS_ANOMALIES.md — 48 сломанных декодов (31 US efl=0 из-за недекодированных стёкол; 17 L=0 руссары/микролен), 22 афокальных бинокля (норма), 27 честных расхождений f', таблица 150 систем >1%, гидро ×1.331 подтверждена. Коммит a25092a.
 - 2026-10-24, SA-5 (оркестратор, та же причина): CORPUS_REPORT.md + CHANGELOG [1.30.0-corpus] + README.md/README_RU.md (строка «Corpus scan» в Фазе III).
 - Итог: критерии ТЗ выполнены (сканер на полном корпусе, отчёт с реальными числами, тесты зелёные, план отражает вклад субагентов).
+
+## Контракт v2 (волна 2, TASK_CORPUS_SCAN_V2)
+
+### Операции (OPS)
+- OPS = (load, parse, paraxial, seidel, taboc1, pupils, vignette, chief, spot, mtf_geo). Единый источник — кортеж OPS в scripts/corpus_scan.py; corpus_stats.py импортирует его (уже делает).
+- CLI сканера: `--ops all|base|v2|<имена через запятую>`, по умолчанию all.
+  - `all` — все 10 операций; `base` — 6 базовых v1 (load, parse, paraxial, seidel, taboc1, pupils); `v2` — 4 новые (vignette, chief, spot, mtf_geo); список — любое подмножество имён OPS (неизвестное имя → код возврата 2).
+  - load и parse выполняются всегда и всегда присутствуют в JSON (без них нет системы); остальные операции — только выбранные.
+  - При `--ops base` поведение и JSON побитово идентичны v1 (по base-ключам).
+- schema_version = 2 всегда (независимо от --ops). corpus_stats.py обязан читать оба формата по data['schema_version']: 1 → только v1-секции; 2 → все секции.
+
+### Новые ключи metrics (float | null; null при отказе операции; v1-ключи неизменны)
+- **vignette** — апертурные характеристики по образцу TABBEA (analysis.vignetting.compute_vignetting):
+  - `vignette_max_field` — макс. поле системы (max |field_points[].y|; град для бесконечного объекта) — поле, на котором мерилось;
+  - `vignette_up_pct` / `vignette_down_pct` — виньетирование верх/низ на макс. поле, %;
+  - положение выходного зрачка — существующий v1-ключ `exit_pupil` (не дублируется);
+  - поля — точки поля системы; нет полей → одна осевая (max_field = 0.0).
+- **chief** — аберрации главного луча на макс. поле (analysis.aberrations.compute_chief_ray_characteristics):
+  - `chief_max_field` — то же поле, что vignette_max_field;
+  - `distortion_pct` — дисторсия, %; `astig_Zm_mm` / `astig_Zs_mm` — астигматические отрезки Z'm/Z's, мм;
+  - безполевая система (макс. поле == 0) → эти 4 ключа = null, НО ops['chief'] = true (осевой случай валиден, не ошибка).
+- **spot** — RMS пятна, полихроматический (analysis.aberrations.compute_polychromatic_rms):
+  - `spot_rms_axis_um` — RMS на оси, мкм; `spot_rms_max_field_um` — RMS на макс. поле, мкм (безполевая → null, op true);
+  - параметры фиксированы: сетка 30×30 (круглая маска на зрачке), все длины волн системы с весами (wl.weight); мм → мкм ×1000.
+- **mtf_geo** — геометрическая ЧКХ, FFT гистограммы пятна (analysis.aberrations.compute_geometric_mtf):
+  - `mtf30_axis` / `mtf50_axis` — тангенциальный контраст (0..1) на 30 и 50 лин/мм на оси;
+  - `mtf30_max_field` / `mtf50_max_field` — то же на макс. поле (безполевая → null, op true);
+  - пятно полихроматическое (compute_spot_diagram_polychromatic, все λ системы, сетка 30×30).
+
+### status / error / unsupported
+- status = ok ⟺ все выбранные операции == true (расширение v1-правила; при --ops base идентично v1: ok ⟺ error = null). error — первый не-true этап в порядке конвейера: `'op: <msg>'`.
+- unsupported (операции не хватает настроек в движке): ops[op] = null, error = `'op: unsupported'`; null не считается ok → система fail. Пустышки-заглушки запрещены. Все 4 новые операции поддержаны текущим движком — в корпусе unsupported не ожидается (подтверждается прогоном, см. CORPUS_REPORT_V2.md).
+- ops_summary: {op: {'ok': N, 'fail': M}} для всех выбранных операций; в fail попадают false и null.
+- f_check и все базовые ключи JSON — семантика v1 без изменений.

@@ -87,14 +87,17 @@ F_CATEGORIES = {'ok', 'sign_flip', 'hydro', 'truncated', 'diverge'}
 # --------------------------------------------------------------------------- #
 
 def run_scan(args, timeout=300):
-    """``py scripts/corpus_scan.py <args>`` → CompletedProcess.
+    """``<python> scripts/corpus_scan.py <args>`` → CompletedProcess.
 
     cwd — корень проекта (сканер обязан работать из любого cwd); вывод в
     UTF-8: консоль здесь cp1251, без PYTHONIOENCODING печать кириллицы
     (имена систем!) может упасть с UnicodeEncodeError.
+    Интерпретатор — текущий (sys.executable), а не лаунчер `py`:
+    на CI py-лаунчер резолвится в системный Python без пакетов
+    (numpy и пр.), отличного от окружения pytest (setup-python).
     """
     return subprocess.run(
-        ['py', str(SCAN_SCRIPT), *args],
+        [sys.executable, str(SCAN_SCRIPT), *args],
         capture_output=True, text=True,
         encoding='utf-8', errors='replace',
         cwd=str(BASE_DIR), timeout=timeout,

@@ -54,6 +54,14 @@ All notable changes to OPAL-OKB will be documented in this file.
   coord_breaks, vertices, surface_frames — domain/spatial.py +
   compute_z_positions). Тесты: `tests/test_commands_units.py`.
 
+- **Пакет 6 — calc_ext (+20 команд, итого 278)**:
+  `commands/builtin/calc_ext_cmds.py` — обёртки domain/calculations.py
+  (calc.n, ГЮЭ-радиусы, эффективный полудиаметр, виньетирование луча),
+  параксиальные своды (кардинальные точки, зрачки, увеличение,
+  Лагранж-инвариант, NA), формулы (сагитты, силы поверхностей, тонкая
+  линза, Эйри, дифракционный срез, ГРИП, ОПС, сопряжённые отрезки).
+  Тесты: `tests/test_commands_calc_ext.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

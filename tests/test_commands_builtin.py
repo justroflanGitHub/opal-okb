@@ -184,6 +184,30 @@ def _smoke_args(demo_files):
         "calc.paraxial": {"file": opj},
         "calc.paraxial.multi_wl": {"file": opj},
         "calc.seidel": {"file": opj},
+        # R500-6: расширенные calc.*
+        "calc.n": {"glass": "К8", "wl": 0.58756},
+        "calc.goe.radius": {"file": opj, "index": 0},
+        "calc.goe.table": {"file": opj},
+        "calc.semi_effective": {"semi_diameter": 10.0},
+        "calc.vignetting.apply": {"file": opj, "field_y": 0.0,
+                                  "ray_y": 0.5},
+        "calc.cardinals": {"file": opj},
+        "calc.pupils": {"file": opj},
+        "calc.magnification": {"file": opj},
+        "calc.lagrange": {"file": jsn},
+        "calc.aperture.na": {"file": opj},
+        "calc.sagitta": {"radius": 100.0, "height": 10.0},
+        "calc.sagitta.table": {"file": opj, "heights": [5.0]},
+        "calc.power.surface": {"n1": 1.0, "n2": 1.5163,
+                               "radius": 100.0},
+        "calc.power.thin_lens": {"n": 1.5163, "r1": 100.0,
+                                 "r2": -100.0},
+        "calc.power.table": {"file": opj},
+        "calc.airy": {"f_number": 4.87},
+        "calc.diffraction.cutoff": {"f_number": 4.87},
+        "calc.depth_of_field": {"f_number": 4.87, "coc_um": 20.0},
+        "calc.opl": {"segments": [{"n": 1.5, "length": 5.0}]},
+        "calc.conjugate.solve": {"file": opj, "s": -200.0},
         "catalog.glass.get": {"name": "К8", "wl": 0.54607},
         "catalog.glass.search": {"query": "ТФ"},
         "catalog.info": {},
@@ -298,8 +322,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) = 258).
-REGISTRY_TOTAL_COMMANDS = 258
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) = 278).
+REGISTRY_TOTAL_COMMANDS = 278
 
 
 def test_registry_total_count():

@@ -178,6 +178,43 @@ def _smoke_args(demo_files):
         "zern.strehl": {"coeffs": [0.1, 0.02, -0.05]},
         "zern.terms": {},
         "zern.wavefront": {"file": opj, "grid_size": 32},
+        # R500-1: экспорт таблиц/данных (категория export; выгрузки пишутся
+        # рядом с демо-системой в tmp-каталог модуля).
+        "export.rows": {"rows": [{"a": 1}], "out": opj + ".rows.csv"},
+        "export.data": {"data": {"a": [1]}, "out": opj + ".data.json"},
+        "export.text": {"text": "ok", "out": opj + ".text.txt"},
+        "export.command": {"cmd": "catalog.info", "out": opj + ".cmd.json"},
+        "tables.taboc1.export": {"file": opj, "out": opj + ".taboc1.csv"},
+        "tables.taboc2.export": {"file": opj, "out": opj + ".taboc2.csv"},
+        "tables.tabgl.export": {"file": opj, "out": opj + ".tabgl.csv"},
+        "tables.tabpr2.export": {"file": opj, "out": opj + ".tabpr2.csv"},
+        "tables.tabax3.export": {"file": opj, "out": opj + ".tabax3.csv"},
+        "tables.tabbea.export": {"file": opj, "out": opj + ".tabbea.csv"},
+        "tables.tabeap.export": {"file": opj, "out": opj + ".tabeap.csv"},
+        "tables.tabesb.export": {"file": opj, "out": opj + ".tabesb.csv"},
+        "tables.field_zones.export": {"out": opj + ".zones.csv"},
+        "analyze.spot.export": {"file": opj, "num_rays": 8,
+                                "out": opj + ".spot.csv"},
+        "analyze.ray_fan.export": {"file": opj, "num_rays": 5,
+                                   "out": opj + ".rayfan.csv"},
+        "analyze.field_aberrations.export": {"file": opj,
+                                             "out": opj + ".fieldab.csv"},
+        "aber.fan.export": {"file": opj, "num_rays": 10,
+                            "out": opj + ".fan.csv"},
+        "aber.mtf_geo.export": {"file": opj, "num_rays": 20,
+                                "out": opj + ".mtfgeo.csv"},
+        "zern.coeffs.export": {"file": opj, "num_rays": 16,
+                               "out": opj + ".zern.csv"},
+        "psf.encircled.export": {"file": opj, "out": opj + ".ee.csv"},
+        "diffr.mtf.export": {"file": opj, "grid_size": 32,
+                             "out": opj + ".mtf.csv"},
+        "adv.lsf.export": {"file": opj, "out": opj + ".lsf.csv"},
+        "adv.enc.export": {"file": opj, "num_rays": 50,
+                           "out": opj + ".enc.csv"},
+        "seidel.sums.export": {"file": opj, "out": opj + ".sums.csv"},
+        "trace.ray_bundle.export": {"file": opj, "out": opj + ".bundle.csv"},
+        "calc.paraxial.export": {"file": opj, "out": opj + ".parax.json"},
+        "calc.seidel.export": {"file": opj, "out": opj + ".seidel.json"},
     }
 
 
@@ -185,7 +222,7 @@ def test_every_registered_command_has_smoke(demo_files):
     """Реестр Волн 1+3(psf) покрыт smoke-набором; trace/aber/opt держат
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
-                               "focus"}
+                               "focus", "export"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -194,6 +231,18 @@ def test_every_registered_command_has_smoke(demo_files):
     assert not missing, f"команды без smoke: {sorted(missing)}"
     assert not extra, f"smoke для несуществующих команд: {sorted(extra)}"
     assert len(names) >= 30
+
+
+#: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
+#: 140 (Волны 1-5) + 27 (R500-1 export) = 167).
+REGISTRY_TOTAL_COMMANDS = 167
+
+
+def test_registry_total_count():
+    """R500: счётчик реестра == ожидаемому (обновлять в пакетах)."""
+    import commands
+    commands.register_all()
+    assert len(commands.default_registry.names()) == REGISTRY_TOTAL_COMMANDS
 
 
 def test_smoke_every_command(demo_files, tmp_path):

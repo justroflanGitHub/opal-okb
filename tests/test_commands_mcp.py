@@ -323,7 +323,10 @@ class TestSubprocessSmoke:
         assert init["capabilities"] == {"tools": {}}
 
         tools = responses[1]["result"]["tools"]
-        assert len(tools) == 140  # весь реестр волны 5
+        import commands
+        commands.register_all()
+        # весь реестр (R500 растит счётчик — сверяем с живым реестром)
+        assert len(tools) == len(commands.default_registry.names())
         assert all(VALID_TOOL_NAME.match(t["name"]) for t in tools)
 
         new = responses[2]["result"]

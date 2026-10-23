@@ -2,6 +2,21 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [unreleased-r500]
+
+### Реестр 140 → 500+ (TASK_REGISTRY_500)
+
+- **Пакет 1 — экспорт (+27 команд, итого 167)**: `commands/exportio.py`
+  (единая запись CSV/JSON/TXT по расширению) + `commands/builtin/export_cmds.py`:
+  generic `export.rows/data/text/command` (любая команда реестра → файл),
+  9 табличных выгрузок OPAL (`tables.taboc1/taboc2/tabgl/tabpr2/tabax3/
+  tabbea/tabeap/tabesb/field_zones.export`) и 14 выгрузок данных
+  (пятно, веера, ЧКХ геометр./дифракц., ФКЭ, ФРЛ, Цернике, Зейдель,
+  пучок 3D, параксиал). Экспорт — композиция: выполняется команда-источник
+  того же реестра, результат пишет exportio. Тесты:
+  `tests/test_commands_export.py` + smoke-инвариант категории export
+  и общий счётчик реестра в `tests/test_commands_builtin.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

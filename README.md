@@ -7,7 +7,7 @@
 📘 English version | 📗 [Русская версия](README_RU.md)
 
 [![Tests](https://img.shields.io/badge/pytest-1542%20passed%20%2F%208%20skipped-brightgreen)]()
-[![Verification](https://img.shields.io/badge/golden%20bank-307%20GREEN-blue)]()
+[![Verification](https://img.shields.io/badge/golden%20bank-44%20systems%2C%20921%20checks%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
 Design, analysis, optimization and visualization of optical systems: lenses,
@@ -170,8 +170,10 @@ Master index - `analysis/REVERSE_TRACE.md` (§0-§24, Russian), wave plan -
       paraxial κ-model) *(1 wave)*
 - [ ] **OPAL.COM §21.12** - runtime probe of the first EXEC *(1 session)*
 - [x] **Golden bank extension** - 14 → 44 systems batch export, one DOSBox
-      night (g2bank.py wave 3: 28/29 OK, LOV refused RT start), CI-green
-      *(done 2026-10-23)*
+      night (g2bank.py wave 3: 28/29 OK, LOV refused RT start), CI-green;
+      wave-2 port-vs-PRN sweep: 43 end-to-end systems, **921 checks GREEN**,
+      28 fully green, 15 xfail residuals *(docs/tasks/G44_FINDINGS,
+      G44_FINAL_REPORT; done 2026-10-23)*
 
 ---
 

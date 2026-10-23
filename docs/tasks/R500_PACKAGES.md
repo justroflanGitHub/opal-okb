@@ -13,7 +13,7 @@
 | # | Пакет (модуль) | Домены/категории | Команд | Статус |
 |---|----------------|------------------|-------:|--------|
 | 1 | `export_cmds.py` | `export.*`, `tables.*.export`, `*.export` — CSV/JSON/TXT выгрузки таблиц и данных | 27 | done (+27 → 167) |
-| 2 | `system_ext_cmds.py` | `system.*` — апертура/стоп/объект/поля/λ/поверхности-расширения, ctx-менеджмент, validate | ~30 | planned |
+| 2 | `system_ext_cmds.py` | `system.*` — апертура/стоп/объект/поля/λ/поверхности-расширения, ctx-менеджмент, validate | 33 | done (+33 → 200) |
 | 3 | `lbo_cmds.py` | `file.lbo.*`, `library.*`, `file.diff/compare` — LBO-библиотеки, пакетные прогоны, сравнение систем | ~22 | planned |
 | 4 | `glass_ext_cmds.py` | `catalog.glass.*` расширенный, `catalog.spectral.*` — дисперсия, пары, соседние стёкла, спектральные линии | ~22 | planned |
 | 5 | `units_cmds.py` | `units.*`, `spatial.*` — Г.ММСС, диоптрии, зрачки; матрицы поворотов | ~18 | planned |

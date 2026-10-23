@@ -35,9 +35,9 @@ EXPORT_CASES = {
     "analyze.field_aberrations.export": {"out": "{t}/fieldab.csv"},
     "aber.fan.export": {"out": "{t}/fan.csv", "num_rays": 10},
     "aber.mtf_geo.export": {"out": "{t}/mtfgeo.csv", "num_rays": 20},
-    "zern.coeffs.export": {"out": "{t}/zern.csv", "num_rays": 16},
-    "psf.encircled.export": {"out": "{t}/ee.csv"},
-    "diffr.mtf.export": {"out": "{t}/mtf.csv", "grid_size": 32},
+    "export.zern.coeffs": {"out": "{t}/zern.csv", "num_rays": 16},
+    "export.psf.encircled": {"out": "{t}/ee.csv"},
+    "export.diffr.mtf": {"out": "{t}/mtf.csv", "grid_size": 32},
     "adv.lsf.export": {"out": "{t}/lsf.csv"},
     "adv.enc.export": {"out": "{t}/enc.csv", "num_rays": 50},
     "seidel.sums.export": {"out": "{t}/sums.csv"},
@@ -185,19 +185,19 @@ class TestDataExports:
                 assert len(rows) >= 2 * 5
             if name == "trace.ray_bundle.export":
                 assert {c for c in rows[0]} >= {"rho", "phi_deg", "success"}
-            if name == "psf.encircled.export":
+            if name == "export.psf.encircled":
                 assert data["r50_um"] > 0 and data["r80_um"] > data["r50_um"]
 
     def test_curves_txt_unsupported(self, demo_json, tmp_path):
         result = default_registry.execute(
-            "psf.encircled.export", CommandContext(),
+            "export.psf.encircled", CommandContext(),
             {"file": demo_json, "out": str(tmp_path / "ee.txt")})
         assert not result.ok
         assert result.error["code"] == "unsupported"
 
     def test_json_export_keeps_meta(self, demo_json, tmp_path):
         out = str(tmp_path / "ee.json")
-        run("psf.encircled.export", {"file": demo_json, "out": out})
+        run("export.psf.encircled", {"file": demo_json, "out": out})
         data = json.load(open(out, encoding="utf-8"))
         assert {"r_um", "ee", "r50_um", "r80_um"} <= set(data)
 

@@ -130,6 +130,48 @@ def _smoke_args(demo_files):
         "system.wavelengths.set": {"file": opj,
                                    "wavelengths": [{"value": 0.58756,
                                                     "name": "d"}]},
+        # R500-2: расширенные system.* (мутации — на свежей копии file)
+        "system.list": {},
+        "system.select": {"name": "demo_achromat"},
+        "system.drop": {"name": "ghost"},
+        "system.clone": {"file": opj, "name": "copy1"},
+        "system.rename": {"file": opj, "name": "renamed"},
+        "system.name.set": {"file": opj, "name": "n2"},
+        "system.comment.set": {"file": opj, "comment": "smoke"},
+        "system.object.set": {"file": opj, "object_type": "FINITE",
+                              "object_distance": 1000.0},
+        "system.image.set": {"file": opj, "image_type": "INFINITE"},
+        "system.stop.set": {"file": opj, "stop_surface": 1,
+                            "stop_type": "z"},
+        "system.obscuration.set": {"file": opj, "obscuration_ratio": 0.25},
+        "system.beam.set": {"file": opj, "beam_mode": "given"},
+        "system.aperture.set": {"file": opj, "aperture_type": "F_NUMBER",
+                                "aperture_value": 5.0},
+        "system.aperture.convert": {"file": opj, "value": 5.0,
+                                    "from_type": "F_NUMBER"},
+        "system.aperture.epd": {"file": opj},
+        "system.aperture.from_epd": {"file": opj, "epd": 20.0},
+        "system.aperture.pupil_distance": {"file": opj},
+        "system.surface.get": {"file": opj, "index": 0},
+        "system.surface.duplicate": {"file": opj, "index": 0, "count": 1},
+        "system.surface.move": {"file": opj, "index": 2, "to": 0},
+        "system.surface.aspheric.set": {"file": opj, "index": 0,
+                                        "coeffs": [1e-6]},
+        "system.surface.n.set": {"file": opj, "index": 0,
+                                 "n_override": {"0.58756": 1.7}},
+        "system.fields.remove": {"file": jsn, "index": 1},
+        "system.fields.clear": {"file": jsn},
+        "system.fields.auto": {"file": jsn, "num_fields": 3},
+        "system.fields.weight.set": {"file": jsn, "index": 0,
+                                     "weight": 2.0},
+        "system.wavelengths.remove": {"file": opj, "index": 2},
+        "system.wavelengths.clear": {"file": opj},
+        "system.wavelengths.weight.set": {"file": opj, "index": 0,
+                                          "weight": 0.5},
+        "system.wavelengths.primary": {"file": opj},
+        "system.glasses.list": {"file": opj},
+        "system.glasses.replace": {"file": opj, "old": "К8", "new": "К8"},
+        "system.validate": {"file": opj},
         "calc.aperture.real": {"file": opj},
         "calc.beam_geometry": {"file": opj},
         "calc.paraxial": {"file": opj},
@@ -203,10 +245,10 @@ def _smoke_args(demo_files):
                             "out": opj + ".fan.csv"},
         "aber.mtf_geo.export": {"file": opj, "num_rays": 20,
                                 "out": opj + ".mtfgeo.csv"},
-        "zern.coeffs.export": {"file": opj, "num_rays": 16,
+        "export.zern.coeffs": {"file": opj, "num_rays": 16,
                                "out": opj + ".zern.csv"},
-        "psf.encircled.export": {"file": opj, "out": opj + ".ee.csv"},
-        "diffr.mtf.export": {"file": opj, "grid_size": 32,
+        "export.psf.encircled": {"file": opj, "out": opj + ".ee.csv"},
+        "export.diffr.mtf": {"file": opj, "grid_size": 32,
                              "out": opj + ".mtf.csv"},
         "adv.lsf.export": {"file": opj, "out": opj + ".lsf.csv"},
         "adv.enc.export": {"file": opj, "num_rays": 50,
@@ -234,8 +276,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) = 167).
-REGISTRY_TOTAL_COMMANDS = 167
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) = 200).
+REGISTRY_TOTAL_COMMANDS = 200
 
 
 def test_registry_total_count():

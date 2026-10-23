@@ -17,6 +17,16 @@ All notable changes to OPAL-OKB will be documented in this file.
   `tests/test_commands_export.py` + smoke-инвариант категории export
   и общий счётчик реестра в `tests/test_commands_builtin.py`.
 
+- **Пакет 2 — system_ext (+33 команды, итого 200)**:
+  `commands/builtin/system_ext_cmds.py` — контекст REPL
+  (list/select/drop/clone/rename), скалярные поля (*.set: имя, комментарий,
+  объект, изображение, диафрагма, экранирование, режим пучка, апертура),
+  пересчёты апертуры (domain/aperture.py: convert/epd/from_epd/
+  pupil_distance), поверхности (get/duplicate/move/aspheric/n_override),
+  поля и λ (remove/clear/weight/auto/primary), стёкла (list/replace),
+  `system.validate` (санити). Тесты: `tests/test_commands_system_ext.py`
+  + smoke-инвариант (мутации на свежих копиях file).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

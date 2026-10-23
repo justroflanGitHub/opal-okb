@@ -514,7 +514,7 @@ def register(registry: Registry) -> None:
         return result
 
     @registry.command(
-        "zern.coeffs.export", category="export",
+        "export.zern.coeffs", category="export",
         description="Коэффициенты Цернике {n, m, name, coeff} → CSV/JSON",
         returns="файл выгрузки + счётчики строк",
         params=system_source_params() + [
@@ -528,7 +528,7 @@ def register(registry: Registry) -> None:
                   help="дефокус, длины волн"),
             OUT_PARAM,
         ])
-    def zern_coeffs_export(ctx, file, system, lbo_index, lbo_name, wl,
+    def export_zern_coeffs(ctx, file, system, lbo_index, lbo_name, wl,
                            field_y, num_rays, max_order, defocus_offset, out):
         data = _run(registry, ctx, "zern.coeffs",
                     _source_args(dict(file=file, system=system,
@@ -542,7 +542,7 @@ def register(registry: Registry) -> None:
         return result
 
     @registry.command(
-        "psf.encircled.export", category="export",
+        "export.psf.encircled", category="export",
         description="ФКЭ ФРТ (r_um, EE) → CSV/JSON",
         returns="файл выгрузки + r50/r80 из команды-источника",
         params=system_source_params() + [
@@ -552,7 +552,7 @@ def register(registry: Registry) -> None:
                   help="дефокусировка, длины волн"),
             OUT_PARAM,
         ])
-    def psf_encircled_export(ctx, file, system, lbo_index, lbo_name,
+    def export_psf_encircled(ctx, file, system, lbo_index, lbo_name,
                              field_y, wl, defocus, out):
         data = _run(registry, ctx, "psf.encircled",
                     _source_args(dict(file=file, system=system,
@@ -567,7 +567,7 @@ def register(registry: Registry) -> None:
         return result
 
     @registry.command(
-        "diffr.mtf.export", category="export",
+        "export.diffr.mtf", category="export",
         description="Дифракционная ЧКХ (частоты + мер/саг срезы) → CSV/JSON",
         returns="файл выгрузки + cutoff из команды-источника",
         params=system_source_params() + [
@@ -578,7 +578,7 @@ def register(registry: Registry) -> None:
                   help="верхняя частота, лин/мм"),
             OUT_PARAM,
         ])
-    def diffr_mtf_export(ctx, file, system, lbo_index, lbo_name, wl,
+    def export_diffr_mtf(ctx, file, system, lbo_index, lbo_name, wl,
                          grid_size, max_freq_lpmm, out):
         data = _run(registry, ctx, "diffr.mtf",
                     _source_args(dict(file=file, system=system,

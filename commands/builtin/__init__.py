@@ -20,6 +20,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.export_cmds",
     "commands.builtin.system_ext_cmds",
     "commands.builtin.lbo_cmds",
+    "commands.builtin.glass_ext_cmds",
     "commands.builtin.w4_main_cmds",
     "commands.builtin.w4_panel_cmds",
 )

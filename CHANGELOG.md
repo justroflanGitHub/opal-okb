@@ -37,6 +37,15 @@ All notable changes to OPAL-OKB will be documented in this file.
   `requires_lbo*` (extracted/ локальны); категории lbo/library держат
   свой набор в `tests/test_commands_lbo.py` (конвенция trace/aber).
 
+- **Пакет 4 — каталог стёкол/спектр (+19 команд, итого 240)**:
+  `commands/builtin/glass_ext_cmds.py` — `catalog.glass.list/filter/
+  dispersion/range/abbe/compare/similar/valid/pairs` + `catalog.sources`,
+  `catalog.agf.status`, `catalog.achromat.options` (варианты дублета по
+  парам через существующий дизайнер achromat.py), `catalog.spectral.*`
+  (lines/get/nearest/element/match — справочник utils/spectral_lines),
+  `diagram.data/types` (карта n–V headless). Тесты:
+  `tests/test_commands_glass_ext.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

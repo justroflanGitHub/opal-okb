@@ -187,6 +187,21 @@ def _smoke_args(demo_files):
         "catalog.glass.get": {"name": "К8", "wl": 0.54607},
         "catalog.glass.search": {"query": "ТФ"},
         "catalog.info": {},
+        # R500-4: расширенный каталог стёкол
+        "catalog.glass.list": {"limit": 3},
+        "catalog.glass.filter": {"vd_min": 50.0, "vd_max": 65.0,
+                                 "limit": 5},
+        "catalog.sources": {},
+        "catalog.agf.status": {},
+        "catalog.glass.dispersion": {"name": "К8",
+                                     "wavelengths": [0.48613, 0.58756]},
+        "catalog.glass.range": {"name": "К8", "steps": 4},
+        "catalog.glass.abbe": {"name": "К8"},
+        "catalog.glass.compare": {"a": "К8", "b": "ТФ1"},
+        "catalog.glass.similar": {"name": "К8", "limit": 5},
+        "catalog.glass.valid": {"name": "К8", "wl": 0.55},
+        "catalog.glass.pairs": {"name": "К8", "limit": 5},
+        "catalog.achromat.options": {"focal_length": 100.0},
         "catalog.library.create": {"generator": "achromat_100"},
         "catalog.library.list": {},
         "analyze.field_aberrations": {"file": opj},
@@ -283,8 +298,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) = 221).
-REGISTRY_TOTAL_COMMANDS = 221
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) = 240).
+REGISTRY_TOTAL_COMMANDS = 240
 
 
 def test_registry_total_count():

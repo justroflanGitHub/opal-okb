@@ -117,6 +117,27 @@ All notable changes to OPAL-OKB will be documented in this file.
   smoke-инвариант категории report и счётчик реестра 347 в
   `tests/test_commands_builtin.py`.
 
+- **Пакет 12 — plot_ext (+15 команд, итого 362)**:
+  `commands/builtin/plot_ext_cmds.py` — расширенные headless-графики
+  PNG (matplotlib Agg, конвенции opt_cmds._save_png), дополнительные к
+  8 plot.* Волны 3; новых вычислительных ядер нет — только существующие
+  движки и сестринские команды (registry.execute с системой под
+  служебным именем `_plotx_*`): схема системы 2D с поверхностями-дугами,
+  стёклами, стопом и веерами лучей по полям (plot.layout, ANALIZE §4.8),
+  каустика с перетяжкой RMS(z) (plot.caustic), виньетирование и
+  светораспределение по полям (plot.vignetting), хроматизм f′(λ)/Δf′(λ)
+  (plot.chromatism), карта волнового фронта W(x,y) со СКВ/PV
+  (plot.wavefront), стёкла системы на карте nd–vd с ломаной коррекции
+  (plot.glassmap, данные diagram.glasses), бар-чарт сумм Зейделя
+  (plot.seidel, данные seidel.sums), карта полей (plot.fields), ЧКХ и
+  ФКЭ семействами по полям (plot.mtf.family / plot.ee.family), сетка
+  пятен (plot.spot.grid), веера dy по полям (plot.fan.fields), глубина
+  фокуса с порогом круга нерезкости (plot.dof), маска зрачка
+  «прошёл/срезан» (plot.pupil.vign, данные trace.grid3d) и срезы ФРТ с
+  FWHM (plot.psf.slice). Тесты: `tests/test_commands_plot_ext.py` +
+  smoke-инвариант категории plot (23 plot.*) и счётчик реестра 362 в
+  `tests/test_commands_builtin.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

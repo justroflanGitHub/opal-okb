@@ -353,6 +353,54 @@ def _smoke_args(demo_files):
         "report.quality": {"file": opj, "num_rays": 10},
         "report.tables": {"file": opj},
         "report.full": {"file": jsn, "num_rays": 10, "freq_lpmm": 30.0},
+        # Волна 3, домен «Оптимизация и визуализация»: plot.* opt_cmds
+        # (категория plot добавлена в covered пакетом R500-12 вместе с
+        # plot_ext_cmds; out-файлы — рядом с демо-системой в tmp).
+        "plot.spot": {"file": jsn, "output": opj + ".plot_spot.png",
+                      "num_rays": 15},
+        "plot.fan": {"file": jsn, "output": opj + ".plot_fan.png",
+                     "num_rays": 9},
+        "plot.field": {"file": jsn, "output": opj + ".plot_field.png"},
+        "plot.psf": {"file": opj, "output": opj + ".plot_psf.png"},
+        "plot.mtf": {"file": opj, "output": opj + ".plot_mtf.png"},
+        "plot.ee": {"file": opj, "output": opj + ".plot_ee.png"},
+        "plot.focus": {"file": opj, "output": opj + ".plot_focus.png",
+                       "num_points": 10, "num_rays": 10},
+        "plot.heatmap": {"file": opj, "output": opj + ".plot_heat.png",
+                         "num_rays": 150},
+        # R500-12: расширенные plot.* (plot_ext_cmds.py); команды с
+        # полями системы — на .json (.opj теряет field_points).
+        "plot.layout": {"file": jsn, "output": opj + ".plot_layout.png",
+                        "num_rays": 5},
+        "plot.caustic": {"file": opj, "output": opj + ".plot_caustic.png",
+                         "num_rays": 9, "num_points": 30},
+        "plot.vignetting": {"file": jsn,
+                            "output": opj + ".plot_vign.png"},
+        "plot.chromatism": {"file": opj,
+                            "output": opj + ".plot_chrom.png",
+                            "steps": 11},
+        "plot.wavefront": {"file": opj, "output": opj + ".plot_wf.png",
+                           "grid_size": 32},
+        "plot.glassmap": {"file": opj, "output": opj + ".plot_gmap.png"},
+        "plot.seidel": {"file": opj, "output": opj + ".plot_seidel.png"},
+        "plot.fields": {"file": jsn, "output": opj + ".plot_fields.png"},
+        "plot.mtf.family": {"file": jsn, "fields": [0.0, 5.0],
+                            "output": opj + ".plot_mtf_fam.png"},
+        "plot.ee.family": {"file": jsn, "fields": [0.0, 5.0],
+                           "output": opj + ".plot_ee_fam.png"},
+        "plot.spot.grid": {"file": jsn, "fields": [0.0, 3.0, 5.0],
+                           "num_rays": 15,
+                           "output": opj + ".plot_spot_grid.png"},
+        "plot.fan.fields": {"file": jsn, "num_fan_rays": 9,
+                            "output": opj + ".plot_fan_fields.png"},
+        "plot.dof": {"file": opj, "coc_um": 300.0,
+                     "defocus_range": 0.8, "num_points": 11,
+                     "num_rays": 12, "output": opj + ".plot_dof.png"},
+        "plot.pupil.vign": {"file": opj, "num_rings": 3,
+                            "num_azimuths": 8,
+                            "output": opj + ".plot_pupil.png"},
+        "plot.psf.slice": {"file": opj,
+                           "output": opj + ".plot_psf_slice.png"},
     }
 
 
@@ -360,7 +408,8 @@ def test_every_registered_command_has_smoke(demo_files):
     """Реестр Волн 1+3(psf) покрыт smoke-набором; trace/aber/opt держат
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
-                               "focus", "export", "quality", "report"}
+                               "focus", "export", "quality", "report",
+                               "plot"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -372,8 +421,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) = 347).
-REGISTRY_TOTAL_COMMANDS = 347
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) = 362).
+REGISTRY_TOTAL_COMMANDS = 362
 
 
 def test_registry_total_count():

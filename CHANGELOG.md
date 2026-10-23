@@ -138,6 +138,30 @@ All notable changes to OPAL-OKB will be documented in this file.
   smoke-инвариант категории plot (23 plot.*) и счётчик реестра 362 в
   `tests/test_commands_builtin.py`.
 
+- **Пакет 13 — meta (+12 команд, итого 374)**:
+  `commands/builtin/meta_cmds.py` — интроспекция реестра и окружения
+  для агентов (единая точка самопознания реестра без чтения исходников);
+  команды работают с реестром-замыканием из register(), а не с
+  default_registry — тесты с изолированными реестрами видят свой набор:
+  registry.stats (всего/по категориям), registry.categories (число
+  команд + описание), registry.list (фильтры категория/префикс),
+  registry.search (подстрока имени/описания/категории, без регистра),
+  registry.schema (параметры команды: типы/обязательность/умолчания;
+  несуществующая → not_found с подсказкой близких имён по общему
+  префиксу), registry.category.info (команды категории с сигнатурами),
+  registry.params (какие команды принимают параметр X, фильтр по типу),
+  registry.export (снимок реестра JSON через exportio, опция out),
+  app.info (версия проекта из верхнего релиза CHANGELOG.md — в рантайме,
+  без магических строк; Python, платформа, счётчики реестра), app.env
+  (Python, ОС, кодировки, доступность/версии numpy и matplotlib),
+  app.paths (каталоги данных из констант catalog.library: BASE_DIR/
+  OPJ_DIR/LBO_DIR + наличие и число файлов), help.command (описание +
+  параметры + пример вызова CLI с умолчаниями/заглушками по типам).
+  Тесты: `tests/test_commands_meta.py` (включая изолированный реестр
+  Registry() + meta register — ровно 12 команд, замыкание) +
+  smoke-инвариант категорий registry/app/help и счётчик реестра 374 в
+  `tests/test_commands_builtin.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

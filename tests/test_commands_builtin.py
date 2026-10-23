@@ -401,6 +401,20 @@ def _smoke_args(demo_files):
                             "output": opj + ".plot_pupil.png"},
         "plot.psf.slice": {"file": opj,
                            "output": opj + ".plot_psf_slice.png"},
+        # R500-13: интроспекция реестра/окружения (категории registry/
+        # app/help; локальных данных не требуют — реестр сам источник).
+        "registry.stats": {},
+        "registry.categories": {},
+        "registry.list": {"category": "calc"},
+        "registry.search": {"query": "фокус", "limit": 5},
+        "registry.schema": {"name": "calc.paraxial"},
+        "registry.category.info": {"category": "plot"},
+        "registry.params": {"param": "file"},
+        "registry.export": {"out": opj + ".registry.json"},
+        "app.info": {},
+        "app.env": {},
+        "app.paths": {},
+        "help.command": {"name": "system.new"},
     }
 
 
@@ -409,7 +423,7 @@ def test_every_registered_command_has_smoke(demo_files):
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
                                "focus", "export", "quality", "report",
-                               "plot"}
+                               "plot", "registry", "app", "help"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -421,8 +435,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) = 362).
-REGISTRY_TOTAL_COMMANDS = 362
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) = 374).
+REGISTRY_TOTAL_COMMANDS = 374
 
 
 def test_registry_total_count():

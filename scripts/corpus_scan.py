@@ -44,11 +44,12 @@ OPS = ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils')
 WATER_N = 1.331  # показатель преломления воды — «Гидро»-объективы каталога
 
 # f' из имени системы (порядок паттернов как в scripts/lbo_verify_f.py):
-# f'=…, f=… (без апострофа — признак гидрообъектива), ф'/f' с пробелами
+# f'=…, f=… (без апострофа — признак гидрообъектива), ф'/f' с пробелами.
+# re.IGNORECASE: US-патентные библиотеки пишут заглавным «F'=1» (261 система).
 _F_PATTERNS = (
-    (re.compile(r"f'=\s*(-?\d+(?:\.\d+)?)"), True),
-    (re.compile(r"f=\s*(-?\d+(?:\.\d+)?)"), False),
-    (re.compile(r"[fф]\s*'?\s*=\s*(-?\d+(?:\.\d+)?)"), None),
+    (re.compile(r"f'=\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE), True),
+    (re.compile(r"f=\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE), False),
+    (re.compile(r"[fф]\s*'?\s*=\s*(-?\d+(?:\.\d+)?)", re.IGNORECASE), None),
 )
 
 _PARAX_METRICS = (

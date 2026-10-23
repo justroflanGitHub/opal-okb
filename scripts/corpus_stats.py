@@ -26,9 +26,13 @@ from pathlib import Path
 
 # Консоль Windows (cp1251): принудительно UTF-8, непечатаемое — заменой.
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ — corpus_scan
 
-OPS_ORDER = ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils')
+# Единый источник контракта операций — сам сканер (не дублируем кортеж).
+from corpus_scan import OPS as OPS_ORDER  # noqa: E402  (после sys.path)
+
 FCHECK_ORDER = ('ok', 'sign_flip', 'hydro', 'truncated', 'diverge')
 # (нижняя граница включительно, верхняя исключительно, метка)
 EFL_BINS = ((None, 3.0, '<3'), (3.0, 10.0, '3–10'), (10.0, 30.0, '10–30'),

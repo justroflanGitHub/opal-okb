@@ -42,6 +42,13 @@ from analysis.tables import taboc1_rows                            # noqa: E402
 SCHEMA_VERSION = 1
 OPS = ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils')
 WATER_N = 1.331  # показатель преломления воды — «Гидро»-объективы каталога
+# Пороги классификации f_check (именованные — единый источник, см. make_f_check)
+F_EPS = 1e-9                # |f имени| ниже этого — сверка невозможна
+TRUNC_NAME_F_MAX = 10.0     # признак усечённой записи каталога: |f| мал, а
+TRUNC_RATIO_MIN = 8.0       # ... отношение расчёт/f в диапазоне
+TRUNC_RATIO_MAX = 25.0      # ... [8..25] → «f'=1» может означать 12.2 мм
+SIGN_FLIP_TOL = 0.05        # совпадение модулей в пределах 5% при обратном знаке
+OK_TOL_PCT = 5.0            # порог категории ok, %
 
 # f' из имени системы (порядок паттернов как в scripts/lbo_verify_f.py):
 # f'=…, f=… (без апострофа — признак гидрообъектива), ф'/f' с пробелами.
@@ -99,7 +106,7 @@ def make_f_check(name, calc_f):
     ok ≤5%, diverge — остальное; расчёт не конечен → diverge, err_pct=null.
     """
     name_f, apos = parse_name_f(name)
-    if name_f is None or abs(name_f) < 1e-9:  # f=0 — сверка невозможна
+    if name_f is None or abs(name_f) < F_EPS:  # f=0 — сверка невозможна
         return None
     fc = {'name_f': name_f, 'calc_f': _finite(calc_f),
           'err_pct': None, 'category': 'diverge'}
@@ -111,12 +118,13 @@ def make_f_check(name, calc_f):
         fc['category'] = 'hydro'
         return fc
     fc['err_pct'] = abs(calc - name_f) / abs(name_f) * 100
-    if abs(name_f) < 10 and 8 <= abs(calc / name_f) <= 25:
+    if abs(name_f) < TRUNC_NAME_F_MAX and \
+            TRUNC_RATIO_MIN <= abs(calc / name_f) <= TRUNC_RATIO_MAX:
         fc['category'] = 'truncated'
     elif (calc > 0) != (name_f > 0) and \
-            abs(abs(calc) - abs(name_f)) / abs(name_f) <= 0.05:
+            abs(abs(calc) - abs(name_f)) / abs(name_f) <= SIGN_FLIP_TOL:
         fc['category'] = 'sign_flip'
-    elif fc['err_pct'] <= 5:
+    elif fc['err_pct'] <= OK_TOL_PCT:
         fc['category'] = 'ok'
     return fc
 

@@ -1,22 +1,31 @@
 # -*- coding: utf-8 -*-
-"""Сканер корпуса оптических систем из библиотек .LBO (TASK_CORPUS_SCAN).
+"""Сканер корпуса оптических систем из библиотек .LBO (TASK_CORPUS_SCAN_V2).
 
 Все системы каждой .LBO библиотеки прогоняются через конвейер порта
 OPAL-PC: load → parse (system) → paraxial (efl finite) → seidel →
-taboc1 → зрачки (entrance/exit pupil finite). Отказ этапа не валит
-ни систему, ни скан: фиксируется в ops/error, скан продолжается.
-Результат — один JSON (schema_version 1, контракт: docs/tasks/
-CORPUS_PLAN.md): успехи/отказы по этапам, параксиальные метрики,
-суммы Зейделя, TABOC1 и сверка f' «имя каталога vs расчёт»
-(правила docs/LBO_FORMAT.md) — вход для corpus_stats.py и отчёта
-по аномалиям корпуса.
+taboc1 → зрачки (entrance/exit pupil finite) → vignette (виньетирование
+на макс. поле, %) → chief (дисторсия и астигматические отрезки главного
+луча) → spot (полихроматический RMS пятна, мкм) → mtf_geo (геометрическая
+ЧКХ: контраст 30/50 лин/мм). Отказ этапа не валит ни систему, ни скан:
+фиксируется в ops/error, скан продолжается. Результат — один JSON
+(schema_version 2, контракт: docs/tasks/CORPUS_PLAN.md, раздел
+«Контракт v2»): успехи/отказы по этапам, параксиальные метрики, суммы
+Зейделя, TABOC1, новые метрики волны 2 и сверка f' «имя каталога vs
+расчёт» (правила docs/LBO_FORMAT.md) — вход для corpus_stats.py и
+отчётов по корпусу.
 
 CLI:
     py scripts/corpus_scan.py --lib <файл.LBO | каталог Lib> --out <.json>
                               [--limit N] [--quiet]
+                              [--ops all|base|v2|имена через запятую]
+
+--ops — выбор операций конвейера: all — все 10 (по умолчанию); base —
+6 базовых v1 (JSON побитово как в волне 1); v2 — 4 новые; список имён
+OPS через запятую (регистр как в OPS, пробелы допустимы). load и parse
+выполняются всегда. Неизвестное имя → код возврата 2.
 
 Коды возврата: 0 — скан дошёл до конца (отказ отдельной системы — не
-ошибка скана); 2 — нет/неверен путь --lib или --out.
+ошибка скана); 2 — нет/неверен путь --lib, --out или --ops.
 """
 import argparse
 import json
@@ -38,9 +47,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fileio.lbo_io import load_lbo                                 # noqa: E402
 from domain.calculations import paraxial_trace, seidel_aberrations  # noqa: E402
 from analysis.tables import taboc1_rows                            # noqa: E402
+from analysis.vignetting import compute_vignetting                 # noqa: E402
+from analysis.aberrations import (                                 # noqa: E402
+    compute_chief_ray_characteristics,
+    compute_geometric_mtf,
+    compute_polychromatic_rms,
+    compute_spot_diagram_polychromatic,
+)
+from optics_utils import get_primary_wl                            # noqa: E402
 
-SCHEMA_VERSION = 1
-OPS = ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils')
+SCHEMA_VERSION = 2
+# Конвейер — единый источник для corpus_stats.py (импортирует OPS):
+# base — 6 базовых операций волны 1, v2 — 4 новые волны 2.
+OPS = ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils',
+       'vignette', 'chief', 'spot', 'mtf_geo')
+OPS_BASE = OPS[:6]
+OPS_V2 = OPS[6:]
 WATER_N = 1.331  # показатель преломления воды — «Гидро»-объективы каталога
 # Пороги классификации f_check (именованные — единый источник, см. make_f_check)
 F_EPS = 1e-9                # |f имени| ниже этого — сверка невозможна
@@ -129,20 +151,111 @@ def make_f_check(name, calc_f):
     return fc
 
 
-def _empty_metrics():
-    """Шаблон metrics контракта (все ключи на месте, значения None)."""
-    return dict.fromkeys((
-        'efl', 'bfd', 'f_number', 'L', 'entrance_pupil', 'exit_pupil',
-        'entrance_pupil_diameter', 'seidel_SI', 'seidel_SII', 'seidel_SIII',
-        'seidel_SIV', 'seidel_SV', 'taboc1_rows', 'taboc1_ok',
-        'taboc1_max_abs_longitudinal_mm'))
+#: Базовые 15 ключей metrics волны 1 (порядок = порядок в JSON).
+_BASE_METRICS = (
+    'efl', 'bfd', 'f_number', 'L', 'entrance_pupil', 'exit_pupil',
+    'entrance_pupil_diameter', 'seidel_SI', 'seidel_SII', 'seidel_SIII',
+    'seidel_SIV', 'seidel_SV', 'taboc1_rows', 'taboc1_ok',
+    'taboc1_max_abs_longitudinal_mm')
+
+#: Новые ключи metrics волны 2 по операциям (контракт «Контракт v2»):
+#: выходной зрачок не дублируется — это v1-ключ exit_pupil.
+_V2_METRICS = {
+    'vignette': ('vignette_max_field', 'vignette_up_pct',
+                 'vignette_down_pct'),
+    'chief': ('chief_max_field', 'distortion_pct', 'astig_Zm_mm',
+              'astig_Zs_mm'),
+    'spot': ('spot_rms_axis_um', 'spot_rms_max_field_um'),
+    'mtf_geo': ('mtf30_axis', 'mtf50_axis', 'mtf30_max_field',
+                'mtf50_max_field'),
+}
 
 
-def scan_system(entry, lib, index):
-    """Конвейер одной записи load_lbo → dict системы по контракту JSON."""
-    ops = dict.fromkeys(OPS, False)
+def _empty_metrics(selected=OPS):
+    """Шаблон metrics контракта (все ключи на месте, значения None).
+
+    Базовые 15 ключей волны 1 — всегда; новые v2 — только для выбранных
+    операций (--ops base даёт набор ключей волны 1 побитово). Ключи
+    остаются на месте и при раннем отказе операции.
+    """
+    keys = list(_BASE_METRICS)
+    for op in selected:
+        keys.extend(_V2_METRICS.get(op, ()))
+    return dict.fromkeys(keys)
+
+
+def parse_ops(value):
+    """--ops → кортеж операций конвейера в порядке OPS | None (неверный).
+
+    'all' — все 10, 'base' — 6 базовых v1, 'v2' — 4 новые; иначе имена
+    OPS через запятую (регистр как в OPS, пробелы вокруг допустимы).
+    load/parse входят в любую выборку — без них нет системы.
+    """
+    name = (value or 'all').strip()
+    preset = {'all': OPS, 'base': OPS_BASE, 'v2': OPS_V2}.get(name)
+    if preset is not None:
+        selected = set(preset)
+    else:
+        selected = {p.strip() for p in name.split(',')} - {''}
+        if not selected or not set(selected) <= set(OPS):
+            return None
+    selected |= {'load', 'parse'}      # выполняются всегда
+    return tuple(op for op in OPS if op in selected)
+
+
+def _max_field(system):
+    """Макс. поле системы (max |fp.y|, град/мм); нет точек → 0.0.
+
+    Все поля нулевые или списка нет — безполевая система (max 0.0):
+    осевой случай валиден для всех операций волны 2.
+    """
+    fields = [abs(fp.y) for fp in (system.field_points or [])]
+    return max(fields) if fields else 0.0
+
+
+def _mtf_at(mtf, freq):
+    """Тангенциальный контраст ЧКХ на частоте freq, лин/мм | None.
+
+    Ближайшая точка кривой compute_geometric_mtf; частота мимо сетки
+    или не конечное значение → None.
+    """
+    row = min(mtf, key=lambda r: abs(r[0] - freq), default=None)
+    if row is None or abs(row[0] - freq) > 1e-6:
+        return None
+    return _finite(row[1])
+
+
+def _mtf_contrast(system, field_y):
+    """Пара контрастов (30, 50 лин/мм) на поле field_y | None.
+
+    Пятно — полихроматическое (сетка 30×30, все λ системы); ЧКХ —
+    compute_geometric_mtf (FFT гистограммы пятна, max_freq=50, 5
+    частот; тангенциальный срез). None — пятен < 10, ЧКХ пустая или
+    нужной частоты на кривой нет.
+    """
+    spots = compute_spot_diagram_polychromatic(system, num_rays=30,
+                                               field_y=field_y)
+    if len(spots) < 10:
+        return None
+    mtf = compute_geometric_mtf([(x, y) for x, y, _ in spots],
+                                max_freq=50.0, num_freqs=5)
+    if not mtf:
+        return None
+    mtf30 = _mtf_at(mtf, 30.0)
+    mtf50 = _mtf_at(mtf, 50.0)
+    if mtf30 is None or mtf50 is None:
+        return None
+    return mtf30, mtf50
+
+
+def scan_system(entry, lib, index, selected=OPS):
+    """Конвейер одной записи load_lbo → dict системы по контракту JSON.
+
+    selected — выбор операций (--ops); load/parse всегда в выборке.
+    """
+    ops = dict.fromkeys(selected, False)
     why = {}  # op → сообщение об отказе (для error первого сбойного этапа)
-    metrics = _empty_metrics()
+    metrics = _empty_metrics(selected)
     rec = {
         'lib': lib, 'index': index,
         'name': entry.get('name'), 'filename': entry.get('filename'),
@@ -160,8 +273,9 @@ def scan_system(entry, lib, index):
     else:
         warnings = entry.get('warnings') or []
         why['parse'] = warnings[0] if warnings else 'system is None'
-        for op in ('paraxial', 'seidel', 'taboc1', 'pupils'):
-            why[op] = 'system is None'
+        for op in selected:
+            if op not in ('load', 'parse'):
+                why[op] = 'system is None'
         rec['error'] = f"parse: {why['parse']}"
         rec['f_check'] = make_f_check(rec['name'] or '', None)  # diverge
         return rec
@@ -178,64 +292,169 @@ def scan_system(entry, lib, index):
     rec['has_mirror'] = any(bool(s.is_reflective) for s in system.surfaces)
 
     # paraxial: без исключения и efl finite (efl = EFL, fallback focal_length)
-    try:
-        parax = paraxial_trace(system)
-    except Exception as exc:  # noqa: BLE001 — отказ этапа не валит скан
-        parax = None
-        why['paraxial'] = _exc(exc)
-    if isinstance(parax, dict):
-        efl = _finite(parax.get('effective_focal_length'))
-        if efl is None:
-            efl = _finite(parax.get('focal_length'))
-        metrics['efl'] = efl
-        for src, dst in _PARAX_METRICS:
-            metrics[dst] = _finite(parax.get(src))
-    if metrics['efl'] is None:
-        why.setdefault('paraxial', 'efl not finite')
-    else:
-        ops['paraxial'] = True
+    if 'paraxial' in ops:
+        try:
+            parax = paraxial_trace(system)
+        except Exception as exc:  # noqa: BLE001 — отказ этапа не валит скан
+            parax = None
+            why['paraxial'] = _exc(exc)
+        if isinstance(parax, dict):
+            efl = _finite(parax.get('effective_focal_length'))
+            if efl is None:
+                efl = _finite(parax.get('focal_length'))
+            metrics['efl'] = efl
+            for src, dst in _PARAX_METRICS:
+                metrics[dst] = _finite(parax.get(src))
+        if metrics['efl'] is None:
+            why.setdefault('paraxial', 'efl not finite')
+        else:
+            ops['paraxial'] = True
 
     # seidel: суммы Зейделя 3-го порядка (этап независим от paraxial)
-    try:
-        seidel = seidel_aberrations(system)
-    except Exception as exc:  # noqa: BLE001
-        why['seidel'] = _exc(exc)
-    else:
-        ops['seidel'] = True
-        for key in ('SI', 'SII', 'SIII', 'SIV', 'SV'):
-            metrics['seidel_' + key] = _finite(seidel.get(key))
+    if 'seidel' in ops:
+        try:
+            seidel = seidel_aberrations(system)
+        except Exception as exc:  # noqa: BLE001
+            why['seidel'] = _exc(exc)
+        else:
+            ops['seidel'] = True
+            for key in ('SI', 'SII', 'SIII', 'SIV', 'SV'):
+                metrics['seidel_' + key] = _finite(seidel.get(key))
 
     # taboc1: остаточные аберрации осевого пучка, хотя бы одна строка
-    try:
-        rows = taboc1_rows(system)
-    except Exception as exc:  # noqa: BLE001
-        why['taboc1'] = _exc(exc)
-    else:
-        if rows:
-            ops['taboc1'] = True
-            metrics['taboc1_rows'] = len(rows)
-            lons = [r.get('longitudinal_mm') for r in rows
-                    if r.get('longitudinal_mm') is not None]
-            metrics['taboc1_ok'] = len(lons)
-            vals = [v for v in (_finite(x) for x in lons) if v is not None]
-            if vals:
-                metrics['taboc1_max_abs_longitudinal_mm'] = \
-                    max(abs(v) for v in vals)
+    if 'taboc1' in ops:
+        try:
+            rows = taboc1_rows(system)
+        except Exception as exc:  # noqa: BLE001
+            why['taboc1'] = _exc(exc)
         else:
-            why['taboc1'] = 'no rows'
+            if rows:
+                ops['taboc1'] = True
+                metrics['taboc1_rows'] = len(rows)
+                lons = [r.get('longitudinal_mm') for r in rows
+                        if r.get('longitudinal_mm') is not None]
+                metrics['taboc1_ok'] = len(lons)
+                vals = [v for v in (_finite(x) for x in lons) if v is not None]
+                if vals:
+                    metrics['taboc1_max_abs_longitudinal_mm'] = \
+                        max(abs(v) for v in vals)
+            else:
+                why['taboc1'] = 'no rows'
 
     # зрачки: входной и выходной зрачок конечны (по данным paraxial)
-    if not ops['paraxial']:
-        why.setdefault('pupils', 'no paraxial data')
-    elif metrics['entrance_pupil'] is None:
-        why['pupils'] = 'entrance_pupil not finite'
-    elif metrics['exit_pupil'] is None:
-        why['pupils'] = 'exit_pupil not finite'
-    else:
-        ops['pupils'] = True
+    if 'pupils' in ops:
+        if not ops.get('paraxial', False):
+            why.setdefault('pupils', 'no paraxial data')
+        elif metrics['entrance_pupil'] is None:
+            why['pupils'] = 'entrance_pupil not finite'
+        elif metrics['exit_pupil'] is None:
+            why['pupils'] = 'exit_pupil not finite'
+        else:
+            ops['pupils'] = True
+
+    # vignette: виньетирование верх/низ на макс. поле, % (TABBEA);
+    # выходной зрачок не дублируется — это v1-ключ exit_pupil
+    if 'vignette' in ops:
+        try:
+            field_max = _max_field(system)
+            vign = compute_vignetting(system, field_max,
+                                      wl=get_primary_wl(system))
+            up = _finite(vign.get('vignet_up'))
+            down = _finite(vign.get('vignet_down'))
+            if up is None or down is None:
+                why['vignette'] = 'vignetting not finite'
+            else:
+                ops['vignette'] = True
+                metrics['vignette_max_field'] = field_max
+                metrics['vignette_up_pct'] = up
+                metrics['vignette_down_pct'] = down
+        except Exception as exc:  # noqa: BLE001
+            why['vignette'] = _exc(exc)
+
+    # chief: дисторсия и астигматические отрезки главного луча на макс.
+    # поле; безполевая система (макс. поле 0) — валидный осевой случай:
+    # ops true, метрики не определены (None), ошибки нет
+    if 'chief' in ops:
+        try:
+            field_max = _max_field(system)
+            if field_max <= 0.0:
+                ops['chief'] = True
+            else:
+                chars = compute_chief_ray_characteristics(
+                    system, wl=get_primary_wl(system))
+                best = None
+                for c in chars:
+                    fy = _finite(c.get('field_y'))
+                    if fy is not None and (
+                            best is None or
+                            abs(fy) > abs(best.get('field_y') or 0.0)):
+                        best = c
+                if best is None:
+                    why['chief'] = 'no chief ray data'
+                else:
+                    dist = _finite(best.get('distortion_rel'))
+                    zm = _finite(best.get('Zm'))
+                    zs = _finite(best.get('Zs'))
+                    if dist is None or zm is None or zs is None:
+                        why['chief'] = 'chief characteristics not finite'
+                    else:
+                        ops['chief'] = True
+                        metrics['chief_max_field'] = field_max
+                        metrics['distortion_pct'] = dist
+                        metrics['astig_Zm_mm'] = zm
+                        metrics['astig_Zs_mm'] = zs
+        except Exception as exc:  # noqa: BLE001
+            why['chief'] = _exc(exc)
+
+    # spot: полихроматический RMS пятна на оси и на макс. поле (мкм,
+    # мм ×1000); сетка 30×30, все λ системы с весами; безполевая —
+    # только осевой RMS, op true
+    if 'spot' in ops:
+        try:
+            rms_axis = _finite(compute_polychromatic_rms(
+                system, num_rays=30, field_y=0.0))
+            if rms_axis is None:
+                why['spot'] = 'axis RMS not finite'
+            else:
+                metrics['spot_rms_axis_um'] = rms_axis * 1000.0
+                field_max = _max_field(system)
+                if field_max > 0.0:
+                    rms_field = _finite(compute_polychromatic_rms(
+                        system, num_rays=30, field_y=field_max))
+                    if rms_field is None:
+                        why['spot'] = 'max field RMS not finite'
+                    else:
+                        metrics['spot_rms_max_field_um'] = rms_field * 1000.0
+                if not why.get('spot'):
+                    ops['spot'] = True
+        except Exception as exc:  # noqa: BLE001
+            why['spot'] = _exc(exc)
+
+    # mtf_geo: геометрическая ЧКХ (FFT пятна) — тангенциальный контраст
+    # на 30 и 50 лин/мм, ось и макс. поле; безполевая — только осевые,
+    # op true; пустое пятно/ЧКХ — отказ этапа
+    if 'mtf_geo' in ops:
+        try:
+            axis = _mtf_contrast(system, 0.0)
+            if axis is None:
+                why['mtf_geo'] = 'no axial MTF (empty spot?)'
+            else:
+                metrics['mtf30_axis'], metrics['mtf50_axis'] = axis
+                field_max = _max_field(system)
+                if field_max > 0.0:
+                    oblique = _mtf_contrast(system, field_max)
+                    if oblique is None:
+                        why['mtf_geo'] = 'no max field MTF (empty spot?)'
+                    else:
+                        (metrics['mtf30_max_field'],
+                         metrics['mtf50_max_field']) = oblique
+                if not why.get('mtf_geo'):
+                    ops['mtf_geo'] = True
+        except Exception as exc:  # noqa: BLE001
+            why['mtf_geo'] = _exc(exc)
 
     rec['f_check'] = make_f_check(rec['name'] or '', metrics['efl'])
-    for op in OPS:
+    for op in selected:
         if not ops[op]:
             rec['error'] = f'{op}: {why.get(op, "failed")}'
             break
@@ -259,7 +478,7 @@ def collect_lib_files(lib_path):
 def main(argv=None):
     ap = argparse.ArgumentParser(
         description='Скан корпуса оптических систем из .LBO библиотек '
-                    '(контракт: docs/tasks/CORPUS_PLAN.md)')
+                    '(контракт v2, schema 2: docs/tasks/CORPUS_PLAN.md)')
     ap.add_argument('--lib', required=True,
                     help='файл .LBO или каталог с *.LBO (все по алфавиту)')
     ap.add_argument('--out', required=True,
@@ -268,7 +487,18 @@ def main(argv=None):
                     help='первые N систем каждой библиотеки (по умолчанию все)')
     ap.add_argument('--quiet', action='store_true',
                     help='без прогресса в stdout')
+    ap.add_argument('--ops', default='all', metavar='OPS',
+                    help='операции конвейера: all | base | v2 | имена через '
+                         'запятую из: ' + ', '.join(OPS) +
+                         ' (по умолчанию all)')
     args = ap.parse_args(argv)
+
+    selected = parse_ops(args.ops)
+    if selected is None:
+        print(f'corpus_scan: неверное значение --ops: {args.ops!r} '
+              f'(допустимо: all | base | v2 | имена из: {", ".join(OPS)})',
+              file=sys.stderr)
+        return 2
 
     lib_files = collect_lib_files(args.lib)
     if not lib_files:
@@ -277,7 +507,7 @@ def main(argv=None):
         return 2
 
     systems = []
-    ops_summary = {op: {'ok': 0, 'fail': 0} for op in OPS}
+    ops_summary = {op: {'ok': 0, 'fail': 0} for op in selected}
     t0 = time.perf_counter()
     for path in lib_files:
         lib = os.path.splitext(os.path.basename(path))[0]
@@ -292,9 +522,9 @@ def main(argv=None):
             entries = entries[:max(0, args.limit)]
         n_ok = n_fail = 0
         for i, entry in enumerate(entries):
-            rec = scan_system(entry, lib, i)
+            rec = scan_system(entry, lib, i, selected)
             systems.append(rec)
-            for op in OPS:
+            for op in selected:
                 ops_summary[op]['ok' if rec['ops'][op] else 'fail'] += 1
             if rec['status'] == 'ok':
                 n_ok += 1

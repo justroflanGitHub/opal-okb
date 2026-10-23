@@ -169,7 +169,9 @@ Master index - `analysis/REVERSE_TRACE.md` (§0-§24, Russian), wave plan -
 - [ ] **True HOE diffraction** - ray tracing through holograms (currently a
       paraxial κ-model) *(1 wave)*
 - [ ] **OPAL.COM §21.12** - runtime probe of the first EXEC *(1 session)*
-- [ ] **Golden bank extension** - 14 → 30-50 systems batch export *(1 night)*
+- [x] **Golden bank extension** - 14 → 44 systems batch export, one DOSBox
+      night (g2bank.py wave 3: 28/29 OK, LOV refused RT start), CI-green
+      *(done 2026-10-23)*
 
 ---
 

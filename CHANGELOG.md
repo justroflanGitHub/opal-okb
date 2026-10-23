@@ -2,6 +2,21 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.29.0] — 2026-10-23
+
+### Golden bank 44 системы + CI зелёный
+
+- **Golden bank**: 16 → 44 системы за одну DOSBox-ночь (волна 3 g2bank: 28/29 OK;
+  LOV — оригинал не стартует RT из своего же редактора). Эталоны bank/*.PRN
+  больше не под глобальным игнором `*.PRN` — закоммичены (текст cp866),
+  CI получает их для golden-верификации.
+- **CI**: workflow ставит `pytest-qt` (qt_api из pytest.ini) и `matplotlib`
+  (plot.*-команды); 51 extracted-зависимый тест помечен честными skip-маркерами
+  (единые детекторы в tests/conftest.py) — локальные данные в git не входят;
+  симуляция без extracted/: 356 passed, 112 skipped, 0 failed.
+- **Результат**: первый зелёный прогон Actions (40000300996, 5m18s, все даты
+  до этого — failure с 2026-10-18).
+
 ## [1.28.1] — 2026-10-23
 
 ### 🐛 G2BANK — encoding-фикс драйвера + волна 3 (батч 30)

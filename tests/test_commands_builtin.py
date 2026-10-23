@@ -298,8 +298,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) = 240).
-REGISTRY_TOTAL_COMMANDS = 240
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) = 258).
+REGISTRY_TOTAL_COMMANDS = 258
 
 
 def test_registry_total_count():

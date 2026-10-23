@@ -46,6 +46,14 @@ All notable changes to OPAL-OKB will be documented in this file.
   `diagram.data/types` (карта n–V headless). Тесты:
   `tests/test_commands_glass_ext.py`.
 
+- **Пакет 5 — units/spatial (+18 команд, итого 258)**:
+  `commands/builtin/units_cmds.py` — `units.*` (Г.ММСС↔градусы,
+  мм↔диоптрии, высоты зрачков, Tg·100, конвертеры λ и углов;
+  analysis/units.py впервые обёрнут целиком) и `spatial.*`
+  (rotation_matrix, rotate_vector, mat_vec/mat_tvec, ray_rotate,
+  coord_breaks, vertices, surface_frames — domain/spatial.py +
+  compute_z_positions). Тесты: `tests/test_commands_units.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

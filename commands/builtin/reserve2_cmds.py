@@ -62,6 +62,10 @@ from commands.builtin.export_cmds import (
     _source_args,
 )
 
+# TINY/finite — общие хелперы пакетов R500 (правило №1).
+from commands.builtin._r500_common import TINY
+from commands.builtin._r500_common import finite as _finite
+
 # ============================================================
 # Именованные константы пакета
 # ============================================================
@@ -101,9 +105,6 @@ BENCH_REPEATS_MAX = 20
 #: Милисекунды в секунде (масштаб отчёта file.bench).
 MS_PER_SECOND = 1000.0
 
-#: Порог малости.
-TINY = 1e-12
-
 
 # ============================================================
 # Общие хелперы пакета
@@ -121,14 +122,6 @@ def _spectral_band(wl_nm: float) -> dict:
                     "visible": UV_MAX_NM <= wl_nm < VIS_MAX_NM}
     return {"band": "ir", "color": "ИК", "from_nm": VIS_MAX_NM,
             "to_nm": None, "visible": False}
-
-
-def _finite(value: float, param: str) -> float:
-    """Конечное число или invalid_param."""
-    if not math.isfinite(value):
-        raise CommandError(ERR_INVALID_PARAM,
-                           f"параметр {param!r} должен быть конечным")
-    return float(value)
 
 
 def _wls_arg(wl, wls) -> list:

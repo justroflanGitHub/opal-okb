@@ -59,6 +59,10 @@ from commands.builtin.catalog_cmds import (
 )
 from commands.builtin.glass_ext_cmds import PAIR_AIR_NAMES, _iter_entries
 
+# TINY/finite — общие хелперы пакетов R500 (правило №1).
+from commands.builtin._r500_common import TINY
+from commands.builtin._r500_common import finite as _finite
+
 # ============================================================
 # Именованные константы пакета
 # ============================================================
@@ -133,9 +137,6 @@ DEFOCUS_STEPS_MIN = 3
 #: Лучей пятна / решётка волнового фронта для критериев ГРИП.
 SPOT_RAYS_DEFAULT = 64
 WAVE_GRID_DEFAULT = 32
-
-#: Порог малости.
-TINY = 1e-12
 
 #: Таблица единиц печати OPAL «ближний/дальний тип» — REVERSE_NZR
 #: §19.2 / ANALIZE.DOC:659–680 (пул юнитов OPALA.EXE 0x44500–0x445B8);
@@ -365,14 +366,6 @@ def _criteria_bounds(grid: list, values: list, threshold: float) -> dict:
     return {"near": near, "far": far, "best": best,
             "min_value": min_value, "satisfied": True,
             "clipped_near": clipped_near, "clipped_far": clipped_far}
-
-
-def _finite(value: float, param: str) -> float:
-    """Конечное число или invalid_param."""
-    if not math.isfinite(value):
-        raise CommandError(ERR_INVALID_PARAM,
-                           f"параметр {param!r} должен быть конечным")
-    return float(value)
 
 
 def _zones_arg(zones) -> list:

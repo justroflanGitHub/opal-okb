@@ -52,6 +52,11 @@ from commands.base import (
 from commands.registry import Registry
 from commands.systemio import resolve_system, system_source_params
 
+# Поля/λ/TINY — общие хелперы пакетов R500 (правило №1).
+from commands.builtin._r500_common import TINY
+from commands.builtin._r500_common import fields_arg as _fields_arg
+from commands.builtin._r500_common import wls_arg as _wls_arg
+
 # ============================================================
 # Именованные константы пакета
 # ============================================================
@@ -100,31 +105,10 @@ DS_SANE_MM = 1.0e4
 #: Перевод мм → мкм.
 UM_PER_MM = 1000.0
 
-#: Порог малости при нормировках/фильтрах.
-TINY = 1e-12
-
 
 # ============================================================
 # Общие аргументы-списки и лучевые хелперы пакета
 # ============================================================
-
-def _fields_arg(system, fields) -> list:
-    """Список полей: явный или точки поля системы (как sweep._fields_arg)."""
-    if fields:
-        return [float(f) for f in fields]
-    values = [fp.y for fp in system.field_points]
-    if not values:
-        raise CommandError(ERR_INVALID_PARAM,
-                           "у системы нет точек поля; передайте fields")
-    return values
-
-
-def _wls_arg(system, wls) -> list:
-    """Список λ: явный или рабочие λ системы (fallback — основная)."""
-    if wls:
-        return [float(w) for w in wls]
-    return [float(w.value) for w in system.wavelengths] or [
-        get_primary_wl(system)]
 
 
 def _chief_image_point(system, wl: float, field_y: float):

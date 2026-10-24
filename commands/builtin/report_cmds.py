@@ -44,6 +44,10 @@ from commands.systemio import (
 )
 from optics_utils import get_primary_wl
 
+# Общие хелперы пакетов R500 (правило №1): TINY, сестринские вызовы.
+from commands.builtin._r500_common import TINY
+from commands.builtin._r500_common import run_sibling
+
 #: Ширина листа отчёта (как fileio/protocol.py).
 REPORT_WIDTH = 72
 
@@ -147,20 +151,10 @@ _PROBE_PREFIX = "_report_"
 
 def _run_sibling(registry: Registry, ctx, system, tag: str, name: str,
                  args: dict = None) -> dict:
-    """Выполнить сестринскую команду с живой системой в контексте.
-
-    Система кладётся под уникальным служебным именем (суффикс ``tag``)
-    и удаляется после вызова; ошибка сестры → :class:`CommandError`.
-    """
-    key = _PROBE_PREFIX + tag
-    ctx.put_system(key, system, make_current=False)
-    try:
-        result = registry.execute(name, ctx, {"system": key, **(args or {})})
-    finally:
-        ctx.drop_system(key)
-    if not result.ok:
-        raise CommandError(result.error["code"], result.error["message"])
-    return result.data
+    """Выполнить сестринскую команду с живой системой в контексте
+    (движок — _r500_common.run_sibling; служебный ключ ``_report_<tag>``)."""
+    return run_sibling(registry, ctx, system, _PROBE_PREFIX + tag,
+                       name, args)
 
 
 def _num(value, decimals: int = 4, width: int = NUM_WIDTH) -> str:
@@ -415,7 +409,7 @@ def _sec_chromatism(registry: Registry, ctx, system) -> list:
             denom = min(abs(v) for v in focals)
             lines.append("")
             lines.append(_kv("Разброс f' между крайними λ, мм", spread))
-            if denom > 1e-12:
+            if denom > TINY:
                 lines.append(_kv("Относительный хроматизм f', %",
                                  spread / denom * 100.0, decimals=3))
     return lines

@@ -33,6 +33,9 @@ from commands.systemio import (
 
 from optics_utils import get_primary_wl
 
+from commands.builtin._r500_common import fields_arg as _fields_arg
+from commands.builtin._r500_common import system_wls as _wls_arg
+
 #: Доли задержанной энергии по умолчанию (диаметры зон 50/80/90 %).
 EE_FRACTIONS_DEFAULT = (0.5, 0.8, 0.9)
 
@@ -78,23 +81,6 @@ def _put_probe(ctx, system, tag: str) -> str:
     key = _PROBE_TAGS[tag]
     ctx.put_system(key, system, make_current=False)
     return key
-
-
-def _fields_arg(system, fields):
-    """Список полей: явный или поля системы."""
-    if fields:
-        return [float(f) for f in fields]
-    values = [fp.y for fp in system.field_points]
-    if not values:
-        raise CommandError(ERR_INVALID_PARAM,
-                           "у системы нет точек поля; передайте fields")
-    return values
-
-
-def _wls_arg(system):
-    """Рабочие λ системы (или основная, если список пуст)."""
-    return [w.value for w in system.wavelengths] or [
-        get_primary_wl(system)]
 
 
 def _fractions_arg(fractions):

@@ -450,7 +450,12 @@ class TestFieldFamilies:
         assert data["num_ok"] == 22        # оба поля проходят целиком
 
     def test_families_no_fields_is_error(self, tmp_path):
-        """Система без полей + без fields — осмысленный отказ."""
+        """Система без полей + без fields — осмысленный отказ.
+
+        Код invalid_param — канонический поведенческий хелпер полей
+        (_r500_common.fields_arg; раньше у plot.* был bad_request —
+        унифицировано с sweep/quality/aberrx при дедупликации).
+        """
         context = CommandContext()
         assert registry.execute("system.new", context,
                                 {"demo": "empty", "name": "void"}).ok
@@ -459,7 +464,7 @@ class TestFieldFamilies:
             result = registry.execute(name, context,
                                       {"output": str(tmp_path / "x.png")})
             assert not result.ok, name
-            assert result.error["code"] == "bad_request", name
+            assert result.error["code"] == "invalid_param", name
 
 
 # --------------------------------------------------------------------------- #

@@ -63,6 +63,10 @@ from commands.builtin.opt_cmds import (
 )
 # Подписи сумм Зейделя и FWHM-хелпер — общий код R500-7 (sweep).
 from commands.builtin.sweep_cmds import SEIDEL_LABELS, _fwhm_um
+# Общие хелперы пакетов R500 (правило №1): поля, TINY, сестринские вызовы.
+from commands.builtin._r500_common import TINY
+from commands.builtin._r500_common import fields_arg as _fields_arg
+from commands.builtin._r500_common import run_sibling
 
 #: Служебный префикс имён систем в контексте для композиции сестринских
 #: команд (система кладётся под уникальным именем и удаляется после).
@@ -154,33 +158,10 @@ EE_LEVEL = 0.8
 
 def _run_sibling(registry: Registry, ctx, system, tag: str, name: str,
                  args: dict = None) -> dict:
-    """Выполнить сестринскую команду с живой системой в контексте.
-
-    Система кладётся под служебным именем (суффикс ``tag``) и удаляется
-    после вызова; ошибка сестры → :class:`CommandError`.
-    """
-    key = _PROBE_PREFIX + tag
-    ctx.put_system(key, system, make_current=False)
-    try:
-        result = registry.execute(name, ctx, {"system": key, **(args or {})})
-    finally:
-        ctx.drop_system(key)
-    if not result.ok:
-        raise CommandError(result.error["code"], result.error["message"])
-    return result.data
-
-
-def _fields_arg(system, fields) -> list:
-    """Список полей: явный или поля системы (сетка по полям)."""
-    if fields:
-        return [float(f) for f in fields]
-    values = [fp.y for fp in system.field_points]
-    if not values:
-        raise CommandError(
-            ERR_BAD_REQUEST,
-            "нет точек поля: задайте fields или добавьте поля системе "
-            "(system.fields.add)")
-    return values
+    """Выполнить сестринскую команду с живой системой в контексте
+    (движок — _r500_common.run_sibling; служебный ключ ``_plotx_<tag>``)."""
+    return run_sibling(registry, ctx, system, _PROBE_PREFIX + tag,
+                       name, args)
 
 
 def _sagitta(surface, height: float) -> float:
@@ -228,7 +209,7 @@ def _exit_line(result) -> tuple:
         return None
     p_prev, p_last = result.path[-2], result.path[-1]
     dz = p_last[2] - p_prev[2]
-    if abs(dz) < 1e-12:
+    if abs(dz) < TINY:
         return None
     return (p_last[1], p_last[2], (p_last[1] - p_prev[1]) / dz)
 

@@ -63,6 +63,11 @@ def has_lbo(*names: str) -> bool:
 HAS_PRN_RT2250 = HAS_OPAL_DIR and (EXTRACTED_OPAL_DIR / "RT__2250.PRN").is_file()
 HAS_PRN_RT2236 = HAS_OPAL_DIR and (EXTRACTED_OPAL_DIR / "RT__2236.PRN").is_file()
 
+# Стенд golden-банка C:\GOLDEN_DOS (*.OPJ систем банка — локальные данные,
+# не в git): единый источник для тестов golden-ветвей (GVERIFY/G44)
+GOLDEN_DOS = Path(r"C:\GOLDEN_DOS")
+HAS_GOLDEN_DOS = GOLDEN_DOS.is_dir()
+
 # PyOpenGL: без него visualization3d не создаёт gl_widget (заглушка-лейбл,
 # gl_widget = None) — GL-стаб тестов рендерит через настоящий paintGL
 try:
@@ -80,6 +85,7 @@ REASON_NO_LBO = "нет extracted/opal_okb/Lib/*.LBO — библиотеки (�
 REASON_NO_PRN_RT2250 = "нет extracted/opal_okb/RT__2250.PRN — эталон TABGL (локальные данные, не в git)"
 REASON_NO_PRN_RT2236 = "нет extracted/opal_okb/RT__2236.PRN — эталон TABOC1/2 (локальные данные, не в git)"
 REASON_NO_PYOPENGL = "PyOpenGL не установлен — visualization3d.gl_widget = None"
+REASON_NO_GOLDEN_DOS = "нет стенда C:\\GOLDEN_DOS — .OPJ систем golden-банка (локальные данные, не в git)"
 
 
 def lbo_missing(*names: str) -> list:
@@ -104,6 +110,8 @@ requires_prn_rt2236 = pytest.mark.skipif(
     not HAS_PRN_RT2236, reason=REASON_NO_PRN_RT2236)
 requires_pyopengl = pytest.mark.skipif(
     not HAS_PYOPENGL, reason=REASON_NO_PYOPENGL)
+requires_stand = pytest.mark.skipif(
+    not HAS_GOLDEN_DOS, reason=REASON_NO_GOLDEN_DOS)
 
 
 def requires_lbo_of(*names: str):

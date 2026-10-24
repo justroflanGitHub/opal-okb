@@ -27,13 +27,10 @@ from analysis.golden_verify import (
 )
 from analysis.seidel_check import seidel_vs_golden
 from domain.calculations import seidel_aberrations
+from tests.conftest import GOLDEN_DOS, requires_stand
 
 BASE = Path(__file__).resolve().parent.parent
 BANK = BASE / 'analysis' / 'reverse_data' / 'golden' / 'bank'
-GOLDEN_DOS = Path(r'C:\GOLDEN_DOS')
-
-requires_stand = pytest.mark.skipif(
-    not GOLDEN_DOS.exists(), reason='нет стенда C:\\GOLDEN_DOS')
 
 #: 45 печатей банка (имена — из стволов файлов, не захардкожены):
 #: 43 системы + 2 stale-печати старых систем без .OPJ на стенде.

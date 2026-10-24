@@ -22,11 +22,7 @@ from fileio.standalone_opj import (
     BIG_MARKER, GOE_MARKER, MIRROR_MARKERS, StandaloneOpjError,
     load_standalone_opj, parse_standalone_opj, standalone_to_system,
 )
-
-GOLDEN_DOS = Path(r'C:\GOLDEN_DOS')
-
-requires_stand = pytest.mark.skipif(
-    not GOLDEN_DOS.exists(), reason='нет стенда C:\\GOLDEN_DOS')
+from tests.conftest import GOLDEN_DOS, requires_stand
 
 
 def _opj_files(root: Path):

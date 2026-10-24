@@ -20,9 +20,10 @@ CLI:
                               [--ops all|base|v2|имена через запятую]
 
 --ops — выбор операций конвейера: all — все 10 (по умолчанию); base —
-6 базовых v1 (JSON побитово как в волне 1); v2 — 4 новые; список имён
-OPS через запятую (регистр как в OPS, пробелы допустимы). load и parse
-выполняются всегда. Неизвестное имя → код возврата 2.
+6 базовых v1 (base-ключи JSON — как в волне 1, но schema_version
+всегда 2); v2 — 4 новые; список имён OPS через запятую (регистр как
+в OPS, пробелы допустимы). load и parse выполняются всегда.
+Неизвестное имя → код возврата 2.
 
 Коды возврата: 0 — скан дошёл до конца (отказ отдельной системы — не
 ошибка скана); 2 — нет/неверен путь --lib, --out или --ops.
@@ -159,8 +160,9 @@ _BASE_METRICS = (
     'taboc1_max_abs_longitudinal_mm')
 
 #: Новые ключи metrics волны 2 по операциям (контракт «Контракт v2»):
-#: выходной зрачок не дублируется — это v1-ключ exit_pupil.
-_V2_METRICS = {
+#: выходной зрачок не дублируется — это v1-ключ exit_pupil. Публичное
+#: имя — единый источник для corpus_stats.py (обратный индекс V2_KEY_OPS).
+V2_METRICS = {
     'vignette': ('vignette_max_field', 'vignette_up_pct',
                  'vignette_down_pct'),
     'chief': ('chief_max_field', 'distortion_pct', 'astig_Zm_mm',
@@ -180,7 +182,7 @@ def _empty_metrics(selected=OPS):
     """
     keys = list(_BASE_METRICS)
     for op in selected:
-        keys.extend(_V2_METRICS.get(op, ()))
+        keys.extend(V2_METRICS.get(op, ()))
     return dict.fromkeys(keys)
 
 

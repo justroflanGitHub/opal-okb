@@ -38,8 +38,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ — corpus_scan
 
 # Единый источник контракта операций — сам сканер (не дублируем кортежи):
-# OPS — весь конвейер, OPS_BASE — 6 базовых операций волны 1.
-from corpus_scan import OPS as OPS_ORDER, OPS_BASE as OPS_BASE_ORDER  # noqa: E402
+# OPS — весь конвейер, OPS_BASE — 6 базовых операций волны 1, V2_METRICS —
+# новые ключи по операциям (обратный индекс ниже выводится из него).
+from corpus_scan import (OPS as OPS_ORDER, OPS_BASE as OPS_BASE_ORDER,  # noqa: E402
+                         V2_METRICS as SCAN_V2_METRICS)
 
 FCHECK_ORDER = ('ok', 'sign_flip', 'hydro', 'truncated', 'diverge')
 # (нижняя граница включительно, верхняя исключительно, метка)
@@ -69,17 +71,11 @@ RATIO_BINS = ((None, 1.0, '<1'), (1.0, 3.0, '1–3'), (3.0, 10.0, '3–10'),
 # поведение волны 1 без изменений).
 V2_SECTIONS = frozenset(('spot', 'distortion', 'astigmatism', 'mtf',
                          'rms_vs_field', 'v2_anomalies', 'v2_errors'))
-# 13 новых ключей metrics волны 2 → операция (обратный индекс _V2_METRICS
-# сканера; единый источник ключей — corpus_scan.py).
-V2_KEY_OPS = (
-    ('vignette_max_field', 'vignette'), ('vignette_up_pct', 'vignette'),
-    ('vignette_down_pct', 'vignette'),
-    ('chief_max_field', 'chief'), ('distortion_pct', 'chief'),
-    ('astig_Zm_mm', 'chief'), ('astig_Zs_mm', 'chief'),
-    ('spot_rms_axis_um', 'spot'), ('spot_rms_max_field_um', 'spot'),
-    ('mtf30_axis', 'mtf_geo'), ('mtf50_axis', 'mtf_geo'),
-    ('mtf30_max_field', 'mtf_geo'), ('mtf50_max_field', 'mtf_geo'),
-)
+# 13 новых ключей metrics волны 2 → операция (обратный индекс V2_METRICS
+# сканера — выводится, а не дублируется руками: единый источник ключей —
+# corpus_scan.py).
+V2_KEY_OPS = tuple((key, op)
+                   for op, keys in SCAN_V2_METRICS.items() for key in keys)
 # Ключи, чей null при true-опе валиден у безполевой системы (макс. поле == 0):
 # виньетирование и осевые RMS/контраст считаются всегда — их null не валиден.
 V2_NULLABLE_FIELDLESS = frozenset((
@@ -446,15 +442,16 @@ def sec_astigmatism(data, systems):
 
 
 def sec_mtf(data, systems):
-    axis, field = [], []
+    axis_pairs, field = [], []
     for s in systems:
         m = s.get('metrics') or {}
         v = m.get('mtf30_axis')
         if is_num(v):
-            axis.append(v)
+            axis_pairs.append((v, s))
         v = m.get('mtf30_max_field')
         if is_num(v):
             field.append(v)
+    axis = [v for v, _s in axis_pairs]
     lines = ['', '## ЧКХ (mtf_geo)', '',
              f'По системам с конечным mtf30_axis: {len(axis)} из {len(systems)}; '
              f'с конечным mtf30_max_field: {len(field)} из {len(systems)} '
@@ -484,12 +481,7 @@ def sec_mtf(data, systems):
         return (t[0], -(rms if is_num(rms) else 0.0),
                 str(t[1].get('lib')), t[1].get('index') or 0)
 
-    worst = []
-    for s in systems:
-        v = (s.get('metrics') or {}).get('mtf30_axis')
-        if is_num(v):
-            worst.append((v, s))
-    worst.sort(key=_worst_key)
+    worst = sorted(axis_pairs, key=_worst_key)
     lines.extend(['', 'Топ-20 наименьших mtf30_axis (аномалии размытия; при равном '
                       'контрасте — по наибольшему осевому RMS):', '',
                   '| lib | name | mtf30_axis | mtf50_axis | осевой RMS, мкм |',
@@ -562,6 +554,10 @@ def sec_v2_anomalies(data, systems):
                 continue  # null при отказе операции нормален (partial-значения валидны)
             v = m.get(key)
             if v is None:
+                if field is None:
+                    # поле неизвестно (JSON с --ops-подмножеством без
+                    # vignette/chief) — валидность null проверить нельзя
+                    continue
                 if field == 0 and key in V2_NULLABLE_FIELDLESS:
                     valid_null += 1  # валидный null безполевой системы
                 else:
@@ -595,8 +591,10 @@ def sec_v2_anomalies(data, systems):
              'Проверки по 13 новым ключам metrics (контракт «Контракт v2», '
              'docs/tasks/CORPUS_PLAN.md). Валидный null при true-опе — только у '
              'безполевой системы (макс. поле == 0; поле системы — '
-             'vignette_max_field, иначе chief_max_field); null при поле > 0 и '
-             'не-числовые значения (NaN/±inf/не число) — нарушение контракта.',
+             'vignette_max_field, иначе chief_max_field; нет обеих — поле '
+             'неизвестно, null полевых ключей не классифицируется); null при '
+             'поле > 0 и не-числовые значения (NaN/±inf/не число) — нарушение '
+             'контракта.',
              '',
              f'- а) null/не-числовые метрики: {len(suspect)}',
              f'- б) |дисторсия| > 50%: {len(over50)}',
@@ -671,6 +669,24 @@ def sec_v2_anomalies(data, systems):
     return lines
 
 
+def _error_groups_lines(fails):
+    """Строки таблицы отказов по префиксу error (sec_errors/sec_v2_errors)."""
+    groups = {}
+    for s in fails:
+        err = s.get('error')
+        prefix = str(err).split(':', 1)[0].strip() if err else '(без error)'
+        prefix = prefix or '(без error)'
+        groups.setdefault(prefix, []).append(s)
+    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    lines = ['',
+             '| Префикс ошибки | Кол-во | Примеры (до 3) |',
+             '|---|---:|---|']
+    for prefix, group in ordered:
+        names = '; '.join(cut(s.get('name', '')) for s in group[:3])
+        lines.append(f'| {esc(prefix)} | {len(group)} | {esc(names)} |')
+    return lines
+
+
 def sec_v2_errors(data, systems):
     fails = [s for s in systems
              if s.get('status') != 'ok'
@@ -682,19 +698,7 @@ def sec_v2_errors(data, systems):
     if not fails:
         lines.extend(['', '_Таких систем нет._'])
         return lines
-    groups = {}
-    for s in fails:
-        err = s.get('error')
-        prefix = str(err).split(':', 1)[0].strip() if err else '(без error)'
-        prefix = prefix or '(без error)'
-        groups.setdefault(prefix, []).append(s)
-    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-    lines.extend(['',
-                  '| Префикс ошибки | Кол-во | Примеры (до 3) |',
-                  '|---|---:|---|'])
-    for prefix, group in ordered:
-        names = '; '.join(cut(s.get('name', '')) for s in group[:3])
-        lines.append(f'| {esc(prefix)} | {len(group)} | {esc(names)} |')
+    lines.extend(_error_groups_lines(fails))
     return lines
 
 
@@ -704,19 +708,7 @@ def sec_errors(data, systems):
     if not fails:
         lines.extend(['', '_Отказов нет._'])
         return lines
-    groups = {}
-    for s in fails:
-        err = s.get('error')
-        prefix = str(err).split(':', 1)[0].strip() if err else '(без error)'
-        prefix = prefix or '(без error)'
-        groups.setdefault(prefix, []).append(s)
-    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
-    lines.extend(['',
-                  '| Префикс ошибки | Кол-во | Примеры (до 3) |',
-                  '|---|---:|---|'])
-    for prefix, group in ordered:
-        names = '; '.join(cut(s.get('name', '')) for s in group[:3])
-        lines.append(f'| {esc(prefix)} | {len(group)} | {esc(names)} |')
+    lines.extend(_error_groups_lines(fails))
     return lines
 
 

@@ -34,6 +34,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.trace_ext_cmds",
     "commands.builtin.aberr_ext_cmds",
     "commands.builtin.reserve_cmds",
+    "commands.builtin.reserve2_cmds",
     "commands.builtin.w4_main_cmds",
     "commands.builtin.w4_panel_cmds",
 )

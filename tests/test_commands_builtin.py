@@ -509,6 +509,53 @@ def _smoke_args(demo_files):
                                 "max_value": 0.5, "defocus_range": 0.3,
                                 "steps": 7, "num_rays": 30},
         "calc.defocus.convert": {"file": opj, "defocus_mm": 0.1},
+        # R500-19: reserve ч.2 — covered-категории export/file (20
+        # экспорт-обёрток таблиц П16/П17/П18 + файловые хвосты; команды
+        # spectral/units пакета — в tests/test_commands_reserve2.py;
+        # поле-зависимые таблицы — на .json: .opj теряет field_points).
+        "export.tracex.meridional": {"file": jsn,
+                                     "out": opj + ".tr_mer.csv"},
+        "export.tracex.opl": {"file": jsn, "out": opj + ".tr_opl.csv"},
+        "export.tracex.ray.surfaces": {"file": jsn, "y": 5.0,
+                                       "out": opj + ".tr_rays.csv"},
+        "export.tracex.ynu": {"file": jsn, "out": opj + ".tr_ynu.csv"},
+        "export.tracex.paraxial.matrices": {"file": jsn,
+                                            "out": opj + ".tr_mat.json"},
+        "export.tracex.fan.zones": {"file": jsn, "n_zones": 3,
+                                    "out": opj + ".tr_fanz.csv"},
+        "export.tracex.stop.clearance": {"file": jsn,
+                                         "out": opj + ".tr_stop.csv"},
+        "export.tracex.ray.multi_wl": {"file": jsn, "rho_y": 0.5,
+                                       "out": opj + ".tr_mwl.csv"},
+        "export.aberx.map.grid": {"file": jsn, "fields": [0.0, 3.0],
+                                  "num_rays": 5,
+                                  "out": opj + ".ab_map.csv"},
+        "export.aberx.rms.grid": {"file": jsn, "fields": [0.0, 3.0],
+                                  "out": opj + ".ab_rms.csv"},
+        "export.aberx.spot.grid": {"file": jsn, "fields": [0.0, 3.0],
+                                   "out": opj + ".ab_spot.csv"},
+        "export.aberx.seidel.shares": {"file": jsn,
+                                       "out": opj + ".ab_sei.csv"},
+        "export.aberx.distortion.curve": {"file": jsn,
+                                          "fields": [0.0, 3.0],
+                                          "out": opj + ".ab_dist.csv"},
+        "export.aberx.astig.curve": {"file": jsn, "fields": [0.0, 3.0],
+                                     "out": opj + ".ab_ast.csv"},
+        "export.aberx.spherical.zones": {"file": jsn, "num_rays": 5,
+                                         "out": opj + ".ab_sph.csv"},
+        "export.aberx.transverse.zones": {"file": jsn, "field_y": 3.0,
+                                          "out": opj + ".ab_trans.csv"},
+        "export.aberx.focal.zonal": {"file": jsn, "field_y": 3.0,
+                                     "out": opj + ".ab_fz.csv"},
+        "export.aberx.chrom.focus_shift": {"file": opj,
+                                           "out": opj + ".ab_chrom.csv"},
+        "export.diagram.coverage": {"source": "gost", "vd_bins": 3,
+                                    "nd_bins": 4,
+                                    "out": opj + ".dg_cov.csv"},
+        "export.diagram.type.stats": {"source": "gost",
+                                      "out": opj + ".dg_tstat.csv"},
+        "file.stat": {"file": opj},
+        "file.bench": {"file": opj, "repeats": 2},
     }
 
 
@@ -530,8 +577,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) + 22 (R500-16 trace_ext, категория tracex — свой тест-модуль test_commands_trace_ext.py, в covered НЕ входит) + 22 (R500-17 aberr_ext, категория aberx — свой тест-модуль test_commands_aberr_ext.py, в covered НЕ входит) + 22 (R500-18 reserve ч.1: 6 diagram + 4 catalog + 11 calc + 1 units; diagram/units — НЕ covered, свой тест-модуль test_commands_reserve.py) = 481).
-REGISTRY_TOTAL_COMMANDS = 481
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) + 22 (R500-16 trace_ext, категория tracex — свой тест-модуль test_commands_trace_ext.py, в covered НЕ входит) + 22 (R500-17 aberr_ext, категория aberx — свой тест-модуль test_commands_aberr_ext.py, в covered НЕ входит) + 22 (R500-18 reserve ч.1: 6 diagram + 4 catalog + 11 calc + 1 units; diagram/units — НЕ covered, свой тест-модуль test_commands_reserve.py) + 25 (R500-19 reserve ч.2, финальная добивка — ЦЕЛЬ 500+ ДОСТИГНУТА: 20 export-обёрток таблиц П16/П17/П18 + 2 catalog.spectral + 1 units.arcsec + 2 file.stat/bench; spectral/units — НЕ covered, свой тест-модуль test_commands_reserve2.py) = 506).
+REGISTRY_TOTAL_COMMANDS = 506
 
 
 def test_registry_total_count():

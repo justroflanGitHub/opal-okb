@@ -30,7 +30,7 @@
 | 16 | `trace_ext_cmds.py` | `tracex.*` хвосты трассировки — таблицы лучей по поверхностям, углы I/I', ОПС/ОПД, клиренс диафрагмы, ПВО, ynu-параксиал, ABCD, инварианты | 22 | done (+22 → 437) |
 | 17 | `aberr_ext_cmds.py` | `aberx.*` хвосты — карты аберраций по полям, кривые дисторсии, хроматические сдвиги | 22 | done (+22 → 459) |
 | 18 | `reserve_cmds.py` | `diagram.*` хвосты (категория НЕ запинена — расширяем), `catalog.stats/sources.compare/glass.multi/availability`, `calc.*` остатки формул FORMULAS.md (§2/§3/§5, ANALIZE §5.3), `units.print.table` | 22 | done (+22 → 481) |
-| 19 | `reserve2_cmds.py` + добивка | финальная добивка до 500+: верифицируемые хвосты по свободным категориям (факт — по остатку) | 459 → 500+ | planned |
+| 19 | `reserve2_cmds.py` + добивка | финальная добивка до 500+: 20 export-обёрток таблиц П16/П17/П18 (tracex/aberx/diagram → CSV/JSON), catalog.spectral.band/stats, units.arcsec.ddmmss, file.stat/file.bench | 25 | done (+25 → 506; 500+ достигнута) |
 
 Переориентация 2026-10-24: исходная тема строки 15 (прямые `diffr.*`/`psf.*` расширения —
 сечения MTF, полихром-ЧКХ по полям, ЧКХ@freq, LSF-сечения) заблокирована пинами Волны 3
@@ -110,6 +110,18 @@ trace-хвосты → aber-хвосты → резервная добивка �
   analysis/zernike + дефокус-модель compute_psf
   (PARAXIAL_DEFOCUS_FACTOR), конверсия мм↔волны — хелпер П14
   adv_ext_cmds._defocus_waves_per_mm.
+- **П19 reserve ч.2 (финал, 506)**: экспорт-обёртки таблиц П16/П17/П18
+  в категории export (категории tracex/aberx запинены счётчиком 22 —
+  обёртки их не расширяют, пин-тест в test_commands_reserve2.py);
+  хелперы композиции переиспользованы из export_cmds П1 (_run/
+  _source_args/_export_data), нестандартные ключи строк (zones/cells/
+  types/surfaces) — параметр rows_keys локального хелпера. НЕ вошло
+  (дубли или отсутствие данных): system.scale/reverse уже были;
+  library.stats по каталогу = batch.dir+batch.stats; фотопические
+  веса V(λ) — таблицы в исходниках порта нет; кодирование
+  arcsec→DD.MMSS (ddmmss_value) не обёрнуто — формула движка
+  расходится с эталонами его же docstring (кодирует сантиминуты),
+  обёрнут только golden-верифицированный разбор arcsec_of_ddmmss.
 
 ## Заблокированное / отложенное
 

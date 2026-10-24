@@ -356,6 +356,38 @@ All notable changes to OPAL-OKB will be documented in this file.
   счётчик 481 в `tests/test_commands_builtin.py` (diagram/units в
   covered НЕ входят).
 
+- **Пакет 19 — reserve ч.2, финальная добивка (+25 команд, итого 506 —
+  ЦЕЛЬ 500+ ДОСТИГНУТА)**: `commands/builtin/reserve2_cmds.py` —
+  20 экспорт-обёрток таблиц П16/П17/П18 в CSV/JSON (композиция как в
+  П1: команда-источник через registry.execute, запись exportio; ключи
+  строк у нестандартных таблиц — zones/cells/types/surfaces):
+  `export.tracex.*` (meridional, opl, ray.surfaces, ynu,
+  paraxial.matrices, fan.zones, stop.clearance — скаляры строкой,
+  ray.multi_wl), `export.aberx.*` (map.grid, rms.grid, spot.grid,
+  seidel.shares, distortion.curve, astig.curve, spherical.zones,
+  transverse.zones, focal.zonal, chrom.focus_shift),
+  `export.diagram.*` (coverage, type.stats); категории tracex/aberx
+  НЕ тронуты (пины 22 в своих тест-модулях — обёртки в категории
+  export). Спектральные зоны `catalog.spectral.*` (данные
+  utils/spectral_lines.py): band (классификация λ: УФ/цветные
+  поддиапазоны видимого/ИК, границы согласованы с цветами всех 15
+  линий справочника — инвариант теста; фотопические веса V(λ) НЕ
+  добавлены — таблицы в исходниках порта нет), stats (свод по
+  элементам/цветам/зонам, диапазон 365.01–1013.98 нм).
+  `units.arcsec.ddmmss` — разбор числа «гр.мнсек» DD.MMSS печати OPAL
+  в секунды дуги/градусы (движок golden-сверок arcsec_of_ddmmss:
+  1.130483 → 4384.83″; обратное кодирование ddmmss_value не
+  обёрнуто — расходится с эталонами собственного docstring).
+  Файловые хвосты: `file.stat` (метаданные БЕЗ загрузки — os.stat +
+  детект формата по расширению), `file.bench` (замер загрузки/
+  параксиального прогона, min/mean/max мс, движки
+  systemio.load_system + paraxial_trace). Тесты:
+  `tests/test_commands_reserve2.py` (smoke+строгий JSON всех 25,
+  CSV-строки == rows источников, инвариант спектральных границ,
+  golden-эталоны DD.MMSS, пины tracex/aberx=22 и W3=19 не тронуты)
+  + smoke-записи 22 covered-команд (export/file) и счётчик 506 в
+  `tests/test_commands_builtin.py` (spectral/units — свой модуль).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

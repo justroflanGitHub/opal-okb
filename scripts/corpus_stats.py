@@ -1,17 +1,24 @@
 # -*- coding: utf-8 -*-
 """corpus_stats.py — JSON результата сканера корпуса → markdown-отчёт распределений.
 
-Инструмент задачи TASK_CORPUS_SCAN (порт оптического САПР OPAL-PC): читает
-corpus.json (контракт schema_version 1 — docs/tasks/CORPUS_PLAN.md, раздел
-«Контракт JSON») и строит markdown-отчёт: обзор конвейера, распределение f',
-число поверхностей, стёкла, сверка f' имени каталога с расчётом (f_check)
-и группировка отказов. Все числа берутся только из входного JSON.
+Инструмент задач TASK_CORPUS_SCAN / TASK_CORPUS_SCAN_V2 (порт оптического
+САПР OPAL-PC): читает corpus.json / corpus_v2.json (контракт schema_version 1
+и 2 — docs/tasks/CORPUS_PLAN.md, разделы «Контракт JSON» и «Контракт v2») и
+строит markdown-отчёт: обзор конвейера, распределение f', число поверхностей,
+стёкла, сверка f' имени каталога с расчётом (f_check), группировка отказов.
+Формат входа различается по data['schema_version']: 1 — только базовые
+секции (поведение волны 1 без изменений); 2 — базовые плюс секции волны 2
+(RMS пятна, дисторсия, астигматизм, ЧКХ, корреляция «RMS поле/ось», аномалии
+и отказы v2 — для v1-входа они не выводятся). Все числа берутся только из
+входного JSON.
 
 Зависимости — только stdlib.
 
 Использование:
     py scripts/corpus_stats.py --json <corpus.json> [--out <report.md>]
-        [--section all|overview|focal|surfaces|glasses|fcheck|errors]
+        [--section all|overview|focal|surfaces|glasses|fcheck|spot|
+                    distortion|astigmatism|mtf|rms_vs_field|v2_anomalies|
+                    v2_errors|errors]
 
 Без --out markdown печатается в stdout. Коды возврата: 0 — успех;
 2 — отсутствующий/битый входной JSON (или неверные аргументы).
@@ -30,8 +37,9 @@ sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ — corpus_scan
 
-# Единый источник контракта операций — сам сканер (не дублируем кортеж).
-from corpus_scan import OPS as OPS_ORDER  # noqa: E402  (после sys.path)
+# Единый источник контракта операций — сам сканер (не дублируем кортежи):
+# OPS — весь конвейер, OPS_BASE — 6 базовых операций волны 1.
+from corpus_scan import OPS as OPS_ORDER, OPS_BASE as OPS_BASE_ORDER  # noqa: E402
 
 FCHECK_ORDER = ('ok', 'sign_flip', 'hydro', 'truncated', 'diverge')
 # (нижняя граница включительно, верхняя исключительно, метка)
@@ -42,6 +50,41 @@ SURF_BINS = ((2, 5, '2–4'), (5, 9, '5–8'), (9, 13, '9–12'),
              (13, 21, '13–20'), (21, math.inf, '>20'))
 BAR_WIDTH = 40
 NAME_LIMIT = 40
+# Диапазоны метрик волны 2 (schema 2): RMS и астигматизм — лог-шкалы,
+# дисторсия %, контраст — доля 0..1, отношение поле/ось.
+RMS_UM_BINS = ((None, 0.1, '<0.1'), (0.1, 1.0, '0.1–1'), (1.0, 10.0, '1–10'),
+               (10.0, 100.0, '10–100'), (100.0, 1000.0, '100–1000'),
+               (1000.0, 10000.0, '1000–10000'), (10000.0, math.inf, '>10000'))
+DIST_PCT_BINS = ((0.0, 1.0, '0–1'), (1.0, 3.0, '1–3'), (3.0, 10.0, '3–10'),
+                 (10.0, 30.0, '10–30'), (30.0, math.inf, '>30'))
+ASTIG_MM_BINS = ((None, 0.01, '<0.01'), (0.01, 0.1, '0.01–0.1'),
+                 (0.1, 1.0, '0.1–1'), (1.0, 10.0, '1–10'),
+                 (10.0, 100.0, '10–100'), (100.0, 1000.0, '100–1000'),
+                 (1000.0, 10000.0, '1000–10000'), (10000.0, math.inf, '>10000'))
+MTF_BINS = ((0.0, 0.1, '0–0.1'), (0.1, 0.3, '0.1–0.3'), (0.3, 0.5, '0.3–0.5'),
+            (0.5, 0.7, '0.5–0.7'), (0.7, math.inf, '0.7–1.0'))
+RATIO_BINS = ((None, 1.0, '<1'), (1.0, 3.0, '1–3'), (3.0, 10.0, '3–10'),
+              (10.0, math.inf, '>10'))
+# Секции волны 2: выводятся только для входа schema_version == 2 (v1-вход —
+# поведение волны 1 без изменений).
+V2_SECTIONS = frozenset(('spot', 'distortion', 'astigmatism', 'mtf',
+                         'rms_vs_field', 'v2_anomalies', 'v2_errors'))
+# 13 новых ключей metrics волны 2 → операция (обратный индекс _V2_METRICS
+# сканера; единый источник ключей — corpus_scan.py).
+V2_KEY_OPS = (
+    ('vignette_max_field', 'vignette'), ('vignette_up_pct', 'vignette'),
+    ('vignette_down_pct', 'vignette'),
+    ('chief_max_field', 'chief'), ('distortion_pct', 'chief'),
+    ('astig_Zm_mm', 'chief'), ('astig_Zs_mm', 'chief'),
+    ('spot_rms_axis_um', 'spot'), ('spot_rms_max_field_um', 'spot'),
+    ('mtf30_axis', 'mtf_geo'), ('mtf50_axis', 'mtf_geo'),
+    ('mtf30_max_field', 'mtf_geo'), ('mtf50_max_field', 'mtf_geo'),
+)
+# Ключи, чей null при true-опе валиден у безполевой системы (макс. поле == 0):
+# виньетирование и осевые RMS/контраст считаются всегда — их null не валиден.
+V2_NULLABLE_FIELDLESS = frozenset((
+    'chief_max_field', 'distortion_pct', 'astig_Zm_mm', 'astig_Zs_mm',
+    'spot_rms_max_field_um', 'mtf30_max_field', 'mtf50_max_field'))
 
 
 # ---------------------------------------------------------------- утилиты --
@@ -87,8 +130,42 @@ def bin_index(value, bins):
     return None
 
 
+def fmt_g(v, digits=4) -> str:
+    """Число с digits значащими цифрами (null/NaN/±inf → прочерк)."""
+    return '—' if not is_num(v) else f'{v:.{digits}g}'
+
+
+def _max_field_of(s):
+    """Макс. поле системы по метрикам (vignette_max_field, иначе chief_max_field)."""
+    m = s.get('metrics') or {}
+    for key in ('vignette_max_field', 'chief_max_field'):
+        v = m.get(key)
+        if is_num(v):
+            return v
+    return None
+
+
+def _hist_lines(values, bins):
+    """Строки GFM-гистограммы (шапка + диапазоны с ASCII-барами) и counts."""
+    counts = [0] * len(bins)
+    for v in values:
+        i = bin_index(v, bins)
+        if i is not None:
+            counts[i] += 1
+    top = max(counts) if counts else 0
+    lines = ['', '| Диапазон | Кол-во | Гистограмма |', '|---|---:|---|']
+    for (_lo, _hi, label), c in zip(bins, counts):
+        lines.append(f'| {label} | {c} | {bar(c, top)} |')
+    return lines, counts
+
+
 def _ops_rows(data, systems):
-    """ops_summary из JSON; отсутствующие операции досчитываются по systems."""
+    """ops_summary из JSON; отсутствующие операции досчитываются по systems.
+
+    Операции, которых нет во входе вовсе (ни в ops_summary, ни в ops систем —
+    например v2-ops в v1-JSON), не выводятся: v1-отчёт не должен менять вид
+    из-за расширения кортежа OPS в сканере.
+    """
     declared = data.get('ops_summary')
     declared = declared if isinstance(declared, dict) else {}
     rows = {}
@@ -96,9 +173,12 @@ def _ops_rows(data, systems):
         row = declared.get(op)
         if isinstance(row, dict) and ('ok' in row or 'fail' in row):
             rows[op] = row
-        else:
-            oks = sum(1 for s in systems if (s.get('ops') or {}).get(op) is True)
-            rows[op] = {'ok': oks, 'fail': len(systems) - oks}
+            continue
+        if op not in declared and \
+                not any(op in (s.get('ops') or {}) for s in systems):
+            continue  # операции нет во входном JSON
+        oks = sum(1 for s in systems if (s.get('ops') or {}).get(op) is True)
+        rows[op] = {'ok': oks, 'fail': len(systems) - oks}
     for op in sorted(set(declared) - set(OPS_ORDER)):
         row = declared.get(op)
         if isinstance(row, dict):
@@ -271,6 +351,353 @@ def sec_fcheck(data, systems):
     return lines
 
 
+def sec_spot(data, systems):
+    axis, field = [], []
+    for s in systems:
+        m = s.get('metrics') or {}
+        v = m.get('spot_rms_axis_um')
+        if is_num(v):
+            axis.append(v)
+        v = m.get('spot_rms_max_field_um')
+        if is_num(v):
+            field.append(v)
+    lines = ['', '## RMS пятна (spot)', '',
+             f'По системам с конечным spot_rms_axis_um: {len(axis)} из {len(systems)} '
+             '(полихроматический RMS, сетка 30×30; ось считается и при отказе этапа '
+             'на макс. поле); гистограмма по лог-диапазонам.']
+    if not axis:
+        lines.extend(['', '_Нет систем с конечным spot_rms_axis_um._'])
+        return lines
+    hist, _counts = _hist_lines(axis, RMS_UM_BINS)
+    lines.extend(hist)
+    lines.append('')
+    lines.append(f'Ось: мин = {fmt_g(min(axis))} мкм; '
+                 f'медиана = {fmt_g(statistics.median(axis))} мкм; '
+                 f'макс = {fmt_g(max(axis))} мкм.')
+    if field:
+        lines.append(f'Макс. поле (spot_rms_max_field_um): не-null у {len(field)} '
+                     f'систем; медиана = {fmt_g(statistics.median(field))} мкм; '
+                     f'макс = {fmt_g(max(field))} мкм.')
+    else:
+        lines.append('Макс. поле (spot_rms_max_field_um): не-null у 0 систем.')
+    return lines
+
+
+def sec_distortion(data, systems):
+    vals = []
+    for s in systems:
+        v = (s.get('metrics') or {}).get('distortion_pct')
+        if is_num(v):
+            vals.append((abs(v), s))
+    lines = ['', '## Дисторсия (chief)', '',
+             f'По системам с конечным distortion_pct: {len(vals)} из {len(systems)} '
+             '(дисторсия главного луча на макс. поле, %; значение в JSON знаковое — '
+             'гистограмма и топ по модулю |distortion_pct|).']
+    if not vals:
+        lines.extend(['', '_Нет систем с конечным distortion_pct._'])
+        return lines
+    absv = [v for v, _s in vals]
+    hist, _counts = _hist_lines(absv, DIST_PCT_BINS)
+    lines.extend(hist)
+    lines.append('')
+    lines.append(f'Медиана |distortion_pct| = {fmt_g(statistics.median(absv))} %; '
+                 f'макс = {fmt_g(max(absv))} %.')
+    vals.sort(key=lambda t: (-t[0], str(t[1].get('lib')), t[1].get('index') or 0))
+    lines.extend(['', 'Топ-20 наибольшей |дисторсии|:', '',
+                  '| lib | name | макс. поле, ° | \\|distortion\\|, % |',
+                  '|---|---|---:|---:|'])
+    for d, s in vals[:20]:
+        field = (s.get('metrics') or {}).get('chief_max_field')
+        lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                     f"| {fmt_g(field)} | {fmt_g(d)} |")
+    return lines
+
+
+def sec_astigmatism(data, systems):
+    vals = []
+    for s in systems:
+        m = s.get('metrics') or {}
+        zm, zs = m.get('astig_Zm_mm'), m.get('astig_Zs_mm')
+        if is_num(zm) and is_num(zs):
+            vals.append((max(abs(zm), abs(zs)), zm, zs, s))
+    lines = ['', '## Астигматизм (chief)', '',
+             f'По системам с конечными astig_Zm_mm и astig_Zs_mm: {len(vals)} из '
+             f'{len(systems)} (астигматические отрезки главного луча Z\'m/Z\'s на '
+             'макс. поле, мм); гистограмма max(|Zm|, |Zs|) по лог-диапазонам.']
+    if not vals:
+        lines.extend(['', '_Нет систем с конечными astig_Zm_mm/astig_Zs_mm._'])
+        return lines
+    tops = [t[0] for t in vals]
+    hist, _counts = _hist_lines(tops, ASTIG_MM_BINS)
+    lines.extend(hist)
+    lines.append('')
+    lines.append(f'Медиана max(|Zm|, |Zs|) = {fmt_g(statistics.median(tops))} мм; '
+                 f'макс = {fmt_g(max(tops))} мм.')
+    vals.sort(key=lambda t: (-t[0], str(t[3].get('lib')), t[3].get('index') or 0))
+    lines.extend(['', 'Топ-20 наибольшего max(|Zm|, |Zs|):', '',
+                  "| lib | name | макс. поле, ° | Z'm, мм | Z's, мм | "
+                  'макс. модуль, мм |',
+                  '|---|---|---:|---:|---:|---:|'])
+    for top, zm, zs, s in vals[:20]:
+        field = (s.get('metrics') or {}).get('chief_max_field')
+        lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                     f"| {fmt_g(field)} | {fmt_g(zm)} | {fmt_g(zs)} | {fmt_g(top)} |")
+    return lines
+
+
+def sec_mtf(data, systems):
+    axis, field = [], []
+    for s in systems:
+        m = s.get('metrics') or {}
+        v = m.get('mtf30_axis')
+        if is_num(v):
+            axis.append(v)
+        v = m.get('mtf30_max_field')
+        if is_num(v):
+            field.append(v)
+    lines = ['', '## ЧКХ (mtf_geo)', '',
+             f'По системам с конечным mtf30_axis: {len(axis)} из {len(systems)}; '
+             f'с конечным mtf30_max_field: {len(field)} из {len(systems)} '
+             '(тангенциальный контраст на 30 лин/мм, 0..1; геометрическая ЧКХ '
+             'из полихроматического пятна).']
+    if not axis and not field:
+        lines.extend(['', '_Нет систем с конечным mtf30_axis/mtf30_max_field._'])
+        return lines
+    if axis:
+        hist, _counts = _hist_lines(axis, MTF_BINS)
+        lines.extend(['', f'mtf30_axis ({len(axis)} систем):'])
+        lines.extend(hist)
+    if field:
+        hist, _counts = _hist_lines(field, MTF_BINS)
+        lines.extend(['', f'mtf30_max_field ({len(field)} систем):'])
+        lines.extend(hist)
+    meds = []
+    if axis:
+        meds.append(f'mtf30_axis = {fmt_g(statistics.median(axis))}')
+    if field:
+        meds.append(f'mtf30_max_field = {fmt_g(statistics.median(field))}')
+    lines.extend(['', 'Медианы: ' + '; '.join(meds) + '.'])
+
+    def _worst_key(t):
+        # Наименьший контраст первым; при равном — наибольший осевой RMS.
+        rms = (t[1].get('metrics') or {}).get('spot_rms_axis_um')
+        return (t[0], -(rms if is_num(rms) else 0.0),
+                str(t[1].get('lib')), t[1].get('index') or 0)
+
+    worst = []
+    for s in systems:
+        v = (s.get('metrics') or {}).get('mtf30_axis')
+        if is_num(v):
+            worst.append((v, s))
+    worst.sort(key=_worst_key)
+    lines.extend(['', 'Топ-20 наименьших mtf30_axis (аномалии размытия; при равном '
+                      'контрасте — по наибольшему осевому RMS):', '',
+                  '| lib | name | mtf30_axis | mtf50_axis | осевой RMS, мкм |',
+                  '|---|---|---:|---:|---:|'])
+    for v, s in worst[:20]:
+        m = s.get('metrics') or {}
+        lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                     f"| {fmt_g(v)} | {fmt_g(m.get('mtf50_axis'))} "
+                     f"| {fmt_g(m.get('spot_rms_axis_um'))} |")
+    return lines
+
+
+def sec_rms_vs_field(data, systems):
+    ratios = []
+    for s in systems:
+        m = s.get('metrics') or {}
+        a, f = m.get('spot_rms_axis_um'), m.get('spot_rms_max_field_um')
+        if is_num(a) and is_num(f):
+            ratios.append((f / a if a != 0 else (math.inf if f > 0 else math.nan), s))
+
+    def _ratio_order(t):
+        # inf (ось = 0) — наихудшие, конечные по убыванию, NaN в конце.
+        r = t[0]
+        if math.isnan(r):
+            return (2, 0.0, str(t[1].get('lib')), t[1].get('index') or 0)
+        if math.isinf(r):
+            return (0, 0.0, str(t[1].get('lib')), t[1].get('index') or 0)
+        return (1, -r, str(t[1].get('lib')), t[1].get('index') or 0)
+
+    lines = ['', '## Корреляция «RMS поле/ось» (spot)', '',
+             f'По системам с конечными spot_rms_axis_um и spot_rms_max_field_um: '
+             f'{len(ratios)} из {len(systems)}; отношение поле/ось '
+             '(spot_rms_max_field_um / spot_rms_axis_um; <1 — на поле пятно '
+             'меньше осевого).']
+    if not ratios:
+        lines.extend(['', '_Нет систем с обоими конечными RMS._'])
+        return lines
+    fin = [r for r, _s in ratios if math.isfinite(r)]
+    nonfin = len(ratios) - len(fin)
+    hist, counts = _hist_lines(fin, RATIO_BINS)
+    lines.extend(hist)
+    if nonfin:
+        lines.append(f'| inf/NaN | {nonfin} | {bar(nonfin, max(counts) if counts else 0)} |')
+    if fin:
+        lines.append('')
+        lines.append(f'Медиана (конечные отношения) = {fmt_g(statistics.median(fin))}.')
+    ratios.sort(key=_ratio_order)
+    lines.extend(['', 'Топ-20 наибольших отношений (деградация пятна к полю):', '',
+                  '| lib | name | ось, мкм | поле, мкм | поле/ось |',
+                  '|---|---|---:|---:|---:|'])
+    for r, s in ratios[:20]:
+        m = s.get('metrics') or {}
+        r_txt = '∞' if math.isinf(r) else 'NaN' if math.isnan(r) else fmt_g(r)
+        lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                     f"| {fmt_g(m.get('spot_rms_axis_um'))} "
+                     f"| {fmt_g(m.get('spot_rms_max_field_um'))} | {r_txt} |")
+    return lines
+
+
+def sec_v2_anomalies(data, systems):
+    # (а) null/не-числовые метрики при true-опе (валидный null — безполевая)
+    suspect = []
+    valid_null = 0
+    for s in systems:
+        ops = s.get('ops') or {}
+        m = s.get('metrics') or {}
+        field = _max_field_of(s)
+        for key, op in V2_KEY_OPS:
+            if ops.get(op) is not True:
+                continue  # null при отказе операции нормален (partial-значения валидны)
+            v = m.get(key)
+            if v is None:
+                if field == 0 and key in V2_NULLABLE_FIELDLESS:
+                    valid_null += 1  # валидный null безполевой системы
+                else:
+                    suspect.append((s, op, key, v, field))
+            elif not is_num(v):
+                suspect.append((s, op, key, v, field))  # NaN/±inf/не-число
+    # (б) |дисторсия| > 50%
+    over50 = []
+    for s in systems:
+        v = (s.get('metrics') or {}).get('distortion_pct')
+        if is_num(v) and abs(v) > 50:
+            over50.append((abs(v), s))
+    over50.sort(key=lambda t: (-t[0], str(t[1].get('lib')), t[1].get('index') or 0))
+    # (в) осевой RMS = 0 — подозрение на вырождение («идеальная» система)
+    zero_rms = []
+    for s in systems:
+        v = (s.get('metrics') or {}).get('spot_rms_axis_um')
+        if is_num(v) and v == 0:
+            zero_rms.append(s)
+    # (г) контраст ≈ 1 при ненулевом пятне — сверка согласованности spot/mtf
+    near_one = []
+    for s in systems:
+        m = s.get('metrics') or {}
+        mtf, rms = m.get('mtf30_axis'), m.get('spot_rms_axis_um')
+        if is_num(mtf) and is_num(rms) and mtf > 0.99 and rms > 0:
+            near_one.append((mtf, rms, s))
+    near_one.sort(key=lambda t: (-t[0], -t[1], str(t[2].get('lib')),
+                                 t[2].get('index') or 0))
+
+    lines = ['', '## Аномалии v2', '',
+             'Проверки по 13 новым ключам metrics (контракт «Контракт v2», '
+             'docs/tasks/CORPUS_PLAN.md). Валидный null при true-опе — только у '
+             'безполевой системы (макс. поле == 0; поле системы — '
+             'vignette_max_field, иначе chief_max_field); null при поле > 0 и '
+             'не-числовые значения (NaN/±inf/не число) — нарушение контракта.',
+             '',
+             f'- а) null/не-числовые метрики: {len(suspect)}',
+             f'- б) |дисторсия| > 50%: {len(over50)}',
+             f'- в) осевой RMS = 0 (вырождение): {len(zero_rms)}',
+             f'- г) mtf30_axis > 0.99 при осевом RMS > 0: {len(near_one)}']
+
+    lines.extend(['', f'**а) null/не-числовые метрики при true-опе** — систем: '
+                      f'{len(suspect)}; валидных null (безполевая, op true): '
+                      f'{valid_null}.'])
+    if not suspect:
+        lines.extend(['', '_Таких случаев нет._'])
+    else:
+        lines.extend(['',
+                      '| lib | name | op | ключ | значение | поле, ° |',
+                      '|---|---|---|---|---|---:|'])
+        for s, op, key, v, field in suspect[:20]:
+            v_txt = 'null' if v is None else esc(str(v))
+            lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                         f"| {esc(op)} | {esc(key)} | {v_txt} | {fmt_g(field)} |")
+        if len(suspect) > 20:
+            lines.extend(['', f'Показаны первые 20 из {len(suspect)}.'])
+
+    lines.extend(['', f'**б) |дисторсия| > 50%** — систем: {len(over50)}.'])
+    if not over50:
+        lines.extend(['', '_Таких случаев нет._'])
+    else:
+        lines.extend(['',
+                      '| lib | name | макс. поле, ° | \\|distortion\\|, % |',
+                      '|---|---|---:|---:|'])
+        for d, s in over50[:20]:
+            field = (s.get('metrics') or {}).get('chief_max_field')
+            lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                         f"| {fmt_g(field)} | {fmt_g(d)} |")
+        if len(over50) > 20:
+            lines.extend(['', f'Показаны первые 20 из {len(over50)}.'])
+
+    lines.extend(['', f'**в) осевой RMS = 0** (подозрение на вырождение — '
+                      f'«идеальная» система) — систем: {len(zero_rms)}.'])
+    if not zero_rms:
+        lines.extend(['', '_Таких случаев нет._'])
+    else:
+        lines.extend(['',
+                      '| lib | name | осевой RMS, мкм | mtf30_axis |',
+                      '|---|---|---:|---:|'])
+        for s in zero_rms[:20]:
+            m = s.get('metrics') or {}
+            lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                         f"| {fmt_g(m.get('spot_rms_axis_um'))} "
+                         f"| {fmt_g(m.get('mtf30_axis'))} |")
+        if len(zero_rms) > 20:
+            lines.extend(['', f'Показаны первые 20 из {len(zero_rms)}.'])
+
+    lines.extend(['', f'**г) mtf30_axis > 0.99 при осевом RMS > 0** (сверка '
+                      f'согласованности spot/mtf) — систем: {len(near_one)}.'])
+    if not near_one:
+        lines.extend(['', '_Таких случаев нет._'])
+    else:
+        lines.extend(['',
+                      '| lib | name | mtf30_axis | mtf50_axis | осевой RMS, мкм |',
+                      '|---|---|---:|---:|---:|'])
+        for mtf, rms, s in near_one[:20]:
+            m = s.get('metrics') or {}
+            lines.append(f"| {esc(s.get('lib', ''))} | {esc(cut(s.get('name', '')))} "
+                         f"| {fmt_g(mtf)} | {fmt_g(m.get('mtf50_axis'))} "
+                         f"| {fmt_g(rms)} |")
+        if len(near_one) > 20:
+            lines.extend(['', f'Показаны первые 20 из {len(near_one)}.'])
+        lines.extend(['',
+                      'Примечание: геометрическая ЧКХ — FFT гистограммы пятна; '
+                      'контраст ≈ 1 при пятне много меньше периода 30 лин/мм '
+                      'физичен — группа перечисляет крайние случаи для разбора.'])
+    return lines
+
+
+def sec_v2_errors(data, systems):
+    fails = [s for s in systems
+             if s.get('status') != 'ok'
+             and all((s.get('ops') or {}).get(op) is True for op in OPS_BASE_ORDER)]
+    lines = ['', '## Отказы v2 (базовый конвейер прошёл)', '',
+             f'fail-систем, у которых все {len(OPS_BASE_ORDER)} базовых операций '
+             f'true: {len(fails)} (отказ — на операциях волны 2; base-отказы — '
+             'в разделе «Отказы»).']
+    if not fails:
+        lines.extend(['', '_Таких систем нет._'])
+        return lines
+    groups = {}
+    for s in fails:
+        err = s.get('error')
+        prefix = str(err).split(':', 1)[0].strip() if err else '(без error)'
+        prefix = prefix or '(без error)'
+        groups.setdefault(prefix, []).append(s)
+    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    lines.extend(['',
+                  '| Префикс ошибки | Кол-во | Примеры (до 3) |',
+                  '|---|---:|---|'])
+    for prefix, group in ordered:
+        names = '; '.join(cut(s.get('name', '')) for s in group[:3])
+        lines.append(f'| {esc(prefix)} | {len(group)} | {esc(names)} |')
+    return lines
+
+
 def sec_errors(data, systems):
     fails = [s for s in systems if s.get('status') != 'ok']
     lines = ['', '## Отказы', '', f'fail-систем: {len(fails)}.']
@@ -299,12 +726,20 @@ SECTION_BUILDERS = (
     ('surfaces', sec_surfaces),
     ('glasses', sec_glasses),
     ('fcheck', sec_fcheck),
+    ('spot', sec_spot),
+    ('distortion', sec_distortion),
+    ('astigmatism', sec_astigmatism),
+    ('mtf', sec_mtf),
+    ('rms_vs_field', sec_rms_vs_field),
+    ('v2_anomalies', sec_v2_anomalies),
+    ('v2_errors', sec_v2_errors),
     ('errors', sec_errors),
 )
 
 
 def build_report(data, section='all'):
     systems = data.get('systems') or []
+    schema = data.get('schema_version')
     source = data.get('source')
     if isinstance(source, list) and source:
         src = ', '.join(str(p) for p in source)
@@ -313,13 +748,18 @@ def build_report(data, section='all'):
     else:
         src = '—'
     generated = data.get('generated')
+    schema_txt = schema if schema is not None else '—'
     lines = ['# Corpus scan — статистика', '',
              f'- Источник: {src}',
              f"- Сгенерировано (generated): {generated if generated else '—'}",
+             f'- Schema_version входного файла: {schema_txt}',
              f'- Всего систем (total): {len(systems)}']
     for key, builder in SECTION_BUILDERS:
-        if section in ('all', key):
-            lines.extend(builder(data, systems))
+        if section not in ('all', key):
+            continue
+        if key in V2_SECTIONS and schema != 2:
+            continue  # v1-вход: секции волны 2 не выводятся (контракт: 1 → v1)
+        lines.extend(builder(data, systems))
     return '\n'.join(lines).rstrip() + '\n'
 
 
@@ -328,8 +768,9 @@ def build_report(data, section='all'):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='corpus_stats.py',
-        description='JSON сканера корпуса (schema_version 1) → markdown-отчёт '
-                    'распределений (docs/tasks/CORPUS_PLAN.md).')
+        description='JSON сканера корпуса (schema_version 1 или 2) → markdown-'
+                    'отчёт распределений (docs/tasks/CORPUS_PLAN.md, разделы '
+                    '«Контракт JSON» и «Контракт v2»).')
     parser.add_argument('--json', required=True,
                         help='путь к corpus.json — выходу scripts/corpus_scan.py')
     parser.add_argument('--out', help='записать markdown в файл вместо stdout')
@@ -349,7 +790,7 @@ def main(argv=None):
         print(f'Ошибка: не удалось прочитать/разобрать JSON {src}: {exc}', file=sys.stderr)
         return 2
     if not isinstance(data, dict) or not isinstance(data.get('systems'), list):
-        print(f'Ошибка: {src} не соответствует контракту schema_version 1 '
+        print(f'Ошибка: {src} не соответствует контракту schema_version 1/2 '
               '(ожидался объект с массивом systems)', file=sys.stderr)
         return 2
 

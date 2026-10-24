@@ -224,6 +224,44 @@ All notable changes to OPAL-OKB will be documented in this file.
   .lbo-хвост requires_lbo) + категория batch в covered и счётчик 415 в
   `tests/test_commands_builtin.py`.
 
+- **Пакет 16 — trace_ext (+22 команды, итого 437)**:
+  `commands/builtin/trace_ext_cmds.py` — хвосты трассировки в категории
+  `tracex` (префикс НЕ trace: исчерпывающий набор Волны 3 в категориях
+  trace/beam/vign/tables закреплён пином tests/test_commands_trace.py
+  — ровно 19, тест не менялся). Луч по поверхностям: ray.surfaces
+  (координаты/углы/ОПС нарастающим итогом заданного луча, разбор пути
+  точного трейсера по схеме TABESB; EDGE-строки помечены clipped),
+  ray.angles (cos I / cos I' / I / I' по поверхностям, нормали — в
+  локальной СК CoordBreak, ориентация к падающему лучу как refract()),
+  ray.pupil (луч поля через точку входного зрачка, построитель
+  габаритных лучей aberrations), ray.multi_wl (по всем λ системы).
+  Диафрагма/ПВО: stop.clearance (клиренс до края: плоскость диафрагмы,
+  при SD=0 — полудиаметр поверхности), tir.critical (предельные углы
+  asin n₂/n₁). Габаритные лучи (compute_gauge_rays): meridional.table
+  (высоты+углы верх/низ/главный, полувысота и угол конуса), opl.table
+  (ОПС по поверхностям для 5 лучей), opl.summary (ОПД относительно
+  главного в мм и волнах), apertures.fill (заполнение полудиаметров
+  ходом крайних лучей, violation), pupils.surfaces (проекция зрачков:
+  центры = высоты главного, dz к входному/выходному), exit.cone (углы
+  выходного конуса, NA', рабочее F/# против параксиального).
+  Поверхности/среды: surface.vertices (Z-вершины, расстояния, длина
+  хода), surface.glasses (n до/после и Δn для трассируемой λ).
+  Сетки/веера: fan.zones (зоны равной площади tables.field_zones +
+  dy относительно главного), grid.stats (успех/ошибки/ОПС/разброс
+  сетки 3D), vignetted.rays (срезанные лучи сетки с ρ/φ). Параксиальные
+  хвосты (перенос y/n·u — surface_data у paraxial_trace заглушка []):
+  ynu.table (базисные лучи по поверхностям, efl = −1/(nu)_кр),
+  paraxial.ray (произвольный y₀/u₀), paraxial.matrices (ABCD
+  поверхностей/промежутков + системы: det=1, efl = −1/C = paraxial),
+  paraxial.invariants (H Лагранжа по промежуткам, дрейф ~1e-16),
+  paraxial.gaps (ход пучка по промежуткам в масштабе реального
+  зрачка). Тесты: `tests/test_commands_trace_ext.py` (37: smoke+
+  строгий JSON всех 22, инвариант пина Волны 3, сверки с прямыми
+  trace_ray_through_system/compute_gauge_rays/_pupil_field_ray,
+  Снеллиус sin I/sin I' = n₁/n₂, det=1 и efl матрицы, живые системы
+  контекста REPL `_tracex_*` c drop) + счётчик 437 в
+  `tests/test_commands_builtin.py` (tracex в covered НЕ входит).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

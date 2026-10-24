@@ -508,8 +508,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) = 415).
-REGISTRY_TOTAL_COMMANDS = 415
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) + 22 (R500-16 trace_ext, категория tracex — свой тест-модуль test_commands_trace_ext.py, в covered НЕ входит) = 437).
+REGISTRY_TOTAL_COMMANDS = 437
 
 
 def test_registry_total_count():

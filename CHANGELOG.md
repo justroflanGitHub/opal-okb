@@ -262,6 +262,51 @@ All notable changes to OPAL-OKB will be documented in this file.
   контекста REPL `_tracex_*` c drop) + счётчик 437 в
   `tests/test_commands_builtin.py` (tracex в covered НЕ входит).
 
+- **Пакет 17 — aberr_ext (+22 команды, итого 459)**:
+  `commands/builtin/aberr_ext_cmds.py` — хвосты анализа аберраций в
+  категории `aberx` (префикс НЕ aber: состав домена Волны 3 закреплён
+  пином tests/test_commands_aber.py — DOMAIN_COMMANDS, 31 команда с
+  категориями aber/chrom/seidel/adv, пин не менялся; как tracex в П16).
+  Карты поле×зона/поле×λ: map.grid (матрица dy мер/саг сечений по
+  зонам зрачка через compute_oblique_fan 0°/90° + сводки по полям),
+  wf.rho (меридиональная волновая W(ρ) по полям из веера, PV/СКВ),
+  rms.grid (решётка поле×λ → СКВ волнового, гексаполярная сетка),
+  wf.pv (PV/min/max/среднее/СКВ по полям + худшее поле), spot.grid
+  (решётка пятен поле×λ: RMS общий/по осям, отношение осей, центроид).
+  Полевые кривые: distortion.curve (данные + полиномиальный фит с
+  якорем (0,0), адаптивная степень), astig.curve (Z'm/Z's следа
+  Коддингтона по полям + худшее поле), petzval.check (z_p =
+  (3·Z's−Z'm)/2 по полям, эмпирический R из фита z ≈ z₀+y²/(2R)
+  против −1/SIV — совпадение 3-го порядка ~3 % на демо), coma.fields
+  (танг./саг. кома по полям, отношение T/S), longitudinal.fields
+  (Z-пересечения крайних лучей с высотой главного по полям).
+  Зональные/апертурные: coma.fan (асимметрия dy(+ρ)+dy(−ρ) по зонам,
+  T/S комы, 3-й порядок T=3S), spherical.zones (продольная LA по
+  зонам осевого поля + фит ds ≈ c₂ρ²+c₄ρ⁴, отрезки края и зоны
+  0.707), transverse.zones (таблица поперечных по зонам равной
+  площади field_zones, мер+саг одновременно), aperture.aberrations
+  (dy/LA края против диаметра зрачка, dy/D³), focal.zonal (зонные
+  фокусы Z(±ρ) танг/саг из диагностики caustic_radii), bestfocus.fields
+  (лучший дефокус по RMS пятна по полям/λ + хроматический сдвиг,
+  флаг края сетки). Хроматизм: chrom.focus_shift (EFL/BFD по λ +
+  вторичный спектр, domain.paraxial_trace(wl=...)), chrom.magnification
+  (высота главного луча по λ/полям, lateral color), wf.chrom (разность
+  волновых фронтов dW(λ) на общей гексаполярной сетке), fan.chrom
+  (веер сечения по всем λ). Прочее: centroid.fields (boresight:
+  центроид против главного луча и параксиальной высоты),
+  seidel.shares (пер-поверхностные вклады SI..SV+SIxp/SIIxp с долями
+  и паритетом против seidel_sums — базис _paraxial_auxiliary движка).
+  Тесты: `tests/test_commands_aberr_ext.py` (26: smoke+строгий JSON
+  всех 22, сверки паритета с compute_oblique_fan/
+  compute_field_aberrations/compute_wavefront_rms_vs_field/
+  compute_rms_spot_xy/seidel_sums/paraxial_trace(wl), инварианты
+  физики — осевая симметрия карт, нуль комы на оси, нечётность dy(ρ),
+  dW≡0 на опорной λ, T/S-кома, Петцваль 3 %, монотонность lateral
+  color, клиппинг краёв на живой системе `_aberx_clipped` c drop,
+  контракты ошибок invalid_param; поле-зависимые — на .json,
+  поле-независимая chrom.focus_shift — на .opj) + счётчик 459 в
+  `tests/test_commands_builtin.py` (aberx в covered НЕ входит).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

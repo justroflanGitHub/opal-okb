@@ -28,7 +28,7 @@
 | 14 | `adv_ext_cmds.py` | `adv.*` остатки: объёмная ФРТ через фокус, свёртка с объектом/полихром, миры СШАФ-1951, ГРФ дифр/геом, SNR/шум, пиксели/кольца, Торнбер, ОТФ-фаза, Эйри | 21 | done (+21 → 395) |
 | 15 | `batch_cmds.py` | `batch.*` — пакетные прогоны команд по списку систем/файлов, batch-отчёты | 20 | done (+20 → 415) |
 | 16 | `trace_ext_cmds.py` | `tracex.*` хвосты трассировки — таблицы лучей по поверхностям, углы I/I', ОПС/ОПД, клиренс диафрагмы, ПВО, ynu-параксиал, ABCD, инварианты | 22 | done (+22 → 437) |
-| 17 | `aberr_ext_cmds.py` | `aber.*` хвосты — карты аберраций по полям, кривые дисторсии, хроматические сдвиги | ~22 | planned |
+| 17 | `aberr_ext_cmds.py` | `aberx.*` хвосты — карты аберраций по полям, кривые дисторсии, хроматические сдвиги | 22 | done (+22 → 459) |
 | 18 | `reserve_cmds.py` + добивка | резерв до 500+: diagram.* расширения и прочие верифицируемые хвосты | ~30+ | planned |
 
 Переориентация 2026-10-24: исходная тема строки 15 (прямые `diffr.*`/`psf.*` расширения —
@@ -80,6 +80,20 @@ trace-хвосты → aber-хвосты → резервная добивка �
   tests/test_commands_trace_ext.py). Параксиальный перенос y/n·u —
   хелпер пакета (surface_data у paraxial_trace — заглушка []),
   сверён с движком (efl = −1/C матрицы == paraxial, det=1).
+- **П17 aberr_ext**: категория `aberx` (не aber!) — тест-модуль Волны 3
+  tests/test_commands_aber.py пинует DOMAIN_COMMANDS (31 команда
+  категорий aber/chrom/seidel/adv с проверкой категорий; реестр
+  фиксттуры — надмножество), пин не трогаем; aberx в covered
+  builtin-смока НЕ входит (свой модуль tests/test_commands_aberr_ext.py).
+  Движки: compute_oblique_fan (→ [ρ, dy_мер мкм, dy_саг мкм]),
+  trace_aberration_fan ({pupil_y, dy, ds, wave}), trace_wavefront_
+  hexapolar, coddington_trace, caustic_radii (диагностика z(±δ)),
+  compute_spot_diagram(_at_defocus)/compute_rms_spot_xy,
+  domain.calculations.paraxial_trace(wl=...), seidel_sums +
+  базис _paraxial_auxiliary (пер-поверхностные вклады — в модуле,
+  паритет с движком тестом). Петцваль: z_p = (3·Z's−Z'm)/2 из хода
+  против −1/SIV (сходимость ~3 % на демо). Поле-зависимые тесты на
+  .json (OPJ теряет field_points), chrom.focus_shift — на .opj.
 - **П17 reserve**: добивка — именованные варианты зон/полей, недостающие
   обёртки analysis-хвостов, документирующие команды каталога/библиотеки.
 

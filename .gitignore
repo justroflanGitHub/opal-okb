@@ -35,3 +35,6 @@ analysis/reverse_data/*.bin
 # Ночной g2bank-батч (волна 3): логи detached-процесса в корне репо
 g2batch_night.*.log
 
+# Рантайм-скриншоты GUI (capture/*.bmp — вывод запущенного приложения)
+capture/
+

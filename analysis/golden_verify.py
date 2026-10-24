@@ -129,9 +129,16 @@ _AXIAL1_EDGES = (17, 28, 39, 52, 65, 77)
 _AXIAL2_EDGES = (16, 26, 36, 47, 57)
 
 
-def _fixed_cells(line: str, edges, left0: int):
+def _fixed_cells(line: str, edges: tuple, left0: int) -> list:
     """Значения правоориентированных полей: каждое поле = отрезка
-    (правая граница предыдущего поля, эта правая граница]."""
+    (правая граница предыдущего поля, эта правая граница].
+
+    Компактная раскладка (VV): если число упёрлось в правую границу
+    поля и продолжается за ней (следующий символ — цифра/точка),
+    поле дочитывается до конца числа — иначе значение молча
+    обрезается (−.67830 → −.678). Остаток хвостовых цифр числа в
+    начале следующего поля под маску ``_NUM`` (цифры без точки) не
+    попадает и на разбор соседа не влияет."""
     values = []
     prev = left0
     for e in edges:
@@ -548,6 +555,34 @@ from analysis.aberrations import (VIRTUAL_WAVE_KAPPA,
                                   edge2_print_lambda as _edge2_print_lambda)
 
 
+#: Порог «афокального выхода» для опорной плоскости строк печати:
+#: |L_p| выше — вергенция параксиального луча ~0 (ST4/LAB6_GAS —
+#: предмет в переднем фокусе), опора вырождается в вершину (0).
+AFOCAL_L_P_LIMIT = 1e6
+
+
+def _print_anchor_l_ref(L_p: float | None,
+                        vertex_virtual: bool) -> float:
+    """Опорная плоскость строк печати по пересечению параксиального
+    луча с осью L_p (G44, дополнение §P6 — единое правило для
+    прод/попер мм-строк TABOC1 и Sp2):
+
+    * афокальный выход (L_p нет / |L_p| ≥ ``AFOCAL_L_P_LIMIT``) — 0;
+    * мнимое изображение (L_p < 0) при ``vertex_virtual`` (мнимый
+      предмет либо λ-таблица печати E2) — вершина последней
+      поверхности (0): OPTICS#1 зона-0 −17.742 = |L_p|; OBEKTIV/
+      OKULAR — λ-таблицы решены на вершинной опоре;
+    * прочее (в т.ч. мнимое изображение при реальном предмете) —
+      точка Гаусса (L_p): 2222/WA2 — Sp2 = 1000/(sP′−L_p) точно,
+      прод = L−L_p ≤ 2e-4, попер ≤ 1.2e-3.
+    """
+    if L_p is None or abs(L_p) >= AFOCAL_L_P_LIMIT:
+        return 0.0
+    if L_p < 0.0 and vertex_virtual:
+        return 0.0
+    return L_p
+
+
 def near_object_axial_fan(system, wl: float, zones, na: float,
                           z_obj: float, wave_kappa: dict = None,
                           vertex_virtual: bool = False) -> list:
@@ -595,19 +630,8 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         y0_par = (z_obj - z0_par) * (-u0_par)
     y_p, u_p = _paraxial_ray(system, wl, y0_par, u0_par, z0_par)
     L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None    # ∞ — афокальный выход
-    # Опора строк печати (G44, дополнение §P6): мнимое изображение при
-    # МНИМОМ ПРЕДМЕТЕ и системы с λ-таблицей печати E2 — от вершины
-    # последней поверхности (OPTICS#1 зона-0 −17.742 = |L_p|; OBEKTIV/
-    # OKULAR — λ-таблицы решены на вершинной опоре); мнимое изображение
-    # при реальном предмете — от точки Гаусса (2222/WA2: Sp2 =
-    # 1000/(sP′−L_p) точно, прод = L−L_p ≤2e-4, попер ≤1.2e-3); прочее —
-    # точка Гаусса. Афокальный выход (|L_p| → ∞: ST4/LAB6_GAS) — 0.
-    if L_p is None or abs(L_p) >= 1e6:
-        L_ref = 0.0
-    elif L_p < 0.0 and vertex_virtual:
-        L_ref = 0.0
-    else:
-        L_ref = L_p
+    # опора строк печати — единое правило G44 (см. _print_anchor_l_ref)
+    L_ref = _print_anchor_l_ref(L_p, vertex_virtual)
     sp_prime = paraxial_of(system, wl)['sP_prime']
     z_last = sum(s.thickness for s in system.surfaces[:-1])
     z_pup = z_last + sp_prime
@@ -786,14 +810,10 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None
                 # мнимое изображение (L_p<0): опора — вершина последней
                 # поверхности для мнимого предмета и E2-λ-систем, точка
-                # Гаусса для прочих (2222/WA2: 1000/(sP′−L_p) точно, G44)
-                if L_p is None or abs(L_p) >= 1e6:
-                    L_ref = 0.0
-                elif L_p < 0.0 and ((z_obj > 0.0)
-                                    or (name in EDGE2_PRINT_LAMBDA)):
-                    L_ref = 0.0
-                else:
-                    L_ref = L_p
+                # Гаусса для прочих (2222/WA2: 1000/(sP′−L_p) точно, G44;
+                # единое правило — _print_anchor_l_ref)
+                L_ref = _print_anchor_l_ref(
+                    L_p, (z_obj > 0.0) or (name in EDGE2_PRINT_LAMBDA))
                 port_sp2 = (1000.0 / (parax['sP_prime'] - L_ref)
                             if L_ref is not None else None)
             else:

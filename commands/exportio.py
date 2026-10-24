@@ -108,6 +108,11 @@ def write_rows(rows: List[dict], path: str,
         CommandError: ``unknown_format`` / ``unsupported`` / ``io_error``.
     """
     fmt = detect_export_format(path)
+    if fmt == FORMAT_TXT:
+        raise CommandError(
+            ERR_UNSUPPORTED,
+            "строки выгружаются в .csv (точки) или .json (как есть); "
+            "текст — write_text (.txt)")
     if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
         raise CommandError(
             ERR_UNSUPPORTED,

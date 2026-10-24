@@ -99,6 +99,16 @@ class TestExportFormats:
         assert not result.ok
         assert result.error["code"] == "unsupported"
 
+    def test_rows_txt_unsupported(self, tmp_path):
+        """write_rows не пишет CSV-контент в .txt молча (r500-fix)."""
+        out = str(tmp_path / "r.txt")
+        result = default_registry.execute(
+            "export.rows", CommandContext(),
+            {"rows": [{"a": 1}], "out": out})
+        assert not result.ok
+        assert result.error["code"] == "unsupported"
+        assert not os.path.exists(out)
+
     def test_unknown_extension(self, tmp_path):
         result = default_registry.execute(
             "export.rows", CommandContext(),

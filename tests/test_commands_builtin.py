@@ -415,6 +415,47 @@ def _smoke_args(demo_files):
         "app.env": {},
         "app.paths": {},
         "help.command": {"name": "system.new"},
+        # R500-14: расширения adv.* (adv_ext_cmds; категория adv добавлена
+        # в covered этим пакетом — сюда же smoke 8 adv.* Волны 1 из
+        # aber_cmds; команды с полями системы — на .json: .opj теряет
+        # field_points).
+        "adv.psf": {"file": opj, "num_rays": 64},
+        "adv.lsf": {"file": opj, "num_rays": 64},
+        "adv.enc": {"file": opj, "num_rays": 60},
+        "adv.ptf": {"file": opj, "num_rays": 64},
+        "adv.bar_image": {"file": opj},
+        "adv.bar_mtf": {"file": opj, "freq_list": [10, 30]},
+        "adv.esf": {"file": opj},
+        "adv.object_image": {"file": opj, "num_rays": 64},
+        "adv.psf.focus_stack": {"file": opj, "num_points": 5,
+                                "defocus_range_mm": 0.03},
+        "adv.psf.waist": {"file": opj, "num_points": 9,
+                          "defocus_range_mm": 0.3},
+        "adv.psf.fwhm": {"file": opj},
+        "adv.psf.centroid": {"file": jsn, "fields": [0.0, 3.0]},
+        "adv.psf.poly": {"file": opj},
+        "adv.lsf.poly": {"file": opj},
+        "adv.slit_image": {"file": opj, "width_um": 20.0},
+        "adv.convolve.profile": {"file": opj,
+                                 "profile": [0, 0, 0, 1, 1, 1, 1, 0, 0, 0],
+                                 "pitch_um": 3.0},
+        "adv.usaf.table": {"group_from": 0, "group_to": 2},
+        "adv.usaf.resolve": {"file": opj, "group_to": 4},
+        "adv.usaf.object": {"file": opj, "group": 2, "element": 3},
+        "adv.dof.diffraction": {"file": opj},
+        "adv.dof.compare": {"file": jsn, "fields": [0.0, 3.0],
+                            "num_rays": 20},
+        "adv.snr.bars": {"file": opj, "freq_lpmm": 30.0},
+        "adv.noise.spot": {"file": opj, "pixel_um": 8.0, "size": 5,
+                           "seed": 42},
+        "adv.pixel.matrix": {"file": opj, "pixel_um": 8.0},
+        "adv.pixel.energy": {"file": opj, "pixel_um": 8.0,
+                             "offset_x_um": 4.0, "block": 3},
+        "adv.energy.ring": {"file": opj, "r_inner_um": 5.0,
+                            "r_outer_um": 15.0},
+        "adv.resolve.thornber": {"file": jsn, "fields": [0.0, 3.0]},
+        "adv.otf.complex": {"file": opj},
+        "adv.airy.encircled": {"file": opj},
     }
 
 
@@ -423,7 +464,8 @@ def test_every_registered_command_has_smoke(demo_files):
     свои исчерпывающие наборы в собственных тест-модулях."""
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
                                "focus", "export", "quality", "report",
-                               "plot", "registry", "app", "help"}
+                               "plot", "registry", "app", "help",
+                               "adv"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -435,8 +477,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) = 374).
-REGISTRY_TOTAL_COMMANDS = 374
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) = 395).
+REGISTRY_TOTAL_COMMANDS = 395
 
 
 def test_registry_total_count():

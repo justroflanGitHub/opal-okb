@@ -29,6 +29,7 @@ _BUILTIN_MODULES = (
     "commands.builtin.report_cmds",
     "commands.builtin.plot_ext_cmds",
     "commands.builtin.meta_cmds",
+    "commands.builtin.adv_ext_cmds",
     "commands.builtin.w4_main_cmds",
     "commands.builtin.w4_panel_cmds",
 )

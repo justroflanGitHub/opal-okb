@@ -487,6 +487,28 @@ def _smoke_args(demo_files):
         "batch.export": {"files": [opj, jsn],
                          "out": opj + ".batch.csv"},
         "batch.report": {"files": [opj, jsn]},
+        # R500-18: reserve ч.1 — covered-категории calc/catalog
+        # (diagram/units — НЕ covered, их smoke в test_commands_reserve).
+        "catalog.stats": {},
+        "catalog.sources.compare": {},
+        "catalog.glass.multi": {"limit": 5},
+        "catalog.availability": {"name": "К8"},
+        "calc.aber.dioptre": {"L_zone_mm": 95.0, "L_parax_mm": 96.0},
+        "calc.aber.grminsec": {"dy_mm": -0.04, "L_mm": 96.0},
+        "calc.pupil.zone": {"zones": [0.5, 1.0], "ax_mm": 5.0,
+                            "na": 0.25},
+        "calc.tgprime.label": {"h_out_mm": -3.2, "u_prime_deg": 2.0},
+        "calc.fan.launch": {"zones": [0.5, 1.0], "ax_mm": 5.0,
+                            "na": 0.25},
+        "calc.edge2.lambda": {"system": "OBEKTIV", "kind": "прод",
+                              "zones": [0.5, 1.0]},
+        "calc.virtual.kappa": {"wl": 0.54607},
+        "calc.goe.kappa": {"wl": 4.25, "curvature_c": 0.01},
+        "calc.goe.replay": {"rec0": 0.1342, "wl": 0.6328},
+        "calc.depth.criteria": {"file": opj, "criterion": "spot_rms",
+                                "max_value": 0.5, "defocus_range": 0.3,
+                                "steps": 7, "num_rays": 30},
+        "calc.defocus.convert": {"file": opj, "defocus_mm": 0.1},
     }
 
 
@@ -508,8 +530,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) + 22 (R500-16 trace_ext, категория tracex — свой тест-модуль test_commands_trace_ext.py, в covered НЕ входит) + 22 (R500-17 aberr_ext, категория aberx — свой тест-модуль test_commands_aberr_ext.py, в covered НЕ входит) = 459).
-REGISTRY_TOTAL_COMMANDS = 459
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) + 22 (R500-16 trace_ext, категория tracex — свой тест-модуль test_commands_trace_ext.py, в covered НЕ входит) + 22 (R500-17 aberr_ext, категория aberx — свой тест-модуль test_commands_aberr_ext.py, в covered НЕ входит) + 22 (R500-18 reserve ч.1: 6 diagram + 4 catalog + 11 calc + 1 units; diagram/units — НЕ covered, свой тест-модуль test_commands_reserve.py) = 481).
+REGISTRY_TOTAL_COMMANDS = 481
 
 
 def test_registry_total_count():

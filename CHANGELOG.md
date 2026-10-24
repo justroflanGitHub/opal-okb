@@ -307,6 +307,55 @@ All notable changes to OPAL-OKB will be documented in this file.
   поле-независимая chrom.focus_shift — на .opj) + счётчик 459 в
   `tests/test_commands_builtin.py` (aberx в covered НЕ входит).
 
+- **Пакет 18 — reserve ч.1 (+22 команды, итого 481)**:
+  `commands/builtin/reserve_cmds.py` — верифицируемые хвосты трёх
+  семейств. Префиксы по пинам: категория `diagram` НЕ запинена (П4 уже
+  добавлял diagram.data/types — пин Волны 3 tests/test_commands_opt.py
+  проверяет только наличие OPT_COMMANDS), `calc`/`catalog` —
+  covered-категории Волны 1 (smoke-записи в builtin), `units` —
+  категория П5 без пинов состава; diagx не понадобился. Карта стёкол
+  `diagram.*` (данные glass_ext_cmds._iter_entries + фильтр воздуха,
+  типы glass_diagram, для AGF — русские алиасы glass_agf): coverage
+  (гистограмма плотности по сетке окна 20–80 Vd × 1.45–1.85 nd,
+  занятость/топ-ячейки), type.stats (плотность типов: счётчик,
+  центроид, СКО, диапазоны), crown.flint (кроны/флинты по полосам Vd,
+  смешанные зоны и перекрытие семейств), bbox (границы каталога +
+  окно + выбросы), system (стёкла системы на карте: тип/семейство/
+  источники/зона Vd + свод), pick (ближайшие к точке nd/Vd марки,
+  метрика нормирована на окно). Каталог-документация `catalog.*`:
+  stats (счётчики всего/реальных/отфильтрованных по источникам,
+  union/multi/unique канонизированных имён), sources.compare
+  (пересечения пар/тройки ГОСТ∩.FIL=14, AGF по алиасам, образцы),
+  glass.multi (стёкла в ≥2 источниках с nd/Vd каждого и разбросом),
+  availability (марка → источники + синонимы латиница↔русское;
+  catalog.glass.count НЕ добавлялся — дублирует total
+  catalog.glass.filter). Формулы FORMULAS.md `calc.*` (без выдуманной
+  физики — каждый раздел указан в докстринге): aber.dioptre
+  (продольные в дптр от выходного зрачка, §3, движок mm_to_dioptres),
+  aber.grminsec (поперечные в гр.мнсек из центра выходного зрачка,
+  §3, atan2 + grminsec/deg_to_gms), pupil.zone (H=зона·Ax и
+  100·tg(arcsin(зона·NA)), §3), tgprime.label (метка Tg′×100 TABOC2,
+  §3), fan.launch (запуск осевого веера, §3/GFIX P6), edge2.lambda
+  (λ(z)=1−(q0+q1·z²)·z² — банк E2 REVERSE_OPALDIS §4.3(vii), движок
+  edge2_print_lambda), virtual.kappa ((κ0,κ2) опорной сферы мнимого
+  изображения, §2/GFIX R1, движок virtual_wave_kappa), goe.kappa
+  (κ(λ)=κ0+κ1·(λ−λ0) и C_eff=κ·C, §5, пин GTIE00), goe.replay
+  (δ=rec₀·λ₀/λ, §5), depth.criteria (границы ГРИП из условия
+  СКW/СКR ≤ допуска — ANALIZE §5.3; СКR — пятна по дефокусу,
+  СКW — карта W + параксиальный дефокус w=W_край·ρ² модели
+  compute_psf), defocus.convert (мм↔волны на краю зрачка —
+  PARAXIAL_DEFOCUS_FACTOR, хелпер П14 без дубля). Справочник
+  `units.print.table` — единицы печати «ближний/дальний тип»
+  (REVERSE_NZR §19.2). Тесты: `tests/test_commands_reserve.py`
+  (49: smoke+строгий JSON всех 22, сверки паритета с движками —
+  GLASS_CATALOG/units/aberrations(EDGE2/VIRTUAL)/zernike, точные
+  значения банка (λ(1)=1−(q0+q1), κ-пары), пересечение ГОСТ∩.FIL=14
+  стабильно и в CI, живая система `_resv_probe` с drop, ошибки
+  контрактов; requires_fil для полного .FIL, условный skip для
+  OPAL.AGF) + smoke-записи 15 covered-команд (calc/catalog) и
+  счётчик 481 в `tests/test_commands_builtin.py` (diagram/units в
+  covered НЕ входят).
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

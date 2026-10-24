@@ -29,7 +29,7 @@
 | 15 | `batch_cmds.py` | `batch.*` — пакетные прогоны команд по списку систем/файлов, batch-отчёты | 20 | done (+20 → 415) |
 | 16 | `trace_ext_cmds.py` | `tracex.*` хвосты трассировки — таблицы лучей по поверхностям, углы I/I', ОПС/ОПД, клиренс диафрагмы, ПВО, ynu-параксиал, ABCD, инварианты | 22 | done (+22 → 437) |
 | 17 | `aberr_ext_cmds.py` | `aberx.*` хвосты — карты аберраций по полям, кривые дисторсии, хроматические сдвиги | 22 | done (+22 → 459) |
-| 18 | `reserve_cmds.py` | резерв ч.1 — diagram.* хвосты (если категория не запинена; иначе diagx), каталог-документация, остатки формул FORMULAS.md | ~23 | planned |
+| 18 | `reserve_cmds.py` | `diagram.*` хвосты (категория НЕ запинена — расширяем), `catalog.stats/sources.compare/glass.multi/availability`, `calc.*` остатки формул FORMULAS.md (§2/§3/§5, ANALIZE §5.3), `units.print.table` | 22 | done (+22 → 481) |
 | 19 | `reserve2_cmds.py` + добивка | финальная добивка до 500+: верифицируемые хвосты по свободным категориям (факт — по остатку) | 459 → 500+ | planned |
 
 Переориентация 2026-10-24: исходная тема строки 15 (прямые `diffr.*`/`psf.*` расширения —
@@ -97,6 +97,19 @@ trace-хвосты → aber-хвосты → резервная добивка �
   .json (OPJ теряет field_points), chrom.focus_shift — на .opj.
 - **П17 reserve**: добивка — именованные варианты зон/полей, недостающие
   обёртки analysis-хвостов, документирующие команды каталога/библиотеки.
+- **П18 reserve ч.1**: префиксы по пинам tests/ — категория `diagram`
+  НЕ запинена (пин Волны 3 test_commands_opt.py проверяет только наличие
+  OPT_COMMANDS; прецедент П4 — diagram.data/types), поэтому diagx не
+  понадобился: расширяем diagram.*; `calc`/`catalog` — covered-категории
+  Волны 1 (smoke-записи добавлены в tests/test_commands_builtin.py);
+  `units` — категория П5 без пинов состава. catalog.glass.count НЕ
+  добавлялся (дублирует total существующего catalog.glass.filter).
+  Движки без дублей: _iter_entries/PAIR_AIR_NAMES из glass_ext_cmds,
+  типы glass_diagram (AGF — русские алиасы glass_agf), единицы
+  analysis/units, банк E2/κ-таблицы analysis/aberrations, карта W
+  analysis/zernike + дефокус-модель compute_psf
+  (PARAXIAL_DEFOCUS_FACTOR), конверсия мм↔волны — хелпер П14
+  adv_ext_cmds._defocus_waves_per_mm.
 
 ## Заблокированное / отложенное
 

@@ -388,6 +388,13 @@ All notable changes to OPAL-OKB will be documented in this file.
   + smoke-записи 22 covered-команд (export/file) и счётчик 506 в
   `tests/test_commands_builtin.py` (spectral/units — свой модуль).
 
+- **R500 — ФИНАЛ: реестр 140 → 506 команд (40 категорий), 19 пакетов,
+  цель 500+ достигнута.** Полный прогон 2125 passed / 8 skipped /
+  0 failed. Итоговый отчёт: `docs/tasks/R500_FINAL_REPORT.md`
+  (пакеты/коммиты, категории, blocked, ключевые решения). README:
+  «140 commands (22 categories)» → «506 commands (40 categories)».
+  Ветка `feature/registry-500`, не пушена.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

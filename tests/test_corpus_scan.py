@@ -97,7 +97,8 @@ V2_METRICS_KEYS = {
     'mtf30_axis', 'mtf50_axis', 'mtf30_max_field', 'mtf50_max_field',
 }
 
-#: Новая операция → её ключи metrics (зеркало _V2_METRICS сканера).
+#: Новая операция → её ключи metrics (зеркало V2_METRICS сканера;
+#: независимая копия — контракт-тест не должен брать ожидания из кода).
 V2_METRICS_BY_OP = {
     'vignette': {'vignette_max_field', 'vignette_up_pct',
                  'vignette_down_pct'},
@@ -522,11 +523,15 @@ def lens5_ops_runs(tmp_path_factory):
 @requires_script
 def test_cli_ops_base(lens5_ops_runs):
     """--ops base: ровно 6 базовых стадий в ops/ops_summary и ровно 15
-    базовых метрик без v2-ключей (побитово набор волны 1)."""
+    базовых метрик без v2-ключей (побитово набор волны 1; schema_version
+    по контракту v2 всегда 2 — и при --ops base тоже)."""
     proc, out = lens5_ops_runs['base']
     assert proc.returncode == 0, _proc_msg(proc)
     data = _load_json(out)
 
+    assert data['schema_version'] == 2, (
+        f"--ops base: schema_version={data['schema_version']!r}, а по "
+        'контракту v2 — всегда 2')
     assert set(data['ops_summary']) == OPS_KEYS, (
         f"ops_summary: {set(data['ops_summary']) ^ OPS_KEYS} расходятся")
     for i, s in enumerate(data['systems']):
@@ -713,3 +718,59 @@ def test_stats_reads_v2_json(tmp_path):
     assert "## Сверка f'" in text, "v2-отчёт без секции «Сверка f'»"
     for header in V2_SECTION_HEADERS:
         assert header in text, f'v2-отчёт без секции {header!r}'
+
+
+#: Реальный артефакт волны 1 (schema 1, 612 систем) — в git, данные .LBO не нужны.
+CORPUS_V1_JSON = BASE_DIR / 'docs' / 'reports' / 'corpus.json'
+requires_corpus_v1 = pytest.mark.skipif(
+    not CORPUS_V1_JSON.is_file(),
+    reason='нет docs/reports/corpus.json (артефакт волны 1)')
+
+
+@requires_stats
+@requires_corpus_v1
+def test_stats_reads_real_corpus_v1(tmp_path):
+    """Читатель на РЕАЛЬНОМ артефакте волны 1 (docs/reports/corpus.json,
+    612 систем, schema 1): rc 0; total в шапке совпадает с JSON; v2-секций
+    и v2-операций в таблице обзора нет — регрессия backwards-compat."""
+    out = tmp_path / 'real_v1.md'
+    proc = run_stats(['--json', str(CORPUS_V1_JSON), '--out', str(out)])
+    assert proc.returncode == 0, _proc_msg(proc)
+
+    data = _load_json(CORPUS_V1_JSON)
+    assert data['schema_version'] == 1, 'артефакт волны 1 обязан быть schema 1'
+    text = out.read_text(encoding='utf-8')
+    assert f'- Всего систем (total): {data["total"]}' in text, (
+        'в шапке отчёта нет total из входного JSON')
+    for header in V2_SECTION_HEADERS:
+        assert header not in text, (
+            f'v1-отчёт не должен содержать v2-секцию {header!r}')
+    for op in OPS_V2_KEYS:
+        assert f'| {op} |' not in text, (
+            f'в таблице обзора v1-отчёта не должно быть операции {op!r}')
+
+
+@requires_stats
+def test_stats_v2_anomalies_unknown_field(tmp_path):
+    """Аномалии v2 на JSON с --ops-подмножеством (без vignette/chief):
+    у безполевой системы валидный null полевого ключа при true-опе не
+    помечается нарушением — поле системы неизвестно (нет метрик поля)."""
+    system = _synth_system(0, 'Безполевая система (subset ops)', with_v2=False)
+    system['metrics']['spot_rms_axis_um'] = 12.5       # ось посчитана
+    system['metrics']['spot_rms_max_field_um'] = None  # безполевая: null валиден
+    system['ops'] = dict.fromkeys(OPS_KEYS | {'spot'}, True)
+    data = _synth_scan_json(2)
+    data['systems'] = [system]
+    data['total'] = data['ok'] = 1
+    data['ops_summary'] = {op: {'ok': 1, 'fail': 0} for op in system['ops']}
+    src = tmp_path / 'subset_ops.json'
+    src.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+
+    out = tmp_path / 'subset_ops.md'
+    proc = run_stats(['--json', str(src), '--section', 'v2_anomalies',
+                      '--out', str(out)])
+    assert proc.returncode == 0, _proc_msg(proc)
+
+    text = out.read_text(encoding='utf-8')
+    assert '- а) null/не-числовые метрики: 0' in text, (
+        f'ложный suspect при неизвестном поле системы:\n{text}')

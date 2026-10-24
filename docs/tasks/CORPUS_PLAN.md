@@ -122,3 +122,21 @@ JSON пишется `ensure_ascii=False`, encoding utf-8. Числа — float �
 - unsupported (операции не хватает настроек в движке): ops[op] = null, error = `'op: unsupported'`; null не считается ok → система fail. Пустышки-заглушки запрещены. Все 4 новые операции поддержаны текущим движком — в корпусе unsupported не ожидается (подтверждается прогоном, см. CORPUS_REPORT_V2.md).
 - ops_summary: {op: {'ok': N, 'fail': M}} для всех выбранных операций; в fail попадают false и null.
 - f_check и все базовые ключи JSON — семантика v1 без изменений.
+
+## Прогресс волны 2 (2026-10-24)
+
+Пакеты A→финал ТЗ TASK_CORPUS_SCAN_V2, каждый — атомарный коммит, субагенты последовательно:
+
+| Пакет | Что | Коммит |
+|---|---|---|
+| A | контракт v2 в этом файле (раздел выше) | 7f9073e |
+| B | сканер v2: +vignette/chief/spot/mtf_geo, CLI --ops, schema 2 | a4e5a0d |
+| C | полный прогон → corpus_v2.json + corpus_v2_diff.md (регресс-сверка v1↔v2) | 6a4de1f |
+| D | corpus_stats.py: 7 секций v2, читатель schema 1+2 | 92903d1 |
+| E | CORPUS_REPORT_V2.md + CHANGELOG [1.31.0] + README/README_RU | 00d27ee |
+| финал | тесты 8 → 16 (smoke v2, schema 2, CLI --ops, читатель v1-JSON) | f0f1ffd |
+
+Итог: полный корпус 612 систем (~12 мин), ok=396 / fail=216 — все отказы на новых ops
+(first-fail: spot 206, vignette 7, mtf_geo 3); база 612/612, регрессий декода нет
+(базовые ops 3672/3672, метрики 9180/9180, f_check 612×4 — побитово). unsupported = 0,
+безполевых систем 0. Полный `py -m pytest -q` зелёный: 1417 passed / 149 skipped.

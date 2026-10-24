@@ -196,6 +196,34 @@ All notable changes to OPAL-OKB will be documented in this file.
   полихрома, MTF(0)=1 ОТФ) + категория adv в covered и счётчик 395 в
   `tests/test_commands_builtin.py`.
 
+- **Пакет 15 — batch (+20 команд, итого 415)**:
+  `commands/builtin/batch_cmds.py` — пакетная обработка списков файлов
+  (.opj/.json/.lbo): ошибки отдельных файлов не роняют пакет (errors[]
+  по каждому элементу), пустой список/ни одного валидного —
+  invalid_param. Навигация: metrics (справочник 21 метрики с
+  полярностью), dir (скан каталога по расширениям, path-параметр,
+  рекурсия опциональна), names/info (обзор пакета: форматы, структуры),
+  load (пакет в контекст REPL без смены текущей, коллизии — суффиксы).
+  Прогоны: run (ЛЮБАЯ команда реестра над каждым файлом через
+  registry.execute с file=), validate (санити system.validate по всем).
+  Метрики (движки paraxial_trace/seidel/compute_spot/compute_strehl/
+  compute_enc; лёгкий вариант по умолчанию — 20 лучей, полный —
+  параметром num_rays): metric (одна по всем), summary (таблица + итоги
+  min/max/mean), rank (ранжирование auto по полярности, best/worst),
+  stats (min/max/mean/median/СКО + экстремумы), filter (gt/ge/lt/le/eq/
+  ne/range), check (порог pass/fail c auto-режимом), compare (Δ и Δ% к
+  эталонному файлу). Модификации: apply (команда-модификация к копиям в
+  out_dir через out-параметр сестринской команды), changes (до/после по
+  метрикам, модификация во временном файле), convert (пакетная
+  конвертация .opj↔.json, защита от перезаписи существующих). Утилиты:
+  dedupe (дубликаты по md5/sha1/sha256 из CHECKSUM_ALGOS lbo_cmds),
+  export (метрики в .csv/.json через exportio), report (текстовый свод
+  с опцией записи .txt). Тесты: `tests/test_commands_batch.py` (67:
+  smoke+строгий JSON всех 20, совпадение метрик с одиночными прогонами,
+  apply ×2 → удвоение EFL, устойчивость к мусору/пропавшим путям,
+  .lbo-хвост requires_lbo) + категория batch в covered и счётчик 415 в
+  `tests/test_commands_builtin.py`.
+
 ## [1.29.0] — 2026-10-23
 
 ### Golden bank 44 системы + CI зелёный

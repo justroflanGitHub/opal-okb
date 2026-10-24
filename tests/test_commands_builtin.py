@@ -456,6 +456,37 @@ def _smoke_args(demo_files):
         "adv.resolve.thornber": {"file": jsn, "fields": [0.0, 3.0]},
         "adv.otf.complex": {"file": opj},
         "adv.airy.encircled": {"file": opj},
+        # R500-15: пакетные прогоны (категория batch; локальных данных не
+        # требуют — пакеты собираются из демо-файлов; выгрузки/копии — в
+        # tmp-каталог демо-системы модуля).
+        "batch.metrics": {},
+        "batch.dir": {"path": os.path.dirname(opj)},
+        "batch.names": {"files": [opj, jsn]},
+        "batch.info": {"files": [opj, jsn]},
+        "batch.load": {"files": [opj, jsn]},
+        "batch.run": {"files": [jsn], "cmd": "calc.paraxial",
+                      "include_data": True},
+        "batch.validate": {"files": [opj, jsn]},
+        "batch.metric": {"files": [opj, jsn], "metric": "efl"},
+        "batch.summary": {"files": [opj, jsn]},
+        "batch.rank": {"files": [opj, jsn], "metric": "f_number"},
+        "batch.stats": {"files": [jsn], "metric": "spot_rms"},
+        "batch.filter": {"files": [opj, jsn], "metric": "num_surfaces",
+                         "op": "ge", "value": 1},
+        "batch.check": {"files": [jsn], "metric": "spot_rms",
+                        "threshold": 1000.0},
+        "batch.compare": {"ref": jsn, "files": [opj]},
+        "batch.apply": {"files": [jsn], "cmd": "system.scale",
+                        "args": {"factor": 2.0},
+                        "out_dir": os.path.dirname(opj)},
+        "batch.changes": {"files": [jsn], "cmd": "system.scale",
+                          "args": {"factor": 2.0}},
+        "batch.convert": {"files": [opj],
+                          "out_dir": os.path.dirname(opj)},
+        "batch.dedupe": {"files": [opj, jsn]},
+        "batch.export": {"files": [opj, jsn],
+                         "out": opj + ".batch.csv"},
+        "batch.report": {"files": [opj, jsn]},
     }
 
 
@@ -465,7 +496,7 @@ def test_every_registered_command_has_smoke(demo_files):
     covered = W1_CATEGORIES | {"psf", "mtf", "diffr", "strehl", "zern",
                                "focus", "export", "quality", "report",
                                "plot", "registry", "app", "help",
-                               "adv"}
+                               "adv", "batch"}
     names = {n for n in default_registry.names()
              if default_registry.get(n).category in covered}
     smoke = _smoke_args(demo_files)
@@ -477,8 +508,8 @@ def test_every_registered_command_has_smoke(demo_files):
 
 
 #: R500: инвариант общего числа команд реестра (обновляется каждым пакетом;
-#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) = 395).
-REGISTRY_TOTAL_COMMANDS = 395
+#: 140 (Волны 1-5) + 27 (R500-1 export) + 33 (R500-2 system_ext) + 21 (R500-3 lbo) + 19 (R500-4 glass/spectral) + 18 (R500-5 units/spatial) + 20 (R500-6 calc_ext) + 19 (R500-7 sweep/seidel3) + 15 (R500-8 tol) + 19 (R500-10 quality) + 16 (R500-11 report) + 15 (R500-12 plot_ext) + 12 (R500-13 meta) + 21 (R500-14 adv_ext) + 20 (R500-15 batch) = 415).
+REGISTRY_TOTAL_COMMANDS = 415
 
 
 def test_registry_total_count():

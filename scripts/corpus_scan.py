@@ -73,6 +73,122 @@ TRUNC_RATIO_MAX = 25.0      # ... [8..25] → «f'=1» может означат
 SIGN_FLIP_TOL = 0.05        # совпадение модулей в пределах 5% при обратном знаке
 OK_TOL_PCT = 5.0            # порог категории ok, %
 
+# --------------------------- #
+# Классы отказов волны 3 (TASK_CORPUS_V3, пакет B) — единый источник:
+# отсюда импортируют corpus_stats.py (маркировка unscannable-групп) и
+# генератор реестра docs/reports/corpus_v3_failures.{json,md}; пакет C
+# подключит skip-правила к scan_system().
+#
+# 216 отказов spot/mtf_geo корпуса v2 (612 систем, 396 ok / 216 fail)
+# разбиты на 7 классов первопричин (семантика — ТЗ docs/tasks/
+# TASK_CORPUS_V3.md, реестр с классами — docs/reports/corpus_v3_failures.md):
+#
+# unscannable_efl0 (24 fail + 7 ok-систем v2) — efl ровно 0.0 при конечном
+#     L: блок стёкол US-библиотек не декодирован (glass='' у всех
+#     поверхностей → n≡1, рефракции нет), лучи идут прямиком; spot-значения
+#     таких систем — мусор прямых лучей (три разные ok-системы v2 дают
+#     одинаковый осевой RMS 3501.6096850617296 мкм — «поддельный ok»).
+#     Сканеру не место трассировать: op false + error = класс (skip как
+#     unscannable); vignette/chief остаются — геометрия декодирована.
+# unscannable_l0 (9 fail + 8 ok-систем v2) — L ровно 0.0: layout сломан
+#     (толщины обнулены, efl~1e-270); у MICROLEN[3..9] вдобавок vignette
+#     падает ZeroDivisionError в _pupil_field_ray (деление на d=0 для
+#     FINITE-предмета). Layout сломан — все полевые операции (vignette,
+#     chief, spot, mtf_geo) пропускаются как unscannable.
+# chief_degenerate_axis (12) — осевой главный луч (field_y=0) MISS на
+#     поверхности с нулевым зазором (предыдущая thickness==0 → старт
+#     сегмента точно на вершине сферы): intersect_sphere возвращает
+#     ДАЛЬНИЙ корень вместо t=0, физический cap GFIX P6 бракует «спину
+#     сферы» → MISS → пятно пустое → RMS=inf. Движковая находка
+#     (пересчёт пересечений; в сканере не чинить).
+# field_fully_vignetted (134) — честный отказ: chief на макс. поле падает
+#     (EDGE/TIR/MISS/STOP) даже при полудиаметрах ×1.4, у 133 из 134
+#     виньетирование на макс. поле = 100%; поле каталога за пределами
+#     полезного поля зрения — пучок срезан полностью, пятна не существует.
+# field_edge_inflate (26) — полевой RMS=inf при штатных полудиаметрах, но
+#     конечен при временном расширении ×1.4: полудиаметры LBO часто чуть
+#     занижены (прецедент проекта CODDINGTON_SD_INFLATE=1.4 в
+#     analysis/aberrations.py, analysis/tables.py, analysis/chromatism.py).
+#     Чинится в сканере пакетом C раздутыми полудиаметрами.
+# axis_beam_blocked (9) — FINITE-предмет (микрообъективы, репродукционные):
+#     chief оси OK, но ВСЕ зрачковые лучи оси падают (EDGE/MISS/TIR) даже
+#     при ×3.0 → осевой RMS=inf. Движковая находка (построение пучка для
+#     конечного предмета; в сканере не чинить).
+# spot_few_spots (2) — осевой/полевой RMS конечен, но полихроматическое
+#     пятно < 10 точек (большинство лучей срезано/ПВО) → 'no axial/max
+#     field MTF'; честный отказ.
+#
+# Порядок FAIL_CLASSES — канонический (от машинных причин к физическим);
+# классификация строк реестра идёт по приоритету проверок: efl0 → l0 →
+# chief_degenerate → field_edge_inflate → axis_beam_blocked →
+# field_fully_vignetted → spot_few_spots.
+FAIL_CLASS_EFL0 = 'unscannable_efl0'          # efl == 0.0: стёкла не декодированы
+FAIL_CLASS_L0 = 'unscannable_l0'              # L == 0.0: layout сломан
+FAIL_CLASS_CHIEF_DEGENERATE = 'chief_degenerate_axis'  # осевой chief MISS на zerogap
+FAIL_CLASS_FIELD_VIGNETTED = 'field_fully_vignetted'   # пучок поля срезан полностью
+FAIL_CLASS_FIELD_EDGE_INFLATE = 'field_edge_inflate'   # полю помогли бы ×1.4 полудиаметры
+FAIL_CLASS_AXIS_BLOCKED = 'axis_beam_blocked' # FINITE: весь осевой пучок срезан
+FAIL_CLASS_FEW_SPOTS = 'spot_few_spots'       # пятно < 10 точек → MTF пуста
+
+#: 7 классов первопричин отказов волны 3 (канонический порядок — см. блок выше).
+FAIL_CLASSES = (
+    FAIL_CLASS_EFL0,
+    FAIL_CLASS_L0,
+    FAIL_CLASS_CHIEF_DEGENERATE,
+    FAIL_CLASS_FIELD_VIGNETTED,
+    FAIL_CLASS_FIELD_EDGE_INFLATE,
+    FAIL_CLASS_AXIS_BLOCKED,
+    FAIL_CLASS_FEW_SPOTS,
+)
+
+#: Операции, пропускаемые как unscannable по классу (пакет C — skip-правила
+#: scan_system: op false + error = unscannable_error(op, класс)):
+#: efl0 — геометрия декодирована (vignette/chief осмысленны), полевых
+#: расчётов пятна нет; l0 — layout сломан, все полевые операции бессмысленны
+#: (vignette у MICROLEN[3..9] к тому же падает ZeroDivisionError).
+SKIP_OPS_BY_CLASS = {
+    FAIL_CLASS_EFL0: ('spot', 'mtf_geo'),
+    FAIL_CLASS_L0: ('vignette', 'chief', 'spot', 'mtf_geo'),
+}
+
+
+def detect_unscannable(efl, L):
+    """efl/L системы → unscannable-класс (EFL0 | L0) | None.
+
+    Правила (ТЗ TASK_CORPUS_V3, пакет B; skip-правила сканера — пакет C):
+    - efl ровно 0.0 при конечном L → FAIL_CLASS_EFL0 (стёкла не
+      декодированы, n≡1);
+    - иначе L ровно 0.0 → FAIL_CLASS_L0 (layout сломан, толщины обнулены).
+
+    efl/L могут быть None (отказ paraxial) — не класс; NaN тоже не 0.0.
+    Крошечный, но не нулевой efl (1e-270 у L=0-систем) — НЕ efl0:
+    сравнение точное, «почти ноль» сканируется. efl приоритетен:
+    (0.0, 0.0) → EFL0 (система Цуканова LENS_SPC[5], класс по efl0).
+    """
+    if efl == 0.0:
+        return FAIL_CLASS_EFL0
+    if L == 0.0:
+        return FAIL_CLASS_L0
+    return None
+
+
+def unscannable_error(op, cls):
+    """Оп + unscannable-класс → человекочитаемая строка error сканера.
+
+    Токен 'unscannable: efl=0' / 'unscannable: L=0' — стабильный префикс
+    для парсинга: его ищет corpus_stats (маркировка групп отказов), его
+    пишет пакет C в поле error вместо сообщения о трассировке.
+
+    cls вне {EFL0, L0} — программная ошибка (ValueError): skip-правил
+    для других классов нет.
+    """
+    if cls == FAIL_CLASS_EFL0:
+        return f'{op}: unscannable: efl=0 (стёкла не декодированы, n≡1)'
+    if cls == FAIL_CLASS_L0:
+        return f'{op}: unscannable: L=0 (layout сломан, толщины обнулены)'
+    raise ValueError(f'unscannable_error: класс {cls!r} не unscannable')
+
+
 # f' из имени системы (порядок паттернов как в scripts/lbo_verify_f.py):
 # f'=…, f=… (без апострофа — признак гидрообъектива), ф'/f' с пробелами.
 # re.IGNORECASE: US-патентные библиотеки пишут заглавным «F'=1» (261 система).

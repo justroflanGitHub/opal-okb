@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Тесты сканера корпуса (scripts/corpus_scan.py) — TASK_CORPUS_SCAN, SA-4,
 плюс волна 2 (TASK_CORPUS_SCAN_V2): CLI --ops, schema_version 2, 13 новых
-метрик, читатель обоих schema — scripts/corpus_stats.py.
+метрик, читатель обоих schema — scripts/corpus_stats.py; и волна 3
+(TASK_CORPUS_V3, пакет B): 7 классов первопричин отказов (FAIL_CLASSES —
+единый источник для stats и реестра), unscannable-контракт.
 
 Тестируем строго против контрактов из docs/tasks/CORPUS_PLAN.md: «Контракт CLI
 сканера» (--lib/--out/--limit/--quiet, коды возврата 0/2), «Контракт JSON» и
@@ -774,3 +776,126 @@ def test_stats_v2_anomalies_unknown_field(tmp_path):
     text = out.read_text(encoding='utf-8')
     assert '- а) null/не-числовые метрики: 0' in text, (
         f'ложный suspect при неизвестном поле системы:\n{text}')
+
+
+# --------------------------------------------------------------------------- #
+# 10. Классы отказов волны 3 (TASK_CORPUS_V3, пакет B)
+# --------------------------------------------------------------------------- #
+
+#: Единый источник контракта классов — сам сканер (для stats и реестра).
+sys.path.insert(0, str(BASE_DIR / 'scripts'))
+from corpus_scan import (  # noqa: E402
+    OPS as SCAN_OPS,
+    FAIL_CLASSES as SCAN_FAIL_CLASSES,
+    FAIL_CLASS_EFL0, FAIL_CLASS_L0, FAIL_CLASS_CHIEF_DEGENERATE,
+    FAIL_CLASS_FIELD_VIGNETTED, FAIL_CLASS_FIELD_EDGE_INFLATE,
+    FAIL_CLASS_AXIS_BLOCKED, FAIL_CLASS_FEW_SPOTS,
+    SKIP_OPS_BY_CLASS,
+    detect_unscannable, unscannable_error,
+)
+
+#: Канонический порядок токенов из docstring блока «Классы отказов волны 3»
+#: (от машинных причин к физическим). Независимая копия — контракт-тест
+#: не должен брать ожидания из проверяемого кода.
+CANONICAL_FAIL_CLASSES = (
+    'unscannable_efl0',
+    'unscannable_l0',
+    'chief_degenerate_axis',
+    'field_fully_vignetted',
+    'field_edge_inflate',
+    'axis_beam_blocked',
+    'spot_few_spots',
+)
+
+#: Реестр отказов с классами (артефакт пакет B) — в git, данные .LBO не нужны.
+REGISTRY_V3_JSON = BASE_DIR / 'docs' / 'reports' / 'corpus_v3_failures.json'
+requires_registry = pytest.mark.skipif(
+    not REGISTRY_V3_JSON.is_file(),
+    reason='нет docs/reports/corpus_v3_failures.json (артефакт пакет B)')
+
+
+def test_fail_classes_seven_canonical():
+    """FAIL_CLASSES — ровно 7 уникальных непустых токенов без пробелов,
+    порядок совпадает с каноническим из docstring блока."""
+    assert len(SCAN_FAIL_CLASSES) == 7, (
+        f'len(FAIL_CLASSES)={len(SCAN_FAIL_CLASSES)}, ожидали 7')
+    assert len(set(SCAN_FAIL_CLASSES)) == 7, (
+        f'токены классов не уникальны: {SCAN_FAIL_CLASSES!r}')
+    assert SCAN_FAIL_CLASSES == CANONICAL_FAIL_CLASSES, (
+        f'порядок FAIL_CLASSES {SCAN_FAIL_CLASSES!r} расходится с каноническим '
+        f'{CANONICAL_FAIL_CLASSES!r} (docstring блока в corpus_scan.py)')
+    for token in SCAN_FAIL_CLASSES:
+        assert isinstance(token, str) and token and ' ' not in token, (
+            f'токен класса {token!r} — пустой или с пробелом')
+
+
+def test_skip_ops_by_class_contract():
+    """SKIP_OPS_BY_CLASS: ключи ⊆ FAIL_CLASSES; значения — кортежи операций
+    ⊆ OPS сканера; spot/mtf_geo входят в skip обоих unscannable-классов."""
+    unknown = set(SKIP_OPS_BY_CLASS) - set(SCAN_FAIL_CLASSES)
+    assert not unknown, f'ключи SKIP_OPS_BY_CLASS вне FAIL_CLASSES: {unknown}'
+    for cls, skip in SKIP_OPS_BY_CLASS.items():
+        assert isinstance(skip, tuple), (
+            f'SKIP_OPS_BY_CLASS[{cls!r}] не кортеж: {skip!r}')
+        extra = set(skip) - set(SCAN_OPS)
+        assert not extra, f'{cls!r}: skip-операции вне OPS: {extra}'
+    assert {'spot', 'mtf_geo'} <= set(SKIP_OPS_BY_CLASS[FAIL_CLASS_EFL0]), (
+        'efl0: skip обязан содержать spot и mtf_geo')
+    assert {'spot', 'mtf_geo'} <= set(SKIP_OPS_BY_CLASS[FAIL_CLASS_L0]), (
+        'l0: skip обязан содержать spot и mtf_geo')
+
+
+def test_detect_unscannable():
+    """detect_unscannable: точное сравнение efl==0.0 (EFL0 приоритетен при
+    (0.0, 0.0)); None (отказ paraxial) и NaN — не класс; крошечный, но не
+    нулевой efl (1e-270 у L=0-систем) — НЕ efl0, а L==0.0 → L0."""
+    nan = float('nan')
+    assert detect_unscannable(0.0, 100.0) == FAIL_CLASS_EFL0
+    assert detect_unscannable(None, 100.0) is None
+    assert detect_unscannable(50.0, None) is None
+    assert detect_unscannable(None, None) is None
+    assert detect_unscannable(1e-270, 0.0) == FAIL_CLASS_L0
+    assert detect_unscannable(0.0, 0.0) == FAIL_CLASS_EFL0
+    assert detect_unscannable(nan, 0.0) == FAIL_CLASS_L0
+
+
+def test_unscannable_error_strings():
+    """unscannable_error: стабильные человекочитаемые строки error для
+    skip-правил (их ищет корпус_stats по подстроке 'unscannable: efl=0' /
+    'unscannable: L=0'); класс вне {EFL0, L0} — ValueError."""
+    assert unscannable_error('spot', FAIL_CLASS_EFL0) == (
+        'spot: unscannable: efl=0 (стёкла не декодированы, n≡1)')
+    assert unscannable_error('vignette', FAIL_CLASS_L0) == (
+        'vignette: unscannable: L=0 (layout сломан, толщины обнулены)')
+    with pytest.raises(ValueError):
+        unscannable_error('spot', FAIL_CLASS_FEW_SPOTS)
+    with pytest.raises(ValueError):
+        unscannable_error('spot', FAIL_CLASS_CHIEF_DEGENERATE)
+
+
+@requires_registry
+def test_registry_v3_classes_match_scanner():
+    """Реестр v3: класс каждой строки — токен из FAIL_CLASSES; class_counts
+    покрывает все 7 классов (ключи — те же константы) и в сумме даёт 216
+    (число отказов корпуса v2)."""
+    data = json.loads(REGISTRY_V3_JSON.read_text(encoding='utf-8'))
+    failures = data['failures']
+    assert data['total_failures'] == len(failures) == 216, (
+        f"total_failures={data['total_failures']}, строк {len(failures)}")
+
+    for row in failures:
+        assert row['class'] in SCAN_FAIL_CLASSES, (
+            f"{row['lib']}[{row['index']}]: класс {row['class']!r} — "
+            'не токен FAIL_CLASSES')
+
+    counts = data['class_counts']
+    assert set(counts) == set(SCAN_FAIL_CLASSES), (
+        f'ключи class_counts {set(counts) ^ set(SCAN_FAIL_CLASSES)} '
+        'расходятся с FAIL_CLASSES')
+    assert sum(counts.values()) == 216, (
+        f'сумма class_counts={sum(counts.values())}, ожидали 216')
+    # и по классам сходится с фактическими строками реестра
+    from collections import Counter
+    actual = Counter(row['class'] for row in failures)
+    assert dict(actual) == counts, (
+        f'class_counts {counts} расходится с фактическим {dict(actual)}')

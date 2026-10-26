@@ -39,9 +39,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # scripts/ — corpus_
 
 # Единый источник контракта операций — сам сканер (не дублируем кортежи):
 # OPS — весь конвейер, OPS_BASE — 6 базовых операций волны 1, V2_METRICS —
-# новые ключи по операциям (обратный индекс ниже выводится из него).
+# новые ключи по операциям (обратный индекс ниже выводится из него);
+# FAIL_CLASS_* — токены классов отказов волны 3 (TASK_CORPUS_V3): маркировка
+# unscannable-групп в таблице отказов.
 from corpus_scan import (OPS as OPS_ORDER, OPS_BASE as OPS_BASE_ORDER,  # noqa: E402
-                         V2_METRICS as SCAN_V2_METRICS)
+                         V2_METRICS as SCAN_V2_METRICS,                 # noqa: E402
+                         FAIL_CLASS_EFL0, FAIL_CLASS_L0)                # noqa: E402
 
 FCHECK_ORDER = ('ok', 'sign_flip', 'hydro', 'truncated', 'diverge')
 # (нижняя граница включительно, верхняя исключительно, метка)
@@ -669,13 +672,35 @@ def sec_v2_anomalies(data, systems):
     return lines
 
 
+# Стабильные unscannable-токены поля error (пишет scan_system волны 3 через
+# unscannable_error — corpus_scan.py, skip-правила пакет C) → токен класса
+# первопричины. Поиск подстрокой: op перед токеном вариируется
+# ('spot: unscannable: efl=0 …'); регистр значим — 'efl=0' не содержит 'L=0'.
+_UNSCANNABLE_MARKS = (
+    ('unscannable: efl=0', FAIL_CLASS_EFL0),
+    ('unscannable: L=0', FAIL_CLASS_L0),
+)
+
+
 def _error_groups_lines(fails):
-    """Строки таблицы отказов по префиксу error (sec_errors/sec_v2_errors)."""
+    """Строки таблицы отказов по префиксу error (sec_errors/sec_v2_errors).
+
+    Группы, чей error содержит unscannable-токен ('unscannable: efl=0' /
+    'unscannable: L=0'), помечаются токеном класса первопричины — приписка
+    '[unscannable_efl0]' / '[unscannable_l0]' к префиксу (волна 3,
+    TASK_CORPUS_V3). На входах без таких error (v1/v2) вывод битово прежний.
+    """
     groups = {}
     for s in fails:
         err = s.get('error')
         prefix = str(err).split(':', 1)[0].strip() if err else '(без error)'
         prefix = prefix or '(без error)'
+        if err:
+            err_s = str(err)
+            for token, cls in _UNSCANNABLE_MARKS:
+                if token in err_s:
+                    prefix = f'{prefix} [{cls}]'
+                    break
         groups.setdefault(prefix, []).append(s)
     ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     lines = ['',

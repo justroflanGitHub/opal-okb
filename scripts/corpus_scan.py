@@ -35,6 +35,7 @@ import os
 import re
 import sys
 import time
+from contextlib import contextmanager
 from datetime import datetime
 
 # Консоль Windows (cp1251): имена систем cp866 → utf-8 без падений вывода
@@ -50,6 +51,7 @@ from domain.calculations import paraxial_trace, seidel_aberrations  # noqa: E402
 from analysis.tables import taboc1_rows                            # noqa: E402
 from analysis.vignetting import compute_vignetting                 # noqa: E402
 from analysis.aberrations import (                                 # noqa: E402
+    CODDINGTON_SD_INFLATE,
     compute_chief_ray_characteristics,
     compute_geometric_mtf,
     compute_polychromatic_rms,
@@ -172,6 +174,24 @@ def detect_unscannable(efl, L):
     return None
 
 
+def unscannable_reason(cls):
+    """Unscannable-класс → причина БЕЗ префикса операции (пакет C).
+
+    Тело строки error сканера для skip-правил: scan_system кладёт его в
+    why[op], а финальный цикл error добавляет префикс 'op: ' — двойного
+    'spot: spot:' не возникает. Стабильный токен 'unscannable: efl=0' /
+    'unscannable: L=0' ищет corpus_stats (маркировка групп отказов).
+
+    cls вне {EFL0, L0} — программная ошибка (ValueError): skip-правил
+    для других классов нет.
+    """
+    if cls == FAIL_CLASS_EFL0:
+        return 'unscannable: efl=0 (стёкла не декодированы, n≡1)'
+    if cls == FAIL_CLASS_L0:
+        return 'unscannable: L=0 (layout сломан, толщины обнулены)'
+    raise ValueError(f'unscannable_reason: класс {cls!r} не unscannable')
+
+
 def unscannable_error(op, cls):
     """Оп + unscannable-класс → человекочитаемая строка error сканера.
 
@@ -182,11 +202,7 @@ def unscannable_error(op, cls):
     cls вне {EFL0, L0} — программная ошибка (ValueError): skip-правил
     для других классов нет.
     """
-    if cls == FAIL_CLASS_EFL0:
-        return f'{op}: unscannable: efl=0 (стёкла не декодированы, n≡1)'
-    if cls == FAIL_CLASS_L0:
-        return f'{op}: unscannable: L=0 (layout сломан, толщины обнулены)'
-    raise ValueError(f'unscannable_error: класс {cls!r} не unscannable')
+    return f'{op}: {unscannable_reason(cls)}'
 
 
 # f' из имени системы (порядок паттернов как в scripts/lbo_verify_f.py):
@@ -366,6 +382,33 @@ def _mtf_contrast(system, field_y):
     return mtf30, mtf50
 
 
+@contextmanager
+def _inflated_sds(system):
+    """Временное расширение полудиаметров системы ×CODDINGTON_SD_INFLATE.
+
+    Scanner-side параметр трассировки волны 3 (TASK_CORPUS_V3, пакет C):
+    полудиаметры LBO часто чуть занижены, лучи поля идут по самой кромке
+    и срезаются EDGE при штатных значениях. Прецедент проекта — та же
+    константа CODDINGTON_SD_INFLATE=1.4 в analysis/aberrations.py
+    (compute_field_aberrations, coddington_trace), analysis/tables.py
+    (taboc1) и analysis/chromatism.py; движок не тронут — множитель
+    импортируется из analysis.aberrations (единый источник).
+
+    Сохраняет исходные semi_diameter, умножает только ненулевые (>0) —
+    как в compute_field_aberrations; в finally (в том числе при
+    исключении) возвращает исходные значения.
+    """
+    orig_sds = [s.semi_diameter for s in system.surfaces]
+    for s in system.surfaces:
+        if s.semi_diameter > 0:
+            s.semi_diameter = abs(s.semi_diameter) * CODDINGTON_SD_INFLATE
+    try:
+        yield
+    finally:
+        for s, sd in zip(system.surfaces, orig_sds):
+            s.semi_diameter = sd
+
+
 def scan_system(entry, lib, index, selected=OPS):
     """Конвейер одной записи load_lbo → dict системы по контракту JSON.
 
@@ -428,6 +471,24 @@ def scan_system(entry, lib, index, selected=OPS):
         else:
             ops['paraxial'] = True
 
+    # unscannable (волна 3, пакет C): efl/L → класс первопричины. У систем
+    # efl0 (стёкла не декодированы, n≡1) и l0 (layout сломан, толщины
+    # обнулены) полевые расчёты бессмысленны или падают — их skip-операции
+    # (SKIP_OPS_BY_CLASS) не выполняются: ops[op]=False, метрики остаются
+    # null, why[op]=причина ('unscannable: ...' — строку error 'op: '
+    # + причина соберёт финальный цикл ниже). paraxial dict без efl →
+    # detect вернёт None (efl None) — скан как в v2. Незатронутые операции
+    # (paraxial/seidel/taboc1/pupils; у efl0 и vignette/chief) идут как
+    # раньше; f_check и базовые метрики — без изменений.
+    unscannable_cls = detect_unscannable(metrics['efl'], metrics['L'])
+    skip_ops = (SKIP_OPS_BY_CLASS.get(unscannable_cls, ())
+                if unscannable_cls is not None else ())
+    if skip_ops:
+        reason = unscannable_reason(unscannable_cls)
+        for op in skip_ops:
+            if op in ops:  # только операции из selected
+                why[op] = reason
+
     # seidel: суммы Зейделя 3-го порядка (этап независим от paraxial)
     if 'seidel' in ops:
         try:
@@ -471,8 +532,9 @@ def scan_system(entry, lib, index, selected=OPS):
             ops['pupils'] = True
 
     # vignette: виньетирование верх/низ на макс. поле, % (TABBEA);
-    # выходной зрачок не дублируется — это v1-ключ exit_pupil
-    if 'vignette' in ops:
+    # выходной зрачок не дублируется — это v1-ключ exit_pupil.
+    # unscannable l0 (layout сломан) — skip: op false + why=причина
+    if 'vignette' in ops and 'vignette' not in skip_ops:
         try:
             field_max = _max_field(system)
             vign = compute_vignetting(system, field_max,
@@ -486,13 +548,20 @@ def scan_system(entry, lib, index, selected=OPS):
                 metrics['vignette_max_field'] = field_max
                 metrics['vignette_up_pct'] = up
                 metrics['vignette_down_pct'] = down
-        except Exception as exc:  # noqa: BLE001
+        except ZeroDivisionError as exc:
+            # Бэкстоп волны 3 (корпусные L0-системы скипаются выше):
+            # не-L0 система с вырожденным отступом предмета (d=0 в
+            # _pupil_field_ray при FINITE-предмете) — почему-осмысленно.
+            why['vignette'] = (f'ZeroDivisionError: {exc} '
+                               '(проверить отступ предмета/thickness)')
+        except Exception as exc:  # noqa: BLE001 — отказ этапа не валит скан
             why['vignette'] = _exc(exc)
 
     # chief: дисторсия и астигматические отрезки главного луча на макс.
     # поле; безполевая система (макс. поле 0) — валидный осевой случай:
-    # ops true, метрики не определены (None), ошибки нет
-    if 'chief' in ops:
+    # ops true, метрики не определены (None), ошибки нет.
+    # unscannable l0 (layout сломан) — skip: op false + why=причина
+    if 'chief' in ops and 'chief' not in skip_ops:
         try:
             field_max = _max_field(system)
             if field_max <= 0.0:
@@ -526,49 +595,58 @@ def scan_system(entry, lib, index, selected=OPS):
 
     # spot: полихроматический RMS пятна на оси и на макс. поле (мкм,
     # мм ×1000); сетка 30×30, все λ системы с весами; безполевая —
-    # только осевой RMS, op true
-    if 'spot' in ops:
+    # только осевой RMS, op true. Трассировка — с временно раздутыми
+    # полудиаметрами ×1.4 (_inflated_sds: полудиаметры LBO часто чуть
+    # занижены, лучи поля срезаются кромкой; vignette/chief НЕ раздуты —
+    # их числа бит-в-бит v2). unscannable efl0/l0 — skip: op false +
+    # why=причина
+    if 'spot' in ops and 'spot' not in skip_ops:
         try:
-            rms_axis = _finite(compute_polychromatic_rms(
-                system, num_rays=30, field_y=0.0))
-            if rms_axis is None:
-                why['spot'] = 'axis RMS not finite'
-            else:
-                metrics['spot_rms_axis_um'] = rms_axis * 1000.0
-                field_max = _max_field(system)
-                if field_max > 0.0:
-                    rms_field = _finite(compute_polychromatic_rms(
-                        system, num_rays=30, field_y=field_max))
-                    if rms_field is None:
-                        why['spot'] = 'max field RMS not finite'
-                    else:
-                        metrics['spot_rms_max_field_um'] = rms_field * 1000.0
+            with _inflated_sds(system):
+                rms_axis = _finite(compute_polychromatic_rms(
+                    system, num_rays=30, field_y=0.0))
+                if rms_axis is None:
+                    why['spot'] = 'axis RMS not finite'
+                else:
+                    metrics['spot_rms_axis_um'] = rms_axis * 1000.0
+                    field_max = _max_field(system)
+                    if field_max > 0.0:
+                        rms_field = _finite(compute_polychromatic_rms(
+                            system, num_rays=30, field_y=field_max))
+                        if rms_field is None:
+                            why['spot'] = 'max field RMS not finite'
+                        else:
+                            metrics['spot_rms_max_field_um'] = \
+                                rms_field * 1000.0
                 if not why.get('spot'):
                     ops['spot'] = True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — отказ этапа не валит скан
             why['spot'] = _exc(exc)
 
     # mtf_geo: геометрическая ЧКХ (FFT пятна) — тангенциальный контраст
     # на 30 и 50 лин/мм, ось и макс. поле; безполевая — только осевые,
-    # op true; пустое пятно/ЧКХ — отказ этапа
-    if 'mtf_geo' in ops:
+    # op true; пустое пятно/ЧКХ — отказ этапа. Пятно — с раздутыми
+    # полудиаметрами ×1.4 (_inflated_sds, как в spot). unscannable
+    # efl0/l0 — skip: op false + why=причина
+    if 'mtf_geo' in ops and 'mtf_geo' not in skip_ops:
         try:
-            axis = _mtf_contrast(system, 0.0)
-            if axis is None:
-                why['mtf_geo'] = 'no axial MTF (empty spot?)'
-            else:
-                metrics['mtf30_axis'], metrics['mtf50_axis'] = axis
-                field_max = _max_field(system)
-                if field_max > 0.0:
-                    oblique = _mtf_contrast(system, field_max)
-                    if oblique is None:
-                        why['mtf_geo'] = 'no max field MTF (empty spot?)'
-                    else:
-                        (metrics['mtf30_max_field'],
-                         metrics['mtf50_max_field']) = oblique
+            with _inflated_sds(system):
+                axis = _mtf_contrast(system, 0.0)
+                if axis is None:
+                    why['mtf_geo'] = 'no axial MTF (empty spot?)'
+                else:
+                    metrics['mtf30_axis'], metrics['mtf50_axis'] = axis
+                    field_max = _max_field(system)
+                    if field_max > 0.0:
+                        oblique = _mtf_contrast(system, field_max)
+                        if oblique is None:
+                            why['mtf_geo'] = 'no max field MTF (empty spot?)'
+                        else:
+                            (metrics['mtf30_max_field'],
+                             metrics['mtf50_max_field']) = oblique
                 if not why.get('mtf_geo'):
                     ops['mtf_geo'] = True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — отказ этапа не валит скан
             why['mtf_geo'] = _exc(exc)
 
     rec['f_check'] = make_f_check(rec['name'] or '', metrics['efl'])

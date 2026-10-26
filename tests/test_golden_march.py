@@ -13,8 +13,6 @@
 * KURSOVIK з.1.0 — предел трубы афокала (числовой пин —
   test_kursovik_march_tube_limit_ray в test_golden_verify.py).
 """
-from pathlib import Path
-
 import pytest
 
 from analysis.golden_march import (
@@ -22,11 +20,7 @@ from analysis.golden_march import (
     surface_semis,
 )
 from analysis.golden_verify import _n_media
-
-GOLDEN_DOS = Path(r'C:\GOLDEN_DOS')
-
-requires_stand = pytest.mark.skipif(
-    not GOLDEN_DOS.exists(), reason='нет стенда C:\\GOLDEN_DOS')
+from tests.conftest import GOLDEN_DOS, requires_stand
 
 
 def _state(name, zone):

@@ -129,17 +129,42 @@ _AXIAL1_EDGES = (17, 28, 39, 52, 65, 77)
 _AXIAL2_EDGES = (16, 26, 36, 47, 57)
 
 
-def _fixed_cells(line: str, edges, left0: int):
+def _fixed_cells(line: str, edges: tuple, left0: int) -> list:
     """Значения правоориентированных полей: каждое поле = отрезка
-    (правая граница предыдущего поля, эта правая граница]."""
+    (правая граница предыдущего поля, эта правая граница].
+
+    Компактная раскладка (VV): если число упёрлось в правую границу
+    поля и продолжается за ней (следующий символ — цифра/точка),
+    поле дочитывается до конца числа — иначе значение молча
+    обрезается (−.67830 → −.678). Остаток хвостовых цифр числа в
+    начале следующего поля под маску ``_NUM`` (цифры без точки) не
+    попадает и на разбор соседа не влияет."""
     values = []
     prev = left0
     for e in edges:
-        text = line[prev:e].strip() if prev < len(line) else ''
+        text = line[prev:e] if prev < len(line) else ''
         m = _NUM.search(text)
+        if m is not None and m.end() == len(text) and e < len(line) \
+                and (line[e].isdigit() or line[e] == '.'):
+            # число упёрлось в правую границу поля и продолжается за ней —
+            # печать шире стандартной раскладки (VV): дочитываем до конца
+            # числа, иначе значение молча обрезается (-.67830 → -.678)
+            j = e
+            while j < len(line) and (line[j].isdigit() or line[j] == '.'):
+                j += 1
+            m = _NUM.search(line[prev:j])
         values.append(float(m.group(0)) if m else None)
         prev = e
     return values
+
+
+def _is_star_filler(line: str) -> bool:
+    """Строка-заполнитель OPAL: невыполненный зональный луч печатается
+    звёздочками во всех колонках без метки зоны (VV з.1.0) — такую строку
+    таблицы пропускаем, не обрывая разбор (не путать с звёздочным
+    ЗАПОЛНЕНИЕМ колонок при метке-числе — его снимает _NUM-поиск в
+    _fixed_cells)."""
+    return bool(line) and set(line) <= {'*', ' '}
 
 
 def parse_golden_prn(path: str) -> dict:
@@ -228,6 +253,9 @@ def parse_golden_prn(path: str) -> dict:
                     i += 1
                     while i < n:
                         row = lines[i]
+                        if _is_star_filler(row):
+                            i += 1
+                            continue
                         m = _NUM.match(row.strip())
                         if not m:
                             break
@@ -245,6 +273,9 @@ def parse_golden_prn(path: str) -> dict:
                     k = j + 1
                     while k < n:
                         row = lines[k]
+                        if _is_star_filler(row):
+                            k += 1
+                            continue
                         m = _NUM.match(row.strip())
                         if not m:
                             break
@@ -524,8 +555,37 @@ from analysis.aberrations import (VIRTUAL_WAVE_KAPPA,
                                   edge2_print_lambda as _edge2_print_lambda)
 
 
+#: Порог «афокального выхода» для опорной плоскости строк печати:
+#: |L_p| выше — вергенция параксиального луча ~0 (ST4/LAB6_GAS —
+#: предмет в переднем фокусе), опора вырождается в вершину (0).
+AFOCAL_L_P_LIMIT = 1e6
+
+
+def _print_anchor_l_ref(L_p: float | None,
+                        vertex_virtual: bool) -> float:
+    """Опорная плоскость строк печати по пересечению параксиального
+    луча с осью L_p (G44, дополнение §P6 — единое правило для
+    прод/попер мм-строк TABOC1 и Sp2):
+
+    * афокальный выход (L_p нет / |L_p| ≥ ``AFOCAL_L_P_LIMIT``) — 0;
+    * мнимое изображение (L_p < 0) при ``vertex_virtual`` (мнимый
+      предмет либо λ-таблица печати E2) — вершина последней
+      поверхности (0): OPTICS#1 зона-0 −17.742 = |L_p|; OBEKTIV/
+      OKULAR — λ-таблицы решены на вершинной опоре;
+    * прочее (в т.ч. мнимое изображение при реальном предмете) —
+      точка Гаусса (L_p): 2222/WA2 — Sp2 = 1000/(sP′−L_p) точно,
+      прод = L−L_p ≤ 2e-4, попер ≤ 1.2e-3.
+    """
+    if L_p is None or abs(L_p) >= AFOCAL_L_P_LIMIT:
+        return 0.0
+    if L_p < 0.0 and vertex_virtual:
+        return 0.0
+    return L_p
+
+
 def near_object_axial_fan(system, wl: float, zones, na: float,
-                          z_obj: float, wave_kappa: dict = None) -> list:
+                          z_obj: float, wave_kappa: dict = None,
+                          vertex_virtual: bool = False) -> list:
     """Осевой веер ближнего предмета (P6.2): лучи из точки предмета
     (0, 0, z_obj — f64@0x4C) под углом ``u = arcsin(zone·NA)`` к оси —
     OPAL Ax = sin NA габаритной строки (ST4 0.125, досье §3.7). Мнимый
@@ -551,6 +611,10 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
     центровка на вершину z_last, как прод/попер P6). Таблица
     ``{wl: (κ0, κ2)}`` — решена из банка; якорь C_eff = z_last+1/κ0
     не параксиален (мнимое — 3-й порядок знаменателя mixed).
+
+    ``vertex_virtual`` (G44) — опора строк печати при мнимом изображении:
+    вершина последней поверхности (мнимый предмет — OPTICS#1, либо
+    система с λ-таблицей E2) вместо точки Гаусса (2222/WA2).
     """
 
     from ray_tracing import Ray, trace_ray_through_system
@@ -566,10 +630,8 @@ def near_object_axial_fan(system, wl: float, zones, na: float,
         y0_par = (z_obj - z0_par) * (-u0_par)
     y_p, u_p = _paraxial_ray(system, wl, y0_par, u0_par, z0_par)
     L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None    # ∞ — афокальный выход
-    # Мнимое изображение (L_p < 0, OPTICS#1): опорная плоскость строк —
-    # вершина последней поверхности, не точка Гаусса: прод = L (зона-0
-    # −17.742 = |L_p|), попер = −y на вершине, Sp2 = 1000/sP' (досье §P6)
-    L_ref = 0.0 if (L_p is not None and L_p < 0.0) else L_p
+    # опора строк печати — единое правило G44 (см. _print_anchor_l_ref)
+    L_ref = _print_anchor_l_ref(L_p, vertex_virtual)
     sp_prime = paraxial_of(system, wl)['sP_prime']
     z_last = sum(s.thickness for s in system.surfaces[:-1])
     z_pup = z_last + sp_prime
@@ -747,8 +809,11 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                 y_p, u_p = _paraxial_ray(system, wl, y0p, u0p, z0p)
                 L_p = (-y_p / u_p) if abs(u_p) > 1e-15 else None
                 # мнимое изображение (L_p<0): опора — вершина последней
-                # поверхности, Sp2 = 1000/sP' (OPTICS#1 −16.401, §P6)
-                L_ref = 0.0 if (L_p is not None and L_p < 0.0) else L_p
+                # поверхности для мнимого предмета и E2-λ-систем, точка
+                # Гаусса для прочих (2222/WA2: 1000/(sP′−L_p) точно, G44;
+                # единое правило — _print_anchor_l_ref)
+                L_ref = _print_anchor_l_ref(
+                    L_p, (z_obj > 0.0) or (name in EDGE2_PRINT_LAMBDA))
                 port_sp2 = (1000.0 / (parax['sP_prime'] - L_ref)
                             if L_ref is not None else None)
             else:
@@ -908,19 +973,29 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
         # предмета), метка = −100·tg u'.
         units = prn['axial1'].get('units', ('мм', 'мм'))
         a1_rows = prn['axial1'].get('rows', {})
-        na = ax_row['Ax'] if ax_row else opj['aperture_semi']
+        # NA веера: габаритная Ax → из колонки Н ЗР (100·tg(arcsin(z·NA)),
+        # юнит tg*100) → заданная апертура OPJ (крайний случай: у VV
+        # габаритов нет, а 0x5A — не мм: 28.6 против реальных 0.032 —
+        # arcsin доменного краха)
+        na = ax_row['Ax'] if ax_row else None
         if not na:
             hzr_max = max((r['h_zr'] for r in
                            prn['axial2'].get('rows', {}).values()
                            if r.get('h_zr') is not None), default=0.0)
             na = hzr_max / 100.0
+        if not na:
+            na = opj['aperture_semi']
         z_obj = opj['object_pos']
         z_last = sum(s.thickness for s in system.surfaces[:-1])
+        # опора строк при мнимом изображении: вершина для мнимого
+        # предмета и E2-λ-систем, точка Гаусса для прочих (G44)
+        vertex_virtual = (z_obj > 0.0) or (name in EDGE2_PRINT_LAMBDA)
         port_rows = {r['zone']: r for r in
                      near_object_axial_fan(system, wl, list(a1_rows.keys()),
                                            na, z_obj,
                                            wave_kappa=VIRTUAL_WAVE_KAPPA
-                                           .get(name))}
+                                           .get(name),
+                                           vertex_virtual=vertex_virtual)}
         for zone, et in sorted(a1_rows.items(), reverse=True):
             pr = port_rows.get(zone)
             if et['long'] and et['long'][0] is not None:
@@ -997,11 +1072,13 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                             z_img = z_last + l_ref
                             port_v = pr['y_exit'] + pr['slope'] * (z_img
                                                                    - pr['z_exit'])
-                            if l_ref == 0.0 and pr['L_p'] is not None \
-                                    and pr['L_p'] < 0.0:
-                                # мнимое изображение: ТА на вершине с
-                                # обратным знаком (OPTICS#1 +2.741, §P6)
-                                port_v = -port_v
+                    # G44: ТА при МНИМОМ ИЗОБРАЖЕНИИ (L_p<0 — OPTICS#1
+                    # +2.741 §P6, 2222/WA2 — модули точны ≤6e-4) либо
+                    # МНИМОМ ПРЕДМЕТЕ (LEXA13/TWO_1/LEXA31) печатается с
+                    # обратным знаком; правило ИЛИ — одна смена
+                    if port_v is not None and pr.get('L_p') is not None \
+                            and (pr['L_p'] < 0.0 or z_obj > 0.0):
+                        port_v = -port_v
                     # E2: мм-семья попер — мультипликатор λ¹ (OPTICS#1),
                     # досье GFIX §FINAL(i)
                     if port_v is not None:

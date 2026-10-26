@@ -2,6 +2,399 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.30.0-registry] — 2026-10-24
+
+### Реестр 140 → 500+ (TASK_REGISTRY_500)
+
+- **Пакет 1 — экспорт (+27 команд, итого 167)**: `commands/exportio.py`
+  (единая запись CSV/JSON/TXT по расширению) + `commands/builtin/export_cmds.py`:
+  generic `export.rows/data/text/command` (любая команда реестра → файл),
+  9 табличных выгрузок OPAL (`tables.taboc1/taboc2/tabgl/tabpr2/tabax3/
+  tabbea/tabeap/tabesb/field_zones.export`) и 14 выгрузок данных
+  (пятно, веера, ЧКХ геометр./дифракц., ФКЭ, ФРЛ, Цернике, Зейдель,
+  пучок 3D, параксиал). Экспорт — композиция: выполняется команда-источник
+  того же реестра, результат пишет exportio. Тесты:
+  `tests/test_commands_export.py` + smoke-инвариант категории export
+  и общий счётчик реестра в `tests/test_commands_builtin.py`.
+
+- **Пакет 2 — system_ext (+33 команды, итого 200)**:
+  `commands/builtin/system_ext_cmds.py` — контекст REPL
+  (list/select/drop/clone/rename), скалярные поля (*.set: имя, комментарий,
+  объект, изображение, диафрагма, экранирование, режим пучка, апертура),
+  пересчёты апертуры (domain/aperture.py: convert/epd/from_epd/
+  pupil_distance), поверхности (get/duplicate/move/aspheric/n_override),
+  поля и λ (remove/clear/weight/auto/primary), стёкла (list/replace),
+  `system.validate` (санити). Тесты: `tests/test_commands_system_ext.py`
+  + smoke-инвариант (мутации на свежих копиях file).
+
+- **Пакет 3 — LBO/библиотеки/сравнение (+21 команда, итого 221)**:
+  `commands/builtin/lbo_cmds.py` — `file.lbo.*` (info/list/count/get/
+  search/save/save_all/scan; движок fileio/lbo_io + выбор записи
+  systemio), `library.*` (summary/categories/entries/search/generators/
+  dirs/load/batch — пакетный прогон по LBO с фильтром и метриками
+  surfaces/paraxial/seidel/spot_rms), `file.diff` + `file.compare.*`
+  (структура/параксиал/Зейдель/пятно) + `file.checksum`. LBO-тесты —
+  `requires_lbo*` (extracted/ локальны); категории lbo/library держат
+  свой набор в `tests/test_commands_lbo.py` (конвенция trace/aber).
+
+- **Пакет 4 — каталог стёкол/спектр (+19 команд, итого 240)**:
+  `commands/builtin/glass_ext_cmds.py` — `catalog.glass.list/filter/
+  dispersion/range/abbe/compare/similar/valid/pairs` + `catalog.sources`,
+  `catalog.agf.status`, `catalog.achromat.options` (варианты дублета по
+  парам через существующий дизайнер achromat.py), `catalog.spectral.*`
+  (lines/get/nearest/element/match — справочник utils/spectral_lines),
+  `diagram.data/types` (карта n–V headless). Тесты:
+  `tests/test_commands_glass_ext.py`.
+
+- **Пакет 5 — units/spatial (+18 команд, итого 258)**:
+  `commands/builtin/units_cmds.py` — `units.*` (Г.ММСС↔градусы,
+  мм↔диоптрии, высоты зрачков, Tg·100, конвертеры λ и углов;
+  analysis/units.py впервые обёрнут целиком) и `spatial.*`
+  (rotation_matrix, rotate_vector, mat_vec/mat_tvec, ray_rotate,
+  coord_breaks, vertices, surface_frames — domain/spatial.py +
+  compute_z_positions). Тесты: `tests/test_commands_units.py`.
+
+- **Пакет 6 — calc_ext (+20 команд, итого 278)**:
+  `commands/builtin/calc_ext_cmds.py` — обёртки domain/calculations.py
+  (calc.n, ГЮЭ-радиусы, эффективный полудиаметр, виньетирование луча),
+  параксиальные своды (кардинальные точки, зрачки, увеличение,
+  Лагранж-инвариант, NA), формулы (сагитты, силы поверхностей, тонкая
+  линза, Эйри, дифракционный срез, ГРИП, ОПС, сопряжённые отрезки).
+  Тесты: `tests/test_commands_calc_ext.py`.
+
+- **Пакет 7 — sweep/seidel3 (+19 команд, итого 297)**:
+  `commands/builtin/sweep_cmds.py` — развёртки по полям (spot RMS/ЧКХ/
+  Штрель/ФКЭ/ФРЛ/хром. смещение), по λ, по дефокусу (пятно и волновой
+  фронт), зоны зрачка, азимуты, апертура, положение диафрагмы (суммы
+  Зейделя) — циклы поверх существующих движков без новых ядер;
+  `seidel3.*` — только верифицируемые величины из сумм (Петцваль R=1/SIV,
+  ранжирование, нормировка, хроматизм положения/увеличения по λ).
+  Поперечные аберрации прямо из SI..SV — blocked (нормировка
+  вспомогательных лучей порта не формализована). Тесты:
+  `tests/test_commands_sweep.py`.
+
+- **Пакет 8 — tol (+15 команд, итого 312)**:
+  `commands/builtin/tol_cmds.py` — чувствительность EFL/RMS/сумм Зейделя
+  к радиусам/толщинам/стёклам (центральные разности поверх параксиала и
+  пятна), чувствительность к наклону/децентру через смещение центроида
+  (RMS-метрика чётна и даёт машинный ноль), вклады поверхностей,
+  худшие поверхности, обратные допуски (tol = budget/|grad|),
+  распределение бюджета (RSS-сборка), применение возмущения и
+  Monte-Carlo по seed. Тесты: `tests/test_commands_tol.py`.
+
+- **Пакет 10 — quality (+19 команд, итого 331)**:
+  `commands/builtin/quality_cmds.py` — сводные метрики качества как
+  композиция движков psf/mtf/strehl/spot и сестринских команд
+  (mtf.curve/diffr.mtf.limited/calc.airy через ctx-пробу): диаметры зон
+  задержанной энергии 50/80/90 % (геометрически и по дифракционной
+  ФРТ), RMS по полям и λ + полихрома, сводная таблица полей, матрица
+  MTF частоты×поля, полихроматическая MTF, предельная частота порога,
+  площадь под ЧКХ (доля от дифракционного предела), гео vs дифракция,
+  полихроматический Штрель по полям, СКВ волнового фронта по полю,
+  паспорт системы, сравнение двух систем, пороговые проверки
+  (MTF/Штрель/RMS/ФКЭ + агрегат check.all) и режим ограничения
+  (дифракция vs аберрации по RMS/Эйри). Тесты:
+  `tests/test_commands_quality.py` + smoke-инвариант категории quality
+  и счётчик реестра 331 в `tests/test_commands_builtin.py`.
+
+- **Пакет 11 — report (+16 команд, итого 347)**:
+  `commands/builtin/report_cmds.py` — текстовые отчёты для печати
+  (готовый форматированный ``text`` в ответе, стиль fileio/protocol.py;
+  опция ``out`` пишет .txt через exportio). Расчёт — композиция
+  сестринских команд через registry.execute (живая система под
+  служебным именем в контексте, логика не дублируется): структурные
+  перечни (report.system/surfaces/fields/glasses — n из каталога),
+  параксиальные характеристики (calc.paraxial), суммы Зейделя
+  (seidel.sums), хроматизм по λ (calc.paraxial.multi_wl), внеосевые
+  аберрации по полям (analyze.field_aberrations), RMS кружка
+  (quality.spot.summary), зоны энергии (quality.ee.diameters), матрица
+  ЧКХ (quality.mtf.matrix), Штрель (quality.strehl.summary), СКВ
+  волнового фронта (quality.wavefront.summary), свод качества
+  (quality.passport + quality.regime), таблицы порта текстом
+  (report.tables: TABOC1/TABOC2/TABGL/TABPR2/TABAX3/TABBEA/TABESB/
+  TABEAP — селектор, сбой секции не роняет отчёт) и полный свод всех
+  секций (report.full). Тесты: `tests/test_commands_report.py` +
+  smoke-инвариант категории report и счётчик реестра 347 в
+  `tests/test_commands_builtin.py`.
+
+- **Пакет 12 — plot_ext (+15 команд, итого 362)**:
+  `commands/builtin/plot_ext_cmds.py` — расширенные headless-графики
+  PNG (matplotlib Agg, конвенции opt_cmds._save_png), дополнительные к
+  8 plot.* Волны 3; новых вычислительных ядер нет — только существующие
+  движки и сестринские команды (registry.execute с системой под
+  служебным именем `_plotx_*`): схема системы 2D с поверхностями-дугами,
+  стёклами, стопом и веерами лучей по полям (plot.layout, ANALIZE §4.8),
+  каустика с перетяжкой RMS(z) (plot.caustic), виньетирование и
+  светораспределение по полям (plot.vignetting), хроматизм f′(λ)/Δf′(λ)
+  (plot.chromatism), карта волнового фронта W(x,y) со СКВ/PV
+  (plot.wavefront), стёкла системы на карте nd–vd с ломаной коррекции
+  (plot.glassmap, данные diagram.glasses), бар-чарт сумм Зейделя
+  (plot.seidel, данные seidel.sums), карта полей (plot.fields), ЧКХ и
+  ФКЭ семействами по полям (plot.mtf.family / plot.ee.family), сетка
+  пятен (plot.spot.grid), веера dy по полям (plot.fan.fields), глубина
+  фокуса с порогом круга нерезкости (plot.dof), маска зрачка
+  «прошёл/срезан» (plot.pupil.vign, данные trace.grid3d) и срезы ФРТ с
+  FWHM (plot.psf.slice). Тесты: `tests/test_commands_plot_ext.py` +
+  smoke-инвариант категории plot (23 plot.*) и счётчик реестра 362 в
+  `tests/test_commands_builtin.py`.
+
+- **Пакет 13 — meta (+12 команд, итого 374)**:
+  `commands/builtin/meta_cmds.py` — интроспекция реестра и окружения
+  для агентов (единая точка самопознания реестра без чтения исходников);
+  команды работают с реестром-замыканием из register(), а не с
+  default_registry — тесты с изолированными реестрами видят свой набор:
+  registry.stats (всего/по категориям), registry.categories (число
+  команд + описание), registry.list (фильтры категория/префикс),
+  registry.search (подстрока имени/описания/категории, без регистра),
+  registry.schema (параметры команды: типы/обязательность/умолчания;
+  несуществующая → not_found с подсказкой близких имён по общему
+  префиксу), registry.category.info (команды категории с сигнатурами),
+  registry.params (какие команды принимают параметр X, фильтр по типу),
+  registry.export (снимок реестра JSON через exportio, опция out),
+  app.info (версия проекта из верхнего релиза CHANGELOG.md — в рантайме,
+  без магических строк; Python, платформа, счётчики реестра), app.env
+  (Python, ОС, кодировки, доступность/версии numpy и matplotlib),
+  app.paths (каталоги данных из констант catalog.library: BASE_DIR/
+  OPJ_DIR/LBO_DIR + наличие и число файлов), help.command (описание +
+  параметры + пример вызова CLI с умолчаниями/заглушками по типам).
+  Тесты: `tests/test_commands_meta.py` (включая изолированный реестр
+  Registry() + meta register — ровно 12 команд, замыкание) +
+  smoke-инвариант категорий registry/app/help и счётчик реестра 374 в
+  `tests/test_commands_builtin.py`.
+
+- **Пакет 14 — adv_ext (+21 команда, итого 395)**:
+  `commands/builtin/adv_ext_cmds.py` — расширения продвинутого анализа
+  adv.* (дополнение к 8 adv.* Волны 1 из aber_cmds; префиксы Волны 3
+  psf/diffr/zern/mtf/strehl/focus не занимались — пины WAVE3_EXPECTED
+  нетронуты). Объёмная ФРТ через фокус: psf.focus_stack (срезы-метрики
+  пик/Штрель/FWHM/r₈₀ на сетке дефокуса, дефокус в мм ↔ волнах по
+  формуле advanced.PARAXIAL_DEFOCUS_FACTOR), psf.waist (перетяжка:
+  параболическое уточнение, осевой FWHM, асимметрия), psf.fwhm,
+  psf.centroid (энергетический центр по полям). Полихроматическая
+  свёртка: psf.poly / lsf.poly (некогерентная взвешенная сумма по λ на
+  общей сетке, билинейная передискретизация). Свёртка с объектом:
+  slit_image (щель конечной ширины, convolve_fft), convolve.profile
+  (отклик на произвольный 1D-профиль через ФРЛ). Миры СШАФ-1951:
+  usaf.table (ν = 2^(G+(E−1)/6), именованная константа стандарта),
+  usaf.resolve (разрешимый элемент по сечениям ЧКХ + предел Найквиста),
+  usaf.object (ширины штрихов на предмете через увеличение/угловой
+  масштаб). ГРФ: dof.diffraction (±2λF#² по каждой λ, критерий Рэлея),
+  dof.compare (по полям: дифракционная vs геометрическая из RMS пятна,
+  режим). Сигнал/шум: snr.bars (SNR контраста штрихов через ЧКХ),
+  noise.spot (Пуассон+Гаусс шум детектора на пиксельной матрице,
+  детерминированный random.Random(seed)). Пиксельное интегрирование:
+  pixel.matrix (подпиксельная билинейная передискретизация + биннинг),
+  pixel.energy (пиксель/блок N×N со смещением), energy.ring (кольцо
+  фотоприёмника ФКЭ(r₂)−ФКЭ(r₁)). Разрешение по ЧКХ: resolve.thornber
+  (худшее из танг./саг. сечений + частота пересечения ветвей).
+  Комплексная ОТФ: otf.complex (Re/Im/фаза сечений из FFT ФРТ —
+  psf_grid-маршрут, отличается от движка adv.ptf). Эталон Эйри:
+  airy.encircled (аналитическая ФКЭ 1−J0²−J1² рядами Бесселя, тёмные
+  кольца, сравнение r₅₀/r₈₀ ФРТ с диском Эйри). Тесты:
+  `tests/test_commands_adv_ext.py` (44: smoke+строгий JSON всех 21,
+  эталоны СШАФ/Эйри/Рэлея, детерминизм шума, монохромный предел
+  полихрома, MTF(0)=1 ОТФ) + категория adv в covered и счётчик 395 в
+  `tests/test_commands_builtin.py`.
+
+- **Пакет 15 — batch (+20 команд, итого 415)**:
+  `commands/builtin/batch_cmds.py` — пакетная обработка списков файлов
+  (.opj/.json/.lbo): ошибки отдельных файлов не роняют пакет (errors[]
+  по каждому элементу), пустой список/ни одного валидного —
+  invalid_param. Навигация: metrics (справочник 21 метрики с
+  полярностью), dir (скан каталога по расширениям, path-параметр,
+  рекурсия опциональна), names/info (обзор пакета: форматы, структуры),
+  load (пакет в контекст REPL без смены текущей, коллизии — суффиксы).
+  Прогоны: run (ЛЮБАЯ команда реестра над каждым файлом через
+  registry.execute с file=), validate (санити system.validate по всем).
+  Метрики (движки paraxial_trace/seidel/compute_spot/compute_strehl/
+  compute_enc; лёгкий вариант по умолчанию — 20 лучей, полный —
+  параметром num_rays): metric (одна по всем), summary (таблица + итоги
+  min/max/mean), rank (ранжирование auto по полярности, best/worst),
+  stats (min/max/mean/median/СКО + экстремумы), filter (gt/ge/lt/le/eq/
+  ne/range), check (порог pass/fail c auto-режимом), compare (Δ и Δ% к
+  эталонному файлу). Модификации: apply (команда-модификация к копиям в
+  out_dir через out-параметр сестринской команды), changes (до/после по
+  метрикам, модификация во временном файле), convert (пакетная
+  конвертация .opj↔.json, защита от перезаписи существующих). Утилиты:
+  dedupe (дубликаты по md5/sha1/sha256 из CHECKSUM_ALGOS lbo_cmds),
+  export (метрики в .csv/.json через exportio), report (текстовый свод
+  с опцией записи .txt). Тесты: `tests/test_commands_batch.py` (67:
+  smoke+строгий JSON всех 20, совпадение метрик с одиночными прогонами,
+  apply ×2 → удвоение EFL, устойчивость к мусору/пропавшим путям,
+  .lbo-хвост requires_lbo) + категория batch в covered и счётчик 415 в
+  `tests/test_commands_builtin.py`.
+
+- **Пакет 16 — trace_ext (+22 команды, итого 437)**:
+  `commands/builtin/trace_ext_cmds.py` — хвосты трассировки в категории
+  `tracex` (префикс НЕ trace: исчерпывающий набор Волны 3 в категориях
+  trace/beam/vign/tables закреплён пином tests/test_commands_trace.py
+  — ровно 19, тест не менялся). Луч по поверхностям: ray.surfaces
+  (координаты/углы/ОПС нарастающим итогом заданного луча, разбор пути
+  точного трейсера по схеме TABESB; EDGE-строки помечены clipped),
+  ray.angles (cos I / cos I' / I / I' по поверхностям, нормали — в
+  локальной СК CoordBreak, ориентация к падающему лучу как refract()),
+  ray.pupil (луч поля через точку входного зрачка, построитель
+  габаритных лучей aberrations), ray.multi_wl (по всем λ системы).
+  Диафрагма/ПВО: stop.clearance (клиренс до края: плоскость диафрагмы,
+  при SD=0 — полудиаметр поверхности), tir.critical (предельные углы
+  asin n₂/n₁). Габаритные лучи (compute_gauge_rays): meridional.table
+  (высоты+углы верх/низ/главный, полувысота и угол конуса), opl.table
+  (ОПС по поверхностям для 5 лучей), opl.summary (ОПД относительно
+  главного в мм и волнах), apertures.fill (заполнение полудиаметров
+  ходом крайних лучей, violation), pupils.surfaces (проекция зрачков:
+  центры = высоты главного, dz к входному/выходному), exit.cone (углы
+  выходного конуса, NA', рабочее F/# против параксиального).
+  Поверхности/среды: surface.vertices (Z-вершины, расстояния, длина
+  хода), surface.glasses (n до/после и Δn для трассируемой λ).
+  Сетки/веера: fan.zones (зоны равной площади tables.field_zones +
+  dy относительно главного), grid.stats (успех/ошибки/ОПС/разброс
+  сетки 3D), vignetted.rays (срезанные лучи сетки с ρ/φ). Параксиальные
+  хвосты (перенос y/n·u — surface_data у paraxial_trace заглушка []):
+  ynu.table (базисные лучи по поверхностям, efl = −1/(nu)_кр),
+  paraxial.ray (произвольный y₀/u₀), paraxial.matrices (ABCD
+  поверхностей/промежутков + системы: det=1, efl = −1/C = paraxial),
+  paraxial.invariants (H Лагранжа по промежуткам, дрейф ~1e-16),
+  paraxial.gaps (ход пучка по промежуткам в масштабе реального
+  зрачка). Тесты: `tests/test_commands_trace_ext.py` (37: smoke+
+  строгий JSON всех 22, инвариант пина Волны 3, сверки с прямыми
+  trace_ray_through_system/compute_gauge_rays/_pupil_field_ray,
+  Снеллиус sin I/sin I' = n₁/n₂, det=1 и efl матрицы, живые системы
+  контекста REPL `_tracex_*` c drop) + счётчик 437 в
+  `tests/test_commands_builtin.py` (tracex в covered НЕ входит).
+
+- **Пакет 17 — aberr_ext (+22 команды, итого 459)**:
+  `commands/builtin/aberr_ext_cmds.py` — хвосты анализа аберраций в
+  категории `aberx` (префикс НЕ aber: состав домена Волны 3 закреплён
+  пином tests/test_commands_aber.py — DOMAIN_COMMANDS, 31 команда с
+  категориями aber/chrom/seidel/adv, пин не менялся; как tracex в П16).
+  Карты поле×зона/поле×λ: map.grid (матрица dy мер/саг сечений по
+  зонам зрачка через compute_oblique_fan 0°/90° + сводки по полям),
+  wf.rho (меридиональная волновая W(ρ) по полям из веера, PV/СКВ),
+  rms.grid (решётка поле×λ → СКВ волнового, гексаполярная сетка),
+  wf.pv (PV/min/max/среднее/СКВ по полям + худшее поле), spot.grid
+  (решётка пятен поле×λ: RMS общий/по осям, отношение осей, центроид).
+  Полевые кривые: distortion.curve (данные + полиномиальный фит с
+  якорем (0,0), адаптивная степень), astig.curve (Z'm/Z's следа
+  Коддингтона по полям + худшее поле), petzval.check (z_p =
+  (3·Z's−Z'm)/2 по полям, эмпирический R из фита z ≈ z₀+y²/(2R)
+  против −1/SIV — совпадение 3-го порядка ~3 % на демо), coma.fields
+  (танг./саг. кома по полям, отношение T/S), longitudinal.fields
+  (Z-пересечения крайних лучей с высотой главного по полям).
+  Зональные/апертурные: coma.fan (асимметрия dy(+ρ)+dy(−ρ) по зонам,
+  T/S комы, 3-й порядок T=3S), spherical.zones (продольная LA по
+  зонам осевого поля + фит ds ≈ c₂ρ²+c₄ρ⁴, отрезки края и зоны
+  0.707), transverse.zones (таблица поперечных по зонам равной
+  площади field_zones, мер+саг одновременно), aperture.aberrations
+  (dy/LA края против диаметра зрачка, dy/D³), focal.zonal (зонные
+  фокусы Z(±ρ) танг/саг из диагностики caustic_radii), bestfocus.fields
+  (лучший дефокус по RMS пятна по полям/λ + хроматический сдвиг,
+  флаг края сетки). Хроматизм: chrom.focus_shift (EFL/BFD по λ +
+  вторичный спектр, domain.paraxial_trace(wl=...)), chrom.magnification
+  (высота главного луча по λ/полям, lateral color), wf.chrom (разность
+  волновых фронтов dW(λ) на общей гексаполярной сетке), fan.chrom
+  (веер сечения по всем λ). Прочее: centroid.fields (boresight:
+  центроид против главного луча и параксиальной высоты),
+  seidel.shares (пер-поверхностные вклады SI..SV+SIxp/SIIxp с долями
+  и паритетом против seidel_sums — базис _paraxial_auxiliary движка).
+  Тесты: `tests/test_commands_aberr_ext.py` (26: smoke+строгий JSON
+  всех 22, сверки паритета с compute_oblique_fan/
+  compute_field_aberrations/compute_wavefront_rms_vs_field/
+  compute_rms_spot_xy/seidel_sums/paraxial_trace(wl), инварианты
+  физики — осевая симметрия карт, нуль комы на оси, нечётность dy(ρ),
+  dW≡0 на опорной λ, T/S-кома, Петцваль 3 %, монотонность lateral
+  color, клиппинг краёв на живой системе `_aberx_clipped` c drop,
+  контракты ошибок invalid_param; поле-зависимые — на .json,
+  поле-независимая chrom.focus_shift — на .opj) + счётчик 459 в
+  `tests/test_commands_builtin.py` (aberx в covered НЕ входит).
+
+- **Пакет 18 — reserve ч.1 (+22 команды, итого 481)**:
+  `commands/builtin/reserve_cmds.py` — верифицируемые хвосты трёх
+  семейств. Префиксы по пинам: категория `diagram` НЕ запинена (П4 уже
+  добавлял diagram.data/types — пин Волны 3 tests/test_commands_opt.py
+  проверяет только наличие OPT_COMMANDS), `calc`/`catalog` —
+  covered-категории Волны 1 (smoke-записи в builtin), `units` —
+  категория П5 без пинов состава; diagx не понадобился. Карта стёкол
+  `diagram.*` (данные glass_ext_cmds._iter_entries + фильтр воздуха,
+  типы glass_diagram, для AGF — русские алиасы glass_agf): coverage
+  (гистограмма плотности по сетке окна 20–80 Vd × 1.45–1.85 nd,
+  занятость/топ-ячейки), type.stats (плотность типов: счётчик,
+  центроид, СКО, диапазоны), crown.flint (кроны/флинты по полосам Vd,
+  смешанные зоны и перекрытие семейств), bbox (границы каталога +
+  окно + выбросы), system (стёкла системы на карте: тип/семейство/
+  источники/зона Vd + свод), pick (ближайшие к точке nd/Vd марки,
+  метрика нормирована на окно). Каталог-документация `catalog.*`:
+  stats (счётчики всего/реальных/отфильтрованных по источникам,
+  union/multi/unique канонизированных имён), sources.compare
+  (пересечения пар/тройки ГОСТ∩.FIL=14, AGF по алиасам, образцы),
+  glass.multi (стёкла в ≥2 источниках с nd/Vd каждого и разбросом),
+  availability (марка → источники + синонимы латиница↔русское;
+  catalog.glass.count НЕ добавлялся — дублирует total
+  catalog.glass.filter). Формулы FORMULAS.md `calc.*` (без выдуманной
+  физики — каждый раздел указан в докстринге): aber.dioptre
+  (продольные в дптр от выходного зрачка, §3, движок mm_to_dioptres),
+  aber.grminsec (поперечные в гр.мнсек из центра выходного зрачка,
+  §3, atan2 + grminsec/deg_to_gms), pupil.zone (H=зона·Ax и
+  100·tg(arcsin(зона·NA)), §3), tgprime.label (метка Tg′×100 TABOC2,
+  §3), fan.launch (запуск осевого веера, §3/GFIX P6), edge2.lambda
+  (λ(z)=1−(q0+q1·z²)·z² — банк E2 REVERSE_OPALDIS §4.3(vii), движок
+  edge2_print_lambda), virtual.kappa ((κ0,κ2) опорной сферы мнимого
+  изображения, §2/GFIX R1, движок virtual_wave_kappa), goe.kappa
+  (κ(λ)=κ0+κ1·(λ−λ0) и C_eff=κ·C, §5, пин GTIE00), goe.replay
+  (δ=rec₀·λ₀/λ, §5), depth.criteria (границы ГРИП из условия
+  СКW/СКR ≤ допуска — ANALIZE §5.3; СКR — пятна по дефокусу,
+  СКW — карта W + параксиальный дефокус w=W_край·ρ² модели
+  compute_psf), defocus.convert (мм↔волны на краю зрачка —
+  PARAXIAL_DEFOCUS_FACTOR, хелпер П14 без дубля). Справочник
+  `units.print.table` — единицы печати «ближний/дальний тип»
+  (REVERSE_NZR §19.2). Тесты: `tests/test_commands_reserve.py`
+  (49: smoke+строгий JSON всех 22, сверки паритета с движками —
+  GLASS_CATALOG/units/aberrations(EDGE2/VIRTUAL)/zernike, точные
+  значения банка (λ(1)=1−(q0+q1), κ-пары), пересечение ГОСТ∩.FIL=14
+  стабильно и в CI, живая система `_resv_probe` с drop, ошибки
+  контрактов; requires_fil для полного .FIL, условный skip для
+  OPAL.AGF) + smoke-записи 15 covered-команд (calc/catalog) и
+  счётчик 481 в `tests/test_commands_builtin.py` (diagram/units в
+  covered НЕ входят).
+
+- **Пакет 19 — reserve ч.2, финальная добивка (+25 команд, итого 506 —
+  ЦЕЛЬ 500+ ДОСТИГНУТА)**: `commands/builtin/reserve2_cmds.py` —
+  20 экспорт-обёрток таблиц П16/П17/П18 в CSV/JSON (композиция как в
+  П1: команда-источник через registry.execute, запись exportio; ключи
+  строк у нестандартных таблиц — zones/cells/types/surfaces):
+  `export.tracex.*` (meridional, opl, ray.surfaces, ynu,
+  paraxial.matrices, fan.zones, stop.clearance — скаляры строкой,
+  ray.multi_wl), `export.aberx.*` (map.grid, rms.grid, spot.grid,
+  seidel.shares, distortion.curve, astig.curve, spherical.zones,
+  transverse.zones, focal.zonal, chrom.focus_shift),
+  `export.diagram.*` (coverage, type.stats); категории tracex/aberx
+  НЕ тронуты (пины 22 в своих тест-модулях — обёртки в категории
+  export). Спектральные зоны `catalog.spectral.*` (данные
+  utils/spectral_lines.py): band (классификация λ: УФ/цветные
+  поддиапазоны видимого/ИК, границы согласованы с цветами всех 15
+  линий справочника — инвариант теста; фотопические веса V(λ) НЕ
+  добавлены — таблицы в исходниках порта нет), stats (свод по
+  элементам/цветам/зонам, диапазон 365.01–1013.98 нм).
+  `units.arcsec.ddmmss` — разбор числа «гр.мнсек» DD.MMSS печати OPAL
+  в секунды дуги/градусы (движок golden-сверок arcsec_of_ddmmss:
+  1.130483 → 4384.83″; обратное кодирование ddmmss_value не
+  обёрнуто — расходится с эталонами собственного docstring).
+  Файловые хвосты: `file.stat` (метаданные БЕЗ загрузки — os.stat +
+  детект формата по расширению), `file.bench` (замер загрузки/
+  параксиального прогона, min/mean/max мс, движки
+  systemio.load_system + paraxial_trace). Тесты:
+  `tests/test_commands_reserve2.py` (smoke+строгий JSON всех 25,
+  CSV-строки == rows источников, инвариант спектральных границ,
+  golden-эталоны DD.MMSS, пины tracex/aberx=22 и W3=19 не тронуты)
+  + smoke-записи 22 covered-команд (export/file) и счётчик 506 в
+  `tests/test_commands_builtin.py` (spectral/units — свой модуль).
+
+- **R500 — ФИНАЛ: реестр 140 → 506 команд (40 категорий), 19 пакетов,
+  цель 500+ достигнута.** Полный прогон 2125 passed / 8 skipped /
+  0 failed. Итоговый отчёт: `docs/tasks/R500_FINAL_REPORT.md`
+  (пакеты/коммиты, категории, blocked, ключевые решения). README:
+  «140 commands (22 categories)» → «506 commands (40 categories)».
+  Ветка `feature/registry-500`, не пушена.
+
 ## [1.30.0-corpus] — 2026-10-24
 
 ### Скан корпуса: все 612 систем LBO-библиотек через ядро порта

@@ -20,10 +20,10 @@ reproduced byte-for-byte. Formulas: [docs/FORMULAS.md](docs/FORMULAS.md)
 ## 🤖 Built for agents
 
 Every menu item, tool and dialog runs a command from a single registry of
-**140 commands** (22 categories). The UI, the CLI, the JSON control channel
+**506 commands** (40 categories). The UI, the CLI, the JSON control channel
 and the MCP server all call the same layer — so anything you can click,
 a script or an AI agent can do too. The registry grows with each feature
-wave (target: 500+ parameterized commands).
+wave (R500 wave complete: 140 → 506 parameterized commands).
 
 ### MCP server
 
@@ -157,7 +157,7 @@ Master index - `analysis/REVERSE_TRACE.md` (§0-§24, Russian), wave plan -
 
 ### 🔜 Phase IV - Future (by priority)
 
-- [x] **Built for agents** — single registry of **140 commands** (UI/CLI/JSON/MCP
+- [x] **Built for agents** — single registry of **506 commands** (UI/CLI/JSON/MCP
       call the same layer): everything clickable is scriptable and
       agent-accessible *(done 2026-10-23: waves 1–5 — registry, CLI, REPL,
       mass coverage, UI bridge, MCP server; 1542 tests green)*

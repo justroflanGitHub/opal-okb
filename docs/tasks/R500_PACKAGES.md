@@ -1,0 +1,135 @@
+# R500_PACKAGES — таблица прогресса: реестр 140 → 500+
+
+Мастер-ТЗ: `docs/tasks/TASK_REGISTRY_500.md`. Ветка `feature/registry-500`.
+Каждый пакет: эскиз → модуль `commands/builtin/<домен>_<тема>.py` → smoke
+(в `tests/test_commands_builtin.py` или свой тест-модуль с маркерами
+`requires_*` для локальных данных) → коммит → полный `py -m pytest -q`.
+
+Правила счёта: только реальные команды (считают/делают); `not_implemented`
+в счёт не идут. Обратная совместимость 140 существующих обязательна.
+
+## Таблица пакетов
+
+| # | Пакет (модуль) | Домены/категории | Команд | Статус |
+|---|----------------|------------------|-------:|--------|
+| 1 | `export_cmds.py` | `export.*`, `tables.*.export`, `*.export` — CSV/JSON/TXT выгрузки таблиц и данных | 27 | done (+27 → 167) |
+| 2 | `system_ext_cmds.py` | `system.*` — апертура/стоп/объект/поля/λ/поверхности-расширения, ctx-менеджмент, validate | 33 | done (+33 → 200) |
+| 3 | `lbo_cmds.py` | `file.lbo.*`, `library.*`, `file.diff/compare` — LBO-библиотеки, пакетные прогоны, сравнение систем | 21 | done (+21 → 221) |
+| 4 | `glass_ext_cmds.py` | `catalog.glass.*` расширенный, `catalog.spectral.*` — дисперсия, пары, соседние стёкла, спектральные линии | 19 | done (+19 → 240) |
+| 5 | `units_cmds.py` | `units.*`, `spatial.*` — Г.ММСС, диоптрии, зрачки; матрицы поворотов | 18 | done (+18 → 258) |
+| 6 | `calc_ext_cmds.py` | `calc.*` — показатели преломления, силы/сагитты, тонкие линзы, параксиал-производные | 20 | done (+20 → 278) |
+| 7 | `seidel_ext_cmds.py` | `seidel3.*` — поперечные/продольные/волновые аберрации 3-го порядка из сумм Зейделя | ~14 | blocked (поперечные из SI..SV: нормировка вспомогательных лучей не формализована; верифицируемое — 5 команд `seidel3.*` — реализовано в П9) |
+| 8 | `tol_cmds.py` | `tol.*` — чувствительность EFL/аберраций к радиусам/толщинам/наклонам, обратные допуски, отчёт | 15 | done (+15 → 312) |
+| 9 | `sweep_cmds.py` | `sweep.*` — развёртки по полям/λ/дефокусу/зонам поверх существующих движков | 19 | done (+19 → 297) |
+| 10 | `quality_cmds.py` | `quality.*` — сводные метрики качества (MTF@freq, EE-диаметры, strehl по полям, паспорт) | 19 | done (+19 → 331) |
+| 11 | `report_cmds.py` | `report.*` — текстовые отчёты для печати (паспорт, параксиал, зейдель, таблицы, качество) | 16 | done (+16 → 347) |
+| 12 | `plot_ext_cmds.py` | `plot.*` новые headless-графики: схема системы с лучами, каустика, виньетирование, хроматизм, волн. фронт | 15 | done (+15 → 362) |
+| 13 | `meta_cmds.py` | `registry.*`, `app.*`, `help.*` — интроспекция реестра/категорий/схем для агентов | 12 | done (+12 → 374) |
+| 14 | `adv_ext_cmds.py` | `adv.*` остатки: объёмная ФРТ через фокус, свёртка с объектом/полихром, миры СШАФ-1951, ГРФ дифр/геом, SNR/шум, пиксели/кольца, Торнбер, ОТФ-фаза, Эйри | 21 | done (+21 → 395) |
+| 15 | `batch_cmds.py` | `batch.*` — пакетные прогоны команд по списку систем/файлов, batch-отчёты | 20 | done (+20 → 415) |
+| 16 | `trace_ext_cmds.py` | `tracex.*` хвосты трассировки — таблицы лучей по поверхностям, углы I/I', ОПС/ОПД, клиренс диафрагмы, ПВО, ynu-параксиал, ABCD, инварианты | 22 | done (+22 → 437) |
+| 17 | `aberr_ext_cmds.py` | `aberx.*` хвосты — карты аберраций по полям, кривые дисторсии, хроматические сдвиги | 22 | done (+22 → 459) |
+| 18 | `reserve_cmds.py` | `diagram.*` хвосты (категория НЕ запинена — расширяем), `catalog.stats/sources.compare/glass.multi/availability`, `calc.*` остатки формул FORMULAS.md (§2/§3/§5, ANALIZE §5.3), `units.print.table` | 22 | done (+22 → 481) |
+| 19 | `reserve2_cmds.py` + добивка | финальная добивка до 500+: 20 export-обёрток таблиц П16/П17/П18 (tracex/aberx/diagram → CSV/JSON), catalog.spectral.band/stats, units.arcsec.ddmmss, file.stat/file.bench | 25 | done (+25 → 506; 500+ достигнута) |
+
+Переориентация 2026-10-24: исходная тема строки 15 (прямые `diffr.*`/`psf.*` расширения —
+сечения MTF, полихром-ЧКХ по полям, ЧКХ@freq, LSF-сечения) заблокирована пинами Волны 3
+(WAVE3_EXPECTED, tests/test_commands_psf.py) и фактически закрыта пакетами 10/14
+(`quality.mtf.matrix/poly`, `adv.lsf.poly`, `adv.otf.complex`). Пакеты 15-18 = batch →
+trace-хвосты → aber-хвосты → резервная добивка до 500+.
+
+## Заметки по пакетам (эскизы уточняются при реализации)
+
+- **П1 export**: общий хелпер записи rows/dict/text по расширению (.csv/.json/.txt)
+  в одном месте; команды-обёртки «движок таблицы + запись». Источник: ТЗ §2.3.
+- **П2 system**: движки domain/aperture.py (конвертация апертур) — ещё не обёрнуты;
+  ctx-менеджмент (select/list/drop/clone) — REPL-семантика W1; validate — санити
+  системы (ТЗ §2.4).
+- **П3 lbo**: fileio/lbo_io.load_lbo + lbo_reader.scan_lbo_directory; library.batch —
+  по ТЗ §2.4; тесты с requires_lbo (extracted/ локальна, в CI нет).
+- **П4 glass**: движки catalog/glass_catalog*.py + domain.calculations.refractive_index;
+  пары для ахромата — через существующий конструктор system.achromat (двойка К8+ТФ).
+- **П5 units**: analysis/units.py (все 7 функций ещё не обёрнуты) + domain/spatial.py.
+- **П6 calc**: domain/calculations.py хвосты (refractive_index, goe_effective_radius,
+  effective_semi_diameter); геометрия (сагитта, сила поверхности, тонкая линза) —
+  формулы FORMULAS.md, без дублирования движков.
+- **П7 seidel3**: FORMULAS.md §Зейдель — поперечные/продольные/волновые из сумм
+  (Si → Δy′, Δz′, W); движок domain.calculations.seidel_aberrations.
+- **П8 tol**: конечноразностная чувствительность поверх paraxial_trace /
+  seidel_aberrations / spot RMS (движки есть; нового ядра не пишем — композиция).
+- **П9 sweep**: циклы по полям/λ/дефокусу поверх существующих вычислителей
+  (compute_spot_diagram, wavefront maps, MTF); знаменитые дубликаты
+  (multi_wl, field_aberrations) не повторять.
+- **П10 quality**: композиция скаляров из psf/mtf/strehl/spot для паспорта системы.
+- **П11 report**: форматтеры analysis/* (format_*) + fileio/protocol.py — печать по
+  ANALIZE.txt §2.9; текст целиком в ответе + опция записи.
+- **П12 plot**: matplotlib Agg (образец opt_cmds.py); схема системы с лучами —
+  ANALIZE.txt §4.8 «Рисунок оптической системы с трассировкой лучей».
+- **П13 meta**: registry.search/list/schema как команды (единая точка для агентов).
+- **П14 adv_ext**: всё в `adv.*` — расширения zern.*/focus.* из эскиза
+  строки 14 ОТМЕНЕНЫ: префиксы Волны 3 закреплены пинами
+  WAVE3_EXPECTED (tests/test_commands_psf.py), новые команды с них не
+  начинаются. Движки: psf_grid/mtf_from_psf/encircled_energy/lsf_from_psf
+  + convolve_fft + compute_spot_diagram; дефокус мм↔волны по
+  PARAXIAL_DEFOCUS_FACTOR (analysis/advanced); СШАФ/Эйри/Рэлея —
+  именованные константы стандартов и ряды Бесселя (честная математика
+  в модуле, ядро не дублируется).
+- **П16 trace_ext**: категория `tracex` (не trace!) — набор Волны 3
+  в категориях trace/beam/vign/tables пинует
+  tests/test_commands_trace.py ровно 19 команд, пин не трогаем;
+  счётчик 437, tracex в covered builtin-смока НЕ входит (свой модуль
+  tests/test_commands_trace_ext.py). Параксиальный перенос y/n·u —
+  хелпер пакета (surface_data у paraxial_trace — заглушка []),
+  сверён с движком (efl = −1/C матрицы == paraxial, det=1).
+- **П17 aberr_ext**: категория `aberx` (не aber!) — тест-модуль Волны 3
+  tests/test_commands_aber.py пинует DOMAIN_COMMANDS (31 команда
+  категорий aber/chrom/seidel/adv с проверкой категорий; реестр
+  фиксттуры — надмножество), пин не трогаем; aberx в covered
+  builtin-смока НЕ входит (свой модуль tests/test_commands_aberr_ext.py).
+  Движки: compute_oblique_fan (→ [ρ, dy_мер мкм, dy_саг мкм]),
+  trace_aberration_fan ({pupil_y, dy, ds, wave}), trace_wavefront_
+  hexapolar, coddington_trace, caustic_radii (диагностика z(±δ)),
+  compute_spot_diagram(_at_defocus)/compute_rms_spot_xy,
+  domain.calculations.paraxial_trace(wl=...), seidel_sums +
+  базис _paraxial_auxiliary (пер-поверхностные вклады — в модуле,
+  паритет с движком тестом). Петцваль: z_p = (3·Z's−Z'm)/2 из хода
+  против −1/SIV (сходимость ~3 % на демо). Поле-зависимые тесты на
+  .json (OPJ теряет field_points), chrom.focus_shift — на .opj.
+- **П17 reserve**: добивка — именованные варианты зон/полей, недостающие
+  обёртки analysis-хвостов, документирующие команды каталога/библиотеки.
+- **П18 reserve ч.1**: префиксы по пинам tests/ — категория `diagram`
+  НЕ запинена (пин Волны 3 test_commands_opt.py проверяет только наличие
+  OPT_COMMANDS; прецедент П4 — diagram.data/types), поэтому diagx не
+  понадобился: расширяем diagram.*; `calc`/`catalog` — covered-категории
+  Волны 1 (smoke-записи добавлены в tests/test_commands_builtin.py);
+  `units` — категория П5 без пинов состава. catalog.glass.count НЕ
+  добавлялся (дублирует total существующего catalog.glass.filter).
+  Движки без дублей: _iter_entries/PAIR_AIR_NAMES из glass_ext_cmds,
+  типы glass_diagram (AGF — русские алиасы glass_agf), единицы
+  analysis/units, банк E2/κ-таблицы analysis/aberrations, карта W
+  analysis/zernike + дефокус-модель compute_psf
+  (PARAXIAL_DEFOCUS_FACTOR), конверсия мм↔волны — хелпер П14
+  adv_ext_cmds._defocus_waves_per_mm.
+- **П19 reserve ч.2 (финал, 506)**: экспорт-обёртки таблиц П16/П17/П18
+  в категории export (категории tracex/aberx запинены счётчиком 22 —
+  обёртки их не расширяют, пин-тест в test_commands_reserve2.py);
+  хелперы композиции переиспользованы из export_cmds П1 (_run/
+  _source_args/_export_data), нестандартные ключи строк (zones/cells/
+  types/surfaces) — параметр rows_keys локального хелпера. НЕ вошло
+  (дубли или отсутствие данных): system.scale/reverse уже были;
+  library.stats по каталогу = batch.dir+batch.stats; фотопические
+  веса V(λ) — таблицы в исходниках порта нет; кодирование
+  arcsec→DD.MMSS (ddmmss_value) не обёрнуто — формула движка
+  расходится с эталонами его же docstring (кодирует сантиминуты),
+  обёрнут только golden-верифицированный разбор arcsec_of_ddmmss.
+
+## Заблокированное / отложенное
+
+(заполняется по ходу; статус `blocked: причина`)
+
+- П7 `seidel_ext_cmds.py` — blocked: поперечные/продольные/волновые
+  аберрации прямо из SI..SV требуют нормировку вспомогательных лучей,
+  которая в порту не формализована (`analysis/seidel_check.py` прямо это
+  оговаривает). Верифицируемая часть (R_Петцваля = 1/SIV, ранжирование,
+  нормировка, хроматизм) реализована в П9 `sweep_cmds.py` (5 команд
+  `seidel3.*`).

@@ -149,7 +149,9 @@ Master index - `analysis/REVERSE_TRACE.md` (§0-§24, Russian), wave plan -
       object, virtual images, rim rays, print λ-law *(REVERSE_GVERIFY, GFIX)*
 - [x] **Corpus scan** - all **612** LBO library systems through the port kernel:
       612/612 pipeline OK, f' vs catalog name **393/565 within 1%** (48 broken
-      decodes found and localized) *(CORPUS_REPORT, CORPUS_ANOMALIES)*
+      decodes found and localized); wave 2 adds vignette/chief/spot/mtf_geo
+      (schema 2: ok 396, all 216 failures on the new ops) *(CORPUS_REPORT_V2,
+      CORPUS_REPORT, CORPUS_ANOMALIES)*
 - [x] **OPALA core disassembly** - 789 functions (Ghidra), full wavefront
       print pipeline, two-pass fan *(REVERSE_OPALDIS)*
 - [x] **HOE system GTIE00** - 0xFFFD marker, recording block, κ(λ) law

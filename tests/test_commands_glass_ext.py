@@ -5,6 +5,8 @@
 дизайнер achromat. AGF может отсутствовать на стенде — тесты AGF-части
 не требуют конкретных марок (кроме согласованного поведения).
 """
+import os
+
 import pytest
 
 from commands import CommandContext, default_registry
@@ -45,6 +47,26 @@ class TestGlassLists:
                     {"limit": 3, "order_by": "vd", "descending": True})
         vds = [e["vd"] for e in by_vd["entries"]]
         assert vds == sorted(vds, reverse=True)
+
+    def test_list_no_duplicate_names_without_agf(self, monkeypatch):
+        """CI-режим (нет OPAL.AGF): объединённый список без дублей имён.
+
+        Регрессия merge-фикса: БК12 из ГОСТ и .FIL давал пересечение
+        страниц catalog.glass.list на CI (падал test_list_paging_and_order).
+        """
+        import catalog.glass_agf as agf
+        monkeypatch.setattr(
+            agf, "_AGF_PATH", os.path.join("Z:", "no-such-dir", "OPAL.AGF"))
+        monkeypatch.setattr(agf, "_CATALOG", None)
+        monkeypatch.setattr(agf, "_CATALOG_RUS", None)
+        data = run("catalog.glass.list", {"limit": 100000})
+        names = [e["name"] for e in data["entries"]]
+        assert names, "каталог пуст — ГОСТ/.FIL не загрузились"
+        assert len(names) == len(set(names)), "дубли имён между источниками"
+        page1 = run("catalog.glass.list", {"limit": 5, "offset": 0})
+        page2 = run("catalog.glass.list", {"limit": 5, "offset": 5})
+        assert not ({e["name"] for e in page1["entries"]}
+                    & {e["name"] for e in page2["entries"]})
 
     def test_filter_by_vd(self):
         data = run("catalog.glass.filter",

@@ -132,9 +132,18 @@ def _parse_agf(path):
 
 
 def _ensure_loaded():
+    """Загрузить AGF-каталог; при отсутствии файла — пустой каталог.
+
+    OPAL.AGF — данные стенда вне репо (в CI его нет): отсутствие —
+    нормальный режим, а не ошибка; все запросы деградируют до
+    «источник отсутствует» (get_glass → None, список → []).
+    """
     global _CATALOG, _CATALOG_RUS
     if _CATALOG is None:
-        _CATALOG, _CATALOG_RUS = _parse_agf(_AGF_PATH)
+        if os.path.isfile(_AGF_PATH):
+            _CATALOG, _CATALOG_RUS = _parse_agf(_AGF_PATH)
+        else:
+            _CATALOG, _CATALOG_RUS = {}, {}
 
 
 def get_glass_list():

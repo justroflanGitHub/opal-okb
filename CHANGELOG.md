@@ -2,6 +2,17 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.31.1] — 2026-10-26
+
+### Merge fixup: CI без OPAL.AGF (7 красных тестов)
+
+- `catalog/glass_agf.py`: отсутствующий OPAL.AGF (CI) — пустой каталог вместо
+  internal_error; `catalog.availability`/`diagram.system` деградируют до ГОСТ/.FIL
+  (контракт «источник опционален», единая точка — _ensure_loaded).
+- `glass_ext_cmds._iter_entries`: дедупликация имён по приоритету ГОСТ > .FIL > AGF —
+  страницы `catalog.glass.list` не пересекаются (БК12 в двух источниках).
+- Регресс-тесты CI-режима (no-AGF): availability, diagram.system, список без дублей.
+
 ## [1.31.0] — 2026-10-24
 
 ### Корпус волна 2: vignette/chief/spot/mtf_geo по тем же 612 системам

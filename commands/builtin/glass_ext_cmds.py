@@ -64,23 +64,45 @@ RANGE_STEPS_DEFAULT = 10
 WL_BOUNDS_UM = (0.2, 10.0)
 
 
+#: Приоритет источников при объединении без фильтра source:
+#: одноимённые стёкла разных каталогов не дают дублей строк
+#: (дедупликация — первыми идут старшие источники).
+SOURCE_PRIORITY = (SOURCE_GOST, SOURCE_FIL, SOURCE_AGF)
+
+
 def _iter_entries(source=None):
-    """(имя, {nd, vd, source}) по каталогам; source — фильтр."""
-    if source in (None, SOURCE_GOST):
-        for key, (nd, vd, *_rest) in sorted(_gost_catalog().items()):
-            yield key, {"nd": nd, "vd": vd, "source": SOURCE_GOST}
-    if source in (None, SOURCE_FIL):
-        for key, entry in sorted(_fil_catalog().items()):
-            yield key, {"nd": entry.get("nd", 0.0),
-                        "vd": entry.get("vd", 0.0),
-                        "source": SOURCE_FIL}
-    if source in (None, SOURCE_AGF):
-        for name in _agf_names():
+    """(имя, {nd, vd, source}) по каталогам; source — фильтр.
+
+    Без фильтра имена дедуплицируются по :data:`SOURCE_PRIORITY`
+    (ГОСТ > .FIL > AGF): страницы catalog.glass.list не пересекаются
+    по именам, одноимённые стёкла разных источников не дублируются.
+    """
+    def _by_source(src):
+        if src == SOURCE_GOST:
+            for key, (nd, vd, *_rest) in sorted(_gost_catalog().items()):
+                yield key, {"nd": nd, "vd": vd, "source": SOURCE_GOST}
+        elif src == SOURCE_FIL:
+            for key, entry in sorted(_fil_catalog().items()):
+                yield key, {"nd": entry.get("nd", 0.0),
+                            "vd": entry.get("vd", 0.0),
+                            "source": SOURCE_FIL}
+        elif src == SOURCE_AGF:
             from catalog.glass_agf import get_glass
-            glass = get_glass(name)
-            if glass is not None:
-                yield glass.name, {"nd": glass.nd, "vd": glass.vd,
-                                   "source": SOURCE_AGF}
+            for name in _agf_names():
+                glass = get_glass(name)
+                if glass is not None:
+                    yield glass.name, {"nd": glass.nd, "vd": glass.vd,
+                                       "source": SOURCE_AGF}
+
+    if source is not None:
+        yield from _by_source(source)
+        return
+    seen = set()
+    for src in SOURCE_PRIORITY:
+        for key, entry in _by_source(src):
+            if key not in seen:
+                seen.add(key)
+                yield key, entry
 
 
 def _sorted_entries(entries, order_by, descending):

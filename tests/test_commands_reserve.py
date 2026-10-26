@@ -19,6 +19,7 @@ OPAL.AGF лежит вне репо (локальные данные). Тест�
 """
 import json
 import math
+import os
 
 import pytest
 
@@ -60,6 +61,15 @@ def fail(name, args, code):
     assert not result.ok, f"{name}: ожидалась ошибка {code}"
     assert result.error["code"] == code, result.error
     return result.error
+
+
+def _no_agf(monkeypatch):
+    """CI-режим: OPAL.AGF отсутствует — пустой AGF-каталог."""
+    import catalog.glass_agf as agf
+    monkeypatch.setattr(
+        agf, "_AGF_PATH", os.path.join("Z:", "no-such-dir", "OPAL.AGF"))
+    monkeypatch.setattr(agf, "_CATALOG", None)
+    monkeypatch.setattr(agf, "_CATALOG_RUS", None)
 
 
 @pytest.fixture(scope="module")
@@ -399,6 +409,29 @@ class TestAvailability:
     def test_not_found(self):
         fail("catalog.availability", {"name": "НЕТ_ТАКОГО_СТЕКЛА"},
              "not_found")
+
+    def test_without_agf_no_internal_error(self, monkeypatch):
+        """CI-режим (нет OPAL.AGF): availability деградирует, а не
+        internal_error; ГОСТ/.FIL работают, мусор — not_found.
+
+        Регрессия merge-фикса: catalog.availability падал с
+        FileNotFoundError (OPAL.AGF) на CI — вместо деградации.
+        """
+        _no_agf(monkeypatch)
+        data = run("catalog.availability", {"name": "К8"})
+        assert data["primary"] == "gost" and data["canonical"] == "К8"
+        sources = {s["source"] for s in data["sources"]}
+        assert "gost" in sources and "agf" not in sources
+        fail("catalog.availability", {"name": "НЕТ_ТАКОГО_СТЕКЛА"},
+             "not_found")
+
+    def test_diagram_system_without_agf(self, monkeypatch, demo_json):
+        """CI-режим: diagram.system строит карту без AGF-источника."""
+        _no_agf(monkeypatch)
+        data = run("diagram.system", {"file": demo_json})
+        assert data["glasses"], "карта стёкол системы пуста"
+        for entry in data["glasses"]:
+            assert entry.get("source") != "agf"
 
     @requires_agf
     def test_latin_query_and_synonyms(self):

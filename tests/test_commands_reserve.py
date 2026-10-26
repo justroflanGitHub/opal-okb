@@ -234,10 +234,17 @@ class TestDiagram:
         assert cell["nd_to"] == pytest.approx(1.45 + 0.4 / 5)
 
     def test_coverage_all_sources(self):
-        """Все источники: минимум ГОСТ + .FIL-база (CI) без ошибки."""
+        """Все источники: объединение БЕЗ дублей имён (CI: ГОСТ+.FIL).
+
+        Регрессия дедупа _iter_entries: раньше 42 = 28 ГОСТ + 14 дубликатов
+        .FIL-пересечений; теперь объединение уникальных имён — на CI это 28,
+        локально с AGF больше. Дубликаты строк — ошибка контракта.
+        """
         data = run("diagram.coverage", {})
-        assert data["total"] >= 42           # 28 ГОСТ + 14 .FIL-базы
+        assert data["total"] >= 28           # уникальные реальные стёкла (CI-база)
         assert data["source"] == "all"
+        gost = run("diagram.coverage", {"source": "gost"})
+        assert data["total"] >= gost["total"]  # объединение не уже одиночного источника
 
     def test_type_stats_gost_counts(self):
         """Плотность типов ГОСТ: К=7 (с КВАРЦ*), ТФ=4; центры по каталогу."""

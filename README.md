@@ -108,6 +108,10 @@ OPAL-PC-style ray layout (black background, green rays), chromatic rays,
 zoom/pan/crosshair, fullscreen; multithreaded computation (phase 1 instant,
 phase 2 up to 8 threads); .txt report; .OPJ/.JSON import-export;
 reverse/scale/GOST radii.
+**3D ray-trace window** (View menu / toolbar): OpenGL rendering of lens
+volumes, mirrors and ray fans; «Rays by λ» toggle (mono ↔ polychromatic,
+ray colour = spectral-line palette); Strehl row in the results panel;
+graceful fallback without PyOpenGL (action disabled with install hint).
 
 ---
 

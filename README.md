@@ -25,6 +25,9 @@ and the MCP server all call the same layer — so anything you can click,
 a script or an AI agent can do too. The registry grows with each feature
 wave (R500 wave complete: 140 → 506 parameterized commands).
 
+Full command reference (506 commands, auto-generated from the registry):
+[docs/reference/COMMANDS_INDEX.md](docs/reference/COMMANDS_INDEX.md).
+
 ### MCP server
 
 OPAL-OKB ships an MCP server (Model Context Protocol, JSON-RPC 2.0 over

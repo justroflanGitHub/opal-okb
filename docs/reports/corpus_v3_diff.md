@@ -83,9 +83,11 @@ vignette/chief/mtf_geo (MICROLEN[4,5,8], USLENS[56]) и теперь честн�
 
 Итого v3 fail 205 по подписям error: `spot: max field RMS not finite` 134; unscannable efl0 31;
 `spot: axis RMS not finite` 21; unscannable l0 17; mtf_geo 2. First-fail: spot 186, vignette 17,
-mtf_geo 2. Нюанс: в v2 было 41 «axis RMS not finite», в v3 — 21: ×1.4 починил ось 20 системам,
-но их макс. поле осталось срезано полностью (класс `field_fully_vignetted`) — подпись сменилась
-на `max field RMS not finite`, статус не изменился.
+mtf_geo 2. Нюанс (уточнено ревью пакета E по JSON): в v2 было 41 «axis RMS not finite», в v3 — 21.
+Расхождение 20 — **не** эффект ×1.4, а unscannable-skip: 18 `unscannable_efl0` + 2 `unscannable_l0`
+(ось у них была не-конечной в v2 из-за n≡1/L=0) переведены skip-правилами в честный skip. Смены
+подписи у `field_fully_vignetted` нет — все 134 строки `spot: max field RMS not finite` бит-в-бит
+v2, осевой RMS у них конечен уже при ×1.0 (diag-дамп реестра), статус не менялся.
 
 ## Эффект ×1.4 полудиаметров в spot/mtf_geo
 

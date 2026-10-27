@@ -167,6 +167,45 @@ def _is_star_filler(line: str) -> bool:
     return bool(line) and set(line) <= {'*', ' '}
 
 
+#: Колонки меток Sp/Sp' в подшапке «Габаритов пучков» (замерено по банку:
+#: подшапка ``──┴── Ax ─── Ay ──── Ax' ─── Ay'──┴─── Sp ───── Sp' ───┴...``
+#: едина для всех печатей с габаритной секцией).
+_GAB_SP_COLS = (39, 50)
+
+#: Атом габаритной строки: число (в т.ч. слитые соседние — DEM1 Sp/Sp'
+#: «-23.203-12678.780») либо звёздный прогон (LEXA23 N=0: «****» на
+#: месте Sp/Sp').
+_GAB_CELL = re.compile(r'-?\d*\.\d+|-?\d+|\*+')
+
+
+def _gabarit_cells(row: str) -> list:
+    """Атомарные значения габаритной строки (N, Ax, Ay, Ax', Ay', Sp,
+    Sp', виньетаж, светораспределение, ...) — исходные строковые токены
+    (для half_print_quantum важны хвостовые нули печати) либо None для
+    звёздных полей.
+
+    Устойчиво к двум дефектам печати (волна 3):
+
+    * соседние числа без пробела (DEM1: Sp и Sp' сливаются в один
+      токен «-23.203-12678.780») — дают два значения потока, позиция
+      следующих полей не сдвигается;
+    * звёздное заполнение полей (LEXA23 N=0: «********************» на
+      месте Sp/Sp') — прогон заменяет столько полей «Положения
+      зрачков», сколько меток Sp/Sp' (``_GAB_SP_COLS``) он накрывает,
+      минимум одно; значения — None (SKIP в сверке), а не нули — иначе
+      Sp' ложно сверился бы с колонкой виньетирования.
+    """
+    cells = []
+    for m in _GAB_CELL.finditer(row):
+        part = m.group(0)
+        if part[0] == '*':
+            k = sum(1 for c in _GAB_SP_COLS if m.start() <= c < m.end())
+            cells.extend([None] * max(k, 1))
+        else:
+            cells.append(part)
+    return cells
+
+
 def parse_golden_prn(path: str) -> dict:
     """Разбор эталонного .PRN банка (CP866 → значения).
 
@@ -220,23 +259,32 @@ def parse_golden_prn(path: str) -> dict:
                     row = lines[i]
                     if not row.strip() or not row.lstrip()[:1].isdigit():
                         break
-                    toks = row.split()
-                    if len(toks) >= 7:
-                        key = (wl, int(toks[0]))
+                    cells = _gabarit_cells(row)
+                    if len(cells) >= 7:
+                        key = (wl, int(cells[0]))
                         if key in result['gabarit'] and gab_seen > 1:
                             pass                    # дубли протокола
                         else:
                             result['gabarit'][key] = {
-                                'N': int(toks[0]),
-                                'Ax': float(toks[1]), 'Ay': float(toks[2]),
-                                'Ax2': float(toks[3]), 'Ay2': float(toks[4]),
-                                'Sp': float(toks[5]), 'Sp2': float(toks[6]),
+                                'N': int(cells[0]),
+                                'Ax': float(cells[1]), 'Ay': float(cells[2]),
+                                'Ax2': float(cells[3]),
+                                'Ay2': float(cells[4]),
+                                'Sp': (float(cells[5])
+                                       if cells[5] is not None else None),
+                                'Sp2': (float(cells[6])
+                                        if cells[6] is not None else None),
                                 # полразряда печати Sp/Sp' (обычно 3
                                 # десятичных, GTIE00 — 2): |Δ| внутри
                                 # разряда — шум печати, не порт
-                                # (PLIOPT Sp: порт 2.94343 → «2.943»)
-                                'Sp_floor': half_print_quantum(toks[5]),
-                                'Sp2_floor': half_print_quantum(toks[6]),
+                                # (PLIOPT Sp: порт 2.94343 → «2.943»);
+                                # звёздные поля — без пола (None)
+                                'Sp_floor': (half_print_quantum(cells[5])
+                                             if cells[5] is not None
+                                             else 0.0),
+                                'Sp2_floor': (half_print_quantum(cells[6])
+                                              if cells[6] is not None
+                                              else 0.0),
                             }
                     i += 1
             continue
@@ -282,10 +330,24 @@ def parse_golden_prn(path: str) -> dict:
                         tg = float(m.group(0))
                         vals = _fixed_cells(row, _AXIAL2_EDGES,
                                             len(m.group(0)))
+                        iso_v, hzr_v = vals[3], vals[4]
+                        if hzr_v is None and not row[38:40].strip():
+                            # компактная раскладка хвоста (волна 3, DEM/
+                            # LEXA23): при пустых колонках волн пара
+                            # (изо, Н ЗР) упакована на поле (10 знаков)
+                            # левее — Н ЗР на месте изо (правый край
+                            # 48), изо — с правым краем 38. Признак
+                            # упаковки — пробелы на [38:40); при
+                            # переполнении смежного поля (LEXA23 з1.0
+                            # «…202431622.6200») строка остаётся с
+                            # h_zr=None и сшивается порядком зон.
+                            tail = _fixed_cells(row, (38, 48),
+                                                len(m.group(0)))
+                            iso_v, hzr_v = tail[0], tail[1]
                         result['axial2'].setdefault('rows', {})[tg] = {
                             'tg100': tg,
                             'wave': vals[:3],
-                            'iso': vals[3], 'h_zr': vals[4],
+                            'iso': iso_v, 'h_zr': hzr_v,
                         }
                         k += 1
                     i = k
@@ -1092,18 +1154,22 @@ def compare_system(name: str, bank_dir: str = _BANK_DIR,
                                  verdict(d, TOL_ABERR)))
 
         # TABOC2: сшивка зон по Н ЗР = 100·tg(arcsin(zone·NA)) (та же
-        # схема, что и для дальнего предмета, масштаб 100·NA)
+        # схема, что и для дальнего предмета): обратное отображение
+        # точное — zone = sin(arctan(Н ЗР/100))/NA. Линейная
+        # аппроксимация hzr/(100·NA) корректна лишь при малых углах и
+        # ломается при NA→1 (LEXA23 na≈1.0: Н ЗР з0.707 = 99.999
+        # линейно давал з1.0; DEM na≈0.95: 90.47 → з1.0 вместо з0.707)
         a2_list = sorted(prn['axial2'].get('rows', {}).values(),
                          key=lambda r: -r['tg100'] if r['tg100'] is not None
                          else 0)
         zones_sorted = sorted(a1_rows.keys(), reverse=True)
-        scale = 100.0 * na
         used, pairs = set(), []
         for et in a2_list:
             hzr = et.get('h_zr')
             z = None
-            if hzr is not None and scale:
-                z = min(zones_sorted, key=lambda zz: abs(zz - hzr / scale))
+            if hzr is not None and na:
+                z = min(zones_sorted, key=lambda zz: abs(
+                    zz - math.sin(math.atan(hzr / 100.0)) / na))
             if z is None or z in used:
                 z = next((zz for zz in zones_sorted if zz not in used), None)
             if z is None:

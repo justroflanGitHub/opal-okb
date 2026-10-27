@@ -32,11 +32,19 @@ from tests.conftest import GOLDEN_DOS, requires_stand
 BASE = Path(__file__).resolve().parent.parent
 BANK = BASE / 'analysis' / 'reverse_data' / 'golden' / 'bank'
 
-#: 45 печатей банка (имена — из стволов файлов, не захардкожены):
-#: 43 системы + 2 stale-печати старых систем без .OPJ на стенде.
+#: Печатей банка (имена — из стволов файлов, не захардкожены):
+#: 43 wave2-системы + 2 stale-печати старых систем без .OPJ на стенде.
 ALL_PRINTS = sorted(p.stem for p in BANK.glob('*.PRN'))
 STALE_PRINTS = ('OBEKTIV_stale', 'OKULAR_stale')
-WAVE2_SYSTEMS = [n for n in ALL_PRINTS if n not in STALE_PRINTS]
+#: волна 3 — регламент в tests/test_golden_wave3.py (G2W3).
+WAVE3_PRINTS = frozenset((
+    'ANDREW_2', 'DEM', 'DEM1', 'DEMDA', 'DEMON2', 'DEMON4', 'DEMON5',
+    'DEMON6', 'DIP1', 'EGOR_2', 'G1', 'GTIN0', 'GUTAN4', 'LAB31S',
+    'LAB3S', 'LAB3_GAS', 'LEXA11', 'LEXA21', 'LEXA23', 'PETRO3',
+    'SERGEY0', 'SERGEY3', 'S_KOND3', 'WA3', 'YBBG00',
+))
+WAVE2_SYSTEMS = [n for n in ALL_PRINTS
+                 if n not in STALE_PRINTS and n not in WAVE3_PRINTS]
 
 #: 15 систем с остаточными RED-строками полного прогона банка
 #: (2026-10-23: 921 GREEN / 30 YELLOW / 80 RED / 126 SKIP по 43 системам;

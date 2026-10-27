@@ -6,8 +6,8 @@
 
 📘 English version | 📗 [Русская версия](README_RU.md)
 
-[![Tests](https://img.shields.io/badge/pytest-1542%20passed%20%2F%208%20skipped-brightgreen)]()
-[![Verification](https://img.shields.io/badge/golden%20bank-44%20systems%2C%20921%20checks%20GREEN-blue)]()
+[![Tests](https://img.shields.io/badge/pytest-2266%20passed%20%2F%20166%20skipped%20%2F%2023%20xfail-brightgreen)]()
+[![Verification](https://img.shields.io/badge/golden%20bank-68%20systems%2C%201438%20checks%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
 Design, analysis, optimization and visualization of optical systems: lenses,
@@ -62,7 +62,7 @@ python main.py
 - Python 3.10+ (3.13 recommended)
 - Ready-to-use **OPAL-PC.exe** - see [Releases](https://github.com/justroflanGitHub/opal-okb/releases)
   (the 700+ system library is bundled; works out of the box and portably)
-- Tests: `python -X utf8 -m pytest -q` - **1177 passed / 8 skipped**
+- Tests: `python -X utf8 -m pytest -q` - **2266 passed / 166 skipped / 23 xfailed**
 
 ## Features
 
@@ -184,7 +184,11 @@ Master index - `analysis/REVERSE_TRACE.md` (§0-§24, Russian), wave plan -
       night (g2bank.py wave 3: 28/29 OK, LOV refused RT start), CI-green;
       wave-2 port-vs-PRN sweep: 43 end-to-end systems, **921 checks GREEN**,
       28 fully green, 15 xfail residuals *(docs/tasks/G44_FINDINGS,
-      G44_FINAL_REPORT; done 2026-10-23)*
+      G44_FINAL_REPORT; done 2026-10-23)*; wave-3 sweep: → **68 end-to-end**
+      systems (70 prints, 25/25 printed OK), **1438 checks GREEN** / 46 Y /
+      128 R / 215 S, 11 fully green + 8 new xfail (sign at virtual image,
+      0.82 print multiplier, TIR rim); mirrors live only in LBO libraries —
+      wave 4 *(docs/tasks/G2W3_FINDINGS, G2W3_FINAL_REPORT; done 2026-10-27)*
 
 ---
 

@@ -2,6 +2,32 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.32.0] — 2026-10-27
+
+### Корпус волна 3: классификация 216 отказов + честные unscannable (TASK_CORPUS_V3)
+
+- **Классы первопричин** (7, `FAIL_CLASSES` в `scripts/corpus_scan.py` — единый источник для
+  сканера, stats и реестра): unscannable_efl0 24, unscannable_l0 9, chief_degenerate_axis 12,
+  field_fully_vignetted 134, field_edge_inflate 26, axis_beam_blocked 9, spot_few_spots 2 —
+  все 216 отказов v2 классифицированы; реестр с триггерами и матрицей «семейство × класс» —
+  `docs/reports/corpus_v3_failures.json/.md`.
+- **Сканер v3**: skip-правила unscannable (efl=0 → skip spot/mtf_geo, L=0 → все полевые ops:
+  op false + error `unscannable: …` вместо фейковых значений прямых лучей — 15 ok-систем v2
+  стали честными fail), запас полудиаметров ×1.4 вокруг spot/mtf_geo (прецедент
+  CODDINGTON_SD_INFLATE), ZeroDivision-бэкстоп vignette.
+- **Прогон v3** `docs/reports/corpus_v3.json` (schema 2, 612 систем, ~13.5 мин):
+  **ok 407 / fail 205** (v2: 396/216); fail→ok 26 — весь класс field_edge_inflate;
+  vignette/chief 605→595/609→595 (l0-skip), spot 402→409, mtf_geo 399→407.
+- **Регресс-сверка v2→v3**: база (3672 ops-bool + 9180 метрик + f_check 2448) и
+  vignette/chief-метрики — побитово 0 расхождений; ×1.4 меняет только spot/mtf_geo
+  (253 из 381 ok→ok, почти всё — макс. поле).
+- **Движковые находки** (документированы, сканером не обходятся): `intersect_sphere`
+  возвращает дальний корень для луча из вершины сферы → MISS через кап GFIX P6 (12 систем);
+  `_pupil_field_ray` делит на нулевой отрезок FINITE-предмета (9 систем с полностью срезанным
+  осевым пучком даже ×3.0 + ZeroDivision-хвост vignette MICROLEN[3..9]).
+- **Отчёт** `docs/reports/CORPUS_REPORT_V3.md`: покрытие v2→v3 по 10 ops, матрица классов,
+  движковые находки, выводы о готовности порта.
+
 ## [1.31.1] — 2026-10-26
 
 ### Merge fixup: CI без OPAL.AGF (7 красных тестов)

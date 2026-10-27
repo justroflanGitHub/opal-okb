@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """Тесты сканера корпуса (scripts/corpus_scan.py) — TASK_CORPUS_SCAN, SA-4,
 плюс волна 2 (TASK_CORPUS_SCAN_V2): CLI --ops, schema_version 2, 13 новых
-метрик, читатель обоих schema — scripts/corpus_stats.py.
+метрик, читатель обоих schema — scripts/corpus_stats.py; и волна 3
+(TASK_CORPUS_V3): пакет B — 7 классов первопричин отказов (FAIL_CLASSES —
+единый источник для stats и реестра), unscannable-контракт; пакет C —
+skip-правила unscannable в scan_system (efl=0/L=0: op false + error =
+'op: unscannable: …') и запас полудиаметров ×CODDINGTON_SD_INFLATE в
+spot/mtf_geo (прецедент compute_field_aberrations).
 
 Тестируем строго против контрактов из docs/tasks/CORPUS_PLAN.md: «Контракт CLI
 сканера» (--lib/--out/--limit/--quiet, коды возврата 0/2), «Контракт JSON» и
@@ -40,6 +45,10 @@ LBO_DIR = Path(os.environ.get(
     r'C:\Users\mikhail\.openclaw\workspace\opal_okb\extracted\opal_okb\Lib'))
 LENS_LBO = LBO_DIR / 'LENS.LBO'
 LENS_SPC_LBO = LBO_DIR / 'LENS_SPC.LBO'
+MICROLEN_LBO = LBO_DIR / 'MICROLEN.LBO'
+USBINOCL_LBO = LBO_DIR / 'USBINOCL.LBO'
+OCULAR_LBO = LBO_DIR / 'OCULAR.LBO'
+BINOCUL_LBO = LBO_DIR / 'BINOCUL.LBO'
 
 HAS_DATA = LENS_LBO.is_file()
 requires_data = pytest.mark.skipif(
@@ -774,3 +783,477 @@ def test_stats_v2_anomalies_unknown_field(tmp_path):
     text = out.read_text(encoding='utf-8')
     assert '- а) null/не-числовые метрики: 0' in text, (
         f'ложный suspect при неизвестном поле системы:\n{text}')
+
+
+# --------------------------------------------------------------------------- #
+# 10. Классы отказов волны 3 (TASK_CORPUS_V3, пакет B)
+# --------------------------------------------------------------------------- #
+
+#: Единый источник контракта классов — сам сканер (для stats и реестра).
+sys.path.insert(0, str(BASE_DIR / 'scripts'))
+from corpus_scan import (  # noqa: E402
+    OPS as SCAN_OPS,
+    FAIL_CLASSES as SCAN_FAIL_CLASSES,
+    FAIL_CLASS_EFL0, FAIL_CLASS_L0, FAIL_CLASS_CHIEF_DEGENERATE,
+    FAIL_CLASS_FIELD_VIGNETTED, FAIL_CLASS_FIELD_EDGE_INFLATE,
+    FAIL_CLASS_AXIS_BLOCKED, FAIL_CLASS_FEW_SPOTS,
+    SKIP_OPS_BY_CLASS,
+    detect_unscannable, unscannable_error, unscannable_reason,
+    _inflated_sds,
+)
+
+#: Канонический порядок токенов из docstring блока «Классы отказов волны 3»
+#: (от машинных причин к физическим). Независимая копия — контракт-тест
+#: не должен брать ожидания из проверяемого кода.
+CANONICAL_FAIL_CLASSES = (
+    'unscannable_efl0',
+    'unscannable_l0',
+    'chief_degenerate_axis',
+    'field_fully_vignetted',
+    'field_edge_inflate',
+    'axis_beam_blocked',
+    'spot_few_spots',
+)
+
+#: Реестр отказов с классами (артефакт пакет B) — в git, данные .LBO не нужны.
+REGISTRY_V3_JSON = BASE_DIR / 'docs' / 'reports' / 'corpus_v3_failures.json'
+requires_registry = pytest.mark.skipif(
+    not REGISTRY_V3_JSON.is_file(),
+    reason='нет docs/reports/corpus_v3_failures.json (артефакт пакет B)')
+
+
+def test_fail_classes_seven_canonical():
+    """FAIL_CLASSES — ровно 7 уникальных непустых токенов без пробелов,
+    порядок совпадает с каноническим из docstring блока."""
+    assert len(SCAN_FAIL_CLASSES) == 7, (
+        f'len(FAIL_CLASSES)={len(SCAN_FAIL_CLASSES)}, ожидали 7')
+    assert len(set(SCAN_FAIL_CLASSES)) == 7, (
+        f'токены классов не уникальны: {SCAN_FAIL_CLASSES!r}')
+    assert SCAN_FAIL_CLASSES == CANONICAL_FAIL_CLASSES, (
+        f'порядок FAIL_CLASSES {SCAN_FAIL_CLASSES!r} расходится с каноническим '
+        f'{CANONICAL_FAIL_CLASSES!r} (docstring блока в corpus_scan.py)')
+    for token in SCAN_FAIL_CLASSES:
+        assert isinstance(token, str) and token and ' ' not in token, (
+            f'токен класса {token!r} — пустой или с пробелом')
+
+
+def test_skip_ops_by_class_contract():
+    """SKIP_OPS_BY_CLASS: ключи ⊆ FAIL_CLASSES; значения — кортежи операций
+    ⊆ OPS сканера; spot/mtf_geo входят в skip обоих unscannable-классов."""
+    unknown = set(SKIP_OPS_BY_CLASS) - set(SCAN_FAIL_CLASSES)
+    assert not unknown, f'ключи SKIP_OPS_BY_CLASS вне FAIL_CLASSES: {unknown}'
+    for cls, skip in SKIP_OPS_BY_CLASS.items():
+        assert isinstance(skip, tuple), (
+            f'SKIP_OPS_BY_CLASS[{cls!r}] не кортеж: {skip!r}')
+        extra = set(skip) - set(SCAN_OPS)
+        assert not extra, f'{cls!r}: skip-операции вне OPS: {extra}'
+    assert {'spot', 'mtf_geo'} <= set(SKIP_OPS_BY_CLASS[FAIL_CLASS_EFL0]), (
+        'efl0: skip обязан содержать spot и mtf_geo')
+    assert {'spot', 'mtf_geo'} <= set(SKIP_OPS_BY_CLASS[FAIL_CLASS_L0]), (
+        'l0: skip обязан содержать spot и mtf_geo')
+
+
+def test_detect_unscannable():
+    """detect_unscannable: точное сравнение efl==0.0 (EFL0 приоритетен при
+    (0.0, 0.0)); None (отказ paraxial) и NaN — не класс; крошечный, но не
+    нулевой efl (1e-270 у L=0-систем) — НЕ efl0, а L==0.0 → L0."""
+    nan = float('nan')
+    assert detect_unscannable(0.0, 100.0) == FAIL_CLASS_EFL0
+    assert detect_unscannable(None, 100.0) is None
+    assert detect_unscannable(50.0, None) is None
+    assert detect_unscannable(None, None) is None
+    assert detect_unscannable(1e-270, 0.0) == FAIL_CLASS_L0
+    assert detect_unscannable(0.0, 0.0) == FAIL_CLASS_EFL0
+    assert detect_unscannable(nan, 0.0) == FAIL_CLASS_L0
+
+
+def test_unscannable_error_strings():
+    """unscannable_error: стабильные человекочитаемые строки error для
+    skip-правил (их ищет корпус_stats по подстроке 'unscannable: efl=0' /
+    'unscannable: L=0'); класс вне {EFL0, L0} — ValueError."""
+    assert unscannable_error('spot', FAIL_CLASS_EFL0) == (
+        'spot: unscannable: efl=0 (стёкла не декодированы, n≡1)')
+    assert unscannable_error('vignette', FAIL_CLASS_L0) == (
+        'vignette: unscannable: L=0 (layout сломан, толщины обнулены)')
+    with pytest.raises(ValueError):
+        unscannable_error('spot', FAIL_CLASS_FEW_SPOTS)
+    with pytest.raises(ValueError):
+        unscannable_error('spot', FAIL_CLASS_CHIEF_DEGENERATE)
+
+
+@requires_registry
+def test_registry_v3_classes_match_scanner():
+    """Реестр v3: класс каждой строки — токен из FAIL_CLASSES; class_counts
+    покрывает все 7 классов (ключи — те же константы) и в сумме даёт 216
+    (число отказов корпуса v2)."""
+    data = json.loads(REGISTRY_V3_JSON.read_text(encoding='utf-8'))
+    failures = data['failures']
+    assert data['total_failures'] == len(failures) == 216, (
+        f"total_failures={data['total_failures']}, строк {len(failures)}")
+
+    for row in failures:
+        assert row['class'] in SCAN_FAIL_CLASSES, (
+            f"{row['lib']}[{row['index']}]: класс {row['class']!r} — "
+            'не токен FAIL_CLASSES')
+
+    counts = data['class_counts']
+    assert set(counts) == set(SCAN_FAIL_CLASSES), (
+        f'ключи class_counts {set(counts) ^ set(SCAN_FAIL_CLASSES)} '
+        'расходятся с FAIL_CLASSES')
+    assert sum(counts.values()) == 216, (
+        f'сумма class_counts={sum(counts.values())}, ожидали 216')
+    # и по классам сходится с фактическими строками реестра
+    from collections import Counter
+    actual = Counter(row['class'] for row in failures)
+    assert dict(actual) == counts, (
+        f'class_counts {counts} расходится с фактическим {dict(actual)}')
+
+
+# --------------------------------------------------------------------------- #
+# 11. Unscannable-контракт и запас полудиаметров (волна 3, пакет C)
+# --------------------------------------------------------------------------- #
+
+#: Стабильные строки error для unscannable-систем (независимая копия —
+#: контракт-тест не берёт ожидания из проверяемого кода). Первый пропущенный
+#: op в порядке OPS: spot для efl0 (vignette/chief у efl0 остаются),
+#: vignette для l0 (все полевые операции пропущены).
+UNSCANNABLE_EFL0_ERROR = \
+    'spot: unscannable: efl=0 (стёкла не декодированы, n≡1)'
+UNSCANNABLE_L0_ERROR = \
+    'vignette: unscannable: L=0 (layout сломан, толщины обнулены)'
+
+#: corpus_v2.json (артефакт волны 2, 612 систем, schema 2) — база регресс-
+#: сравнения: конвейер до spot не менялся → базовые 15 + vignette/chief
+#: метрики обязаны совпадать побитово.
+CORPUS_V2_JSON = BASE_DIR / 'docs' / 'reports' / 'corpus_v2.json'
+requires_corpus_v2 = pytest.mark.skipif(
+    not CORPUS_V2_JSON.is_file(),
+    reason='нет docs/reports/corpus_v2.json (артефакт волны 2)')
+
+
+def test_unscannable_reason_strings():
+    """unscannable_reason: тело причины БЕЗ префикса op (его добавит цикл
+    error scan_system — двойного 'spot: spot:' не возникает);
+    unscannable_error == f'{op}: {reason}'; класс вне {EFL0, L0} —
+    ValueError."""
+    reason_efl0 = 'unscannable: efl=0 (стёкла не декодированы, n≡1)'
+    reason_l0 = 'unscannable: L=0 (layout сломан, толщины обнулены)'
+    assert unscannable_reason(FAIL_CLASS_EFL0) == reason_efl0
+    assert unscannable_reason(FAIL_CLASS_L0) == reason_l0
+    assert unscannable_error('spot', FAIL_CLASS_EFL0) == f'spot: {reason_efl0}'
+    assert unscannable_error('vignette', FAIL_CLASS_L0) == \
+        f'vignette: {reason_l0}'
+    with pytest.raises(ValueError):
+        unscannable_reason(FAIL_CLASS_FEW_SPOTS)
+    with pytest.raises(ValueError):
+        unscannable_reason(FAIL_CLASS_FIELD_EDGE_INFLATE)
+
+
+def test_inflated_sds_contextmanager():
+    """_inflated_sds: умножает ТОЛЬКО ненулевые (>0) полудиаметры на
+    CODDINGTON_SD_INFLATE, нулевые и отрицательные не трогает; исходные
+    значения возвращаются в bit-равном виде — и при выходе, и при
+    исключении (scanner-side параметр трассировки, движок не тронут)."""
+    from domain.models import OpticalSystem, Surface
+    sds = [10.0, 0.0, 7.5, -3.0]
+    system = OpticalSystem(surfaces=[
+        Surface(radius=50.0, semi_diameter=sd) for sd in sds])
+
+    with _inflated_sds(system):
+        got = [s.semi_diameter for s in system.surfaces]
+        assert got[0] == pytest.approx(10.0 * 1.4)
+        assert got[1] == 0.0                      # нулевой — не тронут
+        assert got[2] == pytest.approx(7.5 * 1.4)
+        assert got[3] == -3.0                     # неположительный — не тронут
+    assert [s.semi_diameter for s in system.surfaces] == sds  # bit-равно
+
+    with pytest.raises(RuntimeError):
+        with _inflated_sds(system):
+            raise RuntimeError('трассировка упала')
+    assert [s.semi_diameter for s in system.surfaces] == sds  # finally вернул
+
+
+@pytest.fixture(scope='module')
+def microlen10_all(tmp_path_factory):
+    """MICROLEN.LBO --limit 10 --ops all: индексы 3..9 — L=0 (layout сломан,
+    толщины обнулены), 0..2 — здоровая геометрия с axis_beam_blocked."""
+    out = tmp_path_factory.mktemp('corpus_v3c') / 'microlen10.json'
+    proc = run_scan_ops(MICROLEN_LBO, out, ops='all', limit=10)
+    return proc, out
+
+
+@pytest.fixture(scope='module')
+def usbinocl6_all(tmp_path_factory):
+    """USBINOCL.LBO --limit 6 --ops all: индексы 1..5 — efl ровно 0.0
+    (стёкла US-библиотек не декодированы)."""
+    out = tmp_path_factory.mktemp('corpus_v3c') / 'usbinocl6.json'
+    proc = run_scan_ops(USBINOCL_LBO, out, ops='all', limit=6)
+    return proc, out
+
+
+@pytest.fixture(scope='module')
+def lensspc6_all(tmp_path_factory):
+    """LENS_SPC.LBO --limit 6 --ops all: индекс 5 (Об.з.-л.Цуканова,
+    efl=0) в v2 был 'ok' с поддельным spot ~70032 мкм."""
+    out = tmp_path_factory.mktemp('corpus_v3c') / 'lensspc6.json'
+    proc = run_scan_ops(LENS_SPC_LBO, out, ops='all', limit=6)
+    return proc, out
+
+
+@pytest.fixture(scope='module')
+def ocular1_all(tmp_path_factory):
+    """OCULAR.LBO --limit 1 --ops all: OCULAR[0] — полевые лучи срезались
+    кромкой при штатных полудиаметрах (26/88 EDGE), ×1.4 чинит полевой RMS."""
+    out = tmp_path_factory.mktemp('corpus_v3c') / 'ocular1.json'
+    proc = run_scan_ops(OCULAR_LBO, out, ops='all', limit=1)
+    return proc, out
+
+
+@pytest.fixture(scope='module')
+def binocul2_all(tmp_path_factory):
+    """BINOCUL.LBO --limit 2 --ops all: BINOCUL[0] — полевой RMS=inf в v2,
+    конечен при ×1.4; BINOCUL[1] — честный отказ (поле срезано полностью)."""
+    out = tmp_path_factory.mktemp('corpus_v3c') / 'binocul2.json'
+    proc = run_scan_ops(BINOCUL_LBO, out, ops='all', limit=2)
+    return proc, out
+
+
+@requires_data
+@requires_script
+def test_skip_l0_microlen(microlen10_all):
+    """Skip l0 (MICROLEN[3..9], L ровно 0.0): vignette/chief/spot/mtf_geo —
+    false, error = 'vignette: unscannable: L=0 (…)' (первый пропущенный op
+    в порядке OPS), базовые ops true, spot/vignette-метрики null. Индексы
+    0..2 — не L0: падают на spot естественно, error без 'unscannable'."""
+    proc, out = microlen10_all
+    assert proc.returncode == 0, _proc_msg(proc)
+    data = _load_json(out)
+    systems = data['systems']
+    assert len(systems) == 10
+
+    for s in systems[3:]:
+        # L ровно 0.0, efl — крошечный, но не нулевой (layout сломан)
+        assert s['metrics']['L'] == 0.0, (
+            f"{s['index']} {s['name']!r}: L={s['metrics']['L']!r}, ожидали 0.0")
+        assert s['metrics']['efl'] not in (None, 0.0), (
+            f"{s['index']}: efl={s['metrics']['efl']!r} — не нулевой")
+        for op in ('vignette', 'chief', 'spot', 'mtf_geo'):
+            assert s['ops'][op] is False, (
+                f"{s['index']} {s['name']!r}: ops[{op}]={s['ops'][op]!r}")
+        for op in ('load', 'parse', 'paraxial', 'seidel', 'taboc1', 'pupils'):
+            assert s['ops'][op] is True, (
+                f"{s['index']} {s['name']!r}: базовый op {op} = "
+                f"{s['ops'][op]!r}, ожидали True")
+        assert s['error'] == UNSCANNABLE_L0_ERROR, (
+            f"{s['index']} {s['name']!r}: error={s['error']!r}")
+        assert s['status'] == 'fail'  # контракт v2: ok ⟺ все выбранные ops
+        assert s['metrics']['spot_rms_axis_um'] is None
+        assert s['metrics']['vignette_max_field'] is None
+        assert s['metrics']['mtf30_axis'] is None
+
+    # 0..2 — не L0: честный отказ spot (axis_beam_blocked), не unscannable
+    for s in systems[:3]:
+        assert s['metrics']['L'] != 0.0
+        assert s['error'] is not None and 'unscannable' not in s['error'], (
+            f"{s['index']} {s['name']!r}: error={s['error']!r}")
+        assert s['error'].startswith('spot: '), (
+            f"{s['index']}: error={s['error']!r} — ожидали естественный "
+            'отказ spot')
+    assert systems[3]['name'].startswith('Ахромат'), (
+        f"MICROLEN[3]: {systems[3]['name']!r}")
+
+
+@requires_data
+@requires_script
+def test_skip_efl0_usbinocl(usbinocl6_all):
+    """Skip efl0 (USBINOCL[1..5], efl ровно 0.0): spot/mtf_geo — false,
+    error = 'spot: unscannable: efl=0 (…)'; при этом vignette/chief
+    ВЫЧИСЛЕНЫ (геометрия декодирована) — их метрики числа, не отсутствие."""
+    proc, out = usbinocl6_all
+    assert proc.returncode == 0, _proc_msg(proc)
+    data = _load_json(out)
+    systems = data['systems']
+    assert len(systems) == 6
+    assert systems[0]['metrics']['efl'] != 0.0  # KINGSLAKE — не efl0
+    assert systems[0]['status'] == 'ok'
+
+    for s in systems[1:]:
+        assert s['metrics']['efl'] == 0.0, (
+            f"{s['index']} {s['name']!r}: efl={s['metrics']['efl']!r}")
+        assert s['ops']['spot'] is False and s['ops']['mtf_geo'] is False, (
+            f"{s['index']} {s['name']!r}: ops={s['ops']!r}")
+        assert s['error'] == UNSCANNABLE_EFL0_ERROR, (
+            f"{s['index']} {s['name']!r}: error={s['error']!r}")
+        assert s['status'] == 'fail'
+        # vignette/chief вычислены: ключи на месте, значения — числа
+        assert s['ops']['vignette'] is True and s['ops']['chief'] is True, (
+            f"{s['index']} {s['name']!r}: vignette/chief не вычислены: "
+            f"{s['ops']['vignette']}/{s['ops']['chief']}")
+        assert _is_number(s['metrics']['vignette_max_field']), (
+            f"{s['index']}: vignette_max_field="
+            f"{s['metrics']['vignette_max_field']!r}")
+        assert _is_number(s['metrics']['distortion_pct']), (
+            f"{s['index']}: distortion_pct={s['metrics']['distortion_pct']!r}")
+        # мусорных «прямолучевых» spot-значений больше нет
+        assert s['metrics']['spot_rms_axis_um'] is None
+        assert s['metrics']['mtf30_axis'] is None
+
+
+@requires_data
+@requires_script
+def test_efl0_honest_flip_tsukanova(lensspc6_all):
+    """LENS_SPC[5] «Об.з.-л.Цуканова» (efl=0, в v2 'ok' с поддельным spot
+    ~70032 мкм) → теперь честный fail: error = 'spot: unscannable: efl=0
+    (…)', spot-метрики null; LENS_SPC[0..4] остаются ok."""
+    proc, out = lensspc6_all
+    assert proc.returncode == 0, _proc_msg(proc)
+    data = _load_json(out)
+    systems = data['systems']
+    assert len(systems) == 6
+
+    tsk = systems[5]
+    assert tsk['index'] == 5 and 'Цуканова' in (tsk['name'] or ''), (
+        f"LENS_SPC[5]: {tsk['name']!r}")
+    assert tsk['metrics']['efl'] == 0.0 and tsk['metrics']['L'] == 0.0, (
+        f"efl={tsk['metrics']['efl']!r}, L={tsk['metrics']['L']!r}")
+    assert tsk['status'] == 'fail', (
+        f"status={tsk['status']!r} — efl0-система обязана стать fail")
+    assert tsk['error'] == UNSCANNABLE_EFL0_ERROR, f"error={tsk['error']!r}"
+    assert tsk['ops']['spot'] is False and tsk['ops']['mtf_geo'] is False
+    assert tsk['metrics']['spot_rms_axis_um'] is None, (
+        'поддельный spot 70032 мкм обязан исчезнуть')
+    assert tsk['metrics']['spot_rms_max_field_um'] is None
+    # efl0: vignette/chief остаются (геометрия декодирована)
+    assert tsk['ops']['vignette'] is True and tsk['ops']['chief'] is True
+    assert _is_number(tsk['metrics']['vignette_max_field'])
+    assert _is_number(tsk['metrics']['distortion_pct'])
+
+    for s in systems[:5]:
+        assert s['status'] == 'ok', (
+            f"{s['index']} {s['name']!r}: status={s['status']!r}")
+        assert s['error'] is None
+
+
+@requires_data
+@requires_script
+def test_edge_inflate_ocular0(ocular1_all):
+    """OCULAR[0] (field_edge_inflate): полевой RMS при штатных полудиаметрах
+    срезался кромкой, при временном ×1.4 (CODDINGTON_SD_INFLATE) — конечен;
+    все 10 ops true, контрасты в [0..1]."""
+    proc, out = ocular1_all
+    assert proc.returncode == 0, _proc_msg(proc)
+    data = _load_json(out)
+    assert len(data['systems']) == 1
+    s = data['systems'][0]
+    assert 'Окуляр' in (s['name'] or ''), f"name={s['name']!r}"
+
+    assert s['status'] == 'ok', f"status={s['status']!r}, error={s['error']!r}"
+    assert s['error'] is None
+    failed = [op for op, v in s['ops'].items() if not v]
+    assert not failed, f'окуляр[0] ok, но ops false: {failed}'
+
+    m = s['metrics']
+    # факт прогона (детерминирован): полевой RMS конечен, ~56 мкм
+    assert m['spot_rms_axis_um'] == pytest.approx(43.46315184949732)
+    assert _is_number(m['spot_rms_max_field_um'])
+    assert m['spot_rms_max_field_um'] == pytest.approx(56.04337885731391), (
+        f"spot_rms_max_field_um={m['spot_rms_max_field_um']!r}")
+    for key in ('mtf30_axis', 'mtf50_axis', 'mtf30_max_field',
+                'mtf50_max_field'):
+        assert _is_number(m[key]) and 0.0 <= m[key] <= 1.0, (
+            f'{key}={m[key]!r} — контраст вне [0..1]')
+
+
+@requires_data
+@requires_script
+def test_edge_inflate_binocul0(binocul2_all):
+    """BINOCUL[0] (field_edge_inflate, в v2 'spot: max field RMS not
+    finite'): при ×1.4 полевой RMS конечен ≈1447.24 мкм → status ok, все
+    ops true (mtf_geo тоже). BINOCUL[1] (field_fully_vignetted) — честный
+    отказ v2 без изменений: сканер его не «чинит»."""
+    proc, out = binocul2_all
+    assert proc.returncode == 0, _proc_msg(proc)
+    data = _load_json(out)
+    assert len(data['systems']) == 2
+
+    b0 = data['systems'][0]
+    assert 'Галилея' in (b0['name'] or ''), f"name={b0['name']!r}"
+    assert b0['status'] == 'ok', f"status={b0['status']!r}, error={b0['error']!r}"
+    assert b0['error'] is None
+    failed = [op for op, v in b0['ops'].items() if not v]
+    assert not failed, f'BINOCUL[0] ok, но ops false: {failed}'
+    m = b0['metrics']
+    # факт прогона (детерминирован); ось совпадает с v2, поле чинится ×1.4
+    assert m['spot_rms_axis_um'] == pytest.approx(350.87310746203093)
+    assert m['spot_rms_max_field_um'] == pytest.approx(1447.2414969052345), (
+        f"spot_rms_max_field_um={m['spot_rms_max_field_um']!r}")
+    for key in ('mtf30_axis', 'mtf50_axis', 'mtf30_max_field',
+                'mtf50_max_field'):
+        assert _is_number(m[key]) and 0.0 <= m[key] <= 1.0, (
+            f'{key}={m[key]!r} — контраст вне [0..1]')
+    # vignette/chief НЕ раздуты — числа бит-в-бит v2
+    assert m['vignette_up_pct'] == 0.0 and m['vignette_down_pct'] == 100.0
+
+    b1 = data['systems'][1]
+    assert b1['status'] == 'fail', (
+        f'BINOCUL[1]: status={b1["status"]!r} — поле срезано полностью, '
+        'сканер это не чинит')
+    assert b1['error'] == 'spot: max field RMS not finite', (
+        f"BINOCUL[1]: error={b1['error']!r}")
+
+
+@requires_data
+@requires_script
+@requires_corpus_v2
+def test_lens5_regression_vs_v2(lens5_run):
+    """Регресс «раздутие не трогает здоровые системы» на LENS[0..4] vs
+    corpus_v2.json: базовые 15 + vignette_*/chief_* метрики и осевые
+    spot/mtf — ТОЧНО (float ==); статус/ошибки без изменений. Полевые
+    spot/mtf-метрики ЗАФИКСИРОВАНЫ на факте: они закономерно изменились —
+    полевые лучи LENS ходят по самой кромке полудиаметра (при штатных sds
+    часть лучей EDGE-срезана: у LENS[0] поле 1428 лучей из 1944, при ×1.4
+    — все 1944), теперь трассируются полностью (прецедент
+    CODDINGTON_SD_INFLATE)."""
+    _, out = lens5_run
+    data = _load_json(out)
+    v2 = _load_json(CORPUS_V2_JSON)
+    v2_lens = [s for s in v2['systems'] if s['lib'] == 'LENS'][:5]
+
+    #: Метрики, обязанные совпасть с v2 бит-в-бит: конвейер до spot не
+    #: менялся, vignette/chief не раздуты; ось не касается кромки.
+    STRICT_V2_KEYS = (
+        'efl', 'bfd', 'f_number', 'L', 'entrance_pupil', 'exit_pupil',
+        'entrance_pupil_diameter', 'seidel_SI', 'seidel_SII', 'seidel_SIII',
+        'seidel_SIV', 'seidel_SV', 'taboc1_rows', 'taboc1_ok',
+        'taboc1_max_abs_longitudinal_mm',
+        'vignette_max_field', 'vignette_up_pct', 'vignette_down_pct',
+        'chief_max_field', 'distortion_pct', 'astig_Zm_mm', 'astig_Zs_mm',
+        'spot_rms_axis_um', 'mtf30_axis', 'mtf50_axis',
+    )
+    #: Полевые spot/mtf — факт нового прогона (×1.4 в spot/mtf_geo).
+    FIELD_FACTS = {
+        0: (149.90542960974938, 0.0007921496698470984, 0.018042282889080715),
+        1: (178.35515110918547, 0.003429542888232502, 0.0),
+        2: (249.79244487015524, 0.06364877747878388, 0.0),
+        3: (449.03942204313364, 0.01222001313684553, 0.0),
+        4: (97.17731888057388, 0.05186491725802904, 0.01163961779730944),
+    }
+
+    assert len(data['systems']) == len(v2_lens) == 5
+    for new, old in zip(data['systems'], v2_lens):
+        assert new['name'] == old['name'], (
+            f'{new["index"]}: {new["name"]!r} vs {old["name"]!r}')
+        assert new['status'] == 'ok' and new['error'] is None, (
+            f'{new["index"]}: {new["status"]}/{new["error"]!r}')
+        for key in STRICT_V2_KEYS:
+            assert _num_equal(new['metrics'][key], old['metrics'][key]), (
+                f'{new["index"]} {new["name"][:20]!r}: metrics.{key} = '
+                f'{new["metrics"][key]!r}, в v2 {old["metrics"][key]!r} '
+                '— расхождение с v2 (конвейер до spot не менялся!)')
+        spot_f, mtf30_f, mtf50_f = FIELD_FACTS[new['index']]
+        assert new['metrics']['spot_rms_max_field_um'] == \
+            pytest.approx(spot_f), (
+                f'{new["index"]}: spot_rms_max_field_um='
+                f'{new["metrics"]["spot_rms_max_field_um"]!r}, факт {spot_f}')
+        assert new['metrics']['mtf30_max_field'] == pytest.approx(mtf30_f)
+        assert new['metrics']['mtf50_max_field'] == pytest.approx(mtf50_f)

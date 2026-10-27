@@ -1,6 +1,19 @@
 """
 OPAL-OKB - 3D Visualization with OpenGL
 QOpenGLWidget-based 3D viewer for optical systems and ray tracing.
+
+Хроматические лучи (пакет D, TASK_3D_VIZ): тумблер «Лучи по λ» в тулбаре
+виджета переключает моно (основная λ) ↔ полихром (все рабочие λ,
+w.weight > 0); цвет луча = цвет спектральной линии. Палитра — единый
+источник gui.widgets.base.wl_to_plot_color (значения λ якорей —
+utils/spectral_lines.py, h/g/F/e/d/C/r).
+
+Примечание: 2D-разрез хода лучей уже имеет свой тумблер «Хром.Ц» в
+главном окне (main.py → Visualization.chromatic_rays; visualization.py
+вне рабочей зоны пакета D) — новых действий для 2D не требуется,
+этот тумблер — 3D-аналог. Виджет используется и встроенно в главное
+окно (viz_stack), и в отдельном окне «3D-ход лучей»
+(main.py::_show_ray_trace_3d) — тумблер появляется в обоих автоматически.
 """
 import math
 import sys
@@ -40,32 +53,48 @@ from optics_engine import OpticalSystem, Surface, ObjectType, paraxial_trace
 import ray_native
 from optics_utils import compute_z_positions, get_effective_aperture
 
+# Палитра лучей — единый источник: якоря h/g/F/e/d/C/r, значения λ —
+# utils/spectral_lines.py; для нестандартной λ wl_to_plot_color сам
+# даёт ближайший якорь (дублирующий fallback здесь не нужен).
+from gui.widgets.base import wl_to_plot_color
+
 
 class Visualization3D(QWidget):
     """
     3D optical system visualization widget.
     Renders lens surfaces, aperture stop, and rays in 3D using OpenGL.
+
+    Хроматические лучи: публичное свойство ``chromatic_enabled``
+    (по образцу ``viz.chromatic_rays`` 2D-вьюера) переключает моно
+    (основная λ) ↔ полихром (все рабочие λ, weight > 0); цвет луча
+    даёт ``_wl_color`` от единой палитры ``wl_to_plot_color``.
+    Состояние тумблера сохраняется при ``set_system`` (пере-трассировка
+    выполняется в текущем режиме).
     """
 
-    # Wavelength colors (R, G, B) for common spectral lines
-    WL_COLORS = {
-        0.65627: (0.9, 0.2, 0.2),   # C (red)
-        0.58756: (0.9, 0.9, 0.3),   # d (yellow)
-        0.54607: (0.2, 0.9, 0.3),   # e (green)
-        0.48613: (0.2, 0.5, 0.9),   # F (blue-cyan)
-        0.43405: (0.6, 0.2, 0.9),   # G' (violet)
-    }
-
     def _wl_color(self, wl):
-        """Get RGB color for a wavelength, with interpolation fallback."""
-        if wl in self.WL_COLORS:
-            return self.WL_COLORS[wl]
-        # Find nearest
-        closest = min(self.WL_COLORS.keys(), key=lambda k: abs(k - wl))
-        return self.WL_COLORS[closest]
+        """RGB-цвет луча (триплет 0..1) для длины волны wl (мкм).
+
+        Единый источник палитры — gui.widgets.base.wl_to_plot_color:
+        QColor ближайшего якоря (λ якорей — utils/spectral_lines.py).
+        Для glColor4f QColor.getRgbF() → float-триплет 0..1.
+        """
+        r, g, b, _alpha = wl_to_plot_color(wl).getRgbF()
+        return (r, g, b)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        # Общее состояние (инициализируется ДО ветки fallback: трассировка
+        # и свойства не завязаны на OpenGL)
+        self.system = None
+        self.ray_data_3d = []  # List of (wl, field_y, results_from_trace_grid_3d)
+
+        # State
+        self._show_rays = True
+        self._show_wireframe = False
+        self._show_solid = True
+        self._chromatic_enabled = False  # «Лучи по λ»: по умолчанию ВЫКЛ = моно
 
         if not HAS_OPENGL:
             # Fallback: show a label
@@ -75,17 +104,7 @@ class Visualization3D(QWidget):
             lbl.setAlignment(Qt.AlignCenter)
             layout.addWidget(lbl)
             self.gl_widget = None
-            self.system = None
-            self.ray_data_3d = []
             return
-
-        self.system = None
-        self.ray_data_3d = []  # List of (wl, field_y, results_from_trace_grid_3d)
-
-        # State
-        self._show_rays = True
-        self._show_wireframe = False
-        self._show_solid = True
 
         # Layout
         layout = QVBoxLayout(self)
@@ -96,27 +115,36 @@ class Visualization3D(QWidget):
         toolbar = QHBoxLayout()
         toolbar.setContentsMargins(4, 2, 4, 2)
 
-        self.btn_reset = QPushButton("Reset View")
+        self.btn_reset = QPushButton("Сброс вида")
         self.btn_reset.setMaximumWidth(90)
         self.btn_reset.clicked.connect(self._reset_view)
 
-        self.btn_toggle_rays = QPushButton("Rays: ON")
+        self.btn_toggle_rays = QPushButton("Лучи: вкл")
         self.btn_toggle_rays.setMaximumWidth(90)
         self.btn_toggle_rays.setCheckable(True)
         self.btn_toggle_rays.setChecked(True)
         self.btn_toggle_rays.clicked.connect(self._toggle_rays)
 
-        self.btn_toggle_wire = QPushButton("Wireframe")
+        # Тумблер «Лучи по λ» (пакет D): моно (основная λ) ↔ полихром
+        # (все рабочие λ, weight > 0); по умолчанию ВЫКЛ = моно.
+        self.btn_chromatic = QPushButton("Лучи по λ: выкл")
+        self.btn_chromatic.setMaximumWidth(120)
+        self.btn_chromatic.setCheckable(True)
+        self.btn_chromatic.setChecked(False)
+        self.btn_chromatic.clicked.connect(self._toggle_chromatic)
+
+        self.btn_toggle_wire = QPushButton("Каркас")
         self.btn_toggle_wire.setMaximumWidth(90)
         self.btn_toggle_wire.setCheckable(True)
         self.btn_toggle_wire.clicked.connect(self._toggle_wireframe)
 
-        self.btn_trace = QPushButton("Trace 3D Rays")
+        self.btn_trace = QPushButton("Трассировать")
         self.btn_trace.setMaximumWidth(110)
         self.btn_trace.clicked.connect(self._trace_rays)
 
         toolbar.addWidget(self.btn_reset)
         toolbar.addWidget(self.btn_toggle_rays)
+        toolbar.addWidget(self.btn_chromatic)
         toolbar.addWidget(self.btn_toggle_wire)
         toolbar.addWidget(self.btn_trace)
         toolbar.addStretch()
@@ -129,12 +157,39 @@ class Visualization3D(QWidget):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
     def set_system(self, sys):
-        """Load an optical system and auto-trace rays."""
+        """Load an optical system and auto-trace rays.
+
+        Состояние тумблера «Лучи по λ» (``chromatic_enabled``) при смене
+        системы сохраняется — пере-трассировка выполняется в текущем
+        режиме (моно или полихром).
+        """
         self.system = sys
         if sys and sys.surfaces:
             self._trace_rays()
         if self.gl_widget:
             self.gl_widget.update()
+
+    @property
+    def chromatic_enabled(self):
+        """Тумблер «Лучи по λ»: False — моно (основная λ), True — полихром.
+
+        Публичное свойство для GUI и тестов — по образцу
+        ``viz.chromatic_rays`` 2D-вьюера. Сеттер синхронизирует кнопку
+        (если она есть — в fallback-ветке без PyOpenGL её нет) и
+        пере-трассирует лучи в новом режиме.
+        """
+        return self._chromatic_enabled
+
+    @chromatic_enabled.setter
+    def chromatic_enabled(self, enabled):
+        self._chromatic_enabled = bool(enabled)
+        btn = getattr(self, 'btn_chromatic', None)
+        if btn is not None:
+            btn.setChecked(self._chromatic_enabled)
+            btn.setText('Лучи по λ: вкл' if self._chromatic_enabled
+                        else 'Лучи по λ: выкл')
+        if self.system is not None and self.system.surfaces:
+            self._trace_rays()
 
     def _reset_view(self):
         if self.gl_widget:
@@ -142,9 +197,12 @@ class Visualization3D(QWidget):
 
     def _toggle_rays(self):
         self._show_rays = self.btn_toggle_rays.isChecked()
-        self.btn_toggle_rays.setText("Rays: ON" if self._show_rays else "Rays: OFF")
+        self.btn_toggle_rays.setText("Лучи: вкл" if self._show_rays else "Лучи: выкл")
         if self.gl_widget:
             self.gl_widget.update()
+
+    def _toggle_chromatic(self):
+        self.chromatic_enabled = self.btn_chromatic.isChecked()
 
     def _toggle_wireframe(self):
         self._show_wireframe = self.btn_toggle_wire.isChecked()
@@ -152,7 +210,14 @@ class Visualization3D(QWidget):
             self.gl_widget.update()
 
     def _trace_rays(self):
-        """Trace rays for all wavelengths and field points."""
+        """Trace rays for all wavelengths and field points.
+
+        Длины волн: моно (по умолчанию) — только основная λ
+        (sys.wavelengths[0]); полихром («Лучи по λ») — ВСЕ рабочие λ
+        (w.weight > 0), без прежнего усечения «до первых 3». «Рабочесть»
+        λ — по весу, как в 2D-полихроме (visualization.py) и полихромном
+        Strehl (analysis/strehl.py).
+        """
         if not self.system or not self.system.surfaces:
             return
 
@@ -162,15 +227,19 @@ class Visualization3D(QWidget):
         # Determine field angles to trace
         field_angles = [0.0]
         if sys.field_points:
-            max_field = max(abs(fp.y) for fp in sys.field_points if fp.y != 0)
+            max_field = max((abs(fp.y) for fp in sys.field_points if fp.y != 0),
+                            default=0.0)
             if max_field > 0:
                 field_angles = [0.0, max_field]
 
-        # Determine wavelengths
-        wavelengths = [sys.wavelengths[0].value] if sys.wavelengths else [0.54607]
-        # For 3D, limit to primary + maybe 2 more for chromatic effect
-        if len(sys.wavelengths) > 1:
-            wavelengths = [w.value for w in sys.wavelengths[:3]]
+        # Determine wavelengths (моно ↔ полихром — см. docstring)
+        if self._chromatic_enabled and sys.wavelengths:
+            wavelengths = [w.value for w in sys.wavelengths if w.weight > 0]
+            if not wavelengths:
+                # ни одной рабочей λ — откат к основной
+                wavelengths = [sys.wavelengths[0].value]
+        else:
+            wavelengths = [sys.wavelengths[0].value] if sys.wavelengths else [0.54607]
 
         for wl in wavelengths:
             for fa in field_angles:
@@ -532,7 +601,11 @@ class _GLWidget(QOpenGLWidget):
             glEnd()
 
     def _draw_rays(self):
-        """Draw all traced rays as 3D polylines."""
+        """Draw all traced rays as 3D polylines.
+
+        Цвет успешного луча — цвет его спектральной линии (единая
+        палитра wl_to_plot_color); заблокированные лучи — серые тусклые.
+        """
         for wl, field_y, grid_results in self.parent3d.ray_data_3d:
             color = self.parent3d._wl_color(wl)
             r_col, g_col, b_col = color

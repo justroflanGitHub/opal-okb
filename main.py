@@ -25,6 +25,7 @@ from optics_engine import (
     ObjectType, ApertureType,
 )
 from visualization import OpticalSystemView
+import visualization3d
 from visualization3d import Visualization3D
 from analysis_gui import AnalysisPanel
 from strehl import format_strehl, strehl_tooltip
@@ -1160,6 +1161,15 @@ class MainWindow(QMainWindow):
         glass_diag_action.triggered.connect(self._show_glass_diagram)
         view_menu.addAction(glass_diag_action)
 
+        # 3D-ход лучей (TASK_3D_VIZ, пакет C): отдельное окно с OpenGL-вьюером.
+        # Доступность — по флагу visualization3d.HAS_OPENGL, читаемому
+        # ДИНАМИЧЕСКИ в момент построения меню (тесты monkeypatch'ат его
+        # до создания MainWindow).
+        viz3d_action = QAction("3D-ход лучей", self)
+        viz3d_action.triggered.connect(self._show_ray_trace_3d)
+        self.act_viz3d_menu = self._configure_viz3d_action(viz3d_action)
+        view_menu.addAction(self.act_viz3d_menu)
+
         # Расчёт
         calc_menu = menubar.addMenu("&Расчёт")
 
@@ -1186,6 +1196,11 @@ class MainWindow(QMainWindow):
         toolbar.addAction("🔧 Демо", self._load_demo)
         toolbar.addSeparator()
         toolbar.addAction("▶ Рассчитать", self._calculate)
+        toolbar.addSeparator()
+        # 3D-ход лучей (TASK_3D_VIZ, пакет C) — доступность по HAS_OPENGL
+        # (динамический флаг модуля visualization3d, см. _configure_viz3d_action)
+        self.act_viz3d_toolbar = self._configure_viz3d_action(
+            toolbar.addAction("🌐 3D-ход", self._show_ray_trace_3d))
 
     def _init_new_system(self):
         """Silent init - no dialog, just defaults."""
@@ -1589,6 +1604,54 @@ class MainWindow(QMainWindow):
                 "matplotlib не установлен.\nУстановите: pip install matplotlib")
         except Exception as e:
             QMessageBox.warning(self, "Ошибка", f"Ошибка при построении диаграммы:\n{e}")
+
+    @staticmethod
+    def _configure_viz3d_action(act):
+        """Доступность действия «3D-ход лучей» по наличию PyOpenGL (пакет C).
+
+        Флаг HAS_OPENGL читается ДИНАМИЧЕСКИ из модуля visualization3d
+        в момент построения меню/тулбара — тесты могут monkeypatch'ить
+        visualization3d.HAS_OPENGL до создания MainWindow. Без PyOpenGL
+        действие disabled + tooltip с командой установки.
+        """
+        if not visualization3d.HAS_OPENGL:
+            act.setEnabled(False)
+            act.setToolTip(
+                "PyOpenGL не установлен. Установка: pip install PyOpenGL")
+        return act
+
+    def _show_ray_trace_3d(self):
+        """Открыть отдельное окно «3D-ход лучей» (TASK_3D_VIZ, пакет C).
+
+        Немодальное окно (show(), не exec_()) с Visualization3D; текущая
+        система подаётся set_system() — виджет сам трассирует веера лучей
+        по полям (_trace_rays). Повторный вызов при живом окне поднимает
+        его и обновляет систему, иначе окно создаётся заново; ссылка
+        хранится в self._ray_trace_3d_window, чтобы окно не собрал GC.
+        Без PyOpenGL окно не открывается — действие уже disabled.
+        """
+        if not visualization3d.HAS_OPENGL:
+            return
+        win = getattr(self, '_ray_trace_3d_window', None)
+        if win is not None:
+            try:
+                win.isVisible()
+            except RuntimeError:
+                # C++-объект окна удалён (например, вместе с parent) — заново
+                win = None
+        if win is None:
+            win = QDialog(self)
+            win.setWindowTitle("3D-ход лучей")
+            win.resize(1000, 700)
+            lay = QVBoxLayout(win)
+            lay.setContentsMargins(0, 0, 0, 0)
+            self._ray_trace_3d_widget = Visualization3D()
+            lay.addWidget(self._ray_trace_3d_widget)
+            self._ray_trace_3d_window = win
+        self._ray_trace_3d_widget.set_system(self.current_system)
+        win.show()
+        win.raise_()
+        win.activateWindow()
 
     def _fit_dialog(self):
         """Open the parameter fitting dialog (подгонка 1×1 / ЛАП)."""

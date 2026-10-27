@@ -6,7 +6,7 @@
 
 📘 English version | 📗 [Русская версия](README_RU.md)
 
-[![Tests](https://img.shields.io/badge/pytest-2266%20passed%20%2F%20166%20skipped%20%2F%2023%20xfail-brightgreen)]()
+[![Tests](https://img.shields.io/badge/pytest-2324%20passed%20%2F%20166%20skipped%20%2F%2023%20xfail-brightgreen)]()
 [![Verification](https://img.shields.io/badge/golden%20bank-68%20systems%2C%201438%20checks%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
@@ -65,7 +65,7 @@ python main.py
 - Python 3.10+ (3.13 recommended)
 - Ready-to-use **OPAL-PC.exe** - see [Releases](https://github.com/justroflanGitHub/opal-okb/releases)
   (the 700+ system library is bundled; works out of the box and portably)
-- Tests: `python -X utf8 -m pytest -q` - **2266 passed / 166 skipped / 23 xfailed**
+- Tests: `python -X utf8 -m pytest -q` - **2324 passed / 166 skipped / 23 xfailed**
 
 ## Features
 

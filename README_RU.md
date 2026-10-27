@@ -5,7 +5,7 @@
 > An open-source, clean-room reimplementation of **OPAL-PC** (MS-DOS, 1990-е,
 > НИИ ОМП / ВНЦ САМ) on **Python 3.10+ / PyQt5** — с полной верификацией против оригинала.
 
-[![Tests](https://img.shields.io/badge/pytest-2266%20passed%20%2F%20166%20skipped%20%2F%2023%20xfail-brightgreen)]()
+[![Tests](https://img.shields.io/badge/pytest-2324%20passed%20%2F%20166%20skipped%20%2F%2023%20xfail-brightgreen)]()
 [![Verification](https://img.shields.io/badge/golden%20bank-68%20e2e%2C%201438%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
@@ -59,7 +59,7 @@ py main.py
 - Python 3.10+ (рекомендуется 3.13), на Windows — `py` launcher
 - Готовый **OPAL-PC.exe** — в [Releases](https://github.com/justroflanGitHub/opal-okb/releases)
   (библиотека 700+ систем упакована внутрь, работает из коробки и портативно)
-- Тесты: `py -X utf8 -m pytest -q` — **2266 passed / 166 skipped / 23 xfailed**
+- Тесты: `py -X utf8 -m pytest -q` — **2324 passed / 166 skipped / 23 xfailed**
 
 ## Возможности
 

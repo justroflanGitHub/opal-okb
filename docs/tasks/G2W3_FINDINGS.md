@@ -369,4 +369,4 @@ GTIN0/ST/SERGEY3/LEXA21). Ценность как регресс-кейс «пе
 *Прогоны-доказательства: %TEMP%\g2w3_before_pkgC.txt (базлайн HEAD),
 g2w3_after_pkgC0.txt (после правок), *_summary.txt (per-system),
 g2w3_pytest_before_pkgC.txt / g2w3_pytest_after_pkgC.txt. Правки
-golden_verify.py в рабочей копии НЕ закоммичены — коммит за оркестратором.*
+golden_verify.py закоммичены вместе с этим файлом (коммит 49009fb, пакет C).*

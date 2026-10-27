@@ -2,6 +2,38 @@
 
 All notable changes to OPAL-OKB will be documented in this file.
 
+## [1.33.0] — 2026-10-27
+
+### Golden-банк 44 → 68 end-to-end (TASK_GOLDEN_WAVE3, волна 3)
+
+- **Банк**: 70 .PRN = **68 end-to-end + 2 stale** — +25 систем за одну
+  DOSBox-ночь, печать **25/25 OK** (рецепт g2bank без правок; стенд
+  `C:\GOLDEN_DOS`). Цель ≥ 60 e2e перевыполнена. Пачки B1–B5: ИК/KBR-ядро
+  (DEMON2/4/5/6, DEM), ИК/многолинзовые (DEM1, DEMDA, GUTAN4, LAB31S,
+  SERGEY0), ахроматы/склейка (EGOR_2, ANDREW_2, LEXA11, LAB3S, LAB3_GAS),
+  сиблинги xfail-гипотез (GTIN0, SERGEY3, WA3, PETRO3, S_KOND3),
+  одиночные/эксперимент (LEXA23, LEXA21, G1, DIP1, YBBG00).
+- **Сверка**: 11 новых систем полностью зелёные; DIP1 — зелёная по всем
+  сверившимся при 20 SKIP (порт MISS); 5 только YELLOW (0.05–0.55%); 8 с
+  RED — xfail(strict=False) в `tests/test_golden_wave3.py` (92 passed +
+  8 xfailed; wave2 184 + 15 без деградации, старые 43 — байт-в-байт).
+  Банк: **1438 GREEN / 46 YELLOW / 128 RED / 215 SKIP** (было 921/30/80/126).
+- **Парсер PRN расширен** (обратно совместимо): слитые соседние числа
+  Sp/Sp′ (DEM1), звёздное заполнение полей (LEXA23), компактная раскладка
+  хвоста TABOC2 (DEM/LEXA23), точная инверсия «Н ЗР → зона»
+  sin(arctan)/NA при NA→1 (LEXA23/DEM; на малых NA тождественна).
+- **Находки** (`docs/tasks/G2W3_FINDINGS.md`, итог — `G2W3_FINAL_REPORT.md`):
+  знак попер/Tg при мнимом изображении — знак L_p НЕ дискриминатор (DEM1/
+  LEXA23/SERGEY0 — три новые точки); прод-дптр SERGEY0 — множитель печати
+  0.82; паттерны G44 (WA2/PETRO1/222) пер-системны — сиблинги зелёные;
+  TIR-кромка (121-паттерн) в EGOR_2/LEXA23/DEM; YBBG00 без glass-блока —
+  полный RT.
+- **Зеркальные (приоритет ТЗ) — future work (волна 4)**: в standalone-OPJ
+  стенда зеркальной кодировки нет (скан 85 OPJ: конвенция MANUAL.DOC §2.1.2 —
+  минус у имени среды; ни одного минус-имени); 6 зеркальных есть только в
+  LBO-библиотеках (LENS_SPC ×4, USLENS ×2, parse-ok в corpus_v2) — нужен
+  рецепт загрузки из библиотеки.
+
 ## [1.31.1] — 2026-10-26
 
 ### Merge fixup: CI без OPAL.AGF (7 красных тестов)

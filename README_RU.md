@@ -6,7 +6,7 @@
 > НИИ ОМП / ВНЦ САМ) on **Python 3.10+ / PyQt5** — с полной верификацией против оригинала.
 
 [![Tests](https://img.shields.io/badge/pytest-1542%20passed%20%2F%208%20skipped-brightgreen)]()
-[![Verification](https://img.shields.io/badge/golden%20bank-307%20GREEN-blue)]()
+[![Verification](https://img.shields.io/badge/golden%20bank-68%20e2e%2C%201438%20GREEN-blue)]()
 [![Release](https://img.shields.io/badge/release-v1.28.0-orange)]()
 
 Расчёт, анализ, оптимизация и визуализация оптических систем: линз, объективов,
@@ -173,7 +173,12 @@ reverse/масштаб/ГОСТ-радиусы.
 - [ ] **OPAL.COM §21.12** — runtime-зонд первого EXEC *(1 сессия)*
 - [x] **Расширение банка эталонов** — 14 → 44 системы батчем за одну
       DOSBox-ночь (волна 3 g2bank.py: 28/29 OK, LOV не стартует RT), CI зелёный
-      *(сделано 2026-10-23)*
+      *(сделано 2026-10-23)*; сверка волны golden-3: → **68 end-to-end**
+      систем (70 печатей, печать 25/25 OK), **1438 GREEN** / 46 Y / 128 R /
+      215 S, 11 полностью зелёных + 8 новых xfail (знак при мнимом
+      изображении, множитель печати 0.82, TIR-кромка); зеркальные — только
+      в LBO-библиотеках → волна 4 *(docs/tasks/G2W3_FINDINGS,
+      G2W3_FINAL_REPORT; сделано 2026-10-27)*
 
 ---
 
